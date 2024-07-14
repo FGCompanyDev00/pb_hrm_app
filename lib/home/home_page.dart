@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
 
 class HomePage extends StatelessWidget {
@@ -22,7 +23,10 @@ class HomePage extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
-              // Handle settings
+               Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsPage()),
+              );
             },
           ),
           IconButton(
