@@ -3,27 +3,32 @@ import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+  const HomePage({Key? key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        automaticallyImplyLeading: false, // Disable back button
+      
+        title: Row(
           children: [
             CircleAvatar(
               radius: 20,
               backgroundImage: AssetImage('assets/profile_picture.png'),
             ),
-            SizedBox(width: 10),
-            Text('Mr. Alex John'),
+            const SizedBox(width: 10),
+            Text(
+              'John Doe',
+              style: TextStyle(fontSize: 18),
+            ),
           ],
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
-               Navigator.pushReplacement(
+              Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsPage()),
               );

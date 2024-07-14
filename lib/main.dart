@@ -22,7 +22,7 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +40,16 @@ class MyApp extends StatelessWidget {
               ),
             ),
           ),
-          darkTheme: ThemeData.dark(),
+          darkTheme: ThemeData.dark().copyWith(
+            // Customize dark theme colors here
+            primaryColor: Colors.green,
+            elevatedButtonTheme: ElevatedButtonThemeData(
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.green,
+              ),
+            ),
+          ),
           themeMode: themeNotifier.currentTheme,
           localizationsDelegates: [
             AppLocalizations.delegate,
@@ -53,7 +62,7 @@ class MyApp extends StatelessWidget {
             const Locale('lo'),
             const Locale('zh'),
           ],
-          locale: languageNotifier.currentLocale, // Set the current locale
+          locale: languageNotifier.currentLocale,
           home: const SplashScreen(),
         );
       },
@@ -61,7 +70,9 @@ class MyApp extends StatelessWidget {
   }
 }
 
+
 // LanguageNotifier class to manage language changes
+
 
 class LanguageNotifier with ChangeNotifier {
   Locale _currentLocale = const Locale('en'); // Default locale

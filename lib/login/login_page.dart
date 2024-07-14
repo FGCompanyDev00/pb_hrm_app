@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/login/notification_page.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -19,8 +17,6 @@ class _LoginPageState extends State<LoginPage> {
   String _selectedLanguage = 'English'; // Default language
   final List<String> _languages = ['English', 'Laos', 'Chinese'];
   late Timer _timer;
-  final TextEditingController _usernameController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
 
   @override
   void initState() {
@@ -31,8 +27,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void dispose() {
     _timer.cancel(); // Cancel the timer when disposing the widget
-    _usernameController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
@@ -44,34 +38,6 @@ class _LoginPageState extends State<LoginPage> {
         });
       }
     });
-  }
-
-  Future<void> _login() async {
-    final String username = _usernameController.text;
-    final String password = _passwordController.text;
-
-    final response = await http.post(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/login'),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonEncode(<String, String>{
-        'username': username,
-        'password': password,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      // If the server returns an OK response, parse the JSON.
-      final responseData = jsonDecode(response.body);
-      // Navigate to the NotificationPage on successful login
-      Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationPage()));
-    } else {
-      // If the server returns an error response, show an error message.
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed: ${response.reasonPhrase}')),
-      );
-    }
   }
 
   @override
@@ -143,10 +109,10 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                         Text(
-                          AppLocalizations.of(context)!.notJustAnotherCustomer,
+                        const Text(
+                          "You're not just another customer.\nWe're not just another Bank...",
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             color: Colors.black,
                           ),
@@ -165,7 +131,6 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 40),
                         TextField(
-                          controller: _usernameController,
                           style: const TextStyle(color: Colors.black),
                           decoration: InputDecoration(
                             labelText: AppLocalizations.of(context)!.username,
@@ -181,7 +146,6 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 20),
                         TextField(
-                          controller: _passwordController,
                           obscureText: true,
                           style: const TextStyle(color: Colors.black),
                           decoration: InputDecoration(
@@ -206,13 +170,15 @@ class _LoginPageState extends State<LoginPage> {
                               activeColor: Colors.white,
                               checkColor: Colors.black,
                             ),
-                            Text(AppLocalizations.of(context)!.rememberMe, style: const TextStyle(color: Colors.black)),
+                            const Text("Remember Me", style: TextStyle(color: Colors.black)),
                           ],
                         ),
                         const SizedBox(height: 20),
                         Center(
                           child: GestureDetector(
-                            onTap: _login,
+                            onTap: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationPage()));
+                            },
                             child: AnimatedContainer(
                               duration: const Duration(seconds: 2),
                               width: 200,
@@ -228,9 +194,9 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                               alignment: Alignment.center,
-                              child: Text(
-                                AppLocalizations.of(context)!.login,
-                                style: const TextStyle(
+                              child: const Text(
+                                "LOGIN",
+                                style: TextStyle(
                                   fontSize: 18,
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,

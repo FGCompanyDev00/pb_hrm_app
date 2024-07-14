@@ -1,10 +1,10 @@
-//settings_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/main.dart';
+import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:provider/provider.dart'; // Import Provider package
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({Key? key}) : super(key: key);
 
   @override
   _SettingsPageState createState() => _SettingsPageState();
@@ -12,6 +12,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _biometricEnabled = false;
+  bool _darkModeEnabled = false; // Added for Dark Mode
 
   Future<bool> _onWillPop() async {
     Navigator.pushReplacement(
@@ -23,6 +24,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    var themeNotifier = Provider.of<ThemeNotifier>(context); // Access ThemeNotifier
+
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
@@ -82,9 +85,9 @@ class _SettingsPageState extends State<SettingsPage> {
             ListTile(
               title: const Text('Dark Mode'),
               trailing: Switch(
-                value: false,
+                value: themeNotifier.isDarkMode, // Use isDarkMode from ThemeNotifier
                 onChanged: (bool value) {
-                  // Handle Dark Mode Toggle
+                  themeNotifier.toggleTheme(); // Toggle theme using ThemeNotifier
                 },
               ),
             ),
@@ -138,7 +141,8 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white, backgroundColor: Colors.green, // foreground
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.green,
               ),
               child: const Text('OK'),
               onPressed: () {
