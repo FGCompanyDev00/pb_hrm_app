@@ -14,33 +14,34 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
   double _slidePosition = 0.0;
   final double _maxSlideDistance = 200.0;
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _controller = AnimationController(
+  //     duration: const Duration(milliseconds: 300),
+  //     vsync: this,
+  //   );
 
-    _animation = Tween<double>(
-      begin: 0.0,
-      end: _maxSlideDistance,
-    ).animate(_controller)
-      ..addListener(() {
-        setState(() {
-          _slidePosition = _animation.value;
-        });
-      });
+  //   _animation = Tween<double>(
+  //     begin: 0.0,
+  //     end: _maxSlideDistance,
+  //   ).animate(_controller)
+  //     ..addListener(() {
+  //       setState(() {
+  //         _slidePosition = _animation.value;
+  //       });
+  //     });
 
-    _controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainScreen()),
-        );
-      }
-    });
-  }
+  //   _controller.addStatusListener((status) {
+  //     if (status == AnimationStatus.completed) {
+  //       Navigator.pushReplacement(
+  //         context,
+  //         MaterialPageRoute(builder: (context) => const MainScreen()),
+  //       );
+  //     }
+  //   }
+  //   );
+  // }
 
   @override
   void dispose() {

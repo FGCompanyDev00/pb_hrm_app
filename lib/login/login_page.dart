@@ -31,60 +31,62 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
-  void _showLanguageModal() {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Container(
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Choose Language From',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.language),
-                title: const Text('English'),
-                onTap: () {
-                  setState(() {
-                    _selectedLanguage = 'English';
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.language),
-                title: const Text('Laos'),
-                onTap: () {
-                  setState(() {
-                    _selectedLanguage = 'Laos';
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.language),
-                title: const Text('Chinese'),
-                onTap: () {
-                  setState(() {
-                    _selectedLanguage = 'Chinese';
-                  });
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+ void _showLanguageModal() {
+  showModalBottomSheet(
+    context: context, // Ensure this context is correct
+    builder: (BuildContext context) {
+      return Container(
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Choose Language From',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: const Text('English'),
+              onTap: () {
+                setState(() {
+                  _selectedLanguage = 'English';
+                });
+                Navigator.pop(context); // Close the modal after selection
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: const Text('Laos'),
+              onTap: () {
+                setState(() {
+                  _selectedLanguage = 'Laos';
+                });
+                Navigator.pop(context); // Close the modal after selection
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: const Text('Chinese'),
+              onTap: () {
+                setState(() {
+                  _selectedLanguage = 'Chinese';
+                });
+                Navigator.pop(context); // Close the modal after selection
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+
 
   Future<void> loginUser(String username, String password) async {
     final response = await http.post(

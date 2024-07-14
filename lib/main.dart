@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pb_hrsystem/home/home_page.dart';
 import 'package:pb_hrsystem/home/attendance_screen.dart';
 import 'package:pb_hrsystem/home/profile_screen.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
 import 'package:pb_hrsystem/nav/custom_buttom_nav_bar.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 void main() {
   runApp(const MyApp());
@@ -25,6 +27,18 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
+      localizationsDelegates: [
+        AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: [
+        Locale('en'),
+        Locale('lo'),
+        Locale('zh'),
+      ],
+
       home: const LoginPage(),
     );
   }

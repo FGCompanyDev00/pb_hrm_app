@@ -1,8 +1,67 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:pb_hrsystem/login/location_information_page.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-class NotificationPage extends StatelessWidget {
+class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
+
+  @override
+  _NotificationPageState createState() => _NotificationPageState();
+}
+
+class _NotificationPageState extends State<NotificationPage> {
+  late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+
+  @override
+  void initState() {
+    super.initState();
+    flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    _initializeNotifications();
+    _requestNotificationPermission();
+  }
+
+  Future<void> _initializeNotifications() async {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    final InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+    );
+
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    final status = await Permission.notification.request();
+    if (status.isGranted) {
+      print('Notification permission granted.');
+    } else if (status.isDenied) {
+      _showPermissionDeniedDialog();
+    } else if (status.isPermanentlyDenied) {
+      openAppSettings();
+    }
+  }
+
+  void _showPermissionDeniedDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Notification Permission'),
+          content: const Text('Please allow notifications to stay updated with important information.'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +86,10 @@ class NotificationPage extends StatelessWidget {
                     onTap: () {
                       // Handle skip
                     },
-                    child: const Text("Skip", style: TextStyle(fontSize: 18, color: Colors.green, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      "Skip",
+                      style: TextStyle(fontSize: 18, color: Colors.green, fontWeight: FontWeight.bold),
+                    ),
                   ),
                   Column(
                     children: [
@@ -76,7 +138,7 @@ class NotificationPage extends StatelessWidget {
               Center(
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => LocationInformationPage()));
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const LocationInformationPage()));
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
