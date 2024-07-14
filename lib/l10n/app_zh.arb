@@ -1,11 +1,21 @@
 {
   "appTitle": "PBHR",
-  "welcomeToPSVB": "欢迎来到 PSVB",
-  "notJustAnotherCustomer": "你不仅仅是另一位客户。\n我们不仅仅是另一家银行...",
+  "welcomeToPSVB": "欢迎来到PSVB",
+  "notJustAnotherCustomer": "你不仅仅是另一个客户。\n我们也不仅仅是另一个银行...",
   "username": "用户名",
   "password": "密码",
   "rememberMe": "记住我",
   "login": "登录",
   "forgetPassword": "忘记密码？",
-  "chooseLanguage": "选择语言"
+  "chooseLanguage": "选择语言",
+  "notification": "通知",
+  "weWantToSendYou": "我们想发送给你各种信息通知，无论是请假审批，系统内各项操作，评估...",
+  "next": "下一步",
+  "skip": "跳过",
+  "locationInformation": "位置信息",
+  "weCollectInformation": "我们在使用时收集关于你位置的信息，以提供最佳服务...",
+  "cameraAndPhoto": "相机和照片",
+  "manyFunctions": "我们的应用程序中的许多功能需要访问相机或图库...",
+  "readyToGo": "你准备好了！",
+  "getStarted": "开始吧"
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/login/camera_page.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 class LocationInformationPage extends StatelessWidget {
   const LocationInformationPage({super.key});
@@ -27,17 +29,12 @@ class LocationInformationPage extends StatelessWidget {
                     onTap: () {
                       // Handle skip
                     },
-                    child: const Text("Skip", style: TextStyle(fontSize: 18, color: Colors.green, fontWeight: FontWeight.bold)),
+                    child:  Text(AppLocalizations.of(context)!.skip, style: const TextStyle(fontSize: 18, color: Colors.green, fontWeight: FontWeight.bold)),
                   ),
-                  Column(
+                  const Column(
                     children: [
-                      Image.network(
-                        'https://upload.wikimedia.org/wikipedia/commons/f/f3/Flag_of_Laos.svg',
-                        width: 30,
-                        height: 20,
-                      ),
-                      const SizedBox(height: 4),
-                      const Text("Lao", style: TextStyle(fontSize: 18, color: Colors.white)),
+                      SizedBox(height: 4),
+                      Text("Lao", style: TextStyle(fontSize: 18, color: Colors.white)),
                     ],
                   ),
                 ],
@@ -51,10 +48,10 @@ class LocationInformationPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              const Center(
+               Center(
                 child: Text(
-                  "Location Information",
-                  style: TextStyle(
+                  AppLocalizations.of(context)!.locationInformation,
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
@@ -62,11 +59,11 @@ class LocationInformationPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              const Center(
+               Center(
                 child: Text(
-                  "We collect information about your location when using it to provide the best service near you...",
+                  AppLocalizations.of(context)!.weCollectInformation,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     color: Colors.black,
                   ),
@@ -85,7 +82,7 @@ class LocationInformationPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                   ),
-                  child: const Text("Next", style: TextStyle(fontSize: 18)),
+                  child:  Text(AppLocalizations.of(context)!.next, style: const TextStyle(fontSize: 18)),
                 ),
               ),
               const SizedBox(height: 10),

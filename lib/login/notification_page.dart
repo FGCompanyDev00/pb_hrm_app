@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:pb_hrsystem/login/location_information_page.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -86,20 +88,16 @@ class _NotificationPageState extends State<NotificationPage> {
                     onTap: () {
                       // Handle skip
                     },
-                    child: const Text(
-                      "Skip",
-                      style: TextStyle(fontSize: 18, color: Colors.green, fontWeight: FontWeight.bold),
+                    child:  Text(
+                      AppLocalizations.of(context)!.skip,
+                      style: const TextStyle(fontSize: 18, color: Colors.green, fontWeight: FontWeight.bold),
                     ),
                   ),
-                  Column(
+                  const Column(
                     children: [
-                      Image.network(
-                        'https://upload.wikimedia.org/wikipedia/commons/f/f3/Flag_of_Laos.svg',
-                        width: 30,
-                        height: 20,
-                      ),
-                      const SizedBox(height: 4),
-                      const Text("Lao", style: TextStyle(fontSize: 18, color: Colors.white)),
+                      
+                      SizedBox(height: 4),
+                      Text("Lao", style: TextStyle(fontSize: 18, color: Colors.white)),
                     ],
                   ),
                 ],
@@ -113,10 +111,10 @@ class _NotificationPageState extends State<NotificationPage> {
                 ),
               ),
               const SizedBox(height: 20),
-              const Center(
+              Center(
                 child: Text(
-                  "Notification",
-                  style: TextStyle(
+                   AppLocalizations.of(context)!.notification,
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
@@ -124,9 +122,9 @@ class _NotificationPageState extends State<NotificationPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Center(
+              Center(
                 child: Text(
-                  "We want to send you various information notifications, whether it is leave approval, making various items in the system, evaluation...",
+                 AppLocalizations.of(context)!.weWantToSendYou,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -147,7 +145,7 @@ class _NotificationPageState extends State<NotificationPage> {
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                   ),
-                  child: const Text("Next", style: TextStyle(fontSize: 18)),
+                  child:  Text(AppLocalizations.of(context)!.next, style: const TextStyle(fontSize: 18)),
                 ),
               ),
               const SizedBox(height: 10),

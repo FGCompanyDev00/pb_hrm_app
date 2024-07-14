@@ -1,11 +1,14 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/login/notification_page.dart';
+import 'package:pb_hrsystem/main.dart';
+import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({Key? key}) : super(key: key);
 
   @override
   _LoginPageState createState() => _LoginPageState();
@@ -13,7 +16,9 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool _gradientAnimation = false;
-  String _selectedLanguage = 'English';
+  String _selectedLanguage = 'English'; // Default language
+  final List<String> _languages = ['English', 'Laos', 'Chinese'];
+  late Timer _timer;
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -23,72 +28,28 @@ class _LoginPageState extends State<LoginPage> {
     _startGradientAnimation();
   }
 
+  @override
+  void dispose() {
+    _timer.cancel(); // Cancel the timer when disposing the widget
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   void _startGradientAnimation() {
-    Timer.periodic(const Duration(seconds: 2), (timer) {
-      setState(() {
-        _gradientAnimation = !_gradientAnimation;
-      });
+    _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (mounted) {
+        setState(() {
+          _gradientAnimation = !_gradientAnimation;
+        });
+      }
     });
   }
 
- void _showLanguageModal() {
-  showModalBottomSheet(
-    context: context, // Ensure this context is correct
-    builder: (BuildContext context) {
-      return Container(
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12.0),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Choose Language From',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: const Text('English'),
-              onTap: () {
-                setState(() {
-                  _selectedLanguage = 'English';
-                });
-                Navigator.pop(context); // Close the modal after selection
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: const Text('Laos'),
-              onTap: () {
-                setState(() {
-                  _selectedLanguage = 'Laos';
-                });
-                Navigator.pop(context); // Close the modal after selection
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: const Text('Chinese'),
-              onTap: () {
-                setState(() {
-                  _selectedLanguage = 'Chinese';
-                });
-                Navigator.pop(context); // Close the modal after selection
-              },
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
+  Future<void> _login() async {
+    final String username = _usernameController.text;
+    final String password = _passwordController.text;
 
-
-
-  Future<void> loginUser(String username, String password) async {
     final response = await http.post(
       Uri.parse('https://demo-application-api.flexiflows.co/api/login'),
       headers: <String, String>{
@@ -101,36 +62,22 @@ class _LoginPageState extends State<LoginPage> {
     );
 
     if (response.statusCode == 200) {
-      Map<String, dynamic> data = jsonDecode(response.body);
-      // Navigate to the NotificationPage
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const NotificationPage()),
-      );
+      // If the server returns an OK response, parse the JSON.
+      final responseData = jsonDecode(response.body);
+      // Navigate to the NotificationPage on successful login
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationPage()));
     } else {
-      // Handle error
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Error'),
-            content: const Text('Failed to login'),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
+      // If the server returns an error response, show an error message.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Login failed: ${response.reasonPhrase}')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    var languageNotifier = Provider.of<LanguageNotifier>(context);
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -139,182 +86,183 @@ class _LoginPageState extends State<LoginPage> {
             fit: BoxFit.cover,
           ),
         ),
-        child: Stack(
-          children: [
-            Positioned(
-              top: 60,
-              left: 16,
-              child: GestureDetector(
-                onTap: _showLanguageModal,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(8.0),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              const SizedBox(height: 60),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                child: DropdownButton<String>(
+                  value: _selectedLanguage,
+                  icon: const Icon(Icons.arrow_downward),
+                  iconSize: 24,
+                  elevation: 16,
+                  style: const TextStyle(color: Colors.black, fontSize: 18),
+                  underline: Container(
+                    height: 2,
+                    color: Colors.transparent,
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.language, color: Colors.black),
-                      const SizedBox(width: 8),
-                      Text(
-                        _selectedLanguage,
-                        style: const TextStyle(color: Colors.black, fontSize: 18),
-                      ),
-                    ],
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _selectedLanguage = newValue!;
+                    });
+                    languageNotifier.changeLanguage(newValue!); // Pass the selected language directly
+                  },
+                  items: _languages.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Center(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'assets/logo.png',
+                          width: 200,
+                          height: 150,
+                        ),
+                        const SizedBox(height: 30),
+                        Text(
+                          AppLocalizations.of(context)!.welcomeToPSVB,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                         Text(
+                          AppLocalizations.of(context)!.notJustAnotherCustomer,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 40),
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.calendar_today, color: Colors.black),
+                            SizedBox(width: 8),
+                            Text(
+                              "21 MAR 2024",
+                              style: TextStyle(fontSize: 16, color: Colors.black),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 40),
+                        TextField(
+                          controller: _usernameController,
+                          style: const TextStyle(color: Colors.black),
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(context)!.username,
+                            labelStyle: const TextStyle(color: Colors.black),
+                            prefixIcon: const Icon(Icons.person, color: Colors.black),
+                            filled: true,
+                            fillColor: Colors.white24,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          style: const TextStyle(color: Colors.black),
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(context)!.password,
+                            labelStyle: const TextStyle(color: Colors.black),
+                            prefixIcon: const Icon(Icons.lock, color: Colors.black),
+                            suffixIcon: const Icon(Icons.visibility, color: Colors.black),
+                            filled: true,
+                            fillColor: Colors.white24,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: true,
+                              onChanged: (bool? value) {},
+                              activeColor: Colors.white,
+                              checkColor: Colors.black,
+                            ),
+                            Text(AppLocalizations.of(context)!.rememberMe, style: const TextStyle(color: Colors.black)),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Center(
+                          child: GestureDetector(
+                            onTap: _login,
+                            child: AnimatedContainer(
+                              duration: const Duration(seconds: 2),
+                              width: 200,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8.0),
+                                gradient: LinearGradient(
+                                  colors: _gradientAnimation
+                                      ? [Colors.blue, Colors.purple]
+                                      : [Colors.purple, Colors.blue],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                AppLocalizations.of(context)!.login,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.network(
+                              'https://img.icons8.com/ios-filled/50/ffffff/fingerprint.png',
+                              width: 40,
+                              height: 40,
+                            ),
+                            const SizedBox(width: 20),
+                            Image.network(
+                              'https://img.icons8.com/ios-filled/50/ffffff/face-id.png',
+                              width: 40,
+                              height: 40,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            Center(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 60),
-                      Image.asset(
-                        'assets/logo.png',
-                        width: 180,
-                        height: 180,
-                      ),
-                      const SizedBox(height: 40),
-                      const Text(
-                        "Welcome to PSVB",
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        "You're not just another customer.\nWe're not just another Bank...",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.calendar_today, color: Colors.black),
-                          SizedBox(width: 8),
-                          Text(
-                            "21 MAR 2024",
-                            style: TextStyle(fontSize: 16, color: Colors.black),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 40),
-                      TextField(
-                        controller: _usernameController,
-                        style: const TextStyle(color: Colors.black),
-                        decoration: InputDecoration(
-                          labelText: 'Username',
-                          labelStyle: const TextStyle(color: Colors.black),
-                          prefixIcon: const Icon(Icons.person, color: Colors.black),
-                          filled: true,
-                          fillColor: Colors.white24,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        style: const TextStyle(color: Colors.black),
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          labelStyle: const TextStyle(color: Colors.black),
-                          prefixIcon: const Icon(Icons.lock, color: Colors.black),
-                          suffixIcon: const Icon(Icons.visibility, color: Colors.black),
-                          filled: true,
-                          fillColor: Colors.white24,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Checkbox(
-                            value: true,
-                            onChanged: (bool? value) {},
-                            activeColor: Colors.white,
-                            checkColor: Colors.black,
-                          ),
-                          const Text("Remember Me", style: TextStyle(color: Colors.black)),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Center(
-                        child: GestureDetector(
-                          onTap: () {
-                            loginUser(_usernameController.text, _passwordController.text);
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(seconds: 2),
-                            width: 200,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8.0),
-                              gradient: LinearGradient(
-                                colors: _gradientAnimation
-                                    ? [Colors.blue, Colors.purple]
-                                    : [Colors.purple, Colors.blue],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              "LOGIN",
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Center(
-                        child: GestureDetector(
-                          onTap: () {},
-                          child: Container(
-                            width: 200,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8.0),
-                              color: Colors.white,
-                            ),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              "Forget Password?",
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

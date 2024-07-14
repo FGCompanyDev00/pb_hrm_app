@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/main.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 class ReadyPage extends StatefulWidget {
   const ReadyPage({super.key});
@@ -14,34 +16,34 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
   double _slidePosition = 0.0;
   final double _maxSlideDistance = 200.0;
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   _controller = AnimationController(
-  //     duration: const Duration(milliseconds: 300),
-  //     vsync: this,
-  //   );
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
 
-  //   _animation = Tween<double>(
-  //     begin: 0.0,
-  //     end: _maxSlideDistance,
-  //   ).animate(_controller)
-  //     ..addListener(() {
-  //       setState(() {
-  //         _slidePosition = _animation.value;
-  //       });
-  //     });
+    _animation = Tween<double>(
+      begin: 0.0,
+      end: _maxSlideDistance,
+    ).animate(_controller)
+      ..addListener(() {
+        setState(() {
+          _slidePosition = _animation.value;
+        });
+      });
 
-  //   _controller.addStatusListener((status) {
-  //     if (status == AnimationStatus.completed) {
-  //       Navigator.pushReplacement(
-  //         context,
-  //         MaterialPageRoute(builder: (context) => const MainScreen()),
-  //       );
-  //     }
-  //   }
-  //   );
-  // }
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainScreen()),
+        );
+      }
+    }
+    );
+  }
 
   @override
   void dispose() {
@@ -90,10 +92,10 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
                 ),
               ),
               const SizedBox(height: 20),
-              const Center(
+               Center(
                 child: Text(
-                  "You're ready to go!",
-                  style: TextStyle(
+                  AppLocalizations.of(context)!.readyToGo,
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
@@ -167,11 +169,11 @@ class SlidingButton extends StatelessWidget {
               ],
             ),
             alignment: Alignment.centerRight,
-            child: const Padding(
+            child:  Padding(
               padding: EdgeInsets.only(right: 20.0),
               child: Text(
-                'Get Started',
-                style: TextStyle(
+                AppLocalizations.of(context)!.getStarted,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
