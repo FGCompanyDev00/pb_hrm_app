@@ -7,10 +7,6 @@ class ThemeNotifier extends ChangeNotifier {
 
   ThemeMode get currentTheme => _isDarkMode ? ThemeMode.dark : ThemeMode.light;
 
-  String get backgroundImage => _isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png';
-
-  TextStyle get textStyle => TextStyle(color: _isDarkMode ? Colors.white : Colors.black);
-
   void toggleTheme() {
     _isDarkMode = !_isDarkMode;
     notifyListeners();

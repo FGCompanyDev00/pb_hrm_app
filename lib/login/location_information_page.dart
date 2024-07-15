@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/login/camera_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 
 class LocationInformationPage extends StatelessWidget {
   const LocationInformationPage({super.key});

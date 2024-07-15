@@ -1,90 +1,140 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
+import 'package:provider/provider.dart';
+import 'package:pb_hrsystem/theme/theme.dart';
 
 class HomePage extends StatelessWidget {
-  const HomePage({Key? key});
+  const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false, // Disable back button
-      
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundImage: AssetImage('assets/profile_picture.png'),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'John Doe',
-              style: TextStyle(fontSize: 18),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsPage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.power_settings_new),
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginPage()),
-              );
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 150,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                image: const DecorationImage(
-                  image: AssetImage('assets/home_banner.png'),
-                  fit: BoxFit.cover,
-                ),
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+                fit: BoxFit.cover,
               ),
             ),
-            const SizedBox(height: 16),
-            const Text('Action Menu', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 3 / 2,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              children: [
-                _buildActionCard('My History', Icons.history),
-                _buildActionCard('Approvals', Icons.check_circle),
-                _buildActionCard('KPI', Icons.bar_chart),
-                _buildActionCard('Work Tracking', Icons.track_changes),
-                _buildActionCard('Inventory', Icons.inventory),
-              ],
-            ),
-          ],
-        ),
+          ),
+          Column(
+            children: [
+              AppBar(
+                automaticallyImplyLeading: false,
+                backgroundColor: Colors.transparent, // Make AppBar transparent
+                elevation: 0, // Remove AppBar shadow
+                title: Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 20,
+                      backgroundImage: AssetImage('assets/profile_picture.png'),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Mr. Alex John',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w600,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  IconButton(
+                    icon: Icon(Icons.settings, color: isDarkMode ? Colors.white : Colors.black),
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SettingsPage()),
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.power_settings_new, color: isDarkMode ? Colors.white : Colors.black),
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const LoginPage()),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 150,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          image: const DecorationImage(
+                            image: AssetImage('assets/home_banner.png'),
+                            fit: BoxFit.cover,
+                          ),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Action Menu',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          int crossAxisCount = constraints.maxWidth > 600 ? 3 : 2;
+                          return GridView.count(
+                            crossAxisCount: crossAxisCount,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            childAspectRatio: 3 / 2,
+                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 16,
+                            children: [
+                              _buildActionCard('My History', Icons.history, isDarkMode),
+                              _buildActionCard('Approvals', Icons.check_circle, isDarkMode),
+                              _buildActionCard('KPI', Icons.bar_chart, isDarkMode),
+                              _buildActionCard('Work Tracking', Icons.track_changes, isDarkMode),
+                              _buildActionCard('Inventory', Icons.inventory, isDarkMode),
+                              _buildActionCard('Leave Requests', Icons.beach_access, isDarkMode),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildActionCard(String title, IconData icon) {
+  Widget _buildActionCard(String title, IconData icon, bool isDarkMode) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -99,7 +149,12 @@ class HomePage extends StatelessWidget {
             children: [
               Icon(icon, size: 48, color: Colors.green),
               const SizedBox(height: 8),
-              Text(title, style: const TextStyle(fontSize: 16)),
+              Flexible(
+                child: Text(
+                  title,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDarkMode ? Colors.white : Colors.black),
+                ),
+              ),
             ],
           ),
         ),

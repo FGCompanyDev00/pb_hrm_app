@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/main.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
-import 'package:provider/provider.dart'; // Import Provider package
+import 'package:pb_hrsystem/settings/edit_profile.dart';
+import 'package:pb_hrsystem/settings/change_password.dart';
+import 'package:provider/provider.dart';
+
+import '../theme/theme.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({Key? key}) : super(key: key);
+  const SettingsPage({super.key});
 
   @override
   _SettingsPageState createState() => _SettingsPageState();
@@ -12,7 +15,6 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _biometricEnabled = false;
-  bool _darkModeEnabled = false; // Added for Dark Mode
 
   Future<bool> _onWillPop() async {
     Navigator.pushReplacement(
@@ -24,16 +26,22 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    var themeNotifier = Provider.of<ThemeNotifier>(context); // Access ThemeNotifier
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
 
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
+        extendBodyBehindAppBar: true,
         appBar: AppBar(
-          title: const Text('Settings'),
-          backgroundColor: Colors.green,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: Text(
+            'Settings',
+            style: themeNotifier.textStyle.copyWith(fontSize: 24),
+          ),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
+            icon: Icon(Icons.arrow_back, color: themeNotifier.textStyle.color),
             onPressed: () {
               Navigator.pushReplacement(
                 context,
@@ -42,66 +50,209 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
         ),
-        body: ListView(
-          padding: const EdgeInsets.all(16.0),
+        body: Stack(
           children: [
-            const ListTile(
-              title: Text(
-                'Account Settings',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
+            Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(themeNotifier.backgroundImage),
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
-            const Divider(),
-            ListTile(
-              title: const Text('Edit Profile'),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () {
-                // Navigate to Edit Profile Page
-              },
-            ),
-            ListTile(
-              title: const Text('Change Password'),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () {
-                // Navigate to Change Password Page
-              },
-            ),
-            ListTile(
-              title: const Text('Enable Touch ID / Face ID'),
-              trailing: Switch(
-                value: _biometricEnabled,
-                onChanged: (bool value) {
-                  _showBiometricDialog(context);
-                },
-              ),
-              onTap: () {
-                _showBiometricDialog(context);
-              },
-            ),
-            ListTile(
-              title: const Text('Dark Mode'),
-              trailing: Switch(
-                value: themeNotifier.isDarkMode, // Use isDarkMode from ThemeNotifier
-                onChanged: (bool value) {
-                  themeNotifier.toggleTheme(); // Toggle theme using ThemeNotifier
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('Notification'),
-              trailing: Switch(
-                value: false,
-                onChanged: (bool value) {
-                  // Handle Notification Toggle
-                },
+            SafeArea(
+              child: Column(
+                children: [
+                  _buildProfileHeader(isDarkMode),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.all(16.0),
+                      children: [
+                        _buildSettingsSection('Account Settings', themeNotifier),
+                        _buildSettingsTile(
+                          context,
+                          title: 'Edit Profile',
+                          icon: Icons.arrow_forward_ios,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                            );
+                          },
+                        ),
+                        _buildSettingsTile(
+                          context,
+                          title: 'Change Password',
+                          icon: Icons.arrow_forward_ios,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ChangePasswordPage()),
+                            );
+                          },
+                        ),
+                        _buildSettingsTile(
+                          context,
+                          title: 'Enable Touch ID / Face ID',
+                          trailing: Switch(
+                            value: _biometricEnabled,
+                            onChanged: (bool value) {
+                              _showBiometricDialog(context);
+                            },
+                            activeColor: Colors.green,
+                          ),
+                        ),
+                        _buildSettingsTile(
+                          context,
+                          title: 'Dark Mode',
+                          trailing: Switch(
+                            value: themeNotifier.isDarkMode,
+                            onChanged: (bool value) {
+                              themeNotifier.toggleTheme();
+                            },
+                            activeColor: Colors.green,
+                          ),
+                        ),
+                        _buildSettingsTile(
+                          context,
+                          title: 'Notification',
+                          trailing: Switch(
+                            value: false,
+                            onChanged: (bool value) {
+                              // Handle Notification Toggle
+                            },
+                            activeColor: Colors.green,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _buildSettingsSection('More', themeNotifier),
+                        _buildSettingsTile(
+                          context,
+                          title: 'About Us',
+                          icon: Icons.arrow_forward_ios,
+                          onTap: () {
+                            // Navigate to About Us Page
+                          },
+                        ),
+                        _buildSettingsTile(
+                          context,
+                          title: 'Privacy Policy',
+                          icon: Icons.arrow_forward_ios,
+                          onTap: () {
+                            // Navigate to Privacy Policy Page
+                          },
+                        ),
+                        _buildSettingsTile(
+                          context,
+                          title: 'Terms and Conditions',
+                          icon: Icons.arrow_forward_ios,
+                          onTap: () {
+                            // Navigate to Terms and Conditions Page
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader(bool isDarkMode) {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(50),
+          bottomRight: Radius.circular(50),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            spreadRadius: 5,
+            blurRadius: 15,
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 35,
+            backgroundImage: AssetImage('assets/profile_picture.png'),
+          ),
+          const SizedBox(width: 20),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                'Mr. Alex John',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black, // Always black
+                ),
+              ),
+              SizedBox(height: 5),
+              Text(
+                'alex.john@example.com',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey, // Always grey
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.edit, color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const EditProfilePage()),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsSection(String title, ThemeNotifier themeNotifier) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10.0),
+      child: Text(
+        title,
+        style: themeNotifier.textStyle.copyWith(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey),
+      ),
+    );
+  }
+
+  Widget _buildSettingsTile(BuildContext context, {required String title, Widget? trailing, IconData? icon, void Function()? onTap}) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5.0),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+        tileColor: isDarkMode ? Colors.black45 : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15.0),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
+            fontSize: 16,
+          ),
+        ),
+        trailing: trailing ?? Icon(icon, color: isDarkMode ? Colors.white70 : Colors.grey),
+        onTap: onTap,
       ),
     );
   }
@@ -111,9 +262,9 @@ class _SettingsPageState extends State<SettingsPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          title: Column(
-            children: const [
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: const Column(
+            children: [
               Icon(
                 Icons.fingerprint,
                 size: 40,
@@ -131,6 +282,7 @@ class _SettingsPageState extends State<SettingsPage> {
           content: const Text(
             'Do you want to use Fingerprint as a preferred login method for the next time?',
             textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.black),
           ),
           actions: <Widget>[
             TextButton(
@@ -141,8 +293,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Colors.green,
+                foregroundColor: Colors.white, backgroundColor: Colors.green, // foreground
               ),
               child: const Text('OK'),
               onPressed: () {

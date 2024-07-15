@@ -14,7 +14,7 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeNotifier()),
-        ChangeNotifierProvider(create: (_) => LanguageNotifier()), // Add LanguageNotifier
+        ChangeNotifierProvider(create: (_) => LanguageNotifier()),
       ],
       child: const MyApp(),
     ),
@@ -22,7 +22,7 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -40,29 +40,28 @@ class MyApp extends StatelessWidget {
               ),
             ),
           ),
-          darkTheme: ThemeData.dark().copyWith(
-            // Customize dark theme colors here
-            primaryColor: Colors.green,
-            elevatedButtonTheme: ElevatedButtonThemeData(
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Colors.green,
-              ),
+          darkTheme: ThemeData(
+            brightness: Brightness.dark,
+            primarySwatch: Colors.green,
+            scaffoldBackgroundColor: Colors.black,
+            textTheme: const TextTheme(
+              bodyLarge: TextStyle(color: Colors.white),
+              bodyMedium: TextStyle(color: Colors.white),
             ),
           ),
           themeMode: themeNotifier.currentTheme,
-          localizationsDelegates: [
+          localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
             GlobalCupertinoLocalizations.delegate,
           ],
-          supportedLocales: [
-            const Locale('en'),
-            const Locale('lo'),
-            const Locale('zh'),
+          supportedLocales: const [
+            Locale('en'),
+            Locale('lo'),
+            Locale('zh'),
           ],
-          locale: languageNotifier.currentLocale,
+          locale: languageNotifier.currentLocale, // Set the current locale
           home: const SplashScreen(),
         );
       },
@@ -70,9 +69,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-
 // LanguageNotifier class to manage language changes
-
 
 class LanguageNotifier with ChangeNotifier {
   Locale _currentLocale = const Locale('en'); // Default locale
@@ -96,7 +93,6 @@ class LanguageNotifier with ChangeNotifier {
     notifyListeners();
   }
 }
-
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
