@@ -73,7 +73,7 @@ class CameraPage extends StatelessWidget {
               Center(
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => ReadyPage()));
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const ReadyPage()));
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,

@@ -186,9 +186,9 @@ class _SettingsPageState extends State<SettingsPage> {
             backgroundImage: AssetImage('assets/profile_picture.png'),
           ),
           const SizedBox(width: 20),
-          Column(
+          const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               Text(
                 'Mr. Alex John',
                 style: TextStyle(

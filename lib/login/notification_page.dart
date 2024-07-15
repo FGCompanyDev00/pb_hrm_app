@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:pb_hrsystem/login/location_information_page.dart';
@@ -27,7 +28,7 @@ class _NotificationPageState extends State<NotificationPage> {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    final InitializationSettings initializationSettings = InitializationSettings(
+    const InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
     );
 
@@ -37,7 +38,9 @@ class _NotificationPageState extends State<NotificationPage> {
   Future<void> _requestNotificationPermission() async {
     final status = await Permission.notification.request();
     if (status.isGranted) {
-      print('Notification permission granted.');
+      if (kDebugMode) {
+        print('Notification permission granted.');
+      }
     } else if (status.isDenied) {
       _showPermissionDeniedDialog();
     } else if (status.isPermanentlyDenied) {
@@ -126,7 +129,7 @@ class _NotificationPageState extends State<NotificationPage> {
                 child: Text(
                  AppLocalizations.of(context)!.weWantToSendYou,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     color: Colors.black,
                   ),

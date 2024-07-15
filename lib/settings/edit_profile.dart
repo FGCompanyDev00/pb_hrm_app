@@ -9,8 +9,8 @@ class EditProfilePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Edit Profile'),
       ),
-      body: Center(
-        child: const Text('Edit Profile Page'),
+      body: const Center(
+        child: Text('Edit Profile Page'),
       ),
     );
   }

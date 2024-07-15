@@ -96,7 +96,7 @@ class AttendanceScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: isDarkMode ? Colors.black : Colors.black),
               ),
               const SizedBox(height: 8),
-              Text(
+              const Text(
                 'Check in time can be late by 01:00',
                 style: TextStyle(color: Colors.red, fontSize: 16),
               ),

@@ -170,7 +170,7 @@ class SlidingButton extends StatelessWidget {
             ),
             alignment: Alignment.centerRight,
             child:  Padding(
-              padding: EdgeInsets.only(right: 20.0),
+              padding: const EdgeInsets.only(right: 20.0),
               child: Text(
                 AppLocalizations.of(context)!.getStarted,
                 style: const TextStyle(
