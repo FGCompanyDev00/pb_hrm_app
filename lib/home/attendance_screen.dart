@@ -1,9 +1,89 @@
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 
-class AttendanceScreen extends StatelessWidget {
+class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
+
+  @override
+  _AttendanceScreenState createState() => _AttendanceScreenState();
+}
+
+class _AttendanceScreenState extends State<AttendanceScreen> {
+  final LocalAuthentication auth = LocalAuthentication();
+  bool _canCheckBiometrics = false;
+  bool _isAuthorized = false;
+  List<BiometricType> _availableBiometrics = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometrics();
+  }
+
+  Future<void> _checkBiometrics() async {
+    bool canCheckBiometrics;
+    try {
+      canCheckBiometrics = await auth.canCheckBiometrics;
+      _availableBiometrics = await auth.getAvailableBiometrics();
+    } catch (e) {
+      canCheckBiometrics = false;
+      print('Error checking biometrics: $e');
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _canCheckBiometrics = canCheckBiometrics;
+    });
+
+    print('Can check biometrics: $_canCheckBiometrics');
+    print('Available biometrics: $_availableBiometrics');
+  }
+
+  Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
+    bool authenticated = false;
+
+    if (!_canCheckBiometrics) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Biometric authentication is not available.'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      authenticated = await auth.authenticate(
+        localizedReason: isCheckIn ? 'Please authenticate to check in' : 'Please authenticate to check out',
+        options: const AuthenticationOptions(
+          stickyAuth: true,
+          useErrorDialogs: true,
+        ),
+      );
+    } catch (e) {
+      print('Error during authentication: $e');
+    }
+
+    if (authenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isCheckIn ? 'Checked In Successfully' : 'Checked Out Successfully'),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isCheckIn ? 'Check In Failed' : 'Check Out Failed'),
+        ),
+      );
+    }
+
+    setState(() {
+      _isAuthorized = authenticated;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,9 +185,7 @@ class AttendanceScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   ElevatedButton(
-                    onPressed: () {
-                      // Handle Check In
-                    },
+                    onPressed: () => _authenticate(context, true),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       shape: RoundedRectangleBorder(
@@ -117,9 +195,7 @@ class AttendanceScreen extends StatelessWidget {
                     child: const Text('Check In'),
                   ),
                   ElevatedButton(
-                    onPressed: () {
-                      // Handle Check Out
-                    },
+                    onPressed: () => _authenticate(context, false),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
                       shape: RoundedRectangleBorder(

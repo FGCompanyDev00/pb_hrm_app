@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:pb_hrsystem/splash/splashscreen.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:provider/provider.dart';
-import 'package:pb_hrsystem/home/home_page.dart';
-import 'package:pb_hrsystem/home/attendance_screen.dart';
-import 'package:pb_hrsystem/home/profile_screen.dart';
-import 'package:pb_hrsystem/nav/custom_buttom_nav_bar.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
+import 'splash/splashscreen.dart';
+import 'theme/theme.dart';
+import 'home/home_page.dart';
+import 'home/attendance_screen.dart';
+import 'home/profile_screen.dart';
+import 'nav/custom_buttom_nav_bar.dart';
 
 void main() {
   runApp(
@@ -70,7 +71,6 @@ class MyApp extends StatelessWidget {
 }
 
 // LanguageNotifier class to manage language changes
-
 class LanguageNotifier with ChangeNotifier {
   Locale _currentLocale = const Locale('en'); // Default locale
 
@@ -93,6 +93,7 @@ class LanguageNotifier with ChangeNotifier {
     notifyListeners();
   }
 }
+
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -126,6 +127,12 @@ class _MainScreenState extends State<MainScreen> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButton: CustomFloatingActionButton(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+      ),
     );
   }
 }
+
