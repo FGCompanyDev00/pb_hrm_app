@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/home/dashboard.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/settings/edit_profile.dart';
 import 'package:pb_hrsystem/settings/change_password.dart';
@@ -21,7 +22,7 @@ class _SettingsPageState extends State<SettingsPage> {
       context,
       MaterialPageRoute(builder: (context) => const MainScreen()),
     );
-    return false; // Prevent default back navigation behavior
+    return false;
   }
 
   @override

@@ -20,8 +20,8 @@ class CustomBottomNavBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: <Widget>[
           _buildIcon(context, Icons.fingerprint, 0),
-          const SizedBox(width: 40), // Spacer for the floating action button
-          _buildIcon(context, Icons.apps, 2),
+          const SizedBox(width: 40),
+          _buildIcon(context, Icons.home, 2),
         ],
       ),
     );
@@ -67,7 +67,7 @@ class CustomFloatingActionButton extends StatelessWidget {
           backgroundColor: currentIndex == 1 ? Colors.green : Colors.grey,
           onPressed: () => onTap(1),
           child: const Icon(
-            Icons.home,
+            Icons.calendar_month,
             color: Colors.white,
           ),
         ),

@@ -11,6 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  carousel_slider: ^4.0.0
   cupertino_icons: ^1.0.8
   http: ^1.2.1
   flutter_local_notifications: ^17.2.1+1
@@ -27,6 +28,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  build_runner: ^2.1.7
+  intl_generator: any
 
 flutter:
   generate: true
@@ -44,3 +47,4 @@ flutter:
     - assets/profile_picture.png
     - assets/qr_code.png
     - assets/darkbg.png
+    - assets/bg_2.png

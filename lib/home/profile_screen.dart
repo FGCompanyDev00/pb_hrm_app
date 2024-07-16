@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/home/dashboard.dart';
+import 'package:pb_hrsystem/main.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 
@@ -20,6 +22,15 @@ class ProfileScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const MainScreen()),
+            );
+          },
+        ),
       ),
       body: Stack(
         children: [

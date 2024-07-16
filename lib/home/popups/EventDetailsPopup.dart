@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/home/home_page.dart';
+import 'package:pb_hrsystem/home/home_calendar.dart';
 
 class EventDetailsPopup extends StatelessWidget {
   final Event event;
@@ -23,17 +23,19 @@ class EventDetailsPopup extends StatelessWidget {
               ),
               child: Container(
                 width: double.infinity,
-                color: Colors.amber,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.green, Colors.yellow],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
                 child: Column(
                   children: [
                     AppBar(
-                      title: const Text('Detail'),
+                      title: const Text('Event Details'),
                       backgroundColor: Colors.transparent,
                       elevation: 0,
-                      leading: IconButton(
-                        icon: Icon(Icons.arrow_back, color: Colors.black),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
                     ),
                   ],
                 ),
@@ -49,21 +51,28 @@ class EventDetailsPopup extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
-                  ListTile(
-                    leading: const CircleAvatar(
+                  const ListTile(
+                    leading: CircleAvatar(
                       backgroundImage: AssetImage('assets/avatar_placeholder.png'),
                     ),
-                    title: const Text('Ms. Zhao Lusi'),
-                    subtitle: const Text('Submitted on 26 Feb 2024 - 11:30:00'),
+                    title: Text('Ms. Zhao Lusi'),
+                    subtitle: Text('Submitted on 26 Feb 2024 - 11:30:00'),
                   ),
                   Container(
                     margin: const EdgeInsets.symmetric(vertical: 8.0),
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    color: Colors.blue.shade100,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.green.withOpacity(0.3), Colors.yellow.withOpacity(0.3)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
                     child: const Center(
                       child: Text(
                         'Meeting and Booking meeting room',
-                        style: TextStyle(color: Colors.blue),
+                        style: TextStyle(color: Colors.green),
                       ),
                     ),
                   ),
@@ -82,17 +91,17 @@ class EventDetailsPopup extends StatelessWidget {
                     title: const Text('Time'),
                     subtitle: Text(DateFormat('hh:mm a').format(event.dateTime)),
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.videocam),
-                    title: const Text('Type'),
-                    subtitle: const Text('Meeting online'),
+                  const ListTile(
+                    leading: Icon(Icons.videocam),
+                    title: Text('Type'),
+                    subtitle: Text('Meeting online'),
                   ),
                   const ListTile(
                     leading: Icon(Icons.room),
                     title: Text('Room'),
                     subtitle: Text('Back can yon 2F'),
                   ),
-                    Row(
+                  Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(3, (index) {
                       return const Padding(
@@ -112,19 +121,31 @@ class EventDetailsPopup extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 10),
-                
+
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       ElevatedButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 24.0),
+                        ),
                         child: const Text('Reject'),
                       ),
                       ElevatedButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.greenAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 24.0),
+                        ),
                         child: const Text('Join'),
                       ),
                     ],

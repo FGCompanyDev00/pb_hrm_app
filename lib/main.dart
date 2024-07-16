@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:pb_hrsystem/home/dashboard.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'splash/splashscreen.dart';
 import 'theme/theme.dart';
-import 'home/home_page.dart';
+import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
 import 'home/profile_screen.dart';
 import 'nav/custom_buttom_nav_bar.dart';
@@ -108,7 +109,7 @@ class _MainScreenState extends State<MainScreen> {
   static final List<Widget> _widgetOptions = <Widget>[
     const AttendanceScreen(),
     const HomePage(),
-    const ProfileScreen(),
+    const Dashboard(),
   ];
 
   void _onItemTapped(int index) {
