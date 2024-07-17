@@ -8,6 +8,8 @@ import 'package:pb_hrsystem/main.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -24,6 +26,9 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+  bool _obscurePassword = true;
+  bool _rememberMe = false;
+  final LocalAuthentication auth = LocalAuthentication();
 
   @override
   void initState() {
@@ -31,11 +36,12 @@ class _LoginPageState extends State<LoginPage> {
     _startGradientAnimation();
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     _initializeNotifications();
+    _loadSavedCredentials();
   }
 
   @override
   void dispose() {
-    _timer.cancel(); // Cancel the timer when disposing the widget
+    _timer.cancel();
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -53,7 +59,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _initializeNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
@@ -104,6 +110,46 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Login failed: ${response.reasonPhrase}')),
       );
+    }
+  }
+
+  Future<void> _authenticateWithBiometrics(BiometricType biometricType) async {
+    bool authenticated = false;
+    try {
+      authenticated = await auth.authenticate(
+        localizedReason: 'Authenticate to access the app',
+        options: const AuthenticationOptions(
+          useErrorDialogs: true,
+          stickyAuth: true,
+        ),
+      );
+    } on Exception catch (e) {
+      print(e);
+    }
+    if (authenticated) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainScreen()),
+      );
+    }
+  }
+
+  Future<void> _saveCredentials(String username, String password) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('username', username);
+    await prefs.setString('password', password);
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUsername = prefs.getString('username');
+    final savedPassword = prefs.getString('password');
+    if (savedUsername != null && savedPassword != null) {
+      setState(() {
+        _usernameController.text = savedUsername;
+        _passwordController.text = savedPassword;
+        _rememberMe = true;
+      });
     }
   }
 
@@ -247,13 +293,23 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 20),
         TextField(
           controller: _passwordController,
-          obscureText: true,
+          obscureText: _obscurePassword,
           style: const TextStyle(color: Colors.black),
           decoration: InputDecoration(
             labelText: AppLocalizations.of(context)!.password,
             labelStyle: const TextStyle(color: Colors.black),
             prefixIcon: const Icon(Icons.lock, color: Colors.black),
-            suffixIcon: const Icon(Icons.visibility, color: Colors.black),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                color: Colors.black,
+              ),
+              onPressed: () {
+                setState(() {
+                  _obscurePassword = !_obscurePassword;
+                });
+              },
+            ),
             filled: true,
             fillColor: Colors.white.withOpacity(0.8),
             border: OutlineInputBorder(
@@ -270,8 +326,12 @@ class _LoginPageState extends State<LoginPage> {
     return Row(
       children: [
         Checkbox(
-          value: true,
-          onChanged: (bool? value) {},
+          value: _rememberMe,
+          onChanged: (bool? value) {
+            setState(() {
+              _rememberMe = value!;
+            });
+          },
           activeColor: Colors.white,
           checkColor: Colors.black,
         ),
@@ -317,37 +377,24 @@ class _LoginPageState extends State<LoginPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Image.network(
-          'https://img.icons8.com/ios-filled/50/ffffff/fingerprint.png',
-          width: 40,
-          height: 40,
+        GestureDetector(
+          onTap: () => _authenticateWithBiometrics(BiometricType.fingerprint),
+          child: Image.network(
+            'https://img.icons8.com/ios-filled/50/ffffff/fingerprint.png',
+            width: 40,
+            height: 40,
+          ),
         ),
-        const SizedBox(width: 20),
-        Image.network(
-          'https://img.icons8.com/ios-filled/50/ffffff/face-id.png',
-          width: 40,
-          height: 40,
+        const SizedBox(width: 40),
+        GestureDetector(
+          onTap: () => _authenticateWithBiometrics(BiometricType.face),
+          child: Image.network(
+            'https://img.icons8.com/ios-filled/50/ffffff/face-id.png',
+            width: 40,
+            height: 40,
+          ),
         ),
       ],
     );
   }
 }
-
-/***
-    Future<User> authenticate(String username, String password) async {
-    final url = Uri.parse('https://demo-application-api.flexiflows.co/api/login');
-    final response = await http.post(
-    url,
-    headers: {'Content-Type': 'application/json'},
-    body: jsonEncode({'username': username, 'password': password}),
-    );
-
-    if (response.statusCode == 200) {
-    final data = jsonDecode(response.body);
-    final user = User.fromJson(data['results'][0]); // Please adjust if 'results' is the root or an array...
-    return user;
-    } else {
-    throw Exception('Failed to authenticate');
-    }
-    }
-***/
