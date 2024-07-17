@@ -300,20 +300,21 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-/*** Future<User> authenticate(String username, String password) async {
-  final url = Uri.parse('https://demo-application-api.flexiflows.co/api/login');
-  final response = await http.post(
+/***
+    Future<User> authenticate(String username, String password) async {
+    final url = Uri.parse('https://demo-application-api.flexiflows.co/api/login');
+    final response = await http.post(
     url,
     headers: {'Content-Type': 'application/json'},
     body: jsonEncode({'username': username, 'password': password}),
-  );
+    );
 
-  if (response.statusCode == 200) {
+    if (response.statusCode == 200) {
     final data = jsonDecode(response.body);
-    final user = User(id: data['id'], name: data['name'], role: data['role']);
+    final user = User.fromJson(data['results'][0]); // Please adjust if 'results' is the root or an array...
     return user;
-  } else {
+    } else {
     throw Exception('Failed to authenticate');
-  }
-}
+    }
+    }
 ***/
