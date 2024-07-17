@@ -201,24 +201,24 @@ class _HomePageState extends State<HomePage> {
             _focusedDay = focusedDay;
           },
           eventLoader: _getEventsForDay,
-          calendarStyle: CalendarStyle(
+          calendarStyle: const CalendarStyle(
             outsideDaysVisible: false,
-            markerDecoration: const BoxDecoration(
+            markerDecoration: BoxDecoration(
               color: Colors.green,
               shape: BoxShape.circle,
             ),
-            todayDecoration: const BoxDecoration(
+            todayDecoration: BoxDecoration(
               color: Colors.greenAccent,
               shape: BoxShape.circle,
             ),
-            selectedDecoration: const BoxDecoration(
+            selectedDecoration: BoxDecoration(
               color: Colors.yellow,
               shape: BoxShape.circle,
             ),
-            defaultTextStyle: const TextStyle(color: Colors.white),
-            weekendTextStyle: const TextStyle(color: Colors.white),
-            todayTextStyle: const TextStyle(color: Colors.white),
-            selectedTextStyle: const TextStyle(color: Colors.black),
+            defaultTextStyle: TextStyle(color: Colors.white),
+            weekendTextStyle: TextStyle(color: Colors.white),
+            todayTextStyle: TextStyle(color: Colors.white),
+            selectedTextStyle: TextStyle(color: Colors.black),
           ),
           headerStyle: const HeaderStyle(
             formatButtonVisible: false,

@@ -23,6 +23,12 @@ dependencies:
   provider: ^6.1.2
   table_calendar: ^3.1.2
   local_auth: ^2.2.0
+  flutter_hooks: ^0.18.0
+  hooks_riverpod: ^1.0.0
+  flutter_staggered_animations: ^1.0.0
+  flutter_easyloading: ^3.0.5
+  google_fonts: ^6.2.1
+  responsive_framework: ^0.1.0
 
 dev_dependencies:
   flutter_test:
@@ -48,3 +54,7 @@ flutter:
     - assets/qr_code.png
     - assets/darkbg.png
     - assets/bg_2.png
+    - assets/success_icon.png
+    - assets/banner1.png
+    - assets/banner2.png
+    - assets/banner3.png
