@@ -108,7 +108,7 @@ class _MainScreenState extends State<MainScreen> {
 
   static final List<Widget> _widgetOptions = <Widget>[
     const AttendanceScreen(),
-    const HomePage(),
+    const HomeCalendar(),
     const Dashboard(),
   ];
 
