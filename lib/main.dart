@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart'; // Import Google Fonts package
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pb_hrsystem/home/dashboard.dart';
 import 'package:provider/provider.dart';
@@ -35,6 +36,7 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             primarySwatch: Colors.green,
             visualDensity: VisualDensity.adaptivePlatformDensity,
+            textTheme: GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme), // Apply Oxanium font
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
@@ -46,10 +48,7 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.dark,
             primarySwatch: Colors.green,
             scaffoldBackgroundColor: Colors.black,
-            textTheme: const TextTheme(
-              bodyLarge: TextStyle(color: Colors.white),
-              bodyMedium: TextStyle(color: Colors.white),
-            ),
+            textTheme: GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme.apply(bodyColor: Colors.white, displayColor: Colors.white)), // Apply Oxanium font
           ),
           themeMode: themeNotifier.currentTheme,
           localizationsDelegates: const [
@@ -129,11 +128,10 @@ class _MainScreenState extends State<MainScreen> {
         onTap: _onItemTapped,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: CustomFloatingActionButton(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-      ),
+      // floatingActionButton: CustomFloatingActionButton(
+      //   currentIndex: _selectedIndex,
+      //   onTap: _onItemTapped,
+      // ),
     );
   }
 }
-
