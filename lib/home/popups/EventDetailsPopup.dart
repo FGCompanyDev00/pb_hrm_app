@@ -5,10 +5,12 @@ import 'package:pb_hrsystem/home/home_calendar.dart';
 class EventDetailsPopup extends StatelessWidget {
   final Event event;
 
-  const EventDetailsPopup({Key? key, required this.event}) : super(key: key);
+  const EventDetailsPopup({super.key, required this.event});
 
   @override
   Widget build(BuildContext context) {
+    int daysDifference = event.endDateTime.difference(event.startDateTime).inDays + 1;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 16,
@@ -23,7 +25,7 @@ class EventDetailsPopup extends StatelessWidget {
               ),
               child: Container(
                 width: double.infinity,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     colors: [Colors.green, Colors.yellow],
                     begin: Alignment.topLeft,
@@ -83,13 +85,28 @@ class EventDetailsPopup extends StatelessWidget {
                   ),
                   ListTile(
                     leading: const Icon(Icons.calendar_today),
-                    title: const Text('Date'),
-                    subtitle: Text(DateFormat('yyyy-MM-dd').format(event.dateTime)),
+                    title: const Text('Start Date'),
+                    subtitle: Text(DateFormat('yyyy-MM-dd').format(event.startDateTime)),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.calendar_today),
+                    title: const Text('End Date'),
+                    subtitle: Text(DateFormat('yyyy-MM-dd').format(event.endDateTime)),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.calendar_today),
+                    title: const Text('Days'),
+                    subtitle: Text('$daysDifference days'),
                   ),
                   ListTile(
                     leading: const Icon(Icons.access_time),
-                    title: const Text('Time'),
-                    subtitle: Text(DateFormat('hh:mm a').format(event.dateTime)),
+                    title: const Text('Start Time'),
+                    subtitle: Text(DateFormat('hh:mm a').format(event.startDateTime)),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.access_time),
+                    title: const Text('End Time'),
+                    subtitle: Text(DateFormat('hh:mm a').format(event.endDateTime)),
                   ),
                   const ListTile(
                     leading: Icon(Icons.videocam),
@@ -121,7 +138,6 @@ class EventDetailsPopup extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 10),
-
                   const SizedBox(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,

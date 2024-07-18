@@ -125,32 +125,6 @@ class _SettingsPageState extends State<SettingsPage> {
                             activeColor: Colors.green,
                           ),
                         ),
-                        const SizedBox(height: 20),
-                        _buildSettingsSection('More', themeNotifier),
-                        _buildSettingsTile(
-                          context,
-                          title: 'About Us',
-                          icon: Icons.arrow_forward_ios,
-                          onTap: () {
-                            // Navigate to About Us Page
-                          },
-                        ),
-                        _buildSettingsTile(
-                          context,
-                          title: 'Privacy Policy',
-                          icon: Icons.arrow_forward_ios,
-                          onTap: () {
-                            // Navigate to Privacy Policy Page
-                          },
-                        ),
-                        _buildSettingsTile(
-                          context,
-                          title: 'Terms and Conditions',
-                          icon: Icons.arrow_forward_ios,
-                          onTap: () {
-                            // Navigate to Terms and Conditions Page
-                          },
-                        ),
                       ],
                     ),
                   ),
