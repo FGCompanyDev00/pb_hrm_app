@@ -108,12 +108,6 @@ class LeaveManagementPage extends HookWidget {
             Navigator.pop(context);
           },
         ),
-        flexibleSpace: Positioned.fill(
-          child: Image.asset(
-            isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png',
-            fit: BoxFit.cover,
-          ),
-        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),

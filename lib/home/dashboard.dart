@@ -5,6 +5,7 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/profile_screen.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
+import 'package:pb_hrsystem/home/leave_request_page.dart';
 
 class Dashboard extends StatelessWidget {
   const Dashboard({super.key});
@@ -68,10 +69,7 @@ class Dashboard extends StatelessWidget {
                       IconButton(
                         icon: Icon(Icons.power_settings_new, color: isDarkMode ? Colors.white : Colors.black),
                         onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const LoginPage()),
-                          );
+                          _showLogoutDialog(context);
                         },
                       ),
                     ],
@@ -151,12 +149,12 @@ class Dashboard extends StatelessWidget {
                         mainAxisSpacing: 16,
                         crossAxisSpacing: 16,
                         children: [
-                          _buildActionCard('My History', Icons.history, isDarkMode),
-                          _buildActionCard('Approvals', Icons.check_circle, isDarkMode),
-                          _buildActionCard('KPI', Icons.bar_chart, isDarkMode),
-                          _buildActionCard('Work Tracking', Icons.track_changes, isDarkMode),
-                          _buildActionCard('Inventory', Icons.inventory, isDarkMode),
-                          _buildActionCard('Leave Requests', Icons.beach_access, isDarkMode),
+                          _buildActionCard(context, 'My History', Icons.history, isDarkMode),
+                          _buildActionCard(context, 'Approvals', Icons.check_circle, isDarkMode),
+                          _buildActionCard(context, 'KPI', Icons.bar_chart, isDarkMode),
+                          _buildActionCard(context, 'Work Tracking', Icons.track_changes, isDarkMode),
+                          _buildActionCard(context, 'Inventory', Icons.inventory, isDarkMode),
+                          _buildActionCard(context, 'Leave Requests', Icons.beach_access, isDarkMode),
                         ],
                       ),
                     ],
@@ -170,13 +168,20 @@ class Dashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildActionCard(String title, IconData icon, bool isDarkMode) {
+  Widget _buildActionCard(BuildContext context, String title, IconData icon, bool isDarkMode) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () {
-          // Handle card tap
+          if (title == 'Leave Requests') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const LeaveManagementPage()),
+            );
+          } else {
+            // Handle other cards' navigation
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -195,6 +200,73 @@ class Dashboard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock, size: 60, color: Colors.green),
+                const SizedBox(height: 16),
+                const Text(
+                  'LOGOUT',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('Are you sure you want to log out?'),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.black, backgroundColor: Colors.grey.shade200,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LoginPage()),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text('Yes, Logout'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

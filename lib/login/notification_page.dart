@@ -1,11 +1,11 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:pb_hrsystem/login/location_information_page.dart';
+import 'package:pb_hrsystem/main.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'login_page.dart'; // Ensure this import is correct
+import 'location_information_page.dart'; // Ensure this import is correct
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
 
@@ -21,7 +21,7 @@ class _NotificationPageState extends State<NotificationPage> {
     super.initState();
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     _initializeNotifications();
-    _requestNotificationPermission();
+    _checkPermissionAndNavigate();
   }
 
   Future<void> _initializeNotifications() async {
@@ -35,16 +35,31 @@ class _NotificationPageState extends State<NotificationPage> {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
-  Future<void> _requestNotificationPermission() async {
-    final status = await Permission.notification.request();
+  Future<void> _checkPermissionAndNavigate() async {
+    final status = await Permission.notification.status;
+
     if (status.isGranted) {
-      if (kDebugMode) {
-        print('Notification permission granted.');
+      // If permission is already granted, navigate to LocationInformationPage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainScreen()),
+      );
+    } else {
+      // Request permission
+      final newStatus = await Permission.notification.request();
+      if (newStatus.isGranted) {
+        // If permission granted after request, navigate to LocationInformationPage
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LocationInformationPage()),
+        );
+      } else if (newStatus.isDenied) {
+        // Show dialog if permission is denied
+        _showPermissionDeniedDialog();
+      } else if (newStatus.isPermanentlyDenied) {
+        // Open app settings if permission is permanently denied
+        openAppSettings();
       }
-    } else if (status.isDenied) {
-      _showPermissionDeniedDialog();
-    } else if (status.isPermanentlyDenied) {
-      openAppSettings();
     }
   }
 
@@ -98,7 +113,6 @@ class _NotificationPageState extends State<NotificationPage> {
                   ),
                   const Column(
                     children: [
-                      
                       SizedBox(height: 4),
                       Text("Lao", style: TextStyle(fontSize: 18, color: Colors.white)),
                     ],
