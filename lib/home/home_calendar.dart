@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:pb_hrsystem/home/popups/EventDetailsPopup.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/home/popups/EventDetailsPopup.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -84,117 +82,151 @@ class _HomeCalendarState extends State<HomeCalendar> {
     );
   }
 
+  void _showAddEventOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Personal'),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to add personal event
+                _navigateToAddEvent('Personal');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.work),
+              title: const Text('Office'),
+              onTap: () {
+                Navigator.pop(context);
+                // Navigate to add office event
+                _navigateToAddEvent('Office');
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _navigateToAddEvent(String eventType) async {
+    final newEvent = await Navigator.push<Event?>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddEventScreen(eventType: eventType),
+      ),
+    );
+    if (newEvent != null) {
+      _addEvent(newEvent.title, newEvent.dateTime, newEvent.description, newEvent.attendees);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
-
     return Scaffold(
       body: Stack(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
           Column(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-                child: SafeArea(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Calendar',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: isDarkMode ? Colors.white : Colors.black,
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(10),
+                  bottomRight: Radius.circular(10),
+                ),
+                child: Container(
+                  width: double.infinity,
+                  height: MediaQuery.of(context).size.height * 0.1,
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage('assets/background.png'),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  child: AppBar(
+                    automaticallyImplyLeading: false,
+                    centerTitle: true,
+                    title: const Text('Calendar'),
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    actions: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.add_circle,
+                          size: 40,
+                          color: Colors.green,
                         ),
+                        onPressed: _showAddEventOptions,
                       ),
                     ],
                   ),
                 ),
               ),
-              Container(
-                margin: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.black54 : Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 10,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: TableCalendar<Event>(
-                  firstDay: DateTime.utc(2010, 10, 16),
-                  lastDay: DateTime.utc(2030, 3, 14),
-                  focusedDay: _focusedDay,
-                  selectedDayPredicate: (day) {
-                    return isSameDay(_selectedDay, day);
-                  },
-                  onDaySelected: (selectedDay, focusedDay) {
-                    setState(() {
-                      _selectedDay = selectedDay;
-                      _focusedDay = focusedDay;
-                    });
-                  },
-                  onFormatChanged: (format) {
-                    if (_calendarFormat != format) {
-                      setState(() {
-                        _calendarFormat = format;
-                      });
-                    }
-                  },
-                  onPageChanged: (focusedDay) {
+              TableCalendar<Event>(
+                firstDay: DateTime.utc(2010, 10, 16),
+                lastDay: DateTime.utc(2030, 3, 14),
+                focusedDay: _focusedDay,
+                selectedDayPredicate: (day) {
+                  return isSameDay(_selectedDay, day);
+                },
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDay = selectedDay;
                     _focusedDay = focusedDay;
-                  },
-                  eventLoader: _getEventsForDay,
-                  calendarStyle: CalendarStyle(
-                    outsideDaysVisible: false,
-                    markerDecoration: const BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                    ),
-                    todayDecoration: const BoxDecoration(
-                      color: Colors.greenAccent,
-                      shape: BoxShape.circle,
-                    ),
-                    selectedDecoration: const BoxDecoration(
-                      color: Colors.yellow,
-                      shape: BoxShape.rectangle,
-                    ),
-                    defaultTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                    weekendTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                    todayTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                    selectedTextStyle: TextStyle(color: isDarkMode ? Colors.black : Colors.black),
+                  });
+                },
+                onFormatChanged: (format) {
+                  if (_calendarFormat != format) {
+                    setState(() {
+                      _calendarFormat = format;
+                    });
+                  }
+                },
+                onPageChanged: (focusedDay) {
+                  _focusedDay = focusedDay;
+                },
+                eventLoader: _getEventsForDay,
+                calendarStyle: const CalendarStyle(
+                  outsideDaysVisible: false,
+                  markerDecoration: BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
                   ),
-                  headerStyle: HeaderStyle(
-                    formatButtonVisible: false,
-                    titleCentered: true,
-                    titleTextStyle: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    leftChevronIcon: Icon(
-                      Icons.chevron_left,
-                      color: isDarkMode ? Colors.white : Colors.black,
-                    ),
-                    rightChevronIcon: Icon(
-                      Icons.chevron_right,
-                      color: isDarkMode ? Colors.white : Colors.black,
-                    ),
+                  todayDecoration: BoxDecoration(
+                    color: Colors.greenAccent,
+                    shape: BoxShape.circle,
+                  ),
+                  selectedDecoration: BoxDecoration(
+                    color: Colors.yellow,
+                    shape: BoxShape.rectangle,
+                  ),
+                  defaultTextStyle: TextStyle(color: Colors.black),
+                  weekendTextStyle: TextStyle(color: Colors.black),
+                  todayTextStyle: TextStyle(color: Colors.black),
+                  selectedTextStyle: TextStyle(color: Colors.black),
+                ),
+                headerStyle: const HeaderStyle(
+                  formatButtonVisible: false,
+                  titleCentered: true,
+                  titleTextStyle: TextStyle(
+                    color: Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  leftChevronIcon: Icon(
+                    Icons.chevron_left,
+                    color: Colors.black,
+                  ),
+                  rightChevronIcon: Icon(
+                    Icons.chevron_right,
+                    color: Colors.black,
                   ),
                 ),
               ),
+              // Add the yellow line
               Container(
                 height: 2.0,
                 color: Colors.amber,
@@ -228,9 +260,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
                             onTap: () => _showEventDetails(event),
                             title: Text(
                               event.title,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: isDarkMode ? Colors.white : Colors.black,
                               ),
                             ),
                             subtitle: Column(
@@ -282,25 +313,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
               ),
             ],
           ),
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 10,
-            right: 16,
-            child: FloatingActionButton(
-              onPressed: () async {
-                final newEvent = await Navigator.push<Event?>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddEventScreen(),
-                  ),
-                );
-                if (newEvent != null) {
-                  _addEvent(newEvent.title, newEvent.dateTime, newEvent.description, newEvent.attendees);
-                }
-              },
-              backgroundColor: Colors.green,
-              child: const Icon(Icons.add, size: 15),
-            ),
-          ),
         ],
       ),
     );
@@ -350,7 +362,8 @@ class Event {
 }
 
 class AddEventScreen extends StatefulWidget {
-  const AddEventScreen({super.key});
+  final String eventType;
+  const AddEventScreen({required this.eventType, super.key});
 
   @override
   _AddEventScreenState createState() => _AddEventScreenState();
@@ -366,7 +379,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Event'),
+        title: Text('Add ${widget.eventType} Event'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

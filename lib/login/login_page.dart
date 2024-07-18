@@ -6,6 +6,8 @@ import 'package:pb_hrsystem/login/notification_page.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:local_auth/local_auth.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -18,6 +20,9 @@ class _LoginPageState extends State<LoginPage> {
   bool _gradientAnimation = false;
   String _selectedLanguage = 'English'; // Default language
   final List<String> _languages = ['English', 'Laos', 'Chinese'];
+  final LocalAuthentication auth = LocalAuthentication();
+  bool _rememberMe = false;
+  bool _isPasswordVisible = false; // State variable for password visibility
   late Timer _timer;
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -74,9 +79,31 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _authenticate({bool useBiometric = true}) async {
+    bool authenticated = false;
+    try {
+      authenticated = await auth.authenticate(
+        localizedReason: 'Please authenticate to login',
+        options: AuthenticationOptions(
+          biometricOnly: useBiometric,
+          stickyAuth: true,
+        ),
+      );
+    } catch (e) {
+      print(e);
+    }
+    if (authenticated) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const NotificationPage()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     var languageNotifier = Provider.of<LanguageNotifier>(context);
+    var currentDate = DateFormat('dd MMM yyyy').format(DateTime.now());
 
     return Scaffold(
       body: Container(
@@ -92,12 +119,12 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 60),
+                SizedBox(height: MediaQuery.of(context).size.height * 0.1),
                 _buildLanguageDropdown(languageNotifier),
                 const SizedBox(height: 10),
                 _buildLogoAndText(context),
                 const SizedBox(height: 40),
-                _buildDateRow(),
+                _buildDateRow(currentDate),
                 const SizedBox(height: 40),
                 _buildTextFields(context),
                 const SizedBox(height: 20),
@@ -141,7 +168,17 @@ class _LoginPageState extends State<LoginPage> {
         items: _languages.map<DropdownMenuItem<String>>((String value) {
           return DropdownMenuItem<String>(
             value: value,
-            child: Text(value),
+            child: Row(
+              children: [
+                Image.asset(
+                  'assets/flags/${value.toLowerCase()}.png',
+                  width: 24,
+                  height: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(value),
+              ],
+            ),
           );
         }).toList(),
       ),
@@ -179,15 +216,15 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildDateRow() {
-    return const Row(
+  Widget _buildDateRow(String currentDate) {
+    return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.calendar_today, color: Colors.black),
-        SizedBox(width: 8),
+        const Icon(Icons.calendar_today, color: Colors.black),
+        const SizedBox(width: 8),
         Text(
-          "21 MAR 2024",
-          style: TextStyle(fontSize: 16, color: Colors.black),
+          currentDate,
+          style: const TextStyle(fontSize: 16, color: Colors.black),
         ),
       ],
     );
@@ -214,13 +251,23 @@ class _LoginPageState extends State<LoginPage> {
         const SizedBox(height: 20),
         TextField(
           controller: _passwordController,
-          obscureText: true,
+          obscureText: !_isPasswordVisible,
           style: const TextStyle(color: Colors.black),
           decoration: InputDecoration(
             labelText: AppLocalizations.of(context)!.password,
             labelStyle: const TextStyle(color: Colors.black),
             prefixIcon: const Icon(Icons.lock, color: Colors.black),
-            suffixIcon: const Icon(Icons.visibility, color: Colors.black),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                color: Colors.black,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isPasswordVisible = !_isPasswordVisible;
+                });
+              },
+            ),
             filled: true,
             fillColor: Colors.white.withOpacity(0.8),
             border: OutlineInputBorder(
@@ -237,8 +284,12 @@ class _LoginPageState extends State<LoginPage> {
     return Row(
       children: [
         Checkbox(
-          value: true,
-          onChanged: (bool? value) {},
+          value: _rememberMe,
+          onChanged: (bool? value) {
+            setState(() {
+              _rememberMe = value!;
+            });
+          },
           activeColor: Colors.white,
           checkColor: Colors.black,
         ),
@@ -253,7 +304,7 @@ class _LoginPageState extends State<LoginPage> {
         onTap: _login,
         child: AnimatedContainer(
           duration: const Duration(seconds: 2),
-          width: 200,
+          width: MediaQuery.of(context).size.width * 0.6,
           height: 50,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8.0),
@@ -284,16 +335,22 @@ class _LoginPageState extends State<LoginPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Image.network(
-          'https://img.icons8.com/ios-filled/50/ffffff/fingerprint.png',
-          width: 40,
-          height: 40,
+        GestureDetector(
+          onTap: () => _authenticate(useBiometric: true),
+          child: Image.network(
+            'https://img.icons8.com/ios-filled/50/ffffff/fingerprint.png',
+            width: 40,
+            height: 40,
+          ),
         ),
         const SizedBox(width: 20),
-        Image.network(
-          'https://img.icons8.com/ios-filled/50/ffffff/face-id.png',
-          width: 40,
-          height: 40,
+        GestureDetector(
+          onTap: () => _authenticate(useBiometric: false),
+          child: Image.network(
+            'https://img.icons8.com/ios-filled/50/ffffff/face-id.png',
+            width: 40,
+            height: 40,
+          ),
         ),
       ],
     );

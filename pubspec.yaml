@@ -59,3 +59,6 @@ flutter:
     - assets/banner1.png
     - assets/banner2.png
     - assets/banner3.png
+    - assets/flags/english.png
+    - assets/flags/laos.png
+    - assets/flags/chinese.png
