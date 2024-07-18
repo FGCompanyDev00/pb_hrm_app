@@ -140,6 +140,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
+    final brightness = Theme.of(context).brightness;
 
     return Scaffold(
       body: Stack(
@@ -161,11 +162,11 @@ class _HomeCalendarState extends State<HomeCalendar> {
                 ),
                 child: Stack(
                   children: [
-                    const Center(
+                    Center(
                       child: Text(
                         'Calendar',
                         style: TextStyle(
-                          color: Colors.black,
+                          color: brightness == Brightness.dark ? Colors.white : Colors.black,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
@@ -236,31 +237,47 @@ class _HomeCalendarState extends State<HomeCalendar> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     selectedDecoration: BoxDecoration(
-                      color: Colors.yellow,
+                      color: isDarkMode ? Colors.orange : Colors.yellow,
                       shape: BoxShape.rectangle,
-                      borderRadius: BorderRadius.circular(4),
+                  
                     ),
-                    defaultTextStyle: const TextStyle(color: Colors.black),
-                    weekendTextStyle: const TextStyle(color: Colors.black),
-                    todayTextStyle: const TextStyle(color: Colors.black),
-                    selectedTextStyle: const TextStyle(color: Colors.black),
+                    defaultTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                    weekendTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                    todayTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                    selectedTextStyle: TextStyle(color: isDarkMode ? Colors.black : Colors.white),
+                    markersMaxCount: 1, // To avoid multiple markers overlapping
                   ),
-                  headerStyle: const HeaderStyle(
+                  headerStyle: HeaderStyle(
                     formatButtonVisible: false,
                     titleCentered: true,
                     titleTextStyle: TextStyle(
-                      color: Colors.black,
+                      color: brightness == Brightness.dark ? Colors.white : Colors.black,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                     leftChevronIcon: Icon(
                       Icons.chevron_left,
-                      color: Colors.black,
+                      color: brightness == Brightness.dark ? Colors.white : Colors.black,
                     ),
                     rightChevronIcon: Icon(
                       Icons.chevron_right,
-                      color: Colors.black,
+                      color: brightness == Brightness.dark ? Colors.white : Colors.black,
                     ),
+                  ),
+                  calendarBuilders: CalendarBuilders(
+                    markerBuilder: (context, date, events) {
+                      if (events.isNotEmpty) {
+                        return Align(
+                          alignment: Alignment.bottomCenter,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                            height: 4.0,
+                            color: Colors.green,
+                          ),
+                        );
+                      }
+                      return const SizedBox();
+                    },
                   ),
                 ),
               ),
@@ -280,75 +297,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                         itemCount: events.length,
                         itemBuilder: (context, index) {
                           final event = events[index];
-                          return Container(
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 12.0,
-                              vertical: 4.0,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12.0),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black26,
-                                  blurRadius: 10,
-                                  offset: Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ListTile(
-                              onTap: () => _showEventDetails(event),
-                              title: Text(
-                                event.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: List.generate(event.attendees, (index) {
-                                      return Container(
-                                        margin: const EdgeInsets.symmetric(horizontal: 2.0),
-                                        width: 24,
-                                        height: 24,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Colors.primaries[index % Colors.primaries.length],
-                                        ),
-                                      );
-                                    }),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.location_on, size: 16, color: Colors.grey[700]),
-                                      const SizedBox(width: 4),
-                                      Text(event.description, style: TextStyle(color: Colors.grey[700])),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.access_time, size: 16, color: Colors.grey[700]),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                          '${DateFormat('hh:mm a').format(event.startDateTime)} - ${DateFormat('hh:mm a').format(event.endDateTime)}',
-                                          style: TextStyle(color: Colors.grey[700])),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              trailing: event.attendees > 5
-                                  ? CircleAvatar(
-                                backgroundColor: Colors.grey,
-                                child: Text('+${event.attendees - 5}', style: const TextStyle(color: Colors.black)),
-                              )
-                                  : null,
-                            ),
-                          );
+                          return CustomEventBox(event: event, isDarkMode: isDarkMode);
                         },
                       );
                     },
@@ -395,12 +344,15 @@ class _AddEventScreenState extends State<AddEventScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Center(child: Text('Add ${widget.eventType} Event')),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        iconTheme: IconThemeData(color: brightness == Brightness.dark ? Colors.white : Colors.black),
       ),
       body: Stack(
         children: [
@@ -421,12 +373,12 @@ class _AddEventScreenState extends State<AddEventScreen> {
                     controller: _titleController,
                     decoration: InputDecoration(
                       labelText: 'Event Title',
-                      labelStyle: const TextStyle(color: Colors.black),
+                      labelStyle: TextStyle(color: brightness == Brightness.dark ? Colors.white : Colors.black),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                       filled: true,
-                      fillColor: Colors.white.withOpacity(0.8),
+                      fillColor: brightness == Brightness.dark ? Colors.black45 : Colors.white.withOpacity(0.8),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -434,19 +386,19 @@ class _AddEventScreenState extends State<AddEventScreen> {
                     controller: _descriptionController,
                     decoration: InputDecoration(
                       labelText: 'Event Description',
-                      labelStyle: const TextStyle(color: Colors.black),
+                      labelStyle: TextStyle(color: brightness == Brightness.dark ? Colors.white : Colors.black),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                       filled: true,
-                      fillColor: Colors.white.withOpacity(0.8),
+                      fillColor: brightness == Brightness.dark ? Colors.black45 : Colors.white.withOpacity(0.8),
                     ),
                   ),
                   const SizedBox(height: 20),
                   ListTile(
                     title: Text(
                       'Start: ${DateFormat.yMd().add_jm().format(_startDateTime)}',
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(color: brightness == Brightness.dark ? Colors.white : Colors.black),
                     ),
                     trailing: const Icon(Icons.calendar_today, color: Colors.black),
                     onTap: () async {
@@ -472,7 +424,7 @@ class _AddEventScreenState extends State<AddEventScreen> {
                   ListTile(
                     title: Text(
                       'End: ${DateFormat.yMd().add_jm().format(_endDateTime)}',
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(color: brightness == Brightness.dark ? Colors.white : Colors.black),
                     ),
                     trailing: const Icon(Icons.calendar_today, color: Colors.black),
                     onTap: () async {
@@ -498,15 +450,15 @@ class _AddEventScreenState extends State<AddEventScreen> {
                   const SizedBox(height: 20),
                   Text(
                     'Duration: ${_endDateTime.difference(_startDateTime).inDays} days',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: brightness == Brightness.dark ? Colors.white : Colors.black),
                   ),
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      const Text('Attendees:', style: TextStyle(color: Colors.black)),
+                      Text('Attendees:', style: TextStyle(color: brightness == Brightness.dark ? Colors.white : Colors.black)),
                       const SizedBox(width: 10),
                       IconButton(
-                        icon: const Icon(Icons.remove, color: Colors.black),
+                        icon: Icon(Icons.remove, color: brightness == Brightness.dark ? Colors.white : Colors.black),
                         onPressed: () {
                           setState(() {
                             if (_attendeesCount > 1) {
@@ -515,9 +467,9 @@ class _AddEventScreenState extends State<AddEventScreen> {
                           });
                         },
                       ),
-                      Text(_attendeesCount.toString(), style: const TextStyle(color: Colors.black)),
+                      Text(_attendeesCount.toString(), style: TextStyle(color: brightness == Brightness.dark ? Colors.white : Colors.black)),
                       IconButton(
-                        icon: const Icon(Icons.add, color: Colors.black),
+                        icon: Icon(Icons.add, color: brightness == Brightness.dark ? Colors.white : Colors.black),
                         onPressed: () {
                           setState(() {
                             _attendeesCount++;
@@ -576,5 +528,111 @@ class _AddEventScreenState extends State<AddEventScreen> {
       ),
     );
   }
+}
 
+class CustomEventBox extends StatelessWidget {
+  final Event event;
+  final bool isDarkMode;
+
+  const CustomEventBox({required this.event, required this.isDarkMode, Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(
+        horizontal: 12.0,
+        vertical: 4.0,
+      ),
+      decoration: BoxDecoration(
+        color: event.attendees > 5 ? Colors.red[50] : Colors.green[50],
+        border: Border.all(
+          color: event.attendees > 5 ? Colors.red : Colors.green,
+        ),
+        borderRadius: BorderRadius.circular(12.0),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ListTile(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) => EventDetailsPopup(event: event),
+          );
+        },
+        title: Text(
+          event.title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.location_on, size: 16, color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
+                const SizedBox(width: 4),
+                Text(event.description, style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700])),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.access_time, size: 16, color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
+                const SizedBox(width: 4),
+                Text(
+                  '${DateFormat('hh:mm a').format(event.startDateTime)} - ${DateFormat('hh:mm a').format(event.endDateTime)}',
+                  style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: List.generate(
+                event.attendees > 10 ? 10 : event.attendees,
+                (index) {
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2.0),
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.green,
+                        width: 2,
+                      ),
+                      image: const DecorationImage(
+                        image: AssetImage('assets/profile_picture.png'), // Example placeholder for attendees' avatars
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            if (event.attendees > 10)
+              Padding(
+                padding: const EdgeInsets.only(left: 4.0),
+                child: Text(
+                  '+${event.attendees - 10}',
+                  style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                ),
+              ),
+          ],
+        ),
+        trailing: event.attendees > 10
+            ? CircleAvatar(
+          backgroundColor: Colors.grey,
+          child: Text('+${event.attendees - 10}', style: const TextStyle(color: Colors.black)),
+        )
+            : null,
+      ),
+    );
+  }
 }
