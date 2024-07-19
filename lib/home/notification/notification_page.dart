@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard.dart';
+import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/nav/custom_buttom_nav_bar.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -48,7 +49,7 @@ class _NotificationPageState extends State<NotificationPage> {
           onPressed: () {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const Dashboard()),
+              MaterialPageRoute(builder: (context) => const MainScreen()),
             );
           },
         ),
