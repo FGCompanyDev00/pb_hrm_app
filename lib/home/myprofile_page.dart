@@ -83,7 +83,7 @@ class ProfileInfoRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          Icon(icon, color: Colors.yellow),
+          Icon(icon, color: Colors.green),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
