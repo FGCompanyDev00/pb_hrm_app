@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:pb_hrsystem/home/profile_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/myprofile_page.dart';
@@ -63,7 +64,7 @@ class _DashboardState extends State<Dashboard> {
                             );
                           },
                           child: Text(
-                            'Ms. Jane Doe',
+                            'Mr. Alex Joe',
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w600,
@@ -77,7 +78,7 @@ class _DashboardState extends State<Dashboard> {
                         onPressed: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (context) => const MyProfilePage()),
+                            MaterialPageRoute(builder: (context) => const ProfileScreen()),
                           );
                         },
                       ),

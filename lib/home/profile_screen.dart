@@ -1,11 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:pb_hrsystem/home/dashboard.dart';
-import 'package:pb_hrsystem/main.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:cross_file/cross_file.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
+  Future<void> _shareQRCode() async {
+    try {
+      final ByteData bytes = await rootBundle.load('assets/qr_code.png');
+      final Uint8List list = bytes.buffer.asUint8List();
+      final tempDir = await getTemporaryDirectory();
+      final file = await File('${tempDir.path}/qr_code.png').create();
+      await file.writeAsBytes(list);
+      await Share.shareXFiles([XFile(file.path)], text: 'Check out my QR code!');
+    } catch (e) {
+      debugPrint('Error sharing QR code: $e');
+    }
+  }
+
+  Future<void> _downloadQRCode() async {
+    try {
+      final ByteData bytes = await rootBundle.load('assets/qr_code.png');
+      final Uint8List list = bytes.buffer.asUint8List();
+      final result = await ImageGallerySaver.saveImage(list);
+      debugPrint(result.toString());
+    } catch (e) {
+      debugPrint('Error downloading QR code: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +56,7 @@ class ProfileScreen extends StatelessWidget {
           onPressed: () {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
+              MaterialPageRoute(builder: (context) => const Dashboard()),
             );
           },
         ),
@@ -97,21 +126,17 @@ class ProfileScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () {
-                          // Handle share
-                        },
+                        onPressed: _shareQRCode,
                         icon: const Icon(Icons.share),
                         label: const Text('Share'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey,
+                          backgroundColor: Colors.blue,
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                           textStyle: const TextStyle(fontSize: 18),
                         ),
                       ),
                       ElevatedButton.icon(
-                        onPressed: () {
-                          // Handle download
-                        },
+                        onPressed: _downloadQRCode,
                         icon: const Icon(Icons.download),
                         label: const Text('Download'),
                         style: ElevatedButton.styleFrom(

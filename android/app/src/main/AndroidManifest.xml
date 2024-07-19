@@ -9,7 +9,7 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
-    <application
+    <application android:requestLegacyExternalStorage="true"
         android:label="PBHR"
         android:icon="@mipmap/logo">
 
@@ -56,5 +56,6 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
+
 
 </manifest>

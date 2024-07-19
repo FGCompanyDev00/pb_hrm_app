@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pb_hrsystem/theme/theme.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -31,6 +33,7 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     _startGradientAnimation();
+    _loadSavedCredentials();
   }
 
   @override
@@ -68,6 +71,11 @@ class _LoginPageState extends State<LoginPage> {
 
     if (response.statusCode == 200) {
       jsonDecode(response.body);
+      if (_rememberMe) {
+        _saveCredentials();
+      } else {
+        _clearCredentials();
+      }
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const NotificationPage()),
@@ -100,10 +108,35 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _saveCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString('username', _usernameController.text);
+    prefs.setString('password', _passwordController.text);
+    prefs.setBool('rememberMe', _rememberMe);
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _usernameController.text = prefs.getString('username') ?? '';
+      _passwordController.text = prefs.getString('password') ?? '';
+      _rememberMe = prefs.getBool('rememberMe') ?? false;
+    });
+  }
+
+  Future<void> _clearCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.remove('username');
+    prefs.remove('password');
+    prefs.remove('rememberMe');
+  }
+
   @override
   Widget build(BuildContext context) {
     var languageNotifier = Provider.of<LanguageNotifier>(context);
     var currentDate = DateFormat('dd MMM yyyy').format(DateTime.now());
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
 
     return Scaffold(
       body: Container(
@@ -120,7 +153,7 @@ class _LoginPageState extends State<LoginPage> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(height: MediaQuery.of(context).size.height * 0.1),
-                _buildLanguageDropdown(languageNotifier),
+                _buildLanguageDropdown(languageNotifier, isDarkMode),
                 const SizedBox(height: 10),
                 _buildLogoAndText(context),
                 const SizedBox(height: 40),
@@ -141,20 +174,21 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildLanguageDropdown(LanguageNotifier languageNotifier) {
+  Widget _buildLanguageDropdown(LanguageNotifier languageNotifier, bool isDarkMode) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDarkMode ? Colors.black54 : Colors.white,
         borderRadius: BorderRadius.circular(8.0),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
       ),
       child: DropdownButton<String>(
         value: _selectedLanguage,
-        icon: const Icon(Icons.arrow_downward),
+        dropdownColor: isDarkMode ? Colors.black54 : Colors.white,
+        icon: Icon(Icons.arrow_downward, color: isDarkMode ? Colors.white : Colors.black),
         iconSize: 24,
         elevation: 16,
-        style: const TextStyle(color: Colors.black, fontSize: 18),
+        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black, fontSize: 18),
         underline: Container(
           height: 2,
           color: Colors.transparent,

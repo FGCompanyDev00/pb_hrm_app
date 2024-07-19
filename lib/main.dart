@@ -13,6 +13,7 @@ import 'home/profile_screen.dart';
 import 'nav/custom_buttom_nav_bar.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(
     MultiProvider(
       providers: [

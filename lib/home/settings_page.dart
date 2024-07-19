@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard.dart';
+import 'package:pb_hrsystem/home/myprofile_page.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/settings/edit_profile.dart';
 import 'package:pb_hrsystem/settings/change_password.dart';
@@ -43,12 +44,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           leading: IconButton(
             icon: Icon(Icons.arrow_back, color: themeNotifier.textStyle.color),
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const MainScreen()),
-              );
-            },
+            onPressed: () => Navigator.of(context).pop(),
           ),
         ),
         body: Stack(
@@ -72,12 +68,12 @@ class _SettingsPageState extends State<SettingsPage> {
                         _buildSettingsSection('Account Settings', themeNotifier),
                         _buildSettingsTile(
                           context,
-                          title: 'Edit Profile',
+                          title: 'Profile Details',
                           icon: Icons.arrow_forward_ios,
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                              MaterialPageRoute(builder: (context) => const MyProfilePage()),
                             );
                           },
                         ),

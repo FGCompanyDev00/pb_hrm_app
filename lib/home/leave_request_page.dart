@@ -100,6 +100,7 @@ class LeaveManagementPage extends HookWidget {
     }
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text("Leave Management"),
         leading: IconButton(
