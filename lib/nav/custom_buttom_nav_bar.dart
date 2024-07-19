@@ -20,12 +20,12 @@ class CustomBottomNavBar extends StatelessWidget {
         TabItem(icon: Icons.home),
         TabItem(icon: Icons.apps),
       ],
-      initialActiveIndex: currentIndex, // default active index
+      initialActiveIndex: currentIndex,
       onTap: onTap,
       backgroundColor: Colors.white,
       activeColor: Colors.green,
       color: Colors.grey,
-      height: 70, // Adjust height for larger icons
+      height: 70,
     );
   }
 }

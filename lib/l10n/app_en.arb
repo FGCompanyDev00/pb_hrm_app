@@ -17,5 +17,20 @@
   "cameraAndPhoto":"Camera and Photo",
   "manyFunctions":"Many functions in our app require access to the camera or gallery...",
   "readyToGo":"You're ready to go!",
-  "getStarted":"Get Started"
-} 
+  "getStarted":"Get Started",
+  "permissionDenied": "Permission Denied",
+  "locationPermissionRequired": "Location permission is required to proceed.",
+  "ok": "OK",
+  "cameraPermissionRequired": "Camera permission is required to proceed.",
+  "notificationPermissionRequired": "Notification permission is required to proceed.",
+  "meeting": "Meeting",
+  "approval": "Approval",
+  "viewMore": "View More",
+  "meetingTitle": "Add Meeting",
+  "meetingDate": "Date: 01-05-2024, 8:30 To 01-05-2024, 12:00",
+  "meetingRoom": "Room: Back can yon 2F",
+  "statusPending": "Status: Pending",
+  "approvalTitle": "Meeting and Booking meeting room",
+  "approvalDate": "Date: 01-05-2024, 8:30 To 01-05-2024, 12:00",
+  "approvalType": "Type: Sick Leave"
+}

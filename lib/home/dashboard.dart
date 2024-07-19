@@ -2,13 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
-import 'package:pb_hrsystem/home/profile_screen.dart';
+import 'package:pb_hrsystem/home/myprofile_page.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
+import 'package:pb_hrsystem/home/notification/notification_page.dart';
 
-class Dashboard extends StatelessWidget {
+class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
+
+  @override
+  _DashboardState createState() => _DashboardState();
+}
+
+class _DashboardState extends State<Dashboard> {
+  bool _hasUnreadNotifications = true;
 
   @override
   Widget build(BuildContext context) {
@@ -33,18 +41,34 @@ class Dashboard extends StatelessWidget {
                 child: SafeArea(
                   child: Row(
                     children: [
-                      const CircleAvatar(
-                        radius: 20,
-                        backgroundImage: AssetImage('assets/profile_picture.png'),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const MyProfilePage()),
+                          );
+                        },
+                        child: const CircleAvatar(
+                          radius: 20,
+                          backgroundImage: AssetImage('assets/profile_picture.png'),
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text(
-                          'Ms. Jane Doe',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: isDarkMode ? Colors.white : Colors.black,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const MyProfilePage()),
+                            );
+                          },
+                          child: Text(
+                            'Ms. Jane Doe',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
                           ),
                         ),
                       ),
@@ -53,7 +77,7 @@ class Dashboard extends StatelessWidget {
                         onPressed: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                            MaterialPageRoute(builder: (context) => const MyProfilePage()),
                           );
                         },
                       ),
@@ -65,6 +89,47 @@ class Dashboard extends StatelessWidget {
                             MaterialPageRoute(builder: (context) => const SettingsPage()),
                           );
                         },
+                      ),
+                      Stack(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.notifications, color: isDarkMode ? Colors.white : Colors.black),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const NotificationPage()),
+                              ).then((_) {
+                                setState(() {
+                                  _hasUnreadNotifications = false;
+                                });
+                              });
+                            },
+                          ),
+                          if (_hasUnreadNotifications)
+                            Positioned(
+                              right: 11,
+                              top: 11,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 12,
+                                  minHeight: 12,
+                                ),
+                                child: const Text(
+                                  '',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       IconButton(
                         icon: Icon(Icons.power_settings_new, color: isDarkMode ? Colors.white : Colors.black),
@@ -133,10 +198,6 @@ class Dashboard extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                               color: isDarkMode ? Colors.white : Colors.black,
                             ),
-                          ),
-                          Icon(
-                            Icons.notifications,
-                            color: isDarkMode ? Colors.white : Colors.black,
                           ),
                         ],
                       ),

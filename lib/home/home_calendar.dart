@@ -19,17 +19,14 @@ class _HomeCalendarState extends State<HomeCalendar> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
 
-  // Notification initialization
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
   @override
   void initState() {
     super.initState();
-
     _selectedDay = _focusedDay;
     _events = ValueNotifier(_initializeEvents());
 
-    // Initialize notification plugin
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
     AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -140,7 +137,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
-    final brightness = Theme.of(context).brightness;
 
     return Scaffold(
       body: Stack(
@@ -150,12 +146,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
               Container(
                 width: double.infinity,
                 height: MediaQuery.of(context).size.height * 0.1,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   image: DecorationImage(
-                    image: AssetImage('assets/background.png'),
+                    image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
                     fit: BoxFit.cover,
                   ),
-                  borderRadius: BorderRadius.only(
+                  borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(50),
                     bottomRight: Radius.circular(50),
                   ),
@@ -166,7 +162,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                       child: Text(
                         'Calendar',
                         style: TextStyle(
-                          color: brightness == Brightness.dark ? Colors.white : Colors.black,
+                          color: isDarkMode ? Colors.white : Colors.black,
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
@@ -239,29 +235,28 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     selectedDecoration: BoxDecoration(
                       color: isDarkMode ? Colors.orange : Colors.yellow,
                       shape: BoxShape.rectangle,
-                  
+                      borderRadius: BorderRadius.circular(4),
                     ),
                     defaultTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
                     weekendTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
                     todayTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
                     selectedTextStyle: TextStyle(color: isDarkMode ? Colors.black : Colors.white),
-                    markersMaxCount: 1, // To avoid multiple markers overlapping
                   ),
                   headerStyle: HeaderStyle(
                     formatButtonVisible: false,
                     titleCentered: true,
                     titleTextStyle: TextStyle(
-                      color: brightness == Brightness.dark ? Colors.white : Colors.black,
+                      color: isDarkMode ? Colors.white : Colors.black,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                     leftChevronIcon: Icon(
                       Icons.chevron_left,
-                      color: brightness == Brightness.dark ? Colors.white : Colors.black,
+                      color: isDarkMode ? Colors.white : Colors.black,
                     ),
                     rightChevronIcon: Icon(
                       Icons.chevron_right,
-                      color: brightness == Brightness.dark ? Colors.white : Colors.black,
+                      color: isDarkMode ? Colors.white : Colors.black,
                     ),
                   ),
                   calendarBuilders: CalendarBuilders(
@@ -283,9 +278,9 @@ class _HomeCalendarState extends State<HomeCalendar> {
               ),
               Expanded(
                 child: Container(
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     image: DecorationImage(
-                      image: AssetImage('assets/background.png'),
+                      image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -534,7 +529,7 @@ class CustomEventBox extends StatelessWidget {
   final Event event;
   final bool isDarkMode;
 
-  const CustomEventBox({required this.event, required this.isDarkMode, Key? key}) : super(key: key);
+  const CustomEventBox({required this.event, required this.isDarkMode, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -544,7 +539,7 @@ class CustomEventBox extends StatelessWidget {
         vertical: 4.0,
       ),
       decoration: BoxDecoration(
-        color: event.attendees > 5 ? Colors.red[50] : Colors.green[50],
+        color: isDarkMode ? Colors.black54 : Colors.white,
         border: Border.all(
           color: event.attendees > 5 ? Colors.red : Colors.green,
         ),
@@ -596,7 +591,7 @@ class CustomEventBox extends StatelessWidget {
             Row(
               children: List.generate(
                 event.attendees > 10 ? 10 : event.attendees,
-                (index) {
+                    (index) {
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 2.0),
                     width: 24,

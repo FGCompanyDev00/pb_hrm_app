@@ -17,5 +17,20 @@
   "cameraAndPhoto": "相机和照片",
   "manyFunctions": "我们应用中的许多功能需要访问相机或图库...",
   "readyToGo": "你准备好了!",
-  "getStarted": "开始"
+  "getStarted": "开始",
+  "permissionDenied": "权限被拒绝",
+  "locationPermissionRequired": "需要位置信息权限才能继续。",
+  "ok": "好的",
+  "cameraPermissionRequired": "需要相机权限才能继续。",
+  "notificationPermissionRequired": "需要通知权限才能继续。",
+  "meeting": "会议",
+  "approval": "审批",
+  "viewMore": "查看更多",
+  "meetingTitle": "添加会议",
+  "meetingDate": "日期: 2024年5月1日, 8:30 至 2024年5月1日, 12:00",
+  "meetingRoom": "房间: 后面 2F",
+  "approvalTitle": "会议和预订会议室",
+  "approvalDate": "日期: 2024年5月1日, 8:30 至 2024年5月1日, 12:00",
+  "approvalType": "类型: 病假",
+  "statusPending": "状态: 待处理"
 }

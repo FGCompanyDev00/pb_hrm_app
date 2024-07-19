@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'login_page.dart'; // Ensure this import is correct
-import 'location_information_page.dart'; // Ensure this import is correct
-import 'package:shared_preferences/shared_preferences.dart';
+import 'location_information_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
 
@@ -26,7 +25,7 @@ class _NotificationPageState extends State<NotificationPage> {
 
   Future<void> _initializeNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    AndroidInitializationSettings('@mipmap/ic_launcher');
 
     const InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
@@ -39,25 +38,20 @@ class _NotificationPageState extends State<NotificationPage> {
     final status = await Permission.notification.status;
 
     if (status.isGranted) {
-      // If permission is already granted, navigate to LocationInformationPage
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const MainScreen()),
       );
     } else {
-      // Request permission
       final newStatus = await Permission.notification.request();
       if (newStatus.isGranted) {
-        // If permission granted after request, navigate to LocationInformationPage
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const LocationInformationPage()),
         );
       } else if (newStatus.isDenied) {
-        // Show dialog if permission is denied
         _showPermissionDeniedDialog();
       } else if (newStatus.isPermanentlyDenied) {
-        // Open app settings if permission is permanently denied
         openAppSettings();
       }
     }
@@ -68,14 +62,14 @@ class _NotificationPageState extends State<NotificationPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Notification Permission'),
-          content: const Text('Please allow notifications to stay updated with important information.'),
+          title: Text(AppLocalizations.of(context)!.permissionDenied),
+          content: Text(AppLocalizations.of(context)!.notificationPermissionRequired),
           actions: <Widget>[
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text('OK'),
+              child: Text(AppLocalizations.of(context)!.ok),
             ),
           ],
         );
@@ -99,27 +93,7 @@ class _NotificationPageState extends State<NotificationPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 40),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      // Handle skip
-                    },
-                    child:  Text(
-                      AppLocalizations.of(context)!.skip,
-                      style: const TextStyle(fontSize: 18, color: Colors.green, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const Column(
-                    children: [
-                      SizedBox(height: 4),
-                      Text("Lao", style: TextStyle(fontSize: 18, color: Colors.white)),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
+              const Spacer(),
               Center(
                 child: Image.asset(
                   'assets/notification_image.png',
@@ -130,7 +104,7 @@ class _NotificationPageState extends State<NotificationPage> {
               const SizedBox(height: 20),
               Center(
                 child: Text(
-                   AppLocalizations.of(context)!.notification,
+                  AppLocalizations.of(context)!.notification,
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -141,7 +115,7 @@ class _NotificationPageState extends State<NotificationPage> {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                 AppLocalizations.of(context)!.weWantToSendYou,
+                  AppLocalizations.of(context)!.weWantToSendYou,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 16,
@@ -152,9 +126,7 @@ class _NotificationPageState extends State<NotificationPage> {
               const Spacer(),
               Center(
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const LocationInformationPage()));
-                  },
+                  onPressed: () => _checkPermissionAndNavigate(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 20),
@@ -162,13 +134,24 @@ class _NotificationPageState extends State<NotificationPage> {
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                   ),
-                  child:  Text(AppLocalizations.of(context)!.next, style: const TextStyle(fontSize: 18)),
+                  child: Text(AppLocalizations.of(context)!.next, style: const TextStyle(fontSize: 18)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildPageIndicator(context, isActive: true),
+                    _buildPageIndicator(context, isActive: false),
+                    _buildPageIndicator(context, isActive: false),
+                  ],
                 ),
               ),
               const SizedBox(height: 10),
               const Center(
                 child: Text(
-                  "2 of 8",
+                  "1 of 3",
                   style: TextStyle(fontSize: 16, color: Colors.black),
                 ),
               ),
@@ -176,6 +159,18 @@ class _NotificationPageState extends State<NotificationPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPageIndicator(BuildContext context, {required bool isActive}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4.0),
+      width: isActive ? 12.0 : 8.0,
+      height: isActive ? 12.0 : 8.0,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isActive ? Colors.green : Colors.grey,
       ),
     );
   }

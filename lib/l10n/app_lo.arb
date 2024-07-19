@@ -17,5 +17,20 @@
   "cameraAndPhoto": "ກ້ອງແລະຮູບ",
   "manyFunctions": "ຫຼາຍຫນ້າທີ່ໃນແອັບຂອງພວກເຮົາຕ້ອງການການເຂົ້າເຖິງກ້ອງຫຼືແກລໍີ...",
   "readyToGo": "ທ່ານພ້ອມແລ້ວ!",
-  "getStarted": "ເລີ່ມ"
+  "getStarted": "ເລີ່ມ",
+  "permissionDenied": "ການອະນຸຍາດຖືກປະຕິເສດ",
+  "locationPermissionRequired": "ຕ້ອງການການອະນຸຍາດສະຖານທີ່ເພື່ອດຳເນີນການ.",
+  "ok": "ຕົກລົງ",
+  "cameraPermissionRequired": "ຕ້ອງການການອະນຸຍາດກ້ອງເພື່ອດຳເນີນການ.",
+  "notificationPermissionRequired": "ຕ້ອງການການອະນຸຍາດການແຈ້ງເຕືອນເພື່ອດຳເນີນການ.",
+  "meeting": "ການປະຊຸມ",
+  "approval": "ການອະນຸມັດ",
+  "viewMore": "ເບິ່ງເພີ່ມເຕີມ",
+  "meetingTitle": "ເພີ່ມການປະຊຸມ",
+  "meetingDate": "ວັນທີ: 01-05-2024, 8:30 ຫາ 01-05-2024, 12:00",
+  "meetingRoom": "ຫ້ອງ: ຢູ່ດ້ານຫລັງ 2F",
+  "statusPending": "ສະຖານະ: ລໍຖ້າ",
+  "approvalTitle": "ການປະຊຸມແລະການຈອງຫ້ອງປະຊຸມ",
+  "approvalDate": "ວັນທີ: 01-05-2024, 8:30 ຫາ 01-05-2024, 12:00",
+  "approvalType": "ປະເພດ: ການລາພັກປ່ວຍ"
 }
