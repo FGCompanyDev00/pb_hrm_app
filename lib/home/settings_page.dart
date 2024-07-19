@@ -44,7 +44,12 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           leading: IconButton(
             icon: Icon(Icons.arrow_back, color: themeNotifier.textStyle.color),
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const Dashboard()),
+              );
+            },
           ),
         ),
         body: Stack(
