@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/home/dashboard.dart';
 import 'package:pb_hrsystem/nav/custom_buttom_nav_bar.dart';
 
 class MyProfilePage extends StatelessWidget {
@@ -29,7 +30,12 @@ class MyProfilePage extends StatelessWidget {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const Dashboard()),
+            );
+          },
         ),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.only(
@@ -37,12 +43,6 @@ class MyProfilePage extends StatelessWidget {
             bottomRight: Radius.circular(30),
           ),
         ),
-      ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: 1,
-        onTap: (index) {
-          // Handle navigation
-        },
       ),
       body: const Padding(
         padding: EdgeInsets.all(16.0),
