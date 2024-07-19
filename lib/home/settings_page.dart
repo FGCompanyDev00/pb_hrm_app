@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:pb_hrsystem/home/dashboard.dart';
-import 'package:pb_hrsystem/home/myprofile_page.dart';
+import 'package:pb_hrsystem/home/home_calendar.dart';
 import 'package:pb_hrsystem/main.dart';
-import 'package:pb_hrsystem/settings/edit_profile.dart';
 import 'package:pb_hrsystem/settings/change_password.dart';
+import 'package:pb_hrsystem/settings/edit_profile.dart';
+import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:provider/provider.dart';
-
-import '../theme/theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -16,7 +17,26 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  final LocalAuthentication auth = LocalAuthentication();
   bool _biometricEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometricSetting();
+  }
+
+  Future<void> _loadBiometricSetting() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
+    });
+  }
+
+  Future<void> _saveBiometricSetting(bool enabled) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setBool('biometricEnabled', enabled);
+  }
 
   Future<bool> _onWillPop() async {
     Navigator.pushReplacement(
@@ -24,6 +44,42 @@ class _SettingsPageState extends State<SettingsPage> {
       MaterialPageRoute(builder: (context) => const MainScreen()),
     );
     return false;
+  }
+
+  Future<void> _enableBiometrics(bool enable) async {
+    if (enable) {
+      bool canCheckBiometrics = await auth.canCheckBiometrics;
+      if (!canCheckBiometrics) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Biometric authentication is not available.'),
+          ),
+        );
+        return;
+      }
+      try {
+        bool authenticated = await auth.authenticate(
+          localizedReason: 'Please authenticate to enable biometric login',
+          options: const AuthenticationOptions(
+            stickyAuth: true,
+            useErrorDialogs: true,
+          ),
+        );
+        if (authenticated) {
+          setState(() {
+            _biometricEnabled = true;
+          });
+          _saveBiometricSetting(true);
+        }
+      } catch (e) {
+        print('Error enabling biometrics: $e');
+      }
+    } else {
+      setState(() {
+        _biometricEnabled = false;
+      });
+      _saveBiometricSetting(false);
+    }
   }
 
   @override
@@ -78,7 +134,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const MyProfilePage()),
+                              MaterialPageRoute(builder: (context) => const EditProfilePage()),
                             );
                           },
                         ),
@@ -99,7 +155,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           trailing: Switch(
                             value: _biometricEnabled,
                             onChanged: (bool value) {
-                              _showBiometricDialog(context);
+                              _enableBiometrics(value);
                             },
                             activeColor: Colors.green,
                           ),
