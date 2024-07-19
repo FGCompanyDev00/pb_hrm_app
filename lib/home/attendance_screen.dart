@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -14,14 +15,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   final LocalAuthentication auth = LocalAuthentication();
   bool _canCheckBiometrics = false;
   bool _isAuthorized = false;
+  bool _biometricEnabled = false;
   List<BiometricType> _availableBiometrics = [];
   Color _indicatorColor = Colors.yellow;
   Color _fingerprintColor = Colors.yellow;
+  String _checkInTime = '--:--:--';
+  String _checkOutTime = '--:--:--';
 
   @override
   void initState() {
     super.initState();
     _checkBiometrics();
+    _loadBiometricSetting();
   }
 
   Future<void> _checkBiometrics() async {
@@ -44,15 +49,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     print('Available biometrics: $_availableBiometrics');
   }
 
+  Future<void> _loadBiometricSetting() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
+    });
+  }
+
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
+    if (!_biometricEnabled) {
+      _showCustomDialog(context, 'Biometric Disabled', 'Please enable biometric authentication in settings.');
+      return;
+    }
+
     bool authenticated = false;
 
     if (!_canCheckBiometrics) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Biometric authentication is not available.'),
-        ),
-      );
+      _showCustomDialog(context, 'Biometric Not Available', 'Biometric authentication is not available.');
       return;
     }
 
@@ -69,6 +82,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
 
     if (authenticated) {
+      final now = TimeOfDay.now();
+      setState(() {
+        if (isCheckIn) {
+          _checkInTime = now.format(context);
+        } else {
+          _checkOutTime = now.format(context);
+        }
+      });
+
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -76,11 +98,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         },
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isCheckIn ? 'Check In Failed' : 'Check Out Failed'),
-        ),
-      );
+      _showCustomDialog(context, 'Authentication Failed', isCheckIn ? 'Check In Failed' : 'Check Out Failed');
     }
 
     setState(() {
@@ -123,6 +141,49 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showCustomDialog(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.info, color: Colors.red, size: 50),
+              SizedBox(height: 16),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 16),
+              Text(
+                message,
+                style: TextStyle(fontSize: 18),
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFDAA520), // gold color
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+                child: Text('Close'),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -265,7 +326,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   children: [
                     _buildHeaderContent(context, isDarkMode, fingerprintColor),
                     const SizedBox(height: 16),
-                    _buildSummaryRow('08:30:00', '17:25:00', '11:55:00', isDarkMode),
+                    _buildSummaryRow(_checkInTime, _checkOutTime, '11:55:00', isDarkMode),
                     const SizedBox(height: 16),
                     Text(
                       'February - 2024',

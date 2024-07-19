@@ -25,6 +25,7 @@ class _LoginPageState extends State<LoginPage> {
   final LocalAuthentication auth = LocalAuthentication();
   bool _rememberMe = false;
   bool _isPasswordVisible = false; // State variable for password visibility
+  bool _biometricEnabled = false; // Biometric setting
   late Timer _timer;
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -34,6 +35,7 @@ class _LoginPageState extends State<LoginPage> {
     super.initState();
     _startGradientAnimation();
     _loadSavedCredentials();
+    _loadBiometricSetting();
   }
 
   @override
@@ -81,13 +83,16 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(builder: (context) => const NotificationPage()),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed: ${response.reasonPhrase}')),
-      );
+      _showCustomDialog(context, 'Login Failed', 'Login failed: ${response.reasonPhrase}');
     }
   }
 
   Future<void> _authenticate({bool useBiometric = true}) async {
+    if (!_biometricEnabled) {
+      _showCustomDialog(context, 'Biometric Disabled', 'Please enable biometric authentication in settings.');
+      return;
+    }
+
     bool authenticated = false;
     try {
       authenticated = await auth.authenticate(
@@ -100,11 +105,14 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       print(e);
     }
+
     if (authenticated) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const NotificationPage()),
       );
+    } else {
+      _showCustomDialog(context, 'Authentication Failed', 'Failed to authenticate using biometrics.');
     }
   }
 
@@ -129,6 +137,56 @@ class _LoginPageState extends State<LoginPage> {
     prefs.remove('username');
     prefs.remove('password');
     prefs.remove('rememberMe');
+  }
+
+  Future<void> _loadBiometricSetting() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
+    });
+  }
+
+  void _showCustomDialog(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.info, color: Colors.red, size: 50),
+              SizedBox(height: 16),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 16),
+              Text(
+                message,
+                style: TextStyle(fontSize: 18),
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFDAA520), // gold color
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+                child: Text('Close'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -370,7 +428,9 @@ class _LoginPageState extends State<LoginPage> {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         GestureDetector(
-          onTap: () => _authenticate(useBiometric: true),
+          onTap: _biometricEnabled ? () => _authenticate(useBiometric: true) : () {
+            _showCustomDialog(context, 'Biometric Disabled', 'Please enable biometric authentication in settings.');
+          },
           child: Image.network(
             'https://img.icons8.com/ios-filled/50/ffffff/fingerprint.png',
             width: 40,
@@ -379,7 +439,9 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(width: 20),
         GestureDetector(
-          onTap: () => _authenticate(useBiometric: false),
+          onTap: _biometricEnabled ? () => _authenticate(useBiometric: false) : () {
+            _showCustomDialog(context, 'Biometric Disabled', 'Please enable biometric authentication in settings.');
+          },
           child: Image.network(
             'https://img.icons8.com/ios-filled/50/ffffff/face-id.png',
             width: 40,
