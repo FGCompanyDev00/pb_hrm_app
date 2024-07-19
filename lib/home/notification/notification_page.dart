@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/home/dashboard.dart';
 import 'package:pb_hrsystem/nav/custom_buttom_nav_bar.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
@@ -44,7 +45,12 @@ class _NotificationPageState extends State<NotificationPage> {
         ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const Dashboard()),
+            );
+          },
         ),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.only(
@@ -52,12 +58,6 @@ class _NotificationPageState extends State<NotificationPage> {
             bottomRight: Radius.circular(30),
           ),
         ),
-      ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: 1,
-        onTap: (index) {
-          // Handle navigation
-        },
       ),
       body: Column(
         children: [
