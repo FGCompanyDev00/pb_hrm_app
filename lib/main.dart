@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart'; // Import Google Fonts package
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pb_hrsystem/home/dashboard.dart';
+import 'package:pb_hrsystem/nav/custom_buttom_nav_bar.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -10,7 +11,7 @@ import 'theme/theme.dart';
 import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
 import 'home/profile_screen.dart';
-import 'nav/custom_buttom_nav_bar.dart';
+
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +38,7 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             primarySwatch: Colors.green,
             visualDensity: VisualDensity.adaptivePlatformDensity,
-            textTheme: GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme), // Apply Oxanium font
+            textTheme: GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
@@ -49,7 +50,9 @@ class MyApp extends StatelessWidget {
             brightness: Brightness.dark,
             primarySwatch: Colors.green,
             scaffoldBackgroundColor: Colors.black,
-            textTheme: GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme.apply(bodyColor: Colors.white, displayColor: Colors.white)), // Apply Oxanium font
+            textTheme: GoogleFonts.oxaniumTextTheme(
+              Theme.of(context).textTheme.apply(bodyColor: Colors.white, displayColor: Colors.white),
+            ),
           ),
           themeMode: themeNotifier.currentTheme,
           localizationsDelegates: const [
@@ -63,7 +66,7 @@ class MyApp extends StatelessWidget {
             Locale('lo'),
             Locale('zh'),
           ],
-          locale: languageNotifier.currentLocale, // Set the current locale
+          locale: languageNotifier.currentLocale,
           home: const SplashScreen(),
         );
       },
@@ -71,9 +74,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// LanguageNotifier class to manage language changes
 class LanguageNotifier with ChangeNotifier {
-  Locale _currentLocale = const Locale('en'); // Default locale
+  Locale _currentLocale = const Locale('en');
 
   Locale get currentLocale => _currentLocale;
 
@@ -89,12 +91,11 @@ class LanguageNotifier with ChangeNotifier {
         _currentLocale = const Locale('zh');
         break;
       default:
-        _currentLocale = const Locale('en'); // Default to English
+        _currentLocale = const Locale('en');
     }
     notifyListeners();
   }
 }
-
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -104,7 +105,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 1; // Default to HomePage
+  int _selectedIndex = 1;
 
   static final List<Widget> _widgetOptions = <Widget>[
     const AttendanceScreen(),
@@ -129,10 +130,6 @@ class _MainScreenState extends State<MainScreen> {
         onTap: _onItemTapped,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      // floatingActionButton: CustomFloatingActionButton(
-      //   currentIndex: _selectedIndex,
-      //   onTap: _onItemTapped,
-      // ),
     );
   }
 }

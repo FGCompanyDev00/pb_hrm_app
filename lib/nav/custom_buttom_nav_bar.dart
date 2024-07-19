@@ -13,17 +13,22 @@ class CustomBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = isDarkMode ? Colors.green : Colors.yellow;
+
     return ConvexAppBar(
       style: TabStyle.fixedCircle,
       items: const [
         TabItem(icon: Icons.fingerprint),
-        TabItem(icon: Icons.home),
+        TabItem(
+          icon: Icon(Icons.home),
+        ),
         TabItem(icon: Icons.apps),
       ],
       initialActiveIndex: currentIndex,
       onTap: onTap,
       backgroundColor: Colors.white,
-      activeColor: Colors.green,
+      activeColor: activeColor,
       color: Colors.grey,
       height: 70,
     );

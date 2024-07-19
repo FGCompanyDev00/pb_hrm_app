@@ -28,38 +28,25 @@ class _HomeCalendarState extends State<HomeCalendar> {
     _events = ValueNotifier(_initializeEvents());
 
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initializationSettings =
-    InitializationSettings(android: initializationSettingsAndroid);
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
   Map<DateTime, List<Event>> _initializeEvents() {
     return {
       DateTime.now(): [
-        Event(
-            'Sale Presentation: HI App production',
-            DateTime.now().add(const Duration(hours: 1)),
-            DateTime.now().add(const Duration(hours: 2)),
-            'Meeting Onsite',
-            8),
-        Event('Pick up from Hotel to Bank', DateTime.now().add(const Duration(hours: 2)),
-            DateTime.now().add(const Duration(hours: 3)), 'Travel', 4),
-        Event('Japan Vendor', DateTime.now().add(const Duration(hours: 3)),
-            DateTime.now().add(const Duration(hours: 4)), 'Meeting Online', 6),
-        Event('Deadline for HIAPP product', DateTime.now().add(const Duration(hours: 4)),
-            DateTime.now().add(const Duration(hours: 5)), 'Deadline', 2),
+        Event('Sale Presentation: HI App production', DateTime.now().add(const Duration(hours: 1)), DateTime.now().add(const Duration(hours: 2)), 'Meeting Onsite', 8),
+        Event('Pick up from Hotel to Bank', DateTime.now().add(const Duration(hours: 2)), DateTime.now().add(const Duration(hours: 3)), 'Travel', 4),
+        Event('Japan Vendor', DateTime.now().add(const Duration(hours: 3)), DateTime.now().add(const Duration(hours: 4)), 'Meeting Online', 6),
+        Event('Deadline for HIAPP product', DateTime.now().add(const Duration(hours: 4)), DateTime.now().add(const Duration(hours: 5)), 'Deadline', 2),
       ],
       DateTime.now().add(const Duration(days: 1)): [
-        Event('Team Meeting', DateTime.now().add(const Duration(days: 1, hours: 1)),
-            DateTime.now().add(const Duration(days: 1, hours: 2)), 'Meeting Onsite', 5),
-        Event('Client Call', DateTime.now().add(const Duration(days: 1, hours: 2)),
-            DateTime.now().add(const Duration(days: 1, hours: 3)), 'Call', 3),
+        Event('Team Meeting', DateTime.now().add(const Duration(days: 1, hours: 1)), DateTime.now().add(const Duration(days: 1, hours: 2)), 'Meeting Onsite', 5),
+        Event('Client Call', DateTime.now().add(const Duration(days: 1, hours: 2)), DateTime.now().add(const Duration(days: 1, hours: 3)), 'Call', 3),
       ],
       DateTime.now().add(const Duration(days: 2)): [
-        Event('Project Deadline', DateTime.now().add(const Duration(days: 2, hours: 3)),
-            DateTime.now().add(const Duration(days: 2, hours: 4)), 'Deadline', 1),
+        Event('Project Deadline', DateTime.now().add(const Duration(days: 2, hours: 3)), DateTime.now().add(const Duration(days: 2, hours: 4)), 'Deadline', 1),
       ],
     };
   }
@@ -131,6 +118,16 @@ class _HomeCalendarState extends State<HomeCalendar> {
     if (newEvent != null) {
       _addEvent(newEvent.title, newEvent.startDateTime, newEvent.endDateTime, newEvent.description, newEvent.attendees);
     }
+  }
+
+  void _showDayView(DateTime date) {
+    final events = _getEventsForDay(date);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DayViewScreen(date: date, events: events),
+      ),
+    );
   }
 
   @override
@@ -235,11 +232,10 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     selectedDecoration: BoxDecoration(
                       color: isDarkMode ? Colors.orange : Colors.yellow,
                       shape: BoxShape.rectangle,
-                      borderRadius: BorderRadius.circular(4),
                     ),
                     defaultTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
                     weekendTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                    todayTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                    todayTextStyle: TextStyle(color: isDarkMode ? Colors.black : Colors.white),
                     selectedTextStyle: TextStyle(color: isDarkMode ? Colors.black : Colors.white),
                   ),
                   headerStyle: HeaderStyle(
@@ -260,6 +256,17 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     ),
                   ),
                   calendarBuilders: CalendarBuilders(
+                    defaultBuilder: (context, date, _) {
+                      return GestureDetector(
+                        onDoubleTap: () => _showDayView(date),
+                        child: Center(
+                          child: Text(
+                            '${date.day}',
+                            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                          ),
+                        ),
+                      );
+                    },
                     markerBuilder: (context, date, events) {
                       if (events.isNotEmpty) {
                         return Align(
@@ -300,6 +307,79 @@ class _HomeCalendarState extends State<HomeCalendar> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DayViewScreen extends StatelessWidget {
+  final DateTime date;
+  final List<Event> events;
+
+  const DayViewScreen({required this.date, required this.events, Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(DateFormat('EEEE, MMM d, yyyy').format(date)),
+        backgroundColor: isDarkMode ? Colors.black : Colors.yellow,
+      ),
+      body: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16.0),
+            color: isDarkMode ? Colors.black54 : Colors.white,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(7, (index) {
+                final day = date.subtract(Duration(days: date.weekday - index - 1));
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DayViewScreen(
+                          date: day,
+                          events: events,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Column(
+                    children: [
+                      Text(DateFormat('E').format(day), style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isSameDay(day, date) ? (isDarkMode ? Colors.orange : Colors.yellow) : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${day.day}',
+                          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: events.length,
+              itemBuilder: (context, index) {
+                final event = events[index];
+                return CustomEventBox(event: event, isDarkMode: isDarkMode);
+              },
+            ),
           ),
         ],
       ),
