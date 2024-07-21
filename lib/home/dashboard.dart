@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:pb_hrsystem/home/profile_screen.dart';
 import 'package:pb_hrsystem/settings/edit_profile.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
@@ -127,7 +128,7 @@ class _DashboardState extends State<Dashboard> {
                               onPressed: () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
                                 ).then((_) => _refreshUserProfile());
                               },
                             ),
