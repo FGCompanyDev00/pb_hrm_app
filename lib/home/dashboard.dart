@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:pb_hrsystem/home/profile_screen.dart';
+import 'package:pb_hrsystem/management/TestManagementPages.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/myprofile_page.dart';
@@ -91,47 +92,7 @@ class _DashboardState extends State<Dashboard> {
                           );
                         },
                       ),
-                      Stack(
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.notifications, color: isDarkMode ? Colors.white : Colors.black),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (context) => const NotificationPage()),
-                              ).then((_) {
-                                setState(() {
-                                  _hasUnreadNotifications = false;
-                                });
-                              });
-                            },
-                          ),
-                          if (_hasUnreadNotifications)
-                            Positioned(
-                              right: 11,
-                              top: 11,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: Colors.green,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 12,
-                                  minHeight: 12,
-                                ),
-                                child: const Text(
-                                  '',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 8,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
+
                       IconButton(
                         icon: Icon(Icons.power_settings_new, color: isDarkMode ? Colors.white : Colors.black),
                         onPressed: () {
@@ -200,6 +161,47 @@ class _DashboardState extends State<Dashboard> {
                               color: isDarkMode ? Colors.white : Colors.black,
                             ),
                           ),
+                          Stack(
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.notifications, color: isDarkMode ? Colors.white : Colors.black),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const NotificationPage()),
+                                  ).then((_) {
+                                    setState(() {
+                                      _hasUnreadNotifications = false;
+                                    });
+                                  });
+                                },
+                              ),
+                              if (_hasUnreadNotifications)
+                                Positioned(
+                                  right: 11,
+                                  top: 11,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 12,
+                                      minHeight: 12,
+                                    ),
+                                    child: const Text(
+                                      '',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 8,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -216,7 +218,7 @@ class _DashboardState extends State<Dashboard> {
                           _buildActionCard(context, 'KPI', Icons.bar_chart, isDarkMode),
                           _buildActionCard(context, 'Work Tracking', Icons.track_changes, isDarkMode),
                           _buildActionCard(context, 'Inventory', Icons.inventory, isDarkMode),
-                          _buildActionCard(context, 'Leave Requests', Icons.beach_access, isDarkMode),
+                          _buildActionCard(context, 'Test Management Pages', Icons.abc_outlined, isDarkMode),
                         ],
                       ),
                     ],
@@ -236,10 +238,10 @@ class _DashboardState extends State<Dashboard> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () {
-          if (title == 'Leave Requests') {
+          if (title == 'Test Management Pages') {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const LeaveManagementPage()),
+              MaterialPageRoute(builder: (context) => const ManagementPage1()),
             );
           } else {
             // Handle other cards' navigation

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard.dart';
+import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/nav/custom_buttom_nav_bar.dart';
 
 class MyProfilePage extends StatelessWidget {
@@ -33,7 +34,7 @@ class MyProfilePage extends StatelessWidget {
           onPressed: () {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const Dashboard()),
+              MaterialPageRoute(builder: (context) => const MainScreen()),
             );
           },
         ),

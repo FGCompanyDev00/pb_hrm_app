@@ -1,3 +1,5 @@
+//home_calendar.dart
+
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/popups/EventDetailsPopup.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -5,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:pb_hrsystem/home/leave_request_page.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -72,12 +75,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
     });
   }
 
-  void _showEventDetails(Event event) {
-    showDialog(
-      context: context,
-      builder: (context) => EventDetailsPopup(event: event),
-    );
-  }
 
   void _showAddEventOptions() {
     showModalBottomSheet(
@@ -109,14 +106,23 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   void _navigateToAddEvent(String eventType) async {
-    final newEvent = await Navigator.push<Event?>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddEventScreen(eventType: eventType),
-      ),
-    );
-    if (newEvent != null) {
-      _addEvent(newEvent.title, newEvent.startDateTime, newEvent.endDateTime, newEvent.description, newEvent.attendees);
+    if (eventType == 'Personal') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const LeaveManagementPage(),
+        ),
+      );
+    } else {
+      final newEvent = await Navigator.push<Event?>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AddEventScreen(eventType: eventType),
+        ),
+      );
+      if (newEvent != null) {
+        _addEvent(newEvent.title, newEvent.startDateTime, newEvent.endDateTime, newEvent.description, newEvent.attendees);
+      }
     }
   }
 
@@ -318,7 +324,7 @@ class DayViewScreen extends StatelessWidget {
   final DateTime date;
   final List<Event> events;
 
-  const DayViewScreen({required this.date, required this.events, Key? key}) : super(key: key);
+  const DayViewScreen({required this.date, required this.events, super.key});
 
   @override
   Widget build(BuildContext context) {
