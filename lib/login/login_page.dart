@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/login/notification_page.dart';
@@ -72,7 +73,12 @@ class _LoginPageState extends State<LoginPage> {
     );
 
     if (response.statusCode == 200) {
-      jsonDecode(response.body);
+      final Map<String, dynamic> responseBody = jsonDecode(response.body);
+      final String token = responseBody['token'];
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', token); // Save token
+
       if (_rememberMe) {
         _saveCredentials();
       } else {
@@ -86,6 +92,7 @@ class _LoginPageState extends State<LoginPage> {
       _showCustomDialog(context, 'Login Failed', 'Login failed: ${response.reasonPhrase}');
     }
   }
+
 
   Future<void> _authenticate({bool useBiometric = true}) async {
     if (!_biometricEnabled) {
@@ -103,7 +110,9 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     } catch (e) {
-      print(e);
+      if (kDebugMode) {
+        print(e);
+      }
     }
 
     if (authenticated) {
@@ -155,32 +164,32 @@ class _LoginPageState extends State<LoginPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.info, color: Colors.red, size: 50),
-              SizedBox(height: 16),
+              const Icon(Icons.info, color: Colors.red, size: 50),
+              const SizedBox(height: 16),
               Text(
                 title,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text(
                 message,
-                style: TextStyle(fontSize: 18),
+                style: const TextStyle(fontSize: 18),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFFDAA520), // gold color
+                  backgroundColor: const Color(0xFFDAA520), // gold color
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-                child: Text('Close'),
+                child: const Text('Close'),
               ),
             ],
           ),

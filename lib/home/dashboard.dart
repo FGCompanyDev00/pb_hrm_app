@@ -238,7 +238,7 @@ class _DashboardState extends State<Dashboard> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () {
-          if (title == 'Test Management Pages') {
+          if (title == 'Management Pages') {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ManagementPage1()),

@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_background/flutter_background.dart';
+import 'dart:convert';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -28,6 +31,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Map<String, List<Map<String, String>>> _attendanceRecords = {};
   String _currentMonthKey = '';
   String _currentSection = 'Home';
+  bool _isCheckInActive = false;
+  String _activeSection = '';
 
   @override
   void initState() {
@@ -36,12 +41,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _loadBiometricSetting();
     _loadAttendanceRecords();
     _currentMonthKey = DateFormat('MMMM - yyyy').format(DateTime.now());
+    _loadCurrentSession();
+    _initializeBackgroundService();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _initializeBackgroundService() async {
+    const androidConfig = FlutterBackgroundAndroidConfig(
+      notificationTitle: 'PBHR Attendance',
+      notificationText: 'Running in background',
+      notificationImportance: AndroidNotificationImportance.Default,
+      enableWifiLock: true,
+    );
+
+    bool hasPermissions = await FlutterBackground.hasPermissions;
+    if (!hasPermissions) {
+      await FlutterBackground.initialize(androidConfig: androidConfig);
+      await FlutterBackground.enableBackgroundExecution();
+    }
   }
 
   Future<void> _checkBiometrics() async {
@@ -51,7 +73,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _availableBiometrics = await auth.getAvailableBiometrics();
     } catch (e) {
       canCheckBiometrics = false;
-      print('Error checking biometrics: $e');
+      if (kDebugMode) {
+        print('Error checking biometrics: $e');
+      }
     }
 
     if (!mounted) return;
@@ -60,8 +84,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _canCheckBiometrics = canCheckBiometrics;
     });
 
-    print('Can check biometrics: $_canCheckBiometrics');
-    print('Available biometrics: $_availableBiometrics');
+    if (kDebugMode) {
+      print('Can check biometrics: $_canCheckBiometrics');
+    }
+    if (kDebugMode) {
+      print('Available biometrics: $_availableBiometrics');
+    }
   }
 
   Future<void> _loadBiometricSetting() async {
@@ -73,27 +101,64 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _loadAttendanceRecords() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _attendanceRecords = Map<String, List<Map<String, String>>>.from(
-          prefs.getString('attendanceRecords') != null
-              ? Map<String, dynamic>.from(prefs.getString('attendanceRecords') as Map)
-              : {});
-    });
+    String? attendanceRecords = prefs.getString('attendanceRecords');
+    if (attendanceRecords != null) {
+      setState(() {
+        _attendanceRecords = Map<String, List<Map<String, String>>>.from(
+          jsonDecode(attendanceRecords) as Map<String, dynamic>,
+        );
+      });
+    }
   }
 
   Future<void> _saveAttendanceRecords() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('attendanceRecords', _attendanceRecords.toString());
+    await prefs.setString('attendanceRecords', jsonEncode(_attendanceRecords));
+  }
+
+  Future<void> _loadCurrentSession() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? checkInTime = prefs.getString('checkInTime');
+    String? section = prefs.getString('section');
+    if (checkInTime != null && section != null) {
+      setState(() {
+        _checkInDateTime = DateTime.parse(checkInTime);
+        _checkInTime = DateFormat('HH:mm:ss').format(_checkInDateTime!);
+        _activeSection = section;
+        _isCheckInActive = true;
+        _startTimer();
+      });
+    }
+  }
+
+  Future<void> _saveCurrentSession() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('checkInTime', _checkInDateTime?.toIso8601String() ?? '');
+    await prefs.setString('section', _activeSection);
+  }
+
+  Future<void> _clearCurrentSession() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('checkInTime');
+    await prefs.remove('section');
+    setState(() {
+      _checkInDateTime = null;
+      _checkInTime = '--:--:--';
+      _checkOutTime = '--:--:--';
+      _workingHours = Duration.zero;
+      _isCheckInActive = false;
+      _activeSection = '';
+    });
   }
 
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {
-        if (_checkInDateTime != null && _checkOutDateTime == null) {
+      if (_checkInDateTime != null && _checkOutDateTime == null) {
+        setState(() {
           _workingHours = DateTime.now().difference(_checkInDateTime!);
-        }
-      });
+        });
+      }
     });
   }
 
@@ -119,7 +184,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ),
       );
     } catch (e) {
-      print('Error during authentication: $e');
+      if (kDebugMode) {
+        print('Error during authentication: $e');
+      }
     }
 
     if (authenticated) {
@@ -128,8 +195,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         if (isCheckIn) {
           _checkInTime = DateFormat('HH:mm:ss').format(now);
           _checkInDateTime = now;
+          _checkOutDateTime = null;
           _workingHours = Duration.zero; // Reset working hours on check-in
-          _startTimer(); // Start the timer to update working hours
+          _startTimer(); // Start the timer
+          _saveCurrentSession(); // Save current session data
+          _isCheckInActive = true;
+          _activeSection = _currentSection;
         } else {
           _checkOutTime = DateFormat('HH:mm:ss').format(now);
           _checkOutDateTime = now;
@@ -137,6 +208,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             _workingHours = now.difference(_checkInDateTime!);
             _timer?.cancel(); // Stop the timer on check-out
             _saveAttendanceRecord();
+            _clearCurrentSession(); // Clear current session data
           }
         }
       });
@@ -163,11 +235,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       'workingHours': _workingHours.toString().split('.').first.padLeft(8, '0'),
     };
 
-    String key = '$_currentSection $_currentMonthKey';
+    String key = '$_activeSection $_currentMonthKey';
     if (_attendanceRecords[key] == null) {
       _attendanceRecords[key] = [];
     }
     _attendanceRecords[key]!.add(record);
+    if (_attendanceRecords[key]!.length > 30) {
+      _attendanceRecords[key] = _attendanceRecords[key]!.sublist(1);
+    }
 
     _saveAttendanceRecords();
   }
@@ -336,7 +411,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildHeaderContent(BuildContext context, bool isDarkMode, Color fingerprintColor) {
+  Widget _buildHeaderContent(BuildContext context, bool isDarkMode, Color fingerprintColor, String section) {
+    bool isCheckInEnabled = !_isCheckInActive || _activeSection == section;
+
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -375,9 +452,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   ElevatedButton(
-                    onPressed: () => _authenticate(context, true),
+                    onPressed: isCheckInEnabled ? () => _authenticate(context, true) : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
+                      backgroundColor: isCheckInEnabled ? Colors.green : Colors.grey,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8.0),
                       ),
@@ -385,9 +462,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     child: const Text('Check In'),
                   ),
                   ElevatedButton(
-                    onPressed: () => _authenticate(context, false),
+                    onPressed: _isCheckInActive && _activeSection == section ? () => _authenticate(context, false) : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
+                      backgroundColor: _isCheckInActive && _activeSection == section ? Colors.red : Colors.grey,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8.0),
                       ),
@@ -417,6 +494,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             _buildTabs(context),
             Expanded(
               child: TabBarView(
+                physics: const NeverScrollableScrollPhysics(), // Disable swipe gesture
                 children: [
                   _buildTabContent(context, isDarkMode, Colors.yellow, Colors.yellow, 'Home'),
                   _buildTabContent(context, isDarkMode, Colors.green, Colors.green, 'Office'),
@@ -475,22 +553,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ),
               child: TabBar(
                 onTap: (index) {
-                  setState(() {
-                    switch (index) {
-                      case 0:
-                        _indicatorColor = Colors.yellow;
-                        _currentSection = 'Home';
-                        break;
-                      case 1:
-                        _indicatorColor = Colors.green;
-                        _currentSection = 'Office';
-                        break;
-                      case 2:
-                        _indicatorColor = Colors.red;
-                        _currentSection = 'Offsite';
-                        break;
-                    }
-                  });
+                  if (!_isCheckInActive) {
+                    setState(() {
+                      switch (index) {
+                        case 0:
+                          _indicatorColor = Colors.yellow;
+                          _currentSection = 'Home';
+                          break;
+                        case 1:
+                          _indicatorColor = Colors.green;
+                          _currentSection = 'Office';
+                          break;
+                        case 2:
+                          _indicatorColor = Colors.red;
+                          _currentSection = 'Offsite';
+                          break;
+                      }
+                    });
+                  }
                 },
                 indicator: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
@@ -540,7 +620,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeaderContent(context, isDarkMode, fingerprintColor),
+                    _buildHeaderContent(context, isDarkMode, fingerprintColor, section),
                     const SizedBox(height: 16),
                     _buildSummaryRow(_checkInTime, _checkOutTime, _workingHours.toString().split('.').first.padLeft(8, '0'), isDarkMode),
                     const SizedBox(height: 16),

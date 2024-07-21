@@ -1,10 +1,53 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/home/dashboard.dart';
+import 'package:http/http.dart' as http;
 import 'package:pb_hrsystem/main.dart';
-import 'package:pb_hrsystem/nav/custom_buttom_nav_bar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class MyProfilePage extends StatelessWidget {
+class MyProfilePage extends StatefulWidget {
   const MyProfilePage({super.key});
+
+  @override
+  _MyProfilePageState createState() => _MyProfilePageState();
+}
+
+class _MyProfilePageState extends State<MyProfilePage> {
+  late Future<UserProfile> futureUserProfile;
+
+  @override
+  void initState() {
+    super.initState();
+    futureUserProfile = fetchUserProfile();
+  }
+
+  Future<UserProfile> fetchUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('token'); // Retrieve token from SharedPreferences
+
+    if (token == null) {
+      throw Exception('No token found');
+    }
+
+    final response = await http.get(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      if (responseBody['results'] == null || responseBody['results'].isEmpty) {
+        throw Exception('No user profile data found');
+      }
+      final List<dynamic> results = responseBody['results'];
+      final userProfile = UserProfile.fromJson(results[0]);
+      return userProfile;
+    } else {
+      throw Exception('Failed to load user profile: ${response.reasonPhrase}');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,23 +88,91 @@ class MyProfilePage extends StatelessWidget {
           ),
         ),
       ),
-      body: const Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ProfileInfoRow(icon: Icons.person, label: 'Gender', value: 'Male'),
-            ProfileInfoRow(icon: Icons.badge, label: 'Name & Surname', value: 'John Doe'),
-            ProfileInfoRow(icon: Icons.location_city, label: 'Place of Birth', value: 'vientiane'),
-            ProfileInfoRow(icon: Icons.date_range, label: 'Date Start Work', value: 'Nov 3, 2014'),
-            ProfileInfoRow(icon: Icons.date_range, label: 'Passes Probation Date', value: 'Jan 3, 2015'),
-            ProfileInfoRow(icon: Icons.account_balance, label: 'Department', value: 'Administration and General Services Department'),
-            ProfileInfoRow(icon: Icons.location_on, label: 'Branch', value: 'Xaythany'),
-            ProfileInfoRow(icon: Icons.phone, label: 'Tel.', value: '020 22345555'),
-            ProfileInfoRow(icon: Icons.email, label: 'Emails', value: 'admin@psvsystem.com'),
-          ],
-        ),
+      body: FutureBuilder<UserProfile>(
+        future: futureUserProfile,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (snapshot.hasData) {
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ProfileInfoRow(icon: Icons.person, label: 'Gender', value: snapshot.data!.gender),
+                  ProfileInfoRow(icon: Icons.badge, label: 'Name & Surname', value: '${snapshot.data!.name} ${snapshot.data!.surname}'),
+                  ProfileInfoRow(icon: Icons.date_range, label: 'Date Start Work', value: snapshot.data!.createAt.split('T')[0]),
+                  ProfileInfoRow(icon: Icons.date_range, label: 'Passes Probation Date', value: snapshot.data!.updateAt.split('T')[0]),
+                  ProfileInfoRow(icon: Icons.account_balance, label: 'Department', value: snapshot.data!.departmentName),
+                  ProfileInfoRow(icon: Icons.location_on, label: 'Branch', value: snapshot.data!.branchName),
+                  ProfileInfoRow(icon: Icons.phone, label: 'Tel.', value: snapshot.data!.tel),
+                  ProfileInfoRow(icon: Icons.email, label: 'Emails', value: snapshot.data!.email),
+                ],
+              ),
+            );
+          } else {
+            return const Center(child: Text('No data available'));
+          }
+        },
       ),
+    );
+  }
+}
+
+class UserProfile {
+  final int id;
+  final String employeeId;
+  final String name;
+  final String surname;
+  final int branchId;
+  final String branchName;
+  final int departmentId;
+  final String departmentName;
+  final String tel;
+  final String email;
+  final String employeeStatus;
+  final String gender;
+  final String createAt;
+  final String updateAt;
+  final String imgName;
+
+  UserProfile({
+    required this.id,
+    required this.employeeId,
+    required this.name,
+    required this.surname,
+    required this.branchId,
+    required this.branchName,
+    required this.departmentId,
+    required this.departmentName,
+    required this.tel,
+    required this.email,
+    required this.employeeStatus,
+    required this.gender,
+    required this.createAt,
+    required this.updateAt,
+    required this.imgName,
+  });
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    return UserProfile(
+      id: json['id'],
+      employeeId: json['employee_id'],
+      name: json['name'],
+      surname: json['surname'],
+      branchId: json['branch_id'],
+      branchName: json['b_name'],
+      departmentId: json['department_id'],
+      departmentName: json['d_name'],
+      tel: json['tel'],
+      email: json['email'],
+      employeeStatus: json['employee_status'],
+      gender: json['gender'],
+      createAt: json['create_at'],
+      updateAt: json['update_at'],
+      imgName: json['img_name'],
     );
   }
 }
