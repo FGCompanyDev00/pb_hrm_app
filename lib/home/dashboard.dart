@@ -1,13 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
-import 'package:pb_hrsystem/home/profile_screen.dart';
-import 'package:pb_hrsystem/management/TestManagementPages.dart';
+import 'package:pb_hrsystem/settings/edit_profile.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/myprofile_page.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
-import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:pb_hrsystem/home/notification/notification_page.dart';
 
 class Dashboard extends StatefulWidget {
@@ -19,6 +20,41 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   bool _hasUnreadNotifications = true;
+  late Future<UserProfile> futureUserProfile;
+
+  @override
+  void initState() {
+    super.initState();
+    futureUserProfile = fetchUserProfile();
+  }
+
+  Future<UserProfile> fetchUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('token');
+
+    final response = await http.get(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> results = jsonDecode(response.body)['results'];
+      // Assuming the first result is the logged-in user
+      final userProfile = UserProfile.fromJson(results[0]);
+      return userProfile;
+    } else {
+      throw Exception('Failed to load user profile');
+    }
+  }
+
+  Future<void> _refreshUserProfile() async {
+    setState(() {
+      futureUserProfile = fetchUserProfile();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,65 +77,81 @@ class _DashboardState extends State<Dashboard> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
                 child: SafeArea(
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const MyProfilePage()),
-                          );
-                        },
-                        child: const CircleAvatar(
-                          radius: 20,
-                          backgroundImage: AssetImage('assets/profile_picture.png'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const MyProfilePage()),
-                            );
-                          },
-                          child: Text(
-                            'Mr. Alex Joe',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: isDarkMode ? Colors.white : Colors.black,
+                  child: FutureBuilder<UserProfile>(
+                    future: futureUserProfile,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      } else if (snapshot.hasData) {
+                        String title = snapshot.data!.gender == "Male" ? "Mr." : "Ms.";
+                        return Row(
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const MyProfilePage()),
+                                );
+                              },
+                              child: CircleAvatar(
+                                radius: 20,
+                                backgroundImage: snapshot.data!.imgName != 'default_avatar.jpg'
+                                    ? NetworkImage('https://demo-application-api.flexiflows.co/images/${snapshot.data!.imgName}')
+                                    : null,
+                                backgroundColor: Colors.white,
+                              ),
                             ),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.person, color: isDarkMode ? Colors.white : Colors.black),
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                          );
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.settings, color: isDarkMode ? Colors.white : Colors.black),
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const SettingsPage()),
-                          );
-                        },
-                      ),
-
-                      IconButton(
-                        icon: Icon(Icons.power_settings_new, color: isDarkMode ? Colors.white : Colors.black),
-                        onPressed: () {
-                          _showLogoutDialog(context);
-                        },
-                      ),
-                    ],
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const MyProfilePage()),
+                                  );
+                                },
+                                child: Text(
+                                  '$title ${snapshot.data!.name} ${snapshot.data!.surname}',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDarkMode ? Colors.white : Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.person, color: isDarkMode ? Colors.white : Colors.black),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                                ).then((_) => _refreshUserProfile());
+                              },
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.settings, color: isDarkMode ? Colors.white : Colors.black),
+                              onPressed: () {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const SettingsPage()),
+                                );
+                              },
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.power_settings_new, color: isDarkMode ? Colors.white : Colors.black),
+                              onPressed: () {
+                                _showLogoutDialog(context);
+                              },
+                            ),
+                          ],
+                        );
+                      } else {
+                        return const Center(child: Text('No data available'));
+                      }
+                    },
                   ),
                 ),
               ),
@@ -218,7 +270,7 @@ class _DashboardState extends State<Dashboard> {
                           _buildActionCard(context, 'KPI', Icons.bar_chart, isDarkMode),
                           _buildActionCard(context, 'Work Tracking', Icons.track_changes, isDarkMode),
                           _buildActionCard(context, 'Inventory', Icons.inventory, isDarkMode),
-                          _buildActionCard(context, 'Test Management Pages', Icons.abc_outlined, isDarkMode),
+                          _buildActionCard(context, 'Management Pages', Icons.abc_outlined, isDarkMode),
                         ],
                       ),
                     ],
@@ -238,14 +290,7 @@ class _DashboardState extends State<Dashboard> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: () {
-          if (title == 'Management Pages') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ManagementPage1()),
-            );
-          } else {
-            // Handle other cards' navigation
-          }
+          // Add the appropriate navigation actions here
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -331,6 +376,62 @@ class _DashboardState extends State<Dashboard> {
           ),
         );
       },
+    );
+  }
+}
+
+class UserProfile {
+  final int id;
+  final String employeeId;
+  final String name;
+  final String surname;
+  final int branchId;
+  final String branchName;
+  final int departmentId;
+  final String departmentName;
+  final String tel;
+  final String email;
+  final String employeeStatus;
+  final String gender;
+  final String createAt;
+  final String updateAt;
+  final String imgName;
+
+  UserProfile({
+    required this.id,
+    required this.employeeId,
+    required this.name,
+    required this.surname,
+    required this.branchId,
+    required this.branchName,
+    required this.departmentId,
+    required this.departmentName,
+    required this.tel,
+    required this.email,
+    required this.employeeStatus,
+    required this.gender,
+    required this.createAt,
+    required this.updateAt,
+    required this.imgName,
+  });
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    return UserProfile(
+      id: json['id'],
+      employeeId: json['employee_id'],
+      name: json['name'],
+      surname: json['surname'],
+      branchId: json['branch_id'],
+      branchName: json['b_name'],
+      departmentId: json['department_id'],
+      departmentName: json['d_name'],
+      tel: json['tel'],
+      email: json['email'],
+      employeeStatus: json['employee_status'],
+      gender: json['gender'],
+      createAt: json['create_at'],
+      updateAt: json['update_at'],
+      imgName: json['img_name'],
     );
   }
 }

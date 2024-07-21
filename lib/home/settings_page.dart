@@ -1,13 +1,16 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:pb_hrsystem/home/dashboard.dart';
-import 'package:pb_hrsystem/home/home_calendar.dart';
+import 'package:pb_hrsystem/home/profile_screen.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/settings/change_password.dart';
 import 'package:pb_hrsystem/settings/edit_profile.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -19,11 +22,13 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final LocalAuthentication auth = LocalAuthentication();
   bool _biometricEnabled = false;
+  late Future<UserProfile> futureUserProfile;
 
   @override
   void initState() {
     super.initState();
     _loadBiometricSetting();
+    futureUserProfile = fetchUserProfile();
   }
 
   Future<void> _loadBiometricSetting() async {
@@ -72,13 +77,37 @@ class _SettingsPageState extends State<SettingsPage> {
           _saveBiometricSetting(true);
         }
       } catch (e) {
-        print('Error enabling biometrics: $e');
+        if (kDebugMode) {
+          print('Error enabling biometrics: $e');
+        }
       }
     } else {
       setState(() {
         _biometricEnabled = false;
       });
       _saveBiometricSetting(false);
+    }
+  }
+
+  Future<UserProfile> fetchUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('token');
+
+    final response = await http.get(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> results = jsonDecode(response.body)['results'];
+      // Assuming the first result is the logged-in user
+      final userProfile = UserProfile.fromJson(results[0]);
+      return userProfile;
+    } else {
+      throw Exception('Failed to load user profile');
     }
   }
 
@@ -121,7 +150,28 @@ class _SettingsPageState extends State<SettingsPage> {
             SafeArea(
               child: Column(
                 children: [
-                  _buildProfileHeader(isDarkMode),
+                  FutureBuilder<UserProfile>(
+                    future: futureUserProfile,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      } else if (snapshot.hasData) {
+                        String title = snapshot.data!.gender == "Male" ? "Mr." : "Ms.";
+                        return _buildProfileHeader(
+                          isDarkMode,
+                          profileImage: snapshot.data!.imgName != 'default_avatar.jpg'
+                              ? NetworkImage('https://demo-application-api.flexiflows.co/images/${snapshot.data!.imgName}')
+                              : null,
+                          name: '$title ${snapshot.data!.name} ${snapshot.data!.surname}',
+                          email: snapshot.data!.email,
+                        );
+                      } else {
+                        return const Center(child: Text('No data available'));
+                      }
+                    },
+                  ),
                   Expanded(
                     child: ListView(
                       padding: const EdgeInsets.all(16.0),
@@ -134,7 +184,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           onTap: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                              MaterialPageRoute(builder: (context) => const ProfileScreen()),
                             );
                           },
                         ),
@@ -194,7 +244,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildProfileHeader(bool isDarkMode) {
+  Widget _buildProfileHeader(bool isDarkMode, {ImageProvider<Object>? profileImage, required String name, required String email}) {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -213,26 +263,28 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 35,
-            backgroundImage: AssetImage('assets/profile_picture.png'),
+            backgroundImage: profileImage,
+            backgroundColor: Colors.white,
+            child: profileImage == null ? const Icon(Icons.person, size: 35) : null,
           ),
           const SizedBox(width: 20),
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Mr. Alex John',
-                style: TextStyle(
+                name,
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.black, // Always black
                 ),
               ),
-              SizedBox(height: 5),
+              const SizedBox(height: 5),
               Text(
-                'alex.john@example.com',
-                style: TextStyle(
+                email,
+                style: const TextStyle(
                   fontSize: 14,
                   color: Colors.grey, // Always grey
                 ),
@@ -289,55 +341,60 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  void _showBiometricDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: const Column(
-            children: [
-              Icon(
-                Icons.fingerprint,
-                size: 40,
-                color: Colors.green,
-              ),
-              SizedBox(height: 10),
-              Text(
-                'Setup biometric login',
-                style: TextStyle(
-                  color: Colors.green,
-                ),
-              ),
-            ],
-          ),
-          content: const Text(
-            'Do you want to use Fingerprint as a preferred login method for the next time?',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.black),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white, backgroundColor: Colors.green, // foreground
-              ),
-              child: const Text('OK'),
-              onPressed: () {
-                setState(() {
-                  _biometricEnabled = true;
-                });
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
+}
+
+class UserProfile {
+  final int id;
+  final String employeeId;
+  final String name;
+  final String surname;
+  final int branchId;
+  final String branchName;
+  final int departmentId;
+  final String departmentName;
+  final String tel;
+  final String email;
+  final String employeeStatus;
+  final String gender;
+  final String createAt;
+  final String updateAt;
+  final String imgName;
+
+  UserProfile({
+    required this.id,
+    required this.employeeId,
+    required this.name,
+    required this.surname,
+    required this.branchId,
+    required this.branchName,
+    required this.departmentId,
+    required this.departmentName,
+    required this.tel,
+    required this.email,
+    required this.employeeStatus,
+    required this.gender,
+    required this.createAt,
+    required this.updateAt,
+    required this.imgName,
+  });
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    return UserProfile(
+      id: json['id'],
+      employeeId: json['employee_id'],
+      name: json['name'],
+      surname: json['surname'],
+      branchId: json['branch_id'],
+      branchName: json['b_name'],
+      departmentId: json['department_id'],
+      departmentName: json['d_name'],
+      tel: json['tel'],
+      email: json['email'],
+      employeeStatus: json['employee_status'],
+      gender: json['gender'],
+      createAt: json['create_at'],
+      updateAt: json['update_at'],
+      imgName: json['img_name'],
     );
   }
 }
