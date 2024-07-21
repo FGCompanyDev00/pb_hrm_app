@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
@@ -21,7 +22,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   String _checkInTime = '--:--:--';
   String _checkOutTime = '--:--:--';
   DateTime? _checkInDateTime;
+  DateTime? _checkOutDateTime;
   Duration _workingHours = Duration.zero;
+  Timer? _timer;
   Map<String, List<Map<String, String>>> _attendanceRecords = {};
   String _currentMonthKey = '';
   String _currentSection = 'Home';
@@ -33,6 +36,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _loadBiometricSetting();
     _loadAttendanceRecords();
     _currentMonthKey = DateFormat('MMMM - yyyy').format(DateTime.now());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   Future<void> _checkBiometrics() async {
@@ -77,6 +86,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     await prefs.setString('attendanceRecords', _attendanceRecords.toString());
   }
 
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        if (_checkInDateTime != null && _checkOutDateTime == null) {
+          _workingHours = DateTime.now().difference(_checkInDateTime!);
+        }
+      });
+    });
+  }
+
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
     if (!_biometricEnabled) {
       _showCustomDialog(context, 'Biometric Disabled', 'Please enable biometric authentication in settings.');
@@ -109,10 +129,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           _checkInTime = DateFormat('HH:mm:ss').format(now);
           _checkInDateTime = now;
           _workingHours = Duration.zero; // Reset working hours on check-in
+          _startTimer(); // Start the timer to update working hours
         } else {
           _checkOutTime = DateFormat('HH:mm:ss').format(now);
+          _checkOutDateTime = now;
           if (_checkInDateTime != null) {
             _workingHours = now.difference(_checkInDateTime!);
+            _timer?.cancel(); // Stop the timer on check-out
             _saveAttendanceRecord();
           }
         }
@@ -128,8 +151,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _showCustomDialog(context, 'Authentication Failed', isCheckIn ? 'Check In Failed' : 'Check Out Failed');
     }
 
-    setState(() {
-    });
+    setState(() {});
   }
 
   void _saveAttendanceRecord() {
