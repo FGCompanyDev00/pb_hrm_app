@@ -65,94 +65,112 @@ class _DashboardState extends State<Dashboard> {
     return Scaffold(
       body: Stack(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-                fit: BoxFit.cover,
+          if (isDarkMode) // Only display background image if dark mode
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/darkbg.png'),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
           Column(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                width: double.infinity,
+                height: MediaQuery.of(context).size.height * 0.1,
+                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
+                decoration: const BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage('assets/ready_bg.png'), // Replace with your background image
+                    fit: BoxFit.cover,
+                  ),
+                  borderRadius:  BorderRadius.only(
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
+                  ),
+                ),
                 child: SafeArea(
-                  child: FutureBuilder<UserProfile>(
-                    future: futureUserProfile,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      } else if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      } else if (snapshot.hasData) {
-                        String title = snapshot.data!.gender == "Male" ? "Mr." : "Ms.";
-                        return Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const MyProfilePage()),
-                                );
-                              },
-                              child: CircleAvatar(
-                                radius: 20,
-                                backgroundImage: snapshot.data!.imgName != 'default_avatar.jpg'
-                                    ? NetworkImage('https://demo-application-api.flexiflows.co/images/${snapshot.data!.imgName}')
-                                    : null,
-                                backgroundColor: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const MyProfilePage()),
-                                  );
-                                },
-                                child: Text(
-                                  '$title ${snapshot.data!.name} ${snapshot.data!.surname}',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                    color: isDarkMode ? Colors.white : Colors.black,
+                  child: Column(
+                    children: [
+                      FutureBuilder<UserProfile>(
+                        future: futureUserProfile,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
+                          } else if (snapshot.hasError) {
+                            return Center(child: Text('Error: ${snapshot.error}'));
+                          } else if (snapshot.hasData) {
+                            String title = snapshot.data!.gender == "Male" ? "Mr." : "Ms.";
+                            return Row(
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const MyProfilePage()),
+                                    );
+                                  },
+                                  child: CircleAvatar(
+                                    radius: 20,
+                                    backgroundImage: snapshot.data!.imgName != 'default_avatar.jpg'
+                                        ? NetworkImage('https://demo-application-api.flexiflows.co/images/${snapshot.data!.imgName}')
+                                        : null,
+                                    backgroundColor: Colors.white,
                                   ),
                                 ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.person, color: isDarkMode ? Colors.white : Colors.black),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                                ).then((_) => _refreshUserProfile());
-                              },
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.settings, color: isDarkMode ? Colors.white : Colors.black),
-                              onPressed: () {
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const SettingsPage()),
-                                );
-                              },
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.power_settings_new, color: isDarkMode ? Colors.white : Colors.black),
-                              onPressed: () {
-                                _showLogoutDialog(context);
-                              },
-                            ),
-                          ],
-                        );
-                      } else {
-                        return const Center(child: Text('No data available'));
-                      }
-                    },
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const MyProfilePage()),
+                                      );
+                                    },
+                                    child: Text(
+                                      '$title ${snapshot.data!.name} ${snapshot.data!.surname}',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDarkMode ? Colors.white : Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.person, color: isDarkMode ? Colors.white : Colors.black),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                                    ).then((_) => _refreshUserProfile());
+                                  },
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.settings, color: isDarkMode ? Colors.white : Colors.black),
+                                  onPressed: () {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const SettingsPage()),
+                                    );
+                                  },
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.power_settings_new, color: isDarkMode ? Colors.white : Colors.black),
+                                  onPressed: () {
+                                    _showLogoutDialog(context);
+                                  },
+                                ),
+                              ],
+                            );
+                          } else {
+                            return const Center(child: Text('No data available'));
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                   ),
                 ),
               ),
@@ -259,19 +277,18 @@ class _DashboardState extends State<Dashboard> {
                       ),
                       const SizedBox(height: 8),
                       GridView.count(
-                        crossAxisCount: 2,
+                        crossAxisCount: 3,
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        childAspectRatio: 3 / 2,
-                        mainAxisSpacing: 16,
-                        crossAxisSpacing: 16,
+                        childAspectRatio: 1,
+                        mainAxisSpacing: 20,
+                        crossAxisSpacing: 1,
                         children: [
-                          _buildActionCard(context, 'My History', Icons.history, isDarkMode),
-                          _buildActionCard(context, 'Approvals', Icons.check_circle, isDarkMode),
-                          _buildActionCard(context, 'KPI', Icons.bar_chart, isDarkMode),
-                          _buildActionCard(context, 'Work Tracking', Icons.track_changes, isDarkMode),
-                          _buildActionCard(context, 'Inventory', Icons.inventory, isDarkMode),
-                          _buildActionCard(context, 'Management Pages', Icons.abc_outlined, isDarkMode),
+                          _buildActionCard(context, 'assets/data-2.png', 'History', isDarkMode),
+                          _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode),
+                          _buildActionCard(context, 'assets/firstline.png', 'KPI', isDarkMode),
+                          _buildActionCard(context, 'assets/status-up.png', 'Work Tracking', isDarkMode),
+                          _buildActionCard(context, 'assets/shop-add.png', 'Inventory', isDarkMode),
                         ],
                       ),
                     ],
@@ -285,10 +302,13 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  Widget _buildActionCard(BuildContext context, String title, IconData icon, bool isDarkMode) {
+  Widget _buildActionCard(BuildContext context, String imagePath, String title, bool isDarkMode) {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.amber, width: 2), 
+      ),
       child: InkWell(
         onTap: () {
           // Add the appropriate navigation actions here
@@ -298,12 +318,17 @@ class _DashboardState extends State<Dashboard> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 48, color: Colors.green),
+              Image.asset(imagePath, height: 48, width: 48), // Use the provided image
               const SizedBox(height: 8),
               Flexible(
                 child: Text(
                   title,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDarkMode ? Colors.white : Colors.black),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ],

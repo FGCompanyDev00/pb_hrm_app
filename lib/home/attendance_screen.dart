@@ -531,8 +531,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             fit: BoxFit.cover,
           ),
           borderRadius: const BorderRadius.only(
-            bottomLeft: Radius.circular(50),
-            bottomRight: Radius.circular(50),
+            bottomLeft: Radius.circular(20),
+            bottomRight: Radius.circular(20),
           ),
         ),
         child: Column(
