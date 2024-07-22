@@ -1,6 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/History_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approvals_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/inventory_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/kpi_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/workTracking_page.dart';
 import 'package:pb_hrsystem/home/profile_screen.dart';
 import 'package:pb_hrsystem/settings/edit_profile.dart';
 import 'package:provider/provider.dart';
@@ -284,11 +289,36 @@ class _DashboardState extends State<Dashboard> {
                         mainAxisSpacing: 20,
                         crossAxisSpacing: 1,
                         children: [
-                          _buildActionCard(context, 'assets/data-2.png', 'History', isDarkMode),
-                          _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode),
-                          _buildActionCard(context, 'assets/firstline.png', 'KPI', isDarkMode),
-                          _buildActionCard(context, 'assets/status-up.png', 'Work Tracking', isDarkMode),
-                          _buildActionCard(context, 'assets/shop-add.png', 'Inventory', isDarkMode),
+                          _buildActionCard(context, 'assets/data-2.png', 'History', isDarkMode, () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const HistoryPage()),
+                            );
+                          }),
+                          _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ApprovalsPage()),
+                            );
+                          }),
+                          _buildActionCard(context, 'assets/firstline.png', 'KPI', isDarkMode, () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const KpiPage()),
+                            );
+                          }),
+                          _buildActionCard(context, 'assets/status-up.png', 'Work Tracking', isDarkMode, () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
+                            );
+                          }),
+                          _buildActionCard(context, 'assets/shop-add.png', 'Inventory', isDarkMode, () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const InventoryPage()),
+                            );
+                          }),
                         ],
                       ),
                     ],
@@ -302,7 +332,7 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  Widget _buildActionCard(BuildContext context, String imagePath, String title, bool isDarkMode) {
+  Widget _buildActionCard(BuildContext context, String imagePath, String title, bool isDarkMode, VoidCallback onTap) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
@@ -310,9 +340,7 @@ class _DashboardState extends State<Dashboard> {
         side: BorderSide(color: Colors.amber, width: 2), 
       ),
       child: InkWell(
-        onTap: () {
-          // Add the appropriate navigation actions here
-        },
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
