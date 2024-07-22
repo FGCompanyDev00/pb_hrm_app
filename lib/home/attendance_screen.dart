@@ -7,6 +7,7 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_background/flutter_background.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
 
 class AttendanceScreen extends StatefulWidget {
@@ -37,12 +38,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
+    _initializeBackgroundService();
     _checkBiometrics();
     _loadBiometricSetting();
     _loadAttendanceRecords();
     _currentMonthKey = DateFormat('MMMM - yyyy').format(DateTime.now());
     _loadCurrentSession();
-    _initializeBackgroundService();
   }
 
   @override
@@ -59,10 +60,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       enableWifiLock: true,
     );
 
-    bool hasPermissions = await FlutterBackground.hasPermissions;
-    if (!hasPermissions) {
-      await FlutterBackground.initialize(androidConfig: androidConfig);
+    // Request necessary permissions
+    await requestPermissions();
+
+    bool initialized = await FlutterBackground.initialize(androidConfig: androidConfig);
+    if (initialized) {
       await FlutterBackground.enableBackgroundExecution();
+    }
+  }
+
+  Future<void> requestPermissions() async {
+    var status = await Permission.ignoreBatteryOptimizations.request();
+    if (status.isGranted) {
+      print("Ignore battery optimizations permission granted");
+    } else {
+      print("Ignore battery optimizations permission denied");
     }
   }
 

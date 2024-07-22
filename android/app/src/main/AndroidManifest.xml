@@ -46,7 +46,9 @@
     </queries>
 
     <uses-permission android:name="android.permission.INTERNET"
-        tools:ignore="ManifestOrder" />
+     tools:ignore="ManifestOrder" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
