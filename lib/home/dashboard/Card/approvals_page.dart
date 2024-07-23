@@ -1,206 +1,276 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:pb_hrsystem/theme/theme.dart';
 
-class ApprovalsPage extends StatelessWidget {
+class ApprovalsPage extends StatefulWidget {
   const ApprovalsPage({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  _ApprovalsPageState createState() => _ApprovalsPageState();
+}
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        body: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              height: MediaQuery.of(context).size.height * 0.1,
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-                  fit: BoxFit.cover,
-                ),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
+class _ApprovalsPageState extends State<ApprovalsPage> {
+  bool _isApprovalSelected = true;
+
+  final List<Map<String, dynamic>> _approvalItems = [
+    {
+      'title': 'Meeting and Booking meeting room',
+      'date': 'Date: 01-05-2024, 8:30 To 01-05-2024, 12:00',
+      'room': 'Room: Back can yon 2F',
+      'status': 'Approved',
+      'statusColor': Colors.green,
+      'icon': Icons.meeting_room,
+      'iconColor': Colors.green,
+    },
+    {
+      'title': 'Phoutthalom',
+      'date': 'Date: 01-05-2024, 8:30 To 01-05-2024, 12:00',
+      'room': 'Tel: 02078656511',
+      'status': 'Pending',
+      'statusColor': Colors.amber,
+      'icon': Icons.directions_car,
+      'iconColor': Colors.blue,
+    },
+    {
+      'title': 'Phoutthalom Douangphila',
+      'date': 'Date: 01-05-2024, 8:30 To 01-05-2024, 12:00',
+      'room': 'Type: sick leave',
+      'status': 'Pending',
+      'statusColor': Colors.amber,
+      'icon': Icons.event,
+      'iconColor': Colors.orange,
+    },
+  ];
+
+  final List<Map<String, dynamic>> _historyItems = [
+    {
+      'title': 'Meeting and Booking meeting room',
+      'date': 'Date: 01-05-2024, 8:30 To 01-05-2024, 12:00',
+      'room': 'Room: Back can yon 2F',
+      'status': 'Approved',
+      'statusColor': Colors.green,
+      'icon': Icons.meeting_room,
+      'iconColor': Colors.green,
+    },
+    {
+      'title': 'Phoutthalom',
+      'date': 'Date: 01-05-2024, 8:30 To 01-05-2024, 12:00',
+      'room': 'Tel: 02078656511',
+      'status': 'Rejected',
+      'statusColor': Colors.red,
+      'icon': Icons.directions_car,
+      'iconColor': Colors.blue,
+    },
+    {
+      'title': 'Phoutthalom Douangphila',
+      'date': 'Date: 01-05-2024, 8:30 To 01-05-2024, 12:00',
+      'room': 'Type: sick leave',
+      'status': 'Rejected',
+      'statusColor': Colors.red,
+      'icon': Icons.event,
+      'iconColor': Colors.orange,
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
+    return Scaffold(
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            height: MediaQuery.of(context).size.height * 0.1,
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+                fit: BoxFit.cover,
               ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 25,
-                    left: 10,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back, size: 30, color: Colors.black),
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 25,
+                  left: 10,
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, size: 30, color: Colors.black),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 20.0),
+                    child: Text(
+                      'Approvals',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 20.0),
-                      child: Text(
-                        'Approvals',
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isApprovalSelected = true;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      decoration: BoxDecoration(
+                        color: _isApprovalSelected ? Colors.amber : Colors.grey[300],
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Approval',
+                          style: TextStyle(
+                            color: _isApprovalSelected ? Colors.black : Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
-              padding: const EdgeInsets.all(5.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(25),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: TabBar(
-                labelColor: Colors.black,
-                indicator: BoxDecoration(
-                  color: Colors.amber,
-                  borderRadius: BorderRadius.circular(25),
                 ),
-                indicatorPadding: EdgeInsets.zero,
-                indicatorSize: TabBarIndicatorSize.tab,
-                unselectedLabelColor: Colors.grey,
-                tabs: [
-                  Tab(text: 'Approval'),
-                  Tab(text: 'History'),
-                ],
-              ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isApprovalSelected = false;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      decoration: BoxDecoration(
+                        color: _isApprovalSelected ? Colors.grey[300] : Colors.amber,
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'History',
+                          style: TextStyle(
+                            color: _isApprovalSelected ? Colors.black : Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _buildApprovalSection(context, isDarkMode),
-                  _buildHistorySection(context, isDarkMode),
-                ],
-              ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16.0),
+              children: _isApprovalSelected
+                  ? _approvalItems.map((item) => _buildApprovalCard(context, item, isDarkMode)).toList()
+                  : _historyItems.map((item) => _buildApprovalCard(context, item, isDarkMode)).toList(),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildApprovalSection(BuildContext context, bool isDarkMode) {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        _buildApprovalCard(context, 'Meeting and Booking meeting room', 'Room', 'assets/Vector.png', 'Room: Back can yon 2F', 'Pending', isDarkMode),
-        _buildApprovalCard(context, 'Phoutthalom', 'Car', 'assets/Vector-1.png', 'Tel: 02078656511', 'Pending', isDarkMode),
-        _buildApprovalCard(context, 'Phoutthalom Douangphila', 'Leave', 'assets/Vector-2.png', 'Type: sick leave', 'Pending', isDarkMode),
-      ],
-    );
-  }
-
-  Widget _buildHistorySection(BuildContext context, bool isDarkMode) {
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        _buildApprovalCard(context, 'Meeting and Booking meeting room', 'Room', 'assets/Vector.png', 'Room: Back can yon 2F', 'Approved', isDarkMode),
-        _buildApprovalCard(context, 'Phoutthalom', 'Car', 'assets/Vector-1.png', 'Tel: 02078656511', 'Rejected', isDarkMode),
-        _buildApprovalCard(context, 'Phoutthalom Douangphila', 'Leave', 'assets/Vector-2.png', 'Type: sick leave', 'Rejected', isDarkMode),
-      ],
-    );
-  }
-
-  Widget _buildApprovalCard(BuildContext context, String title, String type, String imagePath, String detail, String status, bool isDarkMode) {
-    Color statusColor;
-    if (status == 'Pending') {
-      statusColor = Colors.amber;
-    } else if (status == 'Approved') {
-      statusColor = Colors.green;
-    } else {
-      statusColor = Colors.red;
-    }
-
+  Widget _buildApprovalCard(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      elevation: 4,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: statusColor, width: 2),
+        borderRadius: BorderRadius.circular(8.0),
+        side: BorderSide(color: item['iconColor']),
       ),
+      elevation: 5,
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Image.asset(imagePath, height: 48, width: 48),
-            const SizedBox(width: 10),
+            Icon(
+              item['icon'],
+              color: item['iconColor'],
+              size: 40,
+            ),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    item['title'],
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
                       color: isDarkMode ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Date: 01-05-2024, 8:30 To 01-05-2024, 12:00',
+                    item['date'],
                     style: TextStyle(
-                      fontSize: 14,
-                      color: isDarkMode ? Colors.white : Colors.black,
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   Text(
-                    detail,
+                    item['room'],
                     style: TextStyle(
-                      fontSize: 14,
-                      color: isDarkMode ? Colors.white : Colors.black,
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text(
+                        'Status: ',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                        decoration: BoxDecoration(
+                          color: item['statusColor'],
+                          borderRadius: BorderRadius.circular(4.0),
+                        ),
+                        child: Text(
+                          item['status'],
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  'Status:',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    borderRadius: BorderRadius.circular(4.0),
-                  ),
-                  child: Text(
-                    status,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
+            const SizedBox(width: 16),
+            const CircleAvatar(
+              backgroundImage: AssetImage('assets/avatar_placeholder.png'),
+              radius: 30,
             ),
           ],
         ),

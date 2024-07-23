@@ -1,5 +1,3 @@
-//home_calendar.dart
-
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/popups/EventDetailsPopup.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -21,6 +19,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  DateTime? _singleTapSelectedDay;
 
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
@@ -74,7 +73,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
       };
     });
   }
-
 
   void _showAddEventOptions() {
     showModalBottomSheet(
@@ -207,10 +205,16 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     return isSameDay(_selectedDay, day);
                   },
                   onDaySelected: (selectedDay, focusedDay) {
-                    setState(() {
-                      _selectedDay = selectedDay;
-                      _focusedDay = focusedDay;
-                    });
+                    if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
+                      _showDayView(selectedDay);
+                      _singleTapSelectedDay = null; // reset the single tap state
+                    } else {
+                      setState(() {
+                        _singleTapSelectedDay = selectedDay;
+                        _selectedDay = selectedDay;
+                        _focusedDay = focusedDay;
+                      });
+                    }
                   },
                   onFormatChanged: (format) {
                     if (_calendarFormat != format) {
@@ -236,7 +240,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     selectedDecoration: BoxDecoration(
-                      color: isDarkMode ? Colors.orange : Colors.yellow,
+                      color: Colors.yellow,
                       shape: BoxShape.rectangle,
                     ),
                     defaultTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
@@ -265,10 +269,16 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     defaultBuilder: (context, date, _) {
                       return GestureDetector(
                         onDoubleTap: () => _showDayView(date),
-                        child: Center(
-                          child: Text(
-                            '${date.day}',
-                            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: isSameDay(_singleTapSelectedDay, date) ? Colors.yellow : Colors.transparent,
+                            shape: BoxShape.rectangle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${date.day}',
+                              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                            ),
                           ),
                         ),
                       );
@@ -677,7 +687,7 @@ class CustomEventBox extends StatelessWidget {
             Row(
               children: List.generate(
                 event.attendees > 10 ? 10 : event.attendees,
-                    (index) {
+                (index) {
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 2.0),
                     width: 24,
@@ -709,9 +719,9 @@ class CustomEventBox extends StatelessWidget {
         ),
         trailing: event.attendees > 10
             ? CircleAvatar(
-          backgroundColor: Colors.grey,
-          child: Text('+${event.attendees - 10}', style: const TextStyle(color: Colors.black)),
-        )
+                backgroundColor: Colors.grey,
+                child: Text('+${event.attendees - 10}', style: const TextStyle(color: Colors.black)),
+              )
             : null,
       ),
     );
