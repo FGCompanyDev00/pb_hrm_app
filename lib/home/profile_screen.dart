@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
-import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
-import 'package:pb_hrsystem/main.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:cross_file/cross_file.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -28,11 +27,35 @@ class ProfileScreen extends StatelessWidget {
 
   Future<void> _downloadQRCode() async {
     try {
+      Fluttertoast.showToast(
+        msg: "Downloading QR code...",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+      );
+
       final ByteData bytes = await rootBundle.load('assets/qr_code.png');
       final Uint8List list = bytes.buffer.asUint8List();
-      final result = await ImageGallerySaver.saveImage(list);
-      debugPrint(result.toString());
+      final result = await ImageGallerySaver.saveImage(list, quality: 100, name: "qr_code");
+      
+      if (result['isSuccess']) {
+        Fluttertoast.showToast(
+          msg: "QR Code downloaded successfully",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+        );
+      } else {
+        Fluttertoast.showToast(
+          msg: "Error downloading QR code",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+        );
+      }
     } catch (e) {
+      Fluttertoast.showToast(
+        msg: "Error downloading QR code",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+      );
       debugPrint('Error downloading QR code: $e');
     }
   }
