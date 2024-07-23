@@ -19,9 +19,15 @@ class ProfileScreen extends StatelessWidget {
       final tempDir = await getTemporaryDirectory();
       final file = await File('${tempDir.path}/qr_code.png').create();
       await file.writeAsBytes(list);
+      
       await Share.shareXFiles([XFile(file.path)], text: 'Check out my QR code!');
     } catch (e) {
       debugPrint('Error sharing QR code: $e');
+      Fluttertoast.showToast(
+        msg: "Error sharing QR code",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+      );
     }
   }
 
