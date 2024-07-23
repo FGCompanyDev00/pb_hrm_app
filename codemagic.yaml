@@ -1,8 +1,8 @@
 workflows:
   my-workflow:
-    name: pb_hrm_app
+    name: Build and Test
     environment:
-      flutter: 3.23.0-0.1.pre
+      flutter: 3.13.0-0.1.pre
       xcode: latest
     scripts:
       - name: Install dependencies
