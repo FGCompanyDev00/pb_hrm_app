@@ -72,9 +72,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Future<void> requestPermissions() async {
     var status = await Permission.ignoreBatteryOptimizations.request();
     if (status.isGranted) {
-      print("Ignore battery optimizations permission granted");
+      if (kDebugMode) {
+        print("Ignore battery optimizations permission granted");
+      }
     } else {
-      print("Ignore battery optimizations permission denied");
+      if (kDebugMode) {
+        print("Ignore battery optimizations permission denied");
+      }
     }
   }
 

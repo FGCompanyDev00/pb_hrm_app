@@ -1,13 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/History_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/history_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/inventory_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/kpi_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/workTracking_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/profile_screen.dart';
-import 'package:pb_hrsystem/settings/edit_profile.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -48,7 +47,6 @@ class _DashboardState extends State<Dashboard> {
 
     if (response.statusCode == 200) {
       final List<dynamic> results = jsonDecode(response.body)['results'];
-      // Assuming the first result is the logged-in user
       final userProfile = UserProfile.fromJson(results[0]);
       return userProfile;
     } else {
@@ -67,38 +65,39 @@ class _DashboardState extends State<Dashboard> {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          if (isDarkMode) // Only display background image if dark mode
-            Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/darkbg.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          Column(
-            children: [
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Scaffold(
+        body: Stack(
+          children: [
+            if (isDarkMode)
               Container(
-                width: double.infinity,
-                height: MediaQuery.of(context).size.height * 0.1,
-                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
                 decoration: const BoxDecoration(
                   image: DecorationImage(
-                    image: AssetImage('assets/ready_bg.png'), // Replace with your background image
+                    image: AssetImage('assets/darkbg.png'),
                     fit: BoxFit.cover,
                   ),
-                  borderRadius:  BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
                 ),
-                child: SafeArea(
-                  child: Column(
-                    children: [
-                      FutureBuilder<UserProfile>(
+              ),
+            Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: MediaQuery.of(context).size.height * 0.1,
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage('assets/ready_bg.png'),
+                      fit: BoxFit.cover,
+                    ),
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: SafeArea(
+                    child: Center(
+                      child: FutureBuilder<UserProfile>(
                         future: futureUserProfile,
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -108,6 +107,7 @@ class _DashboardState extends State<Dashboard> {
                           } else if (snapshot.hasData) {
                             String title = snapshot.data!.gender == "Male" ? "Mr." : "Ms.";
                             return Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 GestureDetector(
                                   onTap: () {
@@ -136,36 +136,40 @@ class _DashboardState extends State<Dashboard> {
                                     child: Text(
                                       '$title ${snapshot.data!.name} ${snapshot.data!.surname}',
                                       style: TextStyle(
-                                        fontSize: 20,
+                                        fontSize: 18,
                                         fontWeight: FontWeight.w600,
                                         color: isDarkMode ? Colors.white : Colors.black,
                                       ),
                                     ),
                                   ),
                                 ),
-                                IconButton(
-                                  icon: Icon(Icons.person, color: isDarkMode ? Colors.white : Colors.black),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                                    ).then((_) => _refreshUserProfile());
-                                  },
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.settings, color: isDarkMode ? Colors.white : Colors.black),
-                                  onPressed: () {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const SettingsPage()),
-                                    );
-                                  },
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.power_settings_new, color: isDarkMode ? Colors.white : Colors.black),
-                                  onPressed: () {
-                                    _showLogoutDialog(context);
-                                  },
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(Icons.person, color: isDarkMode ? Colors.white : Colors.black),
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                                        ).then((_) => _refreshUserProfile());
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.settings, color: isDarkMode ? Colors.white : Colors.black),
+                                      onPressed: () {
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => const SettingsPage()),
+                                        );
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.power_settings_new, color: isDarkMode ? Colors.white : Colors.black),
+                                      onPressed: () {
+                                        _showLogoutDialog(context);
+                                      },
+                                    ),
+                                  ],
                                 ),
                               ],
                             );
@@ -174,170 +178,183 @@ class _DashboardState extends State<Dashboard> {
                           }
                         },
                       ),
-                      const SizedBox(height: 10),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CarouselSlider(
-                        options: CarouselOptions(
-                          height: 150.0,
-                          enlargeCenterPage: true,
-                          autoPlay: true,
-                          aspectRatio: 16 / 9,
-                          autoPlayCurve: Curves.fastOutSlowIn,
-                          enableInfiniteScroll: true,
-                          autoPlayAnimationDuration: const Duration(milliseconds: 800),
-                          viewportFraction: 0.8,
-                        ),
-                        items: [
-                          'assets/banner1.png',
-                          'assets/banner2.png',
-                          'assets/banner3.png'
-                        ].map((i) {
-                          return Builder(
-                            builder: (BuildContext context) {
-                              return Container(
-                                width: MediaQuery.of(context).size.width,
-                                margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  image: DecorationImage(
-                                    image: AssetImage(i),
-                                    fit: BoxFit.cover,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Colors.black26,
-                                      blurRadius: 10,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Action Menu',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: isDarkMode ? Colors.white : Colors.black,
-                            ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CarouselSlider(
+                          options: CarouselOptions(
+                            height: 150.0,
+                            enlargeCenterPage: true,
+                            autoPlay: true,
+                            aspectRatio: 16 / 9,
+                            autoPlayCurve: Curves.fastOutSlowIn,
+                            enableInfiniteScroll: true,
+                            autoPlayAnimationDuration: const Duration(milliseconds: 800),
+                            viewportFraction: 0.8,
                           ),
-                          Stack(
-                            children: [
-                              IconButton(
-                                icon: Icon(Icons.notifications, color: isDarkMode ? Colors.white : Colors.black),
-                                onPressed: () {
+                          items: [
+                            'assets/banner1.png',
+                            'assets/banner2.png',
+                            'assets/banner3.png'
+                          ].map((i) {
+                            return Builder(
+                              builder: (BuildContext context) {
+                                return Container(
+                                  width: MediaQuery.of(context).size.width,
+                                  margin: const EdgeInsets.symmetric(horizontal: 5.0),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    image: DecorationImage(
+                                      image: AssetImage(i),
+                                      fit: BoxFit.cover,
+                                    ),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 10,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Container(
+                              width: 4,
+                              height: 24,
+                              color: Colors.green,
+                              margin: const EdgeInsets.only(right: 8),
+                            ),
+                            Text(
+                              'Action Menu',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: isDarkMode ? Colors.white : Colors.black,
+                              ),
+                            ),
+                            const Spacer(),
+                            Stack(
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.notifications, color: isDarkMode ? Colors.white : Colors.black),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const NotificationPage()),
+                                    ).then((_) {
+                                      setState(() {
+                                        _hasUnreadNotifications = false;
+                                      });
+                                    });
+                                  },
+                                ),
+                                if (_hasUnreadNotifications)
+                                  Positioned(
+                                    right: 11,
+                                    top: 11,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      constraints: const BoxConstraints(
+                                        minWidth: 12,
+                                        minHeight: 12,
+                                      ),
+                                      child: const Text(
+                                        '',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 8,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 15),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            double width = constraints.maxWidth;
+                            int crossAxisCount = width > 600 ? 3 : 2;
+                            double childAspectRatio = width > 600 ? 1 : 1;
+
+                            return GridView.count(
+                              crossAxisCount: crossAxisCount,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              childAspectRatio: childAspectRatio,
+                              mainAxisSpacing: 20,
+                              crossAxisSpacing: 10,
+                              children: [
+                                _buildActionCard(context, 'assets/data-2.png', 'History', isDarkMode, () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (context) => const NotificationPage()),
-                                  ).then((_) {
-                                    setState(() {
-                                      _hasUnreadNotifications = false;
-                                    });
-                                  });
-                                },
-                              ),
-                              if (_hasUnreadNotifications)
-                                Positioned(
-                                  right: 11,
-                                  top: 11,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    constraints: const BoxConstraints(
-                                      minWidth: 12,
-                                      minHeight: 12,
-                                    ),
-                                    child: const Text(
-                                      '',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 8,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      GridView.count(
-                        crossAxisCount: 3,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        childAspectRatio: 1,
-                        mainAxisSpacing: 20,
-                        crossAxisSpacing: 1,
-                        children: [
-                          _buildActionCard(context, 'assets/data-2.png', 'History', isDarkMode, () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const HistoryPage()),
+                                    MaterialPageRoute(builder: (context) => const HistoryPage()),
+                                  );
+                                }),
+                                _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const ApprovalsPage()),
+                                  );
+                                }),
+                                _buildActionCard(context, 'assets/firstline.png', 'KPI', isDarkMode, () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const KpiPage()),
+                                  );
+                                }),
+                                _buildActionCard(context, 'assets/status-up.png', 'Work Tracking', isDarkMode, () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
+                                  );
+                                }),
+                                _buildActionCard(context, 'assets/shop-add.png', 'Inventory', isDarkMode, () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const InventoryPage()),
+                                  );
+                                }),
+                              ],
                             );
-                          }),
-                          _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const ApprovalsPage()),
-                            );
-                          }),
-                          _buildActionCard(context, 'assets/firstline.png', 'KPI', isDarkMode, () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const KpiPage()),
-                            );
-                          }),
-                          _buildActionCard(context, 'assets/status-up.png', 'Work Tracking', isDarkMode, () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
-                            );
-                          }),
-                          _buildActionCard(context, 'assets/shop-add.png', 'Inventory', isDarkMode, () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const InventoryPage()),
-                            );
-                          }),
-                        ],
-                      ),
-                    ],
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildActionCard(BuildContext context, String imagePath, String title, bool isDarkMode, VoidCallback onTap) {
     return Card(
-      elevation: 4,
+      elevation: 8,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.amber, width: 2), 
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: isDarkMode ? Colors.white : Colors.black, width: 1),
       ),
       child: InkWell(
         onTap: onTap,
@@ -346,8 +363,8 @@ class _DashboardState extends State<Dashboard> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(imagePath, height: 48, width: 48), // Use the provided image
-              const SizedBox(height: 8),
+              Image.asset(imagePath, height: 60, width: 60),
+              const SizedBox(height: 10),
               Flexible(
                 child: Text(
                   title,

@@ -93,7 +93,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-
   Future<void> _authenticate({bool useBiometric = true}) async {
     if (!_biometricEnabled) {
       _showCustomDialog(context, 'Biometric Disabled', 'Please enable biometric authentication in settings.');
@@ -207,33 +206,35 @@ class _LoginPageState extends State<LoginPage> {
 
     return Scaffold(
       body: Container(
+        height: MediaQuery.of(context).size.height,
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/background.png'),
             fit: BoxFit.cover,
           ),
         ),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(height: MediaQuery.of(context).size.height * 0.1),
-                _buildLanguageDropdown(languageNotifier, isDarkMode),
-                const SizedBox(height: 10),
-                _buildLogoAndText(context),
-                const SizedBox(height: 40),
-                _buildDateRow(currentDate),
-                const SizedBox(height: 40),
-                _buildTextFields(context),
-                const SizedBox(height: 20),
-                _buildRememberMeCheckbox(context),
-                const SizedBox(height: 20),
-                _buildLoginButton(context),
-                const SizedBox(height: 20),
-                _buildAuthenticationIcons(),
-              ],
+        child: Center(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildLanguageDropdown(languageNotifier, isDarkMode),
+                  const SizedBox(height: 20),
+                  _buildLogoAndText(context),
+                  const SizedBox(height: 40),
+                  _buildDateRow(currentDate),
+                  const SizedBox(height: 40),
+                  _buildTextFields(context),
+                  const SizedBox(height: 20),
+                  _buildRememberMeCheckbox(context),
+                  const SizedBox(height: 20),
+                  _buildLoginButton(context),
+                  const SizedBox(height: 20),
+                  _buildAuthenticationIcons(),
+                ],
+              ),
             ),
           ),
         ),
