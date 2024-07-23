@@ -5,23 +5,26 @@ import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/nav/custom_buttom_nav_bar.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:device_preview/device_preview.dart';
+import 'package:flutter/foundation.dart';
 
 import 'splash/splashscreen.dart';
 import 'theme/theme.dart';
 import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
-import 'home/profile_screen.dart';
-
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ThemeNotifier()),
-        ChangeNotifierProvider(create: (_) => LanguageNotifier()),
-      ],
-      child: const MyApp(),
+    DevicePreview(
+      enabled: !kReleaseMode,
+      builder: (context) => MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ThemeNotifier()),
+          ChangeNotifierProvider(create: (_) => LanguageNotifier()),
+        ],
+        child: const MyApp(),
+      ),
     ),
   );
 }
@@ -34,6 +37,7 @@ class MyApp extends StatelessWidget {
     return Consumer2<ThemeNotifier, LanguageNotifier>(
       builder: (context, themeNotifier, languageNotifier, child) {
         return MaterialApp(
+          builder: DevicePreview.appBuilder,
           title: 'PBHR',
           theme: ThemeData(
             primarySwatch: Colors.green,
