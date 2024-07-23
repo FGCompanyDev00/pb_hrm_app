@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_project.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/view_project.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/edit_project.dart';
 
 class WorkTrackingPage extends StatefulWidget {
   const WorkTrackingPage({super.key});
@@ -39,6 +43,13 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       'status': 'Completed',
       'progress': 1.0,
       'author': 'Alice Smith',
+    },{
+      'title': 'HR Department',
+      'deadline1': '24 Apr 2024',
+      'deadline2': '29 Apr 2024',
+      'status': 'In Progress',
+      'progress': 0.5,
+      'author': 'Mat Khan',
     },
   ];
 
@@ -98,7 +109,10 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                         child: IconButton(
                           icon: const Icon(Icons.add, color: Colors.white, size: 30),
                           onPressed: () {
-                            // Navigate to Add Project Page
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => const AddProjectPage()),
+                            );
                           },
                         ),
                       ),
@@ -250,88 +264,119 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       'Completed': Colors.green,
     };
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.0),
+    return Slidable(
+      startActionPane: ActionPane(
+        motion: const DrawerMotion(),
+        children: [
+          SlidableAction(
+            onPressed: (context) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ViewProjectPage(project: project)),
+              );
+            },
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            icon: Icons.visibility,
+            label: 'View',
+          ),
+          SlidableAction(
+            onPressed: (context) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => EditProjectPage(project: project)),
+              );
+            },
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            icon: Icons.edit,
+            label: 'Edit',
+          ),
+        ],
       ),
-      elevation: 5,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: LinearProgressIndicator(
-                    value: project['progress'],
-                    color: progressColors[project['status']],
-                    backgroundColor: Colors.grey.shade300,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${(project['progress'] * 100).toStringAsFixed(0)}%',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.update,
-                  color: progressColors[project['status']],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Title: ${project['title']}',
-              style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Dead-line1: ${project['deadline1']}    Dead-line2: ${project['deadline2']}',
-              style: TextStyle(
-                color: isDarkMode ? Colors.white70 : Colors.black54,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Text(
-                  'Status: ',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-                Text(
-                  project['status'],
-                  style: TextStyle(
-                    color: progressColors[project['status']],
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (showAuthor)
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        elevation: 5,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
                   Expanded(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        project['author'],
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black,
-                          fontWeight: FontWeight.bold,
+                    child: LinearProgressIndicator(
+                      value: project['progress'],
+                      color: progressColors[project['status']],
+                      backgroundColor: Colors.grey.shade300,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${(project['progress'] * 100).toStringAsFixed(0)}%',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.update,
+                    color: progressColors[project['status']],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Title: ${project['title']}',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Dead-line1: ${project['deadline1']}    Dead-line2: ${project['deadline2']}',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    'Status: ',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  Text(
+                    project['status'],
+                    style: TextStyle(
+                      color: progressColors[project['status']],
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (showAuthor)
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          project['author'],
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
