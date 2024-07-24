@@ -16,7 +16,17 @@ class ProjectManagementPage extends StatefulWidget {
 }
 
 class _ProjectManagementPageState extends State<ProjectManagementPage> with SingleTickerProviderStateMixin {
-  final List<Map<String, dynamic>> _tasks = [];
+  final List<Map<String, dynamic>> _tasks = [{
+
+    'title': 'Initial Setup',
+    'status': 'Pending',
+    'start_date': '2024-01-01',
+    'due_date': '2024-02-01',
+    'description': 'Complete initial project setup and requirements gathering.',
+    'images': [],
+
+  },
+  ];
   String _selectedStatus = 'All Status';
   final List<String> _statusOptions = ['All Status', 'Pending', 'Processing', 'Completed'];
   late TabController _tabController;
@@ -150,13 +160,25 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
           'assets/background.png',
           fit: BoxFit.cover,
         ),
-        title: const Text(
-          'Work Tracking',
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-          ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Work Tracking',
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 24,
+              ),
+            ),
+            Text(
+              'Project ID: ${widget.project['id']}',
+              style: const TextStyle(
+                color: Colors.black54,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),

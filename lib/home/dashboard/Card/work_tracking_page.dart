@@ -401,6 +401,13 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
+                  'Project ID: ${project['id']}',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
                   'Dead-line1: ${project['deadline1']}    Dead-line2: ${project['deadline2']}',
                   style: TextStyle(
                     color: isDarkMode ? Colors.white70 : Colors.black54,

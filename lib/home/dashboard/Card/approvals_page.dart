@@ -73,21 +73,19 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
     }
   }
 
-  void _showResultDialog(BuildContext context, String message) {
-    showDialog(
+  void _showApprovalDetail(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
+    showModalBottomSheet(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Request Status'),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('OK'),
+      isScrollControlled: true,
+      builder: (context) {
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ApprovalDetailPopup(
+              item: item,
+              isDarkMode: isDarkMode,
             ),
-          ],
+          ),
         );
       },
     );
@@ -173,14 +171,14 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                       decoration: BoxDecoration(
-                        color: _isApprovalSelected ? Colors.amber : Colors.black,
+                        color: _isApprovalSelected ? Colors.amber : Colors.grey[300],
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                       child: Center(
                         child: Text(
                           'Approval',
                           style: TextStyle(
-                            color: _isApprovalSelected ? Colors.amber : Colors.black,
+                            color: _isApprovalSelected ? Colors.black : Colors.black,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -206,7 +204,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                         child: Text(
                           'History',
                           style: TextStyle(
-                            color: _isApprovalSelected ? Colors.grey[300] : Colors.black,
+                            color: _isApprovalSelected ? Colors.black : Colors.black,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -234,11 +232,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
   Widget _buildApprovalCard(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
     return GestureDetector(
       onTap: () {
-        if (item['status'] == 'Pending') {
-          _showResultDialog(context, 'Your request is being checked and is currently in progress.');
-        } else {
-          _showApprovalDetail(context, item, isDarkMode);
-        }
+        _showApprovalDetail(context, item, isDarkMode);
       },
       child: Card(
         shape: RoundedRectangleBorder(
@@ -321,24 +315,6 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
           ),
         ),
       ),
-    );
-  }
-
-  void _showApprovalDetail(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ApprovalDetailPopup(
-              item: item,
-              isDarkMode: isDarkMode,
-            ),
-          ),
-        );
-      },
     );
   }
 }
@@ -452,7 +428,7 @@ class ApprovalDetailPopup extends StatelessWidget {
         const SizedBox(height: 16),
         if (item['status'] == 'Pending')
           const Text(
-            'Your request is being checked and is currently in progress.',
+            'Your request is pending and being processed.',
             style: TextStyle(
               fontSize: 16,
               color: Colors.amber,
