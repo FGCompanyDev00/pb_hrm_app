@@ -7,6 +7,7 @@ import 'package:pb_hrsystem/home/dashboard/Card/inventory_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/kpi_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/profile_screen.dart';
+import 'package:pb_hrsystem/management/management_pages.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -72,8 +73,8 @@ class _DashboardState extends State<Dashboard> {
           children: [
             if (isDarkMode)
               Container(
-                decoration: BoxDecoration(
-                  image: DecorationImage(
+                decoration: const BoxDecoration(
+                  image: const DecorationImage(
                     image: AssetImage('assets/darkbg.png'),
                     fit: BoxFit.cover,
                   ),
@@ -312,7 +313,7 @@ class _DashboardState extends State<Dashboard> {
                                 _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(builder: (context) => const ApprovalsPage()),
+                                    MaterialPageRoute(builder: (context) => const StaffApprovalsPage()),
                                   );
                                 }),
                                 _buildActionCard(context, 'assets/firstline.png', 'KPI', isDarkMode, () {
@@ -331,6 +332,12 @@ class _DashboardState extends State<Dashboard> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(builder: (context) => const InventoryPage()),
+                                  );
+                                }),
+                                _buildActionCard(context, 'assets/success_icon.png', 'Management Page', isDarkMode, () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const ManagementApprovalsPage()),
                                   );
                                 }),
                               ],

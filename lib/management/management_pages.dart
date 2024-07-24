@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 
-class StaffApprovalsPage extends StatefulWidget {
-  const StaffApprovalsPage({super.key});
+class ManagementApprovalsPage extends StatefulWidget {
+  const ManagementApprovalsPage({super.key});
 
   @override
-  _StaffApprovalsPageState createState() => _StaffApprovalsPageState();
+  _ManagementApprovalsPageState createState() => _ManagementApprovalsPageState();
 }
 
-class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
+class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
   bool _isApprovalSelected = true;
 
   final List<Map<String, dynamic>> _items = [
@@ -69,40 +69,8 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
       case 'Rejected':
         return Colors.red;
       default:
-        return Colors.black;
+        return Colors.grey;
     }
-  }
-
-  void _showResultDialog(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Request Status'),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  List<Map<String, dynamic>> _getHistoryItems() {
-    final List<Map<String, dynamic>> historyItems =
-    _items.where((item) => item['status'] != 'Pending').toList();
-
-    if (historyItems.length > 100) {
-      historyItems.sort((a, b) => a['date'].compareTo(b['date']));
-      historyItems.removeRange(0, historyItems.length - 100);
-    }
-
-    return historyItems;
   }
 
   @override
@@ -110,9 +78,8 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    final List<Map<String, dynamic>> approvalItems =
-    _items.where((item) => item['status'] == 'Pending').toList();
-    final List<Map<String, dynamic>> historyItems = _getHistoryItems();
+    final List<Map<String, dynamic>> approvalItems = _items.where((item) => item['status'] == 'Pending').toList();
+    final List<Map<String, dynamic>> historyItems = _items.where((item) => item['status'] != 'Pending').toList();
 
     return Scaffold(
       body: Column(
@@ -173,7 +140,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                       decoration: BoxDecoration(
-                        color: _isApprovalSelected ? Colors.amber : Colors.black,
+                        color: _isApprovalSelected ? Colors.amber : Colors.grey[300],
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                       child: Center(
@@ -234,11 +201,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
   Widget _buildApprovalCard(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
     return GestureDetector(
       onTap: () {
-        if (item['status'] == 'Pending') {
-          _showResultDialog(context, 'Your request is being checked and is currently in progress.');
-        } else {
-          _showApprovalDetail(context, item, isDarkMode);
-        }
+        _showApprovalDetail(context, item, isDarkMode);
       },
       child: Card(
         shape: RoundedRectangleBorder(
@@ -332,10 +295,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
         return SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: ApprovalDetailPopup(
-              item: item,
-              isDarkMode: isDarkMode,
-            ),
+            child: ApprovalDetailPopup(item: item, isDarkMode: isDarkMode),
           ),
         );
       },
@@ -347,11 +307,7 @@ class ApprovalDetailPopup extends StatelessWidget {
   final Map<String, dynamic> item;
   final bool isDarkMode;
 
-  const ApprovalDetailPopup({
-    super.key,
-    required this.item,
-    required this.isDarkMode,
-  });
+  const ApprovalDetailPopup({super.key, required this.item, required this.isDarkMode});
 
   @override
   Widget build(BuildContext context) {
@@ -450,13 +406,59 @@ class ApprovalDetailPopup extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        if (item['status'] == 'Pending')
-          const Text(
-            'Your request is being checked and is currently in progress.',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.amber,
+        Row(
+          children: [
+            const Icon(Icons.category, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              item['type'],
+              style: TextStyle(
+                fontSize: 16,
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+              ),
             ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            const Icon(Icons.description, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              item['description'],
+              style: TextStyle(
+                fontSize: 16,
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (item['status'] == 'Pending')
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  // Handle reject action
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                ),
+                child: const Text('Reject'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // Handle approve action
+                  Navigator.pop(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                ),
+                child: const Text('Approve'),
+              ),
+            ],
           )
         else
           Text(
@@ -479,7 +481,7 @@ class ApprovalDetailPopup extends StatelessWidget {
       case 'Rejected':
         return Colors.red;
       default:
-        return Colors.black;
+        return Colors.grey;
     }
   }
 }

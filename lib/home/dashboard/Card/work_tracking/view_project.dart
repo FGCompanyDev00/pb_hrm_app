@@ -16,7 +16,7 @@ class ViewProjectPage extends StatelessWidget {
             Row(
               children: [
                 IconButton(
-                  icon: Icon(Icons.arrow_back),
+                  icon: const Icon(Icons.arrow_back),
                   onPressed: () {
                     Navigator.pop(context);
                   },
@@ -58,14 +58,14 @@ class ViewProjectPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-            Text(
+            const Text(
               'Percent *',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             _buildProgressBar(project['progress']),
             const SizedBox(height: 20),
-            Text(
+            const Text(
               'Member:',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
@@ -84,7 +84,7 @@ class ViewProjectPage extends StatelessWidget {
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 5),
         TextField(
@@ -106,14 +106,14 @@ class ViewProjectPage extends StatelessWidget {
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 5),
         TextField(
           controller: TextEditingController(text: date),
           readOnly: true,
           decoration: InputDecoration(
-            suffixIcon: Icon(Icons.calendar_today),
+            suffixIcon: const Icon(Icons.calendar_today),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.0),
             ),
@@ -136,7 +136,7 @@ class ViewProjectPage extends StatelessWidget {
         const SizedBox(width: 10),
         Text(
           '${(progress * 100).toStringAsFixed(0)}%',
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: Colors.black,

@@ -3,9 +3,11 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_project.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/edit_project.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/view_project.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/project_management_page.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:uuid/uuid.dart';
 
 class WorkTrackingPage extends StatefulWidget {
   const WorkTrackingPage({super.key});
@@ -18,9 +20,10 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
   bool _isMyProjectsSelected = true;
   String _searchText = '';
   String _selectedStatus = 'All Status';
-  final List<String> _statusOptions = ['All Status', 'Pending', 'In Progress', 'Completed'];
+  final List<String> _statusOptions = ['All Status', 'Pending', 'Processing', 'Completed'];
   final List<Map<String, dynamic>> _projects = [
     {
+      'id': const Uuid().v4(),
       'title': 'Human Resource Department',
       'deadline1': '26 Feb 2024',
       'deadline2': '26 Feb 2024',
@@ -29,14 +32,16 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       'author': 'John Doe',
     },
     {
+      'id': const Uuid().v4(),
       'title': 'Finance Department',
       'deadline1': '26 Mar 2024',
       'deadline2': '26 Mar 2024',
-      'status': 'In Progress',
+      'status': 'Processing',
       'progress': 0.6,
       'author': 'Jane Doe',
     },
     {
+      'id': const Uuid().v4(),
       'title': 'IT Department',
       'deadline1': '26 Apr 2024',
       'deadline2': '26 Apr 2024',
@@ -45,14 +50,22 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       'author': 'Alice Smith',
     },
     {
+      'id': const Uuid().v4(),
       'title': 'HR Department',
       'deadline1': '24 Apr 2024',
       'deadline2': '29 Apr 2024',
-      'status': 'In Progress',
+      'status': 'Processing',
       'progress': 0.5,
       'author': 'Mat Khan',
     },
   ];
+
+  void _addProject(Map<String, dynamic> project) {
+    setState(() {
+      project['id'] = const Uuid().v4();
+      _projects.add(project);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,9 +123,9 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                         child: IconButton(
                           icon: const Icon(Icons.add, color: Colors.white, size: 30),
                           onPressed: () {
-                            Navigator.pushReplacement(
+                            Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const AddProjectPage()),
+                              MaterialPageRoute(builder: (context) => AddProjectPage(onAddProject: _addProject)),
                             );
                           },
                         ),
@@ -236,8 +249,8 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
   Widget _buildProjectsList(BuildContext context, bool isDarkMode, {required bool showAuthor}) {
     List<Map<String, dynamic>> filteredProjects = _projects
         .where((project) =>
-            (_selectedStatus == 'All Status' || project['status'] == _selectedStatus) &&
-            (project['title'].toLowerCase().contains(_searchText.toLowerCase())))
+    (_selectedStatus == 'All Status' || project['status'] == _selectedStatus) &&
+        (project['title'].toLowerCase().contains(_searchText.toLowerCase())))
         .toList();
 
     if (filteredProjects.isEmpty) {
@@ -253,15 +266,15 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       padding: const EdgeInsets.all(16.0),
       itemCount: filteredProjects.length,
       itemBuilder: (context, index) {
-        return _buildProjectCard(context, isDarkMode, filteredProjects[index], showAuthor: showAuthor);
+        return _buildProjectCard(context, isDarkMode, filteredProjects[index], index, showAuthor: showAuthor);
       },
     );
   }
 
-  Widget _buildProjectCard(BuildContext context, bool isDarkMode, Map<String, dynamic> project, {bool showAuthor = false}) {
+  Widget _buildProjectCard(BuildContext context, bool isDarkMode, Map<String, dynamic> project, int index, {bool showAuthor = false}) {
     final progressColors = {
       'Pending': Colors.orange,
-      'In Progress': Colors.blue,
+      'Processing': Colors.blue,
       'Completed': Colors.green,
     };
 
@@ -307,7 +320,20 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                     child: SingleChildScrollView(
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: EditProjectPage(project: project),
+                        child: EditProjectPage(
+                          project: project,
+                          onUpdate: (updatedProject) {
+                            setState(() {
+                              _projects[index] = updatedProject;
+                            });
+                          },
+                          onDelete: () {
+                            setState(() {
+                              _projects.removeAt(index);
+                            });
+                            Navigator.pop(context);
+                          },
+                        ),
                       ),
                     ),
                   );
@@ -321,88 +347,98 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           ),
         ],
       ),
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.0),
-        ),
-        elevation: 5,
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: LinearProgressIndicator(
-                      value: project['progress'],
-                      color: progressColors[project['status']],
-                      backgroundColor: Colors.grey.shade300,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${(project['progress'] * 100).toStringAsFixed(0)}%',
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.update,
-                    color: progressColors[project['status']],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Title: ${project['title']}',
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white : Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Dead-line1: ${project['deadline1']}    Dead-line2: ${project['deadline2']}',
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white70 : Colors.black54,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Text(
-                    'Status: ',
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
-                    ),
-                  ),
-                  Text(
-                    project['status'],
-                    style: TextStyle(
-                      color: progressColors[project['status']],
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (showAuthor)
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProjectManagementPage(project: project),
+            ),
+          );
+        },
+        child: Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          elevation: 5,
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
                     Expanded(
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          project['author'],
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.bold,
+                      child: LinearProgressIndicator(
+                        value: project['progress'],
+                        color: progressColors[project['status']],
+                        backgroundColor: Colors.grey.shade300,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${(project['progress'] * 100).toStringAsFixed(0)}%',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.update,
+                      color: progressColors[project['status']],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Title: ${project['title']}',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Dead-line1: ${project['deadline1']}    Dead-line2: ${project['deadline2']}',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      'Status: ',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    Text(
+                      project['status'],
+                      style: TextStyle(
+                        color: progressColors[project['status']],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (showAuthor)
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            project['author'] ?? '',
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

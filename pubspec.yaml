@@ -1,6 +1,6 @@
 name: pb_hrsystem
 description: "A new Flutter project."
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -40,6 +40,7 @@ dependencies:
   device_preview: ^1.2.0
   flutter_slidable: ^3.1.1
   fluttertoast: ^8.2.6
+  uuid: ^4.4.2
 
 dev_dependencies:
   flutter_test:

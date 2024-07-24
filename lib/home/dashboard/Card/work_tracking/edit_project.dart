@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 
 class EditProjectPage extends StatefulWidget {
   final Map<String, dynamic> project;
+  final Function(Map<String, dynamic>) onUpdate;
+  final Function onDelete;
 
-  const EditProjectPage({required this.project});
+  const EditProjectPage({super.key, required this.project, required this.onUpdate, required this.onDelete});
 
   @override
   _EditProjectPageState createState() => _EditProjectPageState();
 }
 
 class _EditProjectPageState extends State<EditProjectPage> {
+  late TextEditingController _nameController;
+  late TextEditingController _deadline1Controller;
+  late TextEditingController _deadline2Controller;
   late String _status;
   late String _branch;
   late String _department;
-  late String _name;
-  late String _deadline1;
-  late String _deadline2;
   late double _progress;
 
   final List<String> _statusOptions = ['Pending', 'Processing', 'Completed'];
@@ -28,10 +31,81 @@ class _EditProjectPageState extends State<EditProjectPage> {
     _status = widget.project['status'];
     _branch = 'HQ office';
     _department = 'Digital Banking Dept';
-    _name = widget.project['title'];
-    _deadline1 = widget.project['deadline1'];
-    _deadline2 = widget.project['deadline2'];
+    _nameController = TextEditingController(text: widget.project['title']);
+    _deadline1Controller = TextEditingController(text: widget.project['deadline1']);
+    _deadline2Controller = TextEditingController(text: widget.project['deadline2']);
     _progress = widget.project['progress'];
+  }
+
+  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null) {
+      setState(() {
+        controller.text = "${picked.toLocal()}".split(' ')[0];
+      });
+    }
+  }
+
+  void _updateProject() {
+    final updatedProject = {
+      'title': _nameController.text,
+      'status': _status,
+      'deadline1': _deadline1Controller.text,
+      'deadline2': _deadline2Controller.text,
+      'progress': _progress,
+    };
+    widget.onUpdate(updatedProject);
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Project Updated'),
+          content: const Text('Your project has been updated successfully.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+                Navigator.pop(context); // Close the edit page
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deleteProject() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Project'),
+          content: const Text('Are you sure you want to delete this project? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                widget.onDelete();
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -45,9 +119,12 @@ class _EditProjectPageState extends State<EditProjectPage> {
             Row(
               children: [
                 IconButton(
-                  icon: Icon(Icons.arrow_back),
+                  icon: const Icon(Icons.arrow_back),
                   onPressed: () {
-                    Navigator.pop(context);
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
+                    );
                   },
                 ),
                 Expanded(
@@ -69,9 +146,9 @@ class _EditProjectPageState extends State<EditProjectPage> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: Icon(Icons.delete),
-                    label: Text('Delete'),
+                    onPressed: _deleteProject,
+                    icon: const Icon(Icons.delete),
+                    label: const Text('Delete'),
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.white, backgroundColor: Colors.grey, // Text color
                       shape: RoundedRectangleBorder(
@@ -83,9 +160,9 @@ class _EditProjectPageState extends State<EditProjectPage> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: Icon(Icons.update),
-                    label: Text('Update'),
+                    onPressed: _updateProject,
+                    icon: const Icon(Icons.update),
+                    label: const Text('Update'),
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.white, backgroundColor: Colors.amber, // Text color
                       shape: RoundedRectangleBorder(
@@ -97,7 +174,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
               ],
             ),
             const SizedBox(height: 20),
-            _buildTextField('Name of Project', _name),
+            _buildTextField('Name of Project', _nameController),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -123,18 +200,18 @@ class _EditProjectPageState extends State<EditProjectPage> {
             const SizedBox(height: 10),
             Row(
               children: [
-                Expanded(child: _buildDateField('Dead-line1', _deadline1)),
+                Expanded(child: _buildDateField('Dead-line1', _deadline1Controller, true)),
                 const SizedBox(width: 10),
-                Expanded(child: _buildDateField('Dead-line2', _deadline2)),
+                Expanded(child: _buildDateField('Dead-line2', _deadline2Controller, false)),
               ],
             ),
             const SizedBox(height: 20),
-            Text(
-              'Percent *',
+            const Text(
+              'Progress',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            _buildProgressBar(_progress),
+            _buildProgressBar(),
             const SizedBox(height: 20),
           ],
         ),
@@ -142,51 +219,45 @@ class _EditProjectPageState extends State<EditProjectPage> {
     );
   }
 
-  Widget _buildTextField(String label, String value) {
+  Widget _buildTextField(String label, TextEditingController controller) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 5),
         TextField(
-          controller: TextEditingController(text: value),
+          controller: controller,
           decoration: InputDecoration(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.0),
             ),
           ),
-          onChanged: (newValue) {
-            setState(() {
-              value = newValue;
-            });
-          },
         ),
       ],
     );
   }
 
-  Widget _buildDropdownField(
-      String label, String value, List<String> options, ValueChanged<String?> onChanged) {
+  Widget _buildDropdownField(String label, String value, List<String> options, ValueChanged<String?> onChanged) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 5),
         DropdownButtonFormField<String>(
           value: value,
           onChanged: onChanged,
-          items: options
-              .map((option) => DropdownMenuItem(
-                    value: option,
-                    child: Text(option),
-                  ))
-              .toList(),
+          items: options.map((option) {
+            return DropdownMenuItem<String>(
+              value: option,
+              child: Text(option),
+            );
+          }).toList(),
           decoration: InputDecoration(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.0),
@@ -197,47 +268,54 @@ class _EditProjectPageState extends State<EditProjectPage> {
     );
   }
 
-  Widget _buildDateField(String label, String date) {
+  Widget _buildDateField(String label, TextEditingController controller, bool isDeadline1) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 5),
-        TextField(
-          controller: TextEditingController(text: date),
-          decoration: InputDecoration(
-            suffixIcon: Icon(Icons.calendar_today),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.0),
+        GestureDetector(
+          onTap: () => _selectDate(context, controller),
+          child: AbsorbPointer(
+            child: TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                suffixIcon: const Icon(Icons.calendar_today),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+              ),
             ),
           ),
-          onChanged: (newValue) {
-            setState(() {
-              date = newValue;
-            });
-          },
         ),
       ],
     );
   }
 
-  Widget _buildProgressBar(double progress) {
+  Widget _buildProgressBar() {
     return Row(
       children: [
         Expanded(
-          child: LinearProgressIndicator(
-            value: progress,
-            color: Colors.yellow,
-            backgroundColor: Colors.grey.shade300,
+          child: Slider(
+            value: _progress,
+            onChanged: (value) {
+              setState(() {
+                _progress = value;
+              });
+            },
+            min: 0,
+            max: 1,
+            divisions: 100,
+            label: '${(_progress * 100).toStringAsFixed(0)}%',
           ),
         ),
         const SizedBox(width: 10),
         Text(
-          '${(progress * 100).toStringAsFixed(0)}%',
-          style: TextStyle(
+          '${(_progress * 100).toStringAsFixed(0)}%',
+          style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: Colors.black,

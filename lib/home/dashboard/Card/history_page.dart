@@ -106,7 +106,7 @@ class _HistoryPageState extends State<HistoryPage> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 48), // Placeholder to center the title
+                      const SizedBox(width: 48),
                     ],
                   ),
                 ),
@@ -182,26 +182,6 @@ class _HistoryPageState extends State<HistoryPage> {
             ],
           ),
         ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.fingerprint),
-            label: 'Fingerprint',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Calendar',
-          ),
-        ],
-        selectedItemColor: Colors.amber[800],
-        onTap: (index) {
-          // Handle bottom navigation tap
-        },
       ),
     );
   }
