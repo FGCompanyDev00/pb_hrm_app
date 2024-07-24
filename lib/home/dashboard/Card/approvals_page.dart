@@ -180,7 +180,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                         child: Text(
                           'Approval',
                           style: TextStyle(
-                            color: _isApprovalSelected ? Colors.black : Colors.black,
+                            color: _isApprovalSelected ? Colors.amber : Colors.black,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -206,7 +206,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                         child: Text(
                           'History',
                           style: TextStyle(
-                            color: _isApprovalSelected ? Colors.black : Colors.black,
+                            color: _isApprovalSelected ? Colors.grey[300] : Colors.black,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
