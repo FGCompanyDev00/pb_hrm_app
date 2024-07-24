@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_project.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/edit_project.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/view_project.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/view_project.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/edit_project.dart';
 
 class WorkTrackingPage extends StatefulWidget {
   const WorkTrackingPage({super.key});
@@ -43,7 +43,8 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       'status': 'Completed',
       'progress': 1.0,
       'author': 'Alice Smith',
-    },{
+    },
+    {
       'title': 'HR Department',
       'deadline1': '24 Apr 2024',
       'deadline2': '29 Apr 2024',
@@ -72,7 +73,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           child: Column(
             children: [
               Container(
-                height: 150,
+                height: 80,
                 decoration: BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage(
@@ -235,8 +236,8 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
   Widget _buildProjectsList(BuildContext context, bool isDarkMode, {required bool showAuthor}) {
     List<Map<String, dynamic>> filteredProjects = _projects
         .where((project) =>
-    (_selectedStatus == 'All Status' || project['status'] == _selectedStatus) &&
-        (project['title'].toLowerCase().contains(_searchText.toLowerCase())))
+            (_selectedStatus == 'All Status' || project['status'] == _selectedStatus) &&
+            (project['title'].toLowerCase().contains(_searchText.toLowerCase())))
         .toList();
 
     if (filteredProjects.isEmpty) {
@@ -270,9 +271,22 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
         children: [
           SlidableAction(
             onPressed: (context) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ViewProjectPage(project: project)),
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (BuildContext context) {
+                  return Container(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.8,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: ViewProjectPage(project: project),
+                      ),
+                    ),
+                  );
+                },
               );
             },
             backgroundColor: Colors.blue,
@@ -282,9 +296,22 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           ),
           SlidableAction(
             onPressed: (context) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => EditProjectPage(project: project)),
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (BuildContext context) {
+                  return Container(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.8,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: EditProjectPage(project: project),
+                      ),
+                    ),
+                  );
+                },
               );
             },
             backgroundColor: Colors.green,

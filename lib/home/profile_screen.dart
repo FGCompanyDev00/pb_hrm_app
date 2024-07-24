@@ -94,6 +94,7 @@ class ProfileScreen extends StatelessWidget {
                   Container(
                     width: double.infinity,
                     height: MediaQuery.of(context).size.height * 0.1,
+                    
                     decoration: BoxDecoration(
                       image: DecorationImage(
                         image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),

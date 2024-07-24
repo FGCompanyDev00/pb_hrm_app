@@ -72,7 +72,7 @@ class _DashboardState extends State<Dashboard> {
           children: [
             if (isDarkMode)
               Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage('assets/darkbg.png'),
                     fit: BoxFit.cover,
@@ -85,12 +85,12 @@ class _DashboardState extends State<Dashboard> {
                   width: double.infinity,
                   height: MediaQuery.of(context).size.height * 0.1,
                   padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     image: DecorationImage(
-                      image: AssetImage('assets/ready_bg.png'),
+                      image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
                       fit: BoxFit.cover,
                     ),
-                    borderRadius: BorderRadius.only(
+                    borderRadius: const BorderRadius.only(
                       bottomLeft: Radius.circular(20),
                       bottomRight: Radius.circular(20),
                     ),

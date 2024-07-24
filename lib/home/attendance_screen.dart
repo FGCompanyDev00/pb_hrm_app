@@ -60,7 +60,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       enableWifiLock: true,
     );
 
-    // Request necessary permissions
     await requestPermissions();
 
     bool initialized = await FlutterBackground.initialize(androidConfig: androidConfig);
@@ -428,7 +427,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildHeaderContent(BuildContext context, bool isDarkMode, Color fingerprintColor, String section) {
-    bool isCheckInEnabled = !_isCheckInActive || _activeSection == section;
+    final now = DateTime.now();
+    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 8, 0); // 8:00 AM
+    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 9, 0); // 9:00 AM
+    bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
+    bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 8);
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -468,7 +471,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   ElevatedButton(
-                    onPressed: isCheckInEnabled ? () => _authenticate(context, true) : null,
+                    onPressed: () {
+                      if (now.isBefore(checkInTimeAllowed)) {
+                        _showCustomDialog(context, 'Too Early', 'Check-in will be available at 8:00 AM.');
+                      } else if (isCheckInEnabled) {
+                        _authenticate(context, true);
+                      } else if (_isCheckInActive) {
+                        _showCustomDialog(context, 'Already Checked In', 'You have already checked in.');
+                      } else {
+                        _showCustomDialog(context, 'Check-In Disabled', 'Check-in is only available between 8:00 AM and 9:00 AM.');
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isCheckInEnabled ? Colors.green : Colors.grey,
                       shape: RoundedRectangleBorder(
@@ -478,9 +491,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     child: const Text('Check In'),
                   ),
                   ElevatedButton(
-                    onPressed: _isCheckInActive && _activeSection == section ? () => _authenticate(context, false) : null,
+                    onPressed: () {
+                      if (_isCheckInActive && !isCheckOutEnabled) {
+                        _showCustomDialog(context, 'Too Early', 'Wait until working hours hit 8 hours of working time.');
+                      } else if (isCheckOutEnabled) {
+                        _authenticate(context, false);
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _isCheckInActive && _activeSection == section ? Colors.red : Colors.grey,
+                      backgroundColor: isCheckOutEnabled ? Colors.red : Colors.grey,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8.0),
                       ),
