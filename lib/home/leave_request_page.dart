@@ -65,7 +65,7 @@ class LeaveManagementPage extends HookWidget {
           }
 
           final response = await http.post(
-            Uri.parse('https://demo-application-api.flexiflows.co/api/leave_request'),
+            Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests'),
             headers: {
               'Content-Type': 'application/json; charset=UTF-8',
               'Authorization': 'Bearer $token',
@@ -81,32 +81,7 @@ class LeaveManagementPage extends HookWidget {
           );
 
           if (response.statusCode == 200 || response.statusCode == 201) {
-            showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  title: Column(
-                    children: [
-                      Image.asset(
-                        'assets/success_icon.png',
-                        height: 60,
-                      ),
-                      const SizedBox(height: 10),
-                      const Text('Success'),
-                    ],
-                  ),
-                  content: const Text('Your leave request has been submitted!'),
-                  actions: <Widget>[
-                    TextButton(
-                      child: const Text('Close'),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ],
-                );
-              },
-            );
+            EasyLoading.showSuccess('Your leave request has been submitted!');
           } else {
             EasyLoading.showError('Failed to submit leave request');
             showDialog(

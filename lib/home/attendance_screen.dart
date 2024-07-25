@@ -429,7 +429,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildHeaderContent(BuildContext context, bool isDarkMode, Color fingerprintColor, String section) {
     final now = DateTime.now();
     final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 8, 0); // 8:00 AM
-    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 9, 0); // 9:00 AM
+    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 13, 0); // 1:00 PM
     bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
     bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 8);
 
