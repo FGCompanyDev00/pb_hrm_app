@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 
 class LeaveManagementPage extends HookWidget {
@@ -22,7 +25,7 @@ class LeaveManagementPage extends HookWidget {
 
     final leaveTypes = ['Holiday Leave', 'Sick Leave', 'Unpaid Leave'];
 
-    Future<void> pickDate(BuildContext context, TextEditingController controller, bool isStartDate) async {
+    Future<void> pickDate(BuildContext context, TextEditingController controller) async {
       DateTime initialDate = DateTime.now();
       DateTime firstDate = DateTime(2000);
       DateTime lastDate = DateTime(2100);
@@ -35,48 +38,115 @@ class LeaveManagementPage extends HookWidget {
       );
 
       if (pickedDate != null) {
-        controller.text = DateFormat('dd-MM-yyyy').format(pickedDate);
+        controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
         if (startDateController.text.isNotEmpty && endDateController.text.isNotEmpty) {
-          final startDate = DateFormat('dd-MM-yyyy').parse(startDateController.text);
-          final endDate = DateFormat('dd-MM-yyyy').parse(endDateController.text);
+          final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
+          final endDate = DateFormat('yyyy-MM-dd').parse(endDateController.text);
           final difference = endDate.difference(startDate).inDays + 1;
           daysController.text = difference.toString();
         }
       }
     }
 
-    void saveData() {
+    Future<void> saveData() async {
       if (typeController.text.isNotEmpty &&
           descriptionController.text.isNotEmpty &&
           startDateController.text.isNotEmpty &&
           endDateController.text.isNotEmpty &&
           daysController.text.isNotEmpty) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Column(
-                children: [
-                  Image.asset(
-                    'assets/success_icon.png',
-                    height: 60,
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final token = prefs.getString('token');
+          final userId = prefs.getString('userId');
+
+          if (token == null || userId == null) {
+            EasyLoading.showError('User not authenticated');
+            return;
+          }
+
+          final response = await http.post(
+            Uri.parse('https://demo-application-api.flexiflows.co/api/leave_request'),
+            headers: {
+              'Content-Type': 'application/json; charset=UTF-8',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({
+              'leave_type_id': 17,
+              'take_leave_reason': descriptionController.text,
+              'take_leave_from': startDateController.text,
+              'take_leave_to': endDateController.text,
+              'days': int.parse(daysController.text),
+              'user_id': userId,
+            }),
+          );
+
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: Column(
+                    children: [
+                      Image.asset(
+                        'assets/success_icon.png',
+                        height: 60,
+                      ),
+                      const SizedBox(height: 10),
+                      const Text('Success'),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  const Text('Success'),
-                ],
-              ),
-              content: const Text('Your data has been saved!'),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text('Close'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
+                  content: const Text('Your leave request has been submitted!'),
+                  actions: <Widget>[
+                    TextButton(
+                      child: const Text('Close'),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                );
+              },
             );
-          },
-        );
+          } else {
+            EasyLoading.showError('Failed to submit leave request');
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Error'),
+                  content: Text('Failed to submit leave request. Status code: ${response.statusCode}'),
+                  actions: <Widget>[
+                    TextButton(
+                      child: const Text('Close'),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                );
+              },
+            );
+          }
+        } catch (e) {
+          EasyLoading.showError('Error: $e');
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Error'),
+                content: Text('An error occurred: $e'),
+                actions: <Widget>[
+                  TextButton(
+                    child: const Text('Close'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        }
       } else {
         EasyLoading.showError('Please fill in all fields');
         showDialog(
@@ -211,7 +281,7 @@ class LeaveManagementPage extends HookWidget {
                                   ),
                                 ),
                                 style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                                onTap: () => pickDate(context, startDateController, true),
+                                onTap: () => pickDate(context, startDateController),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -227,7 +297,7 @@ class LeaveManagementPage extends HookWidget {
                                   ),
                                 ),
                                 style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                                onTap: () => pickDate(context, endDateController, false),
+                                onTap: () => pickDate(context, endDateController),
                               ),
                             ),
                           ],

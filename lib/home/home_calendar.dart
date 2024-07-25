@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/home/popups/EventDetailsPopup.dart';
+import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
+import 'package:pb_hrsystem/home/popups/event_details_popups.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
@@ -112,14 +113,20 @@ class _HomeCalendarState extends State<HomeCalendar> {
         ),
       );
     } else {
-      final newEvent = await Navigator.push<Event?>(
+      final newEvent = await Navigator.push<Map<String, dynamic>>(
         context,
         MaterialPageRoute(
-          builder: (context) => AddEventScreen(eventType: eventType),
+          builder: (context) => const OfficeAddEventPage(),
         ),
       );
       if (newEvent != null) {
-        _addEvent(newEvent.title, newEvent.startDateTime, newEvent.endDateTime, newEvent.description, newEvent.attendees);
+        _addEvent(
+          newEvent['title'],
+          newEvent['startDateTime'],
+          newEvent['endDateTime'],
+          newEvent['description'] ?? '',
+          newEvent['attendees'] ?? 0,
+        );
       }
     }
   }
@@ -239,7 +246,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                       shape: BoxShape.rectangle,
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    selectedDecoration: BoxDecoration(
+                    selectedDecoration: const BoxDecoration(
                       color: Colors.yellow,
                       shape: BoxShape.rectangle,
                     ),
@@ -418,209 +425,6 @@ class Event {
   String toString() => title;
 }
 
-class AddEventScreen extends StatefulWidget {
-  final String eventType;
-  const AddEventScreen({required this.eventType, super.key});
-
-  @override
-  _AddEventScreenState createState() => _AddEventScreenState();
-}
-
-class _AddEventScreenState extends State<AddEventScreen> {
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  DateTime _startDateTime = DateTime.now();
-  DateTime _endDateTime = DateTime.now();
-  int _attendeesCount = 1;
-
-  @override
-  Widget build(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: Center(child: Text('Add ${widget.eventType} Event')),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: IconThemeData(color: brightness == Brightness.dark ? Colors.white : Colors.black),
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/background.png',
-              fit: BoxFit.cover,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: kToolbarHeight + 20),
-                  TextField(
-                    controller: _titleController,
-                    decoration: InputDecoration(
-                      labelText: 'Event Title',
-                      labelStyle: TextStyle(color: brightness == Brightness.dark ? Colors.white : Colors.black),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      filled: true,
-                      fillColor: brightness == Brightness.dark ? Colors.black45 : Colors.white.withOpacity(0.8),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _descriptionController,
-                    decoration: InputDecoration(
-                      labelText: 'Event Description',
-                      labelStyle: TextStyle(color: brightness == Brightness.dark ? Colors.white : Colors.black),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      filled: true,
-                      fillColor: brightness == Brightness.dark ? Colors.black45 : Colors.white.withOpacity(0.8),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  ListTile(
-                    title: Text(
-                      'Start: ${DateFormat.yMd().add_jm().format(_startDateTime)}',
-                      style: TextStyle(color: brightness == Brightness.dark ? Colors.white : Colors.black),
-                    ),
-                    trailing: const Icon(Icons.calendar_today, color: Colors.black),
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: _startDateTime,
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                      );
-                      if (date != null) {
-                        final time = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.fromDateTime(_startDateTime),
-                        );
-                        if (time != null) {
-                          setState(() {
-                            _startDateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-                          });
-                        }
-                      }
-                    },
-                  ),
-                  ListTile(
-                    title: Text(
-                      'End: ${DateFormat.yMd().add_jm().format(_endDateTime)}',
-                      style: TextStyle(color: brightness == Brightness.dark ? Colors.white : Colors.black),
-                    ),
-                    trailing: const Icon(Icons.calendar_today, color: Colors.black),
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: _endDateTime,
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                      );
-                      if (date != null) {
-                        final time = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.fromDateTime(_endDateTime),
-                        );
-                        if (time != null) {
-                          setState(() {
-                            _endDateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
-                          });
-                        }
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Duration: ${_endDateTime.difference(_startDateTime).inDays} days',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: brightness == Brightness.dark ? Colors.white : Colors.black),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Text('Attendees:', style: TextStyle(color: brightness == Brightness.dark ? Colors.white : Colors.black)),
-                      const SizedBox(width: 10),
-                      IconButton(
-                        icon: Icon(Icons.remove, color: brightness == Brightness.dark ? Colors.white : Colors.black),
-                        onPressed: () {
-                          setState(() {
-                            if (_attendeesCount > 1) {
-                              _attendeesCount--;
-                            }
-                          });
-                        },
-                      ),
-                      Text(_attendeesCount.toString(), style: TextStyle(color: brightness == Brightness.dark ? Colors.white : Colors.black)),
-                      IconButton(
-                        icon: Icon(Icons.add, color: brightness == Brightness.dark ? Colors.white : Colors.black),
-                        onPressed: () {
-                          setState(() {
-                            _attendeesCount++;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        elevation: 0,
-                      ),
-                      onPressed: () {
-                        final event = Event(
-                          _titleController.text,
-                          _startDateTime,
-                          _endDateTime,
-                          _descriptionController.text,
-                          _attendeesCount,
-                        );
-                        Navigator.pop(context, event);
-                      },
-                      child: Ink(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Colors.yellow, Colors.orange],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        child: Container(
-                          constraints: const BoxConstraints(maxWidth: double.infinity, minHeight: 50.0),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'Add Event',
-                            style: TextStyle(fontSize: 16, color: Colors.black),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class CustomEventBox extends StatelessWidget {
   final Event event;
   final bool isDarkMode;
@@ -687,7 +491,7 @@ class CustomEventBox extends StatelessWidget {
             Row(
               children: List.generate(
                 event.attendees > 10 ? 10 : event.attendees,
-                (index) {
+                    (index) {
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 2.0),
                     width: 24,
@@ -719,9 +523,9 @@ class CustomEventBox extends StatelessWidget {
         ),
         trailing: event.attendees > 10
             ? CircleAvatar(
-                backgroundColor: Colors.grey,
-                child: Text('+${event.attendees - 10}', style: const TextStyle(color: Colors.black)),
-              )
+          backgroundColor: Colors.grey,
+          child: Text('+${event.attendees - 10}', style: const TextStyle(color: Colors.black)),
+        )
             : null,
       ),
     );

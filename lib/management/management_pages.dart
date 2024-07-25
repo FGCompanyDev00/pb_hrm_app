@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ManagementApprovalsPage extends StatefulWidget {
   const ManagementApprovalsPage({super.key});
@@ -11,54 +14,87 @@ class ManagementApprovalsPage extends StatefulWidget {
 
 class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
   bool _isApprovalSelected = true;
+  List<Map<String, dynamic>> _items = [];
+  String? _userId;
 
-  final List<Map<String, dynamic>> _items = [
-    {
-      'title': 'Meeting and Booking meeting room',
-      'date': 'Date: 01-05-2024\n8:30 To 12:00',
-      'room': 'Room: Back can yon 2F',
-      'status': 'Approved',
-      'icon': Icons.meeting_room,
-      'type': 'Meeting Room Booking',
-      'description': 'Booking for meeting room at Back Canyon 2F.',
-    },
-    {
-      'title': 'Phoutthalom',
-      'date': 'Date: 01-05-2024\n8:30 To 12:00',
-      'room': 'Tel: 02078656511',
-      'status': 'Pending',
-      'icon': Icons.directions_car,
-      'type': 'Company Car Reservation',
-      'description': 'Reservation of company car for official use.',
-    },
-    {
-      'title': 'Phoutthalom Douangphila',
-      'date': 'Date: 01-05-2024\n8:30 To 12:00',
-      'room': 'Type: sick leave',
-      'status': 'Pending',
-      'icon': Icons.event,
-      'type': 'Leave Request',
-      'description': 'Request for sick leave.',
-    },
-    {
-      'title': 'Phoutthalom',
-      'date': 'Date: 01-05-2024\n8:30 To 12:00',
-      'room': 'Tel: 02078656511',
-      'status': 'Rejected',
-      'icon': Icons.directions_car,
-      'type': 'Company Car Reservation',
-      'description': 'Reservation of company car for official use.',
-    },
-    {
-      'title': 'Meeting and Booking meeting room',
-      'date': 'Date: 01-05-2024\n8:30 To 12:00',
-      'room': 'Room: Back can yon 2F',
-      'status': 'Approved',
-      'icon': Icons.meeting_room,
-      'type': 'Meeting Room Booking',
-      'description': 'Booking for meeting room at Back Canyon 2F.',
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchApprovalsData();
+  }
+
+  Future<void> _fetchApprovalsData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    _userId = prefs.getString('userId'); // Fetch user ID from shared preferences
+
+    if (token == null || _userId == null) {
+      // Handle missing token or user ID
+      print('Token or userId is null');
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        print('Response received: ${response.body}');
+        final List<dynamic> results = json.decode(response.body)['results'];
+        print('Parsed results: $results');
+
+        setState(() {
+          _items = results.map((item) => Map<String, dynamic>.from(item)).toList();
+        });
+      } else {
+        // Handle error
+        print('Failed to load data: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Handle error
+      print('Error: $e');
+    }
+  }
+
+  Future<void> _updateApprovalStatus(Map<String, dynamic> item, String status) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      // Handle missing token
+      print('Token is null');
+      return;
+    }
+
+    try {
+      final response = await http.put(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests/${item['take_leave_request_id']}'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, String>{
+          'is_approve': status,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          item['status'] = status;
+          _items.removeWhere((i) => i['take_leave_request_id'] == item['take_leave_request_id']);
+          _items.add(item);
+        });
+      } else {
+        // Handle error
+        print('Failed to update data: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Handle error
+      print('Error: $e');
+    }
+  }
 
   Color _getStatusColor(String status) {
     switch (status) {
@@ -78,8 +114,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    final List<Map<String, dynamic>> approvalItems = _items.where((item) => item['status'] == 'Pending').toList();
-    final List<Map<String, dynamic>> historyItems = _items.where((item) => item['status'] != 'Pending').toList();
+    final List<Map<String, dynamic>> approvalItems = _items.where((item) => item['is_approve'] == 'Waiting').toList();
+    final List<Map<String, dynamic>> historyItems = _items.where((item) => item['is_approve'] != 'Waiting').toList();
 
     return Scaffold(
       body: Column(
@@ -113,7 +149,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                   child: Padding(
                     padding: const EdgeInsets.only(top: 20.0),
                     child: Text(
-                      'Approvals',
+                      'Management Approvals',
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
                         fontSize: 24,
@@ -206,7 +242,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       child: Card(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8.0),
-          side: BorderSide(color: _getStatusColor(item['status'])),
+          side: BorderSide(color: _getStatusColor(item['is_approve'])),
         ),
         elevation: 5,
         margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -216,8 +252,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
-                item['icon'],
-                color: _getStatusColor(item['status']),
+                Icons.event_note,
+                color: _getStatusColor(item['is_approve']),
                 size: 40,
               ),
               const SizedBox(width: 16),
@@ -226,7 +262,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item['title'],
+                      item['name'] ?? 'No Title',
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
                         fontWeight: FontWeight.bold,
@@ -235,14 +271,21 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      item['date'],
+                      'From: ${item['take_leave_from']} To: ${item['take_leave_to']}',
                       style: TextStyle(
                         color: isDarkMode ? Colors.white70 : Colors.black54,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      item['room'],
+                      'Days: ${item['days']}',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      item['take_leave_reason'] ?? 'No Reason',
                       style: TextStyle(
                         color: isDarkMode ? Colors.white70 : Colors.black54,
                       ),
@@ -259,11 +302,11 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(item['status']),
+                            color: _getStatusColor(item['is_approve']),
                             borderRadius: BorderRadius.circular(4.0),
                           ),
                           child: Text(
-                            item['status'],
+                            item['is_approve'],
                             style: const TextStyle(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
@@ -276,8 +319,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                 ),
               ),
               const SizedBox(width: 16),
-              const CircleAvatar(
-                backgroundImage: AssetImage('assets/avatar_placeholder.png'),
+              CircleAvatar(
+                backgroundImage: NetworkImage(item['img_path'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
                 radius: 30,
               ),
             ],
@@ -295,7 +338,12 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
         return SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: ApprovalDetailPopup(item: item, isDarkMode: isDarkMode),
+            child: ApprovalDetailPopup(
+              item: item,
+              isDarkMode: isDarkMode,
+              onApprove: () => _updateApprovalStatus(item, 'Approved'),
+              onReject: () => _updateApprovalStatus(item, 'Rejected'),
+            ),
           ),
         );
       },
@@ -306,13 +354,20 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
 class ApprovalDetailPopup extends StatelessWidget {
   final Map<String, dynamic> item;
   final bool isDarkMode;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
 
-  const ApprovalDetailPopup({super.key, required this.item, required this.isDarkMode});
+  const ApprovalDetailPopup({
+    super.key,
+    required this.item,
+    required this.isDarkMode,
+    required this.onApprove,
+    required this.onReject,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Splitting the date string safely
-    final dateParts = item['date']?.split('\n') ?? [''];
+    final dateParts = item['take_leave_from']?.split('\n') ?? [''];
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -328,8 +383,8 @@ class ApprovalDetailPopup extends StatelessWidget {
         const SizedBox(height: 16),
         Row(
           children: [
-            const CircleAvatar(
-              backgroundImage: AssetImage('assets/avatar_placeholder.png'),
+            CircleAvatar(
+              backgroundImage: NetworkImage(item['img_path'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
               radius: 30,
             ),
             const SizedBox(width: 16),
@@ -337,7 +392,7 @@ class ApprovalDetailPopup extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Ms. Zhao Lusi',
+                  item['requestor_name'] ?? 'No Name',
                   style: TextStyle(
                     fontSize: 16,
                     color: isDarkMode ? Colors.white : Colors.black,
@@ -345,7 +400,7 @@ class ApprovalDetailPopup extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Submitted on 26 Feb 2024 - 11:30:00',
+                  'Submitted on ${item['created_at']}',
                   style: TextStyle(
                     fontSize: 14,
                     color: isDarkMode ? Colors.white70 : Colors.black54,
@@ -357,7 +412,7 @@ class ApprovalDetailPopup extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          item['title'],
+          item['name'] ?? 'No Title',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -434,25 +489,19 @@ class ApprovalDetailPopup extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        if (item['status'] == 'Pending')
+        if (item['is_approve'] == 'Waiting')
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               ElevatedButton(
-                onPressed: () {
-                  // Handle reject action
-                  Navigator.pop(context);
-                },
+                onPressed: onReject,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
                 ),
                 child: const Text('Reject'),
               ),
               ElevatedButton(
-                onPressed: () {
-                  // Handle approve action
-                  Navigator.pop(context);
-                },
+                onPressed: onApprove,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                 ),
@@ -462,10 +511,10 @@ class ApprovalDetailPopup extends StatelessWidget {
           )
         else
           Text(
-            'This request has been ${item['status'].toLowerCase()}.',
+            'This request has been ${item['is_approve'].toLowerCase()}.',
             style: TextStyle(
               fontSize: 16,
-              color: _getStatusColor(item['status']),
+              color: _getStatusColor(item['is_approve']),
             ),
           ),
       ],
