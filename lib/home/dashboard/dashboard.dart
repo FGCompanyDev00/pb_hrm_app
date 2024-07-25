@@ -7,7 +7,8 @@ import 'package:pb_hrsystem/home/dashboard/Card/inventory_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/kpi_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/profile_screen.dart';
-import 'package:pb_hrsystem/management/management_pages.dart';
+import 'package:pb_hrsystem/roles.dart';
+import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +17,7 @@ import 'package:pb_hrsystem/home/myprofile_page.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
 import 'package:pb_hrsystem/home/notification/notification_page.dart';
+import 'package:pb_hrsystem/management/management_pages.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -65,6 +67,7 @@ class _DashboardState extends State<Dashboard> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
+    final currentUser = Provider.of<UserProvider>(context).currentUser;
 
     return WillPopScope(
       onWillPop: () async => false,
@@ -74,7 +77,7 @@ class _DashboardState extends State<Dashboard> {
             if (isDarkMode)
               Container(
                 decoration: const BoxDecoration(
-                  image: const DecorationImage(
+                  image: DecorationImage(
                     image: AssetImage('assets/darkbg.png'),
                     fit: BoxFit.cover,
                   ),
@@ -311,10 +314,21 @@ class _DashboardState extends State<Dashboard> {
                                   );
                                 }),
                                 _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const StaffApprovalsPage()),
-                                  );
+                                  if ([
+                                    UserRole.managersst,
+                                    UserRole.managersbh,
+                                    UserRole.managerkt
+                                  ].contains(currentUser.role)) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const ManagementApprovalsPage()),
+                                    );
+                                  } else {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const StaffApprovalsPage()),
+                                    );
+                                  }
                                 }),
                                 _buildActionCard(context, 'assets/firstline.png', 'KPI', isDarkMode, () {
                                   Navigator.push(
@@ -332,12 +346,6 @@ class _DashboardState extends State<Dashboard> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(builder: (context) => const InventoryPage()),
-                                  );
-                                }),
-                                _buildActionCard(context, 'assets/success_icon.png', 'Management Page', isDarkMode, () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const ManagementApprovalsPage()),
                                   );
                                 }),
                               ],

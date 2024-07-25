@@ -1,29 +1,26 @@
+import 'package:flutter/material.dart';
+
 import 'roles.dart';
 
 class User {
-  final String id;
-  final String name;
-  final String surname;
-  final String role;
-  final String email;
+  String id;
+  String name;
+  String role;
 
-  User({
-    required this.id,
-    required this.name,
-    required this.surname,
-    required this.role,
-    required this.email,
-  });
+  User({required this.id, required this.name, required this.role});
 
-  List<String> get permissions => UserRole.permissions[role] ?? [];
+  bool hasPermission(String permission) {
+    return UserRole.permissions[role]?.contains(permission) ?? false;
+  }
+}
 
-  factory User.fromJson(Map<String, dynamic> json) {
-    return User(
-      id: json['id'].toString(),
-      name: json['name'],
-      surname: json['surname'],
-      role: json['role'],
-      email: json['email'],
-    );
+class UserProvider extends ChangeNotifier {
+  User _currentUser = User(id: '1', name: 'Default User', role: UserRole.john);
+
+  User get currentUser => _currentUser;
+
+  void updateUser(User user) {
+    _currentUser = user;
+    notifyListeners();
   }
 }
