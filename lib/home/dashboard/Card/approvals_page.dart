@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,7 +29,6 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
     final token = prefs.getString('token');
 
     if (token == null) {
-      // Handle missing token
       print('Token is null');
       return;
     }
@@ -40,10 +40,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
       );
 
       if (response.statusCode == 200) {
-        print('Response received: ${response.body}');
         final List<dynamic> results = json.decode(response.body)['results'];
-        print('Parsed results: $results');
-
         final List<Map<String, dynamic>> approvalItems = results
             .where((item) => item['is_approve'] == 'Waiting')
             .map((item) => Map<String, dynamic>.from(item))
@@ -56,15 +53,11 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
         setState(() {
           _approvalItems = approvalItems;
           _historyItems = historyItems;
-          print('Approval Items: $_approvalItems');
-          print('History Items: $_historyItems');
         });
       } else {
-        // Handle error
         print('Failed to load data: ${response.statusCode}');
       }
     } catch (e) {
-      // Handle error
       print('Error: $e');
     }
   }
@@ -95,6 +88,52 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
               isDarkMode: isDarkMode,
             ),
           ),
+        );
+      },
+    );
+  }
+
+  void _showEditApproval(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: EditApprovalPopup(
+              item: item,
+              isDarkMode: isDarkMode,
+              onSave: (editedItem) {
+                setState(() {
+                  final index = _approvalItems.indexWhere((i) => i['id'] == editedItem['id']);
+                  if (index != -1) {
+                    _approvalItems[index] = editedItem;
+                  }
+                });
+                Navigator.pop(context);
+                _showConfirmationDialog(context);
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Confirmation'),
+          content: const Text('The changes have been saved successfully.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
         );
       },
     );
@@ -213,11 +252,19 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16.0),
-              children: _isApprovalSelected
-                  ? approvalItems.map((item) => _buildApprovalCard(context, item, isDarkMode)).toList()
-                  : historyItems.map((item) => _buildApprovalCard(context, item, isDarkMode)).toList(),
+            child: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+                  fit: BoxFit.cover,
+                ),
+              ),
+              child: ListView(
+                padding: const EdgeInsets.all(16.0),
+                children: _isApprovalSelected
+                    ? approvalItems.map((item) => _buildApprovalCard(context, item, isDarkMode)).toList()
+                    : historyItems.map((item) => _buildApprovalCard(context, item, isDarkMode)).toList(),
+              ),
             ),
           ),
         ],
@@ -226,10 +273,32 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
   }
 
   Widget _buildApprovalCard(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
-    return GestureDetector(
-      onTap: () {
-        _showApprovalDetail(context, item, isDarkMode);
-      },
+    return Slidable(
+      key: Key(item['id'].toString()),
+      startActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        children: [
+          SlidableAction(
+            onPressed: (context) => _showEditApproval(context, item, isDarkMode),
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            icon: Icons.edit,
+            label: 'Edit',
+          ),
+        ],
+      ),
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        children: [
+          SlidableAction(
+            onPressed: (context) => _showApprovalDetail(context, item, isDarkMode),
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            icon: Icons.visibility,
+            label: 'View',
+          ),
+        ],
+      ),
       child: Card(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8.0),
@@ -334,9 +403,6 @@ class ApprovalDetailPopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Splitting the date string safely
-    final dateParts = item['take_leave_from']?.split('\n') ?? [''];
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -451,7 +517,7 @@ class ApprovalDetailPopup extends StatelessWidget {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'Pending':
+      case 'Waiting':
         return Colors.amber;
       case 'Approved':
         return Colors.green;
@@ -460,5 +526,103 @@ class ApprovalDetailPopup extends StatelessWidget {
       default:
         return Colors.black;
     }
+  }
+}
+
+class EditApprovalPopup extends StatefulWidget {
+  final Map<String, dynamic> item;
+  final bool isDarkMode;
+  final ValueChanged<Map<String, dynamic>> onSave;
+
+  const EditApprovalPopup({
+    super.key,
+    required this.item,
+    required this.isDarkMode,
+    required this.onSave,
+  });
+
+  @override
+  _EditApprovalPopupState createState() => _EditApprovalPopupState();
+}
+
+class _EditApprovalPopupState extends State<EditApprovalPopup> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _reasonController;
+
+  @override
+  void initState() {
+    super.initState();
+    _reasonController = TextEditingController(text: widget.item['take_leave_reason']);
+  }
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = widget.isDarkMode;
+
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Edit Request',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _reasonController,
+            decoration: InputDecoration(
+              labelText: 'Reason',
+              labelStyle: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
+            ),
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter a reason';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              if (_formKey.currentState!.validate()) {
+                final editedItem = {
+                  'id': widget.item['id'],
+                  'name': widget.item['name'],
+                  'take_leave_reason': _reasonController.text,
+                  'take_leave_from': widget.item['take_leave_from'],
+                  'take_leave_to': widget.item['take_leave_to'],
+                };
+                widget.onSave(editedItem);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              foregroundColor: Colors.black, backgroundColor: isDarkMode ? Colors.grey[800] : Colors.amber,
+            ),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 }

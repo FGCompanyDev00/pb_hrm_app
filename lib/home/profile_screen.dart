@@ -6,7 +6,6 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
-import 'package:cross_file/cross_file.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -19,7 +18,7 @@ class ProfileScreen extends StatelessWidget {
       final tempDir = await getTemporaryDirectory();
       final file = await File('${tempDir.path}/qr_code.png').create();
       await file.writeAsBytes(list);
-      
+
       await Share.shareXFiles([XFile(file.path)], text: 'Check out my QR code!');
     } catch (e) {
       debugPrint('Error sharing QR code: $e');
@@ -42,7 +41,7 @@ class ProfileScreen extends StatelessWidget {
       final ByteData bytes = await rootBundle.load('assets/qr_code.png');
       final Uint8List list = bytes.buffer.asUint8List();
       final result = await ImageGallerySaver.saveImage(list, quality: 100, name: "qr_code");
-      
+
       if (result['isSuccess']) {
         Fluttertoast.showToast(
           msg: "QR Code downloaded successfully",
@@ -75,15 +74,12 @@ class ProfileScreen extends StatelessWidget {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          if (isDarkMode)
-            Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/darkbg.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
+          Positioned.fill(
+            child: Image.asset(
+              isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png',
+              fit: BoxFit.cover,
             ),
+          ),
           Center(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -93,14 +89,10 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   Container(
                     width: double.infinity,
-                    height: MediaQuery.of(context).size.height * 0.1,
-                    
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-                        fit: BoxFit.cover,
-                      ),
-                      borderRadius: const BorderRadius.only(
+                    padding: const EdgeInsets.symmetric(vertical: 10.0),
+                    decoration: const BoxDecoration(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.only(
                         bottomLeft: Radius.circular(10),
                         bottomRight: Radius.circular(10),
                       ),

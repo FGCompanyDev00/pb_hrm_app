@@ -270,28 +270,30 @@ class _SettingsPageState extends State<SettingsPage> {
             child: profileImage == null ? const Icon(Icons.person, size: 35) : null,
           ),
           const SizedBox(width: 20),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black, // Always black
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black, // Always black
+                  ),
                 ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                email,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey, // Always grey
+                const SizedBox(height: 5),
+                Text(
+                  email,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey, // Always grey
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const Spacer(),
           IconButton(
             icon: const Icon(Icons.edit, color: Colors.black),
             onPressed: () {
@@ -340,7 +342,6 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
-
 }
 
 class UserProfile {

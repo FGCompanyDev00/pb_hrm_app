@@ -479,7 +479,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       } else if (_isCheckInActive) {
                         _showCustomDialog(context, 'Already Checked In', 'You have already checked in.');
                       } else {
-                        _showCustomDialog(context, 'Check-In Disabled', 'Check-in is only available between 8:00 AM and 9:00 AM.');
+                        _showCustomDialog(context, 'Check-In Disabled', 'Check-in is only available between 8:00 AM and 1:00 PM.');
                       }
                     },
                     style: ElevatedButton.styleFrom(
