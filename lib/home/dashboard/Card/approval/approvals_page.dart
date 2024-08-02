@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+import 'approvals_view_page.dart'; // Import the approvals_view_page.dart
 
 class StaffApprovalsPage extends StatefulWidget {
   const StaffApprovalsPage({super.key});
@@ -22,6 +23,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
   void initState() {
     super.initState();
     _fetchApprovalsData();
+    _moveExpiredApprovalsToHistory(); // Check and move expired approvals
   }
 
   Future<void> _fetchApprovalsData() async {
@@ -62,6 +64,23 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
     }
   }
 
+  void _moveExpiredApprovalsToHistory() {
+    final now = DateTime.now();
+    setState(() {
+      _approvalItems.removeWhere((item) {
+        final timestamp = DateTime.parse(item['timestamp']);
+        if (now.difference(timestamp).inHours >= 24) {
+          if (item['is_approve'] == 'Waiting') {
+            item['is_approve'] = 'Waiting';
+          }
+          _historyItems.add(item);
+          return true;
+        }
+        return false;
+      });
+    });
+  }
+
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Waiting':
@@ -71,25 +90,16 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
       case 'Rejected':
         return Colors.red;
       default:
-        return Colors.black;
+        return Colors.white;
     }
   }
 
   void _showApprovalDetail(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ApprovalDetailPopup(
-              item: item,
-              isDarkMode: isDarkMode,
-            ),
-          ),
-        );
-      },
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ApprovalsViewPage(item: item), // Navigate to approvals_view_page.dart
+      ),
     );
   }
 
@@ -388,144 +398,6 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
         ),
       ),
     );
-  }
-}
-
-class ApprovalDetailPopup extends StatelessWidget {
-  final Map<String, dynamic> item;
-  final bool isDarkMode;
-
-  const ApprovalDetailPopup({
-    super.key,
-    required this.item,
-    required this.isDarkMode,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'Requestor',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-            color: isDarkMode ? Colors.white : Colors.black,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            CircleAvatar(
-              backgroundImage: NetworkImage(item['img_path'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-              radius: 30,
-            ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item['requestor_name'] ?? 'No Name',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Submitted on ${item['created_at']}',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Text(
-          item['name'] ?? 'No Title',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: isDarkMode ? Colors.white : Colors.black,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            const Icon(Icons.calendar_today, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              'From: ${item['take_leave_from']} To: ${item['take_leave_to']}',
-              style: TextStyle(
-                fontSize: 16,
-                color: isDarkMode ? Colors.white70 : Colors.black54,
-              ),
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            const Icon(Icons.access_time, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              'Days: ${item['days']}',
-              style: TextStyle(
-                fontSize: 16,
-                color: isDarkMode ? Colors.white70 : Colors.black54,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            const Icon(Icons.book, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              item['take_leave_reason'] ?? 'No Reason',
-              style: TextStyle(
-                fontSize: 16,
-                color: isDarkMode ? Colors.white70 : Colors.black54,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (item['is_approve'] == 'Waiting')
-          const Text(
-            'Your request is pending and being processed.',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.amber,
-            ),
-          )
-        else
-          Text(
-            'This request has been ${item['is_approve'].toLowerCase()}.',
-            style: TextStyle(
-              fontSize: 16,
-              color: _getStatusColor(item['is_approve']),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Waiting':
-        return Colors.amber;
-      case 'Approved':
-        return Colors.green;
-      case 'Rejected':
-        return Colors.red;
-      default:
-        return Colors.black;
-    }
   }
 }
 

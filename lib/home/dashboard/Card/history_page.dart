@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+import 'dart:async';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -21,6 +22,7 @@ class _HistoryPageState extends State<HistoryPage> {
       'statusColor': Colors.amber,
       'icon': Icons.meeting_room,
       'iconColor': Colors.green,
+      'timestamp': DateTime.now().subtract(Duration(hours: 25)), // Example time
     },
     {
       'title': 'Phoutthalom',
@@ -30,6 +32,7 @@ class _HistoryPageState extends State<HistoryPage> {
       'statusColor': Colors.amber,
       'icon': Icons.directions_car,
       'iconColor': Colors.blue,
+      'timestamp': DateTime.now(),
     },
     {
       'title': 'Phoutthalom Douangphila',
@@ -39,6 +42,7 @@ class _HistoryPageState extends State<HistoryPage> {
       'statusColor': Colors.amber,
       'icon': Icons.event,
       'iconColor': Colors.orange,
+      'timestamp': DateTime.now().subtract(Duration(hours: 30)), // Example time
     },
   ];
 
@@ -62,6 +66,27 @@ class _HistoryPageState extends State<HistoryPage> {
       'iconColor': Colors.red,
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _moveExpiredPendingItems();
+  }
+
+  void _moveExpiredPendingItems() {
+    final now = DateTime.now();
+    setState(() {
+      _pendingItems.removeWhere((item) {
+        final timestamp = item['timestamp'] as DateTime;
+        if (now.difference(timestamp).inHours >= 24) {
+          // Move item to history if more than 24 hours have passed
+          _historyItems.add(item);
+          return true; // Remove from pending items
+        }
+        return false;
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
