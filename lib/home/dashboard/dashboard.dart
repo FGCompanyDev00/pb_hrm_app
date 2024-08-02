@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:carousel_slider/carousel_slider.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/history_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approval/approvals_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/inventory_page.dart';
@@ -29,11 +28,14 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   bool _hasUnreadNotifications = true;
   late Future<UserProfile> futureUserProfile;
+  late PageController _pageController;
+  int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
     futureUserProfile = fetchUserProfile();
+    _pageController = PageController(initialPage: _currentPage);
   }
 
   Future<UserProfile> fetchUserProfile() async {
@@ -61,6 +63,12 @@ class _DashboardState extends State<Dashboard> {
     setState(() {
       futureUserProfile = fetchUserProfile();
     });
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -191,45 +199,41 @@ class _DashboardState extends State<Dashboard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CarouselSlider(
-                          options: CarouselOptions(
-                            height: 150.0,
-                            enlargeCenterPage: true,
-                            autoPlay: true,
-                            aspectRatio: 16 / 9,
-                            autoPlayCurve: Curves.fastOutSlowIn,
-                            enableInfiniteScroll: true,
-                            autoPlayAnimationDuration: const Duration(milliseconds: 800),
-                            viewportFraction: 0.8,
-                          ),
-                          items: [
-                            'assets/banner1.png',
-                            'assets/banner2.png',
-                            'assets/banner3.png'
-                          ].map((i) {
-                            return Builder(
-                              builder: (BuildContext context) {
-                                return Container(
-                                  width: MediaQuery.of(context).size.width,
-                                  margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    image: DecorationImage(
-                                      image: AssetImage(i),
-                                      fit: BoxFit.cover,
-                                    ),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 10,
-                                        offset: Offset(0, 4),
-                                      ),
-                                    ],
+                        SizedBox(
+                          height: 150.0,
+                          child: PageView.builder(
+                            controller: _pageController,
+                            itemCount: 3, // or the length of your banners list
+                            onPageChanged: (int index) {
+                              setState(() {
+                                _currentPage = index;
+                              });
+                            },
+                            itemBuilder: (context, index) {
+                              final banners = [
+                                'assets/banner1.png',
+                                'assets/banner2.png',
+                                'assets/banner3.png'
+                              ];
+                              return Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 5.0),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  image: DecorationImage(
+                                    image: AssetImage(banners[index]),
+                                    fit: BoxFit.cover,
                                   ),
-                                );
-                              },
-                            );
-                          }).toList(),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black26,
+                                      blurRadius: 10,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Row(
