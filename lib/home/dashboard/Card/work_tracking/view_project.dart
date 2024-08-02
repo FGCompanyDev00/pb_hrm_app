@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class ViewProjectPage extends StatelessWidget {
   final Map<String, dynamic> project;
 
-  const ViewProjectPage({super.key, required this.project});
+  const ViewProjectPage({required this.project});
 
   @override
   Widget build(BuildContext context) {

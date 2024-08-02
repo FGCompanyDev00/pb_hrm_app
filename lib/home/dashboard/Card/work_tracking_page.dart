@@ -8,7 +8,6 @@ import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
-import 'package:uuid/uuid.dart';
 
 class WorkTrackingPage extends StatefulWidget {
   const WorkTrackingPage({super.key});
@@ -53,7 +52,6 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
 
   void _addProject(Map<String, dynamic> project) {
     setState(() {
-      project['id'] = const Uuid().v4();
       _projects.add(project);
     });
   }
@@ -421,7 +419,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Project ID: ${project['project_id']}',
+                  'Project ID: ${project['project_id']}', // Correct field name for project ID
                   style: TextStyle(
                     color: isDarkMode ? Colors.white70 : Colors.black54,
                   ),
