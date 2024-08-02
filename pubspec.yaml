@@ -1,0 +1,87 @@
+name: pb_hrsystem
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '3.4.4'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  carousel_slider: ^4.0.0
+  cupertino_icons: ^1.0.8
+  http: ^1.2.1
+  flutter_local_notifications: ^17.2.1+1
+  permission_handler: ^11.3.1
+  intl: any
+  flutter_localization: ^0.2.0
+  flutter_localizations:
+    sdk: flutter
+  provider: ^6.1.2
+  table_calendar: ^3.1.2
+  local_auth: ^2.2.0
+  flutter_hooks: ^0.18.0
+  hooks_riverpod: ^1.0.0
+  flutter_staggered_animations: ^1.0.0
+  flutter_easyloading: ^3.0.5
+  google_fonts: ^6.2.1
+  responsive_framework: ^0.1.0
+  shared_preferences: ^2.2.3
+  convex_bottom_bar: ^3.2.0
+  share_plus: ^9.0.0
+  path_provider: ^2.1.3
+  image_gallery_saver: '^2.0.3'
+  cross_file: ^0.3.4+1
+  flutter_background: ^1.2.0
+  image_picker: ^1.1.2
+  device_preview: ^1.2.0
+  flutter_slidable: ^3.1.1
+  fluttertoast: ^8.2.6
+  uuid: ^4.4.2
+  file_picker: ^8.0.6
+  flutter_sound: ^9.8.1
+  visibility_detector: ^0.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.1.7
+  intl_generator: any
+
+flutter:
+  generate: true
+  uses-material-design: true
+
+  assets:
+    - assets/background.png
+    - assets/logo.png
+    - assets/notification_image.png
+    - assets/location_image.png
+    - assets/camera_image.png
+    - assets/ready_image.png
+    - assets/ready_bg.png
+    - assets/home_banner.png
+    - assets/profile_picture.png
+    - assets/qr_code.png
+    - assets/darkbg.png
+    - assets/bg_2.png
+    - assets/success_icon.png
+    - assets/banner1.png
+    - assets/banner2.png
+    - assets/banner3.png
+    - assets/flags/english.png
+    - assets/flags/laos.png
+    - assets/flags/chinese.png
+    - assets/avatar_placeholder.png
+    - assets/data-2.png
+    - assets/firstline.png
+    - assets/people.png
+    - assets/shop-add.png
+    - assets/status-up.png
+    - assets/Vector.png
+    - assets/Vector-1.png
+    - assets/Vector-2.png

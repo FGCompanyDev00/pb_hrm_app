@@ -1,0 +1,22 @@
+workflows:
+  my-workflow:
+    name: Build and Test
+    environment:
+      flutter: 3.13.0-0.1.pre
+      xcode: latest
+    scripts:
+      - name: Install dependencies
+        script: flutter pub get
+      - name: Run tests
+        script: flutter test
+      - name: Build iOS
+        script: flutter build ios --release
+      - name: Build Android
+        script: flutter build apk --release
+    artifacts:
+      - build/ios/ipa
+      - build/app/outputs/flutter-apk/app-release.apk
+    publishing:
+      email:
+        recipients:
+          - muhdfaiznasir00@gmail.com
