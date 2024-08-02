@@ -90,7 +90,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
       case 'Rejected':
         return Colors.red;
       default:
-        return Colors.black;
+        return Colors.white;
     }
   }
 
