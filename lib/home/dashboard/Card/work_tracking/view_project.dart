@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class ViewProjectPage extends StatelessWidget {
   final Map<String, dynamic> project;
 
-  const ViewProjectPage({required this.project});
+  const ViewProjectPage({super.key, required this.project});
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +24,7 @@ class ViewProjectPage extends StatelessWidget {
                 Expanded(
                   child: Center(
                     child: Text(
-                      'View',
+                      'View Project',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -36,41 +36,26 @@ class ViewProjectPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-            _buildTextField('Create person', project['author']),
+            _buildTextField('Created by', project['create_project_by']),
             const SizedBox(height: 10),
-            _buildTextField('Name of Project', project['title']),
+            _buildTextField('Name of Project', project['p_name']),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(child: _buildTextField('Status', project['status'])),
-                const SizedBox(width: 10),
-                Expanded(child: _buildTextField('Branch', 'HQ office')),
-              ],
-            ),
+            _buildTextField('Department', project['d_name']),
             const SizedBox(height: 10),
-            _buildTextField('Department', 'Digital Banking Dept'),
+            _buildTextField('Branch', project['b_name']),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(child: _buildDateField('Dead-line1', project['deadline1'])),
-                const SizedBox(width: 10),
-                Expanded(child: _buildDateField('Dead-line2', project['deadline2'])),
-              ],
-            ),
+            _buildTextField('Status', project['s_name']),
+            const SizedBox(height: 10),
+            _buildDateField('Deadline', project['dl']),
+            const SizedBox(height: 10),
+            _buildDateField('Extended Deadline', project['extend']),
             const SizedBox(height: 20),
             const Text(
-              'Percent *',
+              'Progress',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            _buildProgressBar(project['progress']),
-            const SizedBox(height: 20),
-            const Text(
-              'Member:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            _buildMemberAvatars(),
+            _buildProgressBar(project['precent']),
             const SizedBox(height: 20),
           ],
         ),
@@ -78,7 +63,7 @@ class ViewProjectPage extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField(String label, String value) {
+  Widget _buildTextField(String label, String? value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -88,7 +73,7 @@ class ViewProjectPage extends StatelessWidget {
         ),
         const SizedBox(height: 5),
         TextField(
-          controller: TextEditingController(text: value),
+          controller: TextEditingController(text: value ?? ''),
           readOnly: true,
           decoration: InputDecoration(
             border: OutlineInputBorder(
@@ -100,7 +85,7 @@ class ViewProjectPage extends StatelessWidget {
     );
   }
 
-  Widget _buildDateField(String label, String date) {
+  Widget _buildDateField(String label, String? date) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -110,7 +95,7 @@ class ViewProjectPage extends StatelessWidget {
         ),
         const SizedBox(height: 5),
         TextField(
-          controller: TextEditingController(text: date),
+          controller: TextEditingController(text: date ?? ''),
           readOnly: true,
           decoration: InputDecoration(
             suffixIcon: const Icon(Icons.calendar_today),
@@ -123,19 +108,20 @@ class ViewProjectPage extends StatelessWidget {
     );
   }
 
-  Widget _buildProgressBar(double progress) {
+  Widget _buildProgressBar(String? progressStr) {
+    double progress = double.tryParse(progressStr ?? '0.0') ?? 0.0;
     return Row(
       children: [
         Expanded(
           child: LinearProgressIndicator(
-            value: progress,
+            value: progress / 100,
             color: Colors.yellow,
             backgroundColor: Colors.grey.shade300,
           ),
         ),
         const SizedBox(width: 10),
         Text(
-          '${(progress * 100).toStringAsFixed(0)}%',
+          '${progress.toStringAsFixed(0)}%',
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -143,20 +129,6 @@ class ViewProjectPage extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildMemberAvatars() {
-    return Row(
-      children: List.generate(5, (index) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4.0),
-          child: CircleAvatar(
-            backgroundImage: AssetImage('assets/member$index.png'),
-            radius: 20,
-          ),
-        );
-      }),
     );
   }
 }

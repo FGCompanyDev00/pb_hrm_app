@@ -5,6 +5,7 @@ import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/edit_project.dart'
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/view_project.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/project_management_page.dart';
 import 'package:pb_hrsystem/main.dart';
+import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:uuid/uuid.dart';
@@ -21,50 +22,56 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
   String _searchText = '';
   String _selectedStatus = 'All Status';
   final List<String> _statusOptions = ['All Status', 'Pending', 'Processing', 'Completed'];
-  final List<Map<String, dynamic>> _projects = [
-    {
-      'id': const Uuid().v4(),
-      'title': 'Human Resource Department',
-      'deadline1': '26 Feb 2024',
-      'deadline2': '26 Feb 2024',
-      'status': 'Pending',
-      'progress': 0.3,
-      'author': 'John Doe',
-    },
-    {
-      'id': const Uuid().v4(),
-      'title': 'Finance Department',
-      'deadline1': '26 Mar 2024',
-      'deadline2': '26 Mar 2024',
-      'status': 'Processing',
-      'progress': 0.6,
-      'author': 'Jane Doe',
-    },
-    {
-      'id': const Uuid().v4(),
-      'title': 'IT Department',
-      'deadline1': '26 Apr 2024',
-      'deadline2': '26 Apr 2024',
-      'status': 'Completed',
-      'progress': 1.0,
-      'author': 'Alice Smith',
-    },
-    {
-      'id': const Uuid().v4(),
-      'title': 'HR Department',
-      'deadline1': '24 Apr 2024',
-      'deadline2': '29 Apr 2024',
-      'status': 'Processing',
-      'progress': 0.5,
-      'author': 'Mat Khan',
-    },
-  ];
+  List<Map<String, dynamic>> _projects = [];
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProjects();
+  }
+
+  void _fetchProjects() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      if (_isMyProjectsSelected) {
+        _projects = await WorkTrackingService().fetchMyProjects();
+      } else {
+        _projects = await WorkTrackingService().fetchAllProjects();
+      }
+    } catch (e) {
+      _showErrorDialog(e.toString());
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
   void _addProject(Map<String, dynamic> project) {
     setState(() {
       project['id'] = const Uuid().v4();
       _projects.add(project);
     });
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -85,135 +92,89 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
         body: SafeArea(
           child: Column(
             children: [
-              Container(
-                height: 80,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage(
-                      isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png',
-                    ),
-                    fit: BoxFit.cover,
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
-                        onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const MainScreen()),
-                          );
-                        },
-                      ),
-                      Text(
-                        'Work Tracking',
-                        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
-                      ),
-                      CircleAvatar(
-                        radius: 25,
-                        backgroundColor: Colors.green,
-                        child: IconButton(
-                          icon: const Icon(Icons.add, color: Colors.white, size: 30),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => AddProjectPage(onAddProject: _addProject)),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              _buildHeader(isDarkMode),
               const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  children: [
-                    _buildTabButton('My Project', _isMyProjectsSelected, () {
-                      setState(() {
-                        _isMyProjectsSelected = true;
-                      });
-                    }),
-                    const SizedBox(width: 8),
-                    _buildTabButton('All Project', !_isMyProjectsSelected, () {
-                      setState(() {
-                        _isMyProjectsSelected = false;
-                      });
-                    }),
-                  ],
-                ),
-              ),
+              _buildTabs(),
               const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: 'Search name',
-                          hintStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
-                          filled: true,
-                          fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                            borderSide: BorderSide.none,
-                          ),
-                          prefixIcon: Icon(Icons.search, color: isDarkMode ? Colors.white : Colors.black),
-                        ),
-                        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                        onChanged: (value) {
-                          setState(() {
-                            _searchText = value;
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    DropdownButton<String>(
-                      value: _selectedStatus,
-                      icon: Icon(Icons.arrow_downward, color: isDarkMode ? Colors.white : Colors.black),
-                      iconSize: 24,
-                      elevation: 16,
-                      style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                      underline: Container(
-                        height: 2,
-                        color: Colors.transparent,
-                      ),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedStatus = newValue!;
-                        });
-                      },
-                      items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
+              _buildSearchBar(isDarkMode),
               const SizedBox(height: 8),
-              Expanded(
-                child: _isMyProjectsSelected
-                    ? _buildProjectsList(context, isDarkMode, showAuthor: false)
-                    : _buildProjectsList(context, isDarkMode, showAuthor: true),
-              ),
+              Expanded(child: _isLoading ? _buildLoading() : _buildProjectsList(context, isDarkMode)),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(bool isDarkMode) {
+    return Container(
+      height: 80,
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+          fit: BoxFit.cover,
+        ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MainScreen()),
+                );
+              },
+            ),
+            Text(
+              'Work Tracking',
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            CircleAvatar(
+              radius: 25,
+              backgroundColor: Colors.green,
+              child: IconButton(
+                icon: const Icon(Icons.add, color: Colors.white, size: 30),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => AddProjectPage(onAddProject: _addProject)),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabs() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        children: [
+          _buildTabButton('My Project', _isMyProjectsSelected, () {
+            setState(() {
+              _isMyProjectsSelected = true;
+              _fetchProjects();
+            });
+          }),
+          const SizedBox(width: 8),
+          _buildTabButton('All Project', !_isMyProjectsSelected, () {
+            setState(() {
+              _isMyProjectsSelected = false;
+              _fetchProjects();
+            });
+          }),
+        ],
       ),
     );
   }
@@ -246,11 +207,69 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     );
   }
 
-  Widget _buildProjectsList(BuildContext context, bool isDarkMode, {required bool showAuthor}) {
+  Widget _buildSearchBar(bool isDarkMode) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Search name',
+                hintStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+                filled: true,
+                fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                  borderSide: BorderSide.none,
+                ),
+                prefixIcon: Icon(Icons.search, color: isDarkMode ? Colors.white : Colors.black),
+              ),
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              onChanged: (value) {
+                setState(() {
+                  _searchText = value;
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          DropdownButton<String>(
+            value: _selectedStatus,
+            icon: Icon(Icons.arrow_downward, color: isDarkMode ? Colors.white : Colors.black),
+            iconSize: 24,
+            elevation: 16,
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+            underline: Container(
+              height: 2,
+              color: Colors.transparent,
+            ),
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedStatus = newValue!;
+              });
+            },
+            items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoading() {
+    return const Center(child: CircularProgressIndicator());
+  }
+
+  Widget _buildProjectsList(BuildContext context, bool isDarkMode) {
     List<Map<String, dynamic>> filteredProjects = _projects
         .where((project) =>
-    (_selectedStatus == 'All Status' || project['status'] == _selectedStatus) &&
-        (project['title'].toLowerCase().contains(_searchText.toLowerCase())))
+    (_selectedStatus == 'All Status' || project['s_name'] == _selectedStatus) &&
+        (project['p_name']?.toLowerCase()?.contains(_searchText.toLowerCase()) ?? false))
         .toList();
 
     if (filteredProjects.isEmpty) {
@@ -266,18 +285,19 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       padding: const EdgeInsets.all(16.0),
       itemCount: filteredProjects.length,
       itemBuilder: (context, index) {
-        return _buildProjectCard(context, isDarkMode, filteredProjects[index], index, showAuthor: showAuthor);
+        return _buildProjectCard(context, isDarkMode, filteredProjects[index], index);
       },
     );
   }
 
-  Widget _buildProjectCard(BuildContext context, bool isDarkMode, Map<String, dynamic> project, int index, {bool showAuthor = false}) {
+  Widget _buildProjectCard(BuildContext context, bool isDarkMode, Map<String, dynamic> project, int index) {
     final progressColors = {
       'Pending': Colors.orange,
       'Processing': Colors.blue,
       'Completed': Colors.green,
     };
 
+    double progress = double.tryParse(project['precent']?.toString() ?? '0.0') ?? 0.0;
     return Slidable(
       startActionPane: ActionPane(
         motion: const DrawerMotion(),
@@ -371,14 +391,14 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                   children: [
                     Expanded(
                       child: LinearProgressIndicator(
-                        value: project['progress'],
-                        color: progressColors[project['status']],
+                        value: progress / 100,
+                        color: progressColors[project['s_name']],
                         backgroundColor: Colors.grey.shade300,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${(project['progress'] * 100).toStringAsFixed(0)}%',
+                      '${project['precent']}%',
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
                         fontWeight: FontWeight.bold,
@@ -387,13 +407,13 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                     const SizedBox(width: 8),
                     Icon(
                       Icons.update,
-                      color: progressColors[project['status']],
+                      color: progressColors[project['s_name']],
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Title: ${project['title']}',
+                  'Title: ${project['p_name']}',
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black,
                     fontWeight: FontWeight.bold,
@@ -401,14 +421,14 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Project ID: ${project['id']}',
+                  'Project ID: ${project['project_id']}',
                   style: TextStyle(
                     color: isDarkMode ? Colors.white70 : Colors.black54,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Dead-line1: ${project['deadline1']}    Dead-line2: ${project['deadline2']}',
+                  'Deadline: ${project['dl']}',
                   style: TextStyle(
                     color: isDarkMode ? Colors.white70 : Colors.black54,
                   ),
@@ -423,25 +443,12 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                       ),
                     ),
                     Text(
-                      project['status'],
+                      project['s_name'] ?? 'Unknown',
                       style: TextStyle(
-                        color: progressColors[project['status']],
+                        color: progressColors[project['s_name']] ?? Colors.grey,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (showAuthor)
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            project['author'] ?? '',
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ],

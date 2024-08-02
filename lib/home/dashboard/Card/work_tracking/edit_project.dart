@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
+import 'package:pb_hrsystem/services/work_tracking_service.dart';
 
 class EditProjectPage extends StatefulWidget {
   final Map<String, dynamic> project;
@@ -28,13 +29,13 @@ class _EditProjectPageState extends State<EditProjectPage> {
   @override
   void initState() {
     super.initState();
-    _status = widget.project['status'];
-    _branch = 'HQ office';
-    _department = 'Digital Banking Dept';
-    _nameController = TextEditingController(text: widget.project['title']);
-    _deadline1Controller = TextEditingController(text: widget.project['deadline1']);
-    _deadline2Controller = TextEditingController(text: widget.project['deadline2']);
-    _progress = widget.project['progress'];
+    _status = widget.project['s_name'] ?? 'Pending';
+    _branch = 'HQ office'; // Assuming default; replace with actual data if available
+    _department = 'Digital Banking Dept'; // Assuming default; replace with actual data if available
+    _nameController = TextEditingController(text: widget.project['p_name']);
+    _deadline1Controller = TextEditingController(text: widget.project['dl']);
+    _deadline2Controller = TextEditingController(text: widget.project['extend']);
+    _progress = (double.tryParse(widget.project['precent']?.toString() ?? '0') ?? 0) / 100;
   }
 
   Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
@@ -51,60 +52,67 @@ class _EditProjectPageState extends State<EditProjectPage> {
     }
   }
 
-  void _updateProject() {
+  Future<void> _updateProject() async {
     final updatedProject = {
-      'title': _nameController.text,
-      'status': _status,
-      'deadline1': _deadline1Controller.text,
-      'deadline2': _deadline2Controller.text,
-      'progress': _progress,
+      "project_name": _nameController.text,
+      "department_id": "147", // Replace with actual selected department ID
+      "branch_id": "1", // Replace with actual selected branch ID
+      "status_id": "40d2ba5e-a978-47ce-bc48-caceca8668e9", // Replace with actual status ID
+      "precent_of_project": (_progress * 100).toStringAsFixed(0),
+      "deadline": _deadline1Controller.text,
+      "extended": _deadline2Controller.text,
     };
-    widget.onUpdate(updatedProject);
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Project Updated'),
-          content: const Text('Your project has been updated successfully.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close the dialog
-                Navigator.pop(context); // Close the edit page
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
+
+    try {
+      await WorkTrackingService().updateProject(widget.project['project_id'], updatedProject);
+      widget.onUpdate(updatedProject);
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Project Updated'),
+            content: const Text('Your project has been updated successfully.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                  Navigator.pop(context); // Close the edit page
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      _showErrorDialog(e.toString());
+    }
   }
 
-  void _deleteProject() {
+  Future<void> _deleteProject() async {
+    try {
+      await WorkTrackingService().deleteProject(widget.project['project_id']);
+      widget.onDelete();
+      Navigator.pop(context);
+      Navigator.pop(context);
+    } catch (e) {
+      _showErrorDialog(e.toString());
+    }
+  }
+
+  void _showErrorDialog(String message) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Project'),
-          content: const Text('Are you sure you want to delete this project? This action cannot be undone.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                widget.onDelete();
-                Navigator.pop(context);
-                Navigator.pop(context);
-              },
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -121,16 +129,13 @@ class _EditProjectPageState extends State<EditProjectPage> {
                 IconButton(
                   icon: const Icon(Icons.arrow_back),
                   onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
-                    );
+                    Navigator.pop(context);
                   },
                 ),
                 Expanded(
                   child: Center(
                     child: Text(
-                      'Edit',
+                      'Edit Project',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -200,9 +205,9 @@ class _EditProjectPageState extends State<EditProjectPage> {
             const SizedBox(height: 10),
             Row(
               children: [
-                Expanded(child: _buildDateField('Dead-line1', _deadline1Controller, true)),
+                Expanded(child: _buildDateField('Deadline', _deadline1Controller)),
                 const SizedBox(width: 10),
-                Expanded(child: _buildDateField('Dead-line2', _deadline2Controller, false)),
+                Expanded(child: _buildDateField('Extended Deadline', _deadline2Controller)),
               ],
             ),
             const SizedBox(height: 20),
@@ -268,7 +273,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
     );
   }
 
-  Widget _buildDateField(String label, TextEditingController controller, bool isDeadline1) {
+  Widget _buildDateField(String label, TextEditingController controller) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
