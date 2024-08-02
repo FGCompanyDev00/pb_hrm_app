@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/history_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approvals_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approval/approvals_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/inventory_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/kpi_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
