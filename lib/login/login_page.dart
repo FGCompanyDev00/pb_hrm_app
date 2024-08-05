@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pb_hrsystem/login/forgot_password_page.dart';
 import 'package:pb_hrsystem/login/notification_page.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 
 class LoginPage extends StatefulWidget {
@@ -30,6 +32,7 @@ class _LoginPageState extends State<LoginPage> {
   late Timer _timer;
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final _storage = const FlutterSecureStorage(); // Secure storage instance
 
   @override
   void initState() {
@@ -84,6 +87,14 @@ class _LoginPageState extends State<LoginPage> {
       } else {
         _clearCredentials();
       }
+
+      // Save the credentials securely if biometric is enabled
+      if (_biometricEnabled) {
+        await _storage.write(key: 'username', value: username);
+        await _storage.write(key: 'password', value: password);
+        await _storage.write(key: 'biometricEnabled', value: 'true');
+      }
+
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const NotificationPage()),
@@ -115,10 +126,13 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     if (authenticated) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const NotificationPage()),
-      );
+      String? username = await _storage.read(key: 'username');
+      String? password = await _storage.read(key: 'password');
+      if (username != null && password != null) {
+        _usernameController.text = username;
+        _passwordController.text = password;
+        _login(); // Login automatically using stored credentials
+      }
     } else {
       _showCustomDialog(context, 'Authentication Failed', 'Failed to authenticate using biometrics.');
     }
@@ -148,9 +162,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _loadBiometricSetting() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool? isEnabled = await _storage.read(key: 'biometricEnabled') == 'true';
     setState(() {
-      _biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
+      _biometricEnabled = isEnabled ?? false;
     });
   }
 
@@ -197,6 +211,21 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  Widget _buildForgotPasswordButton(BuildContext context) {
+    return TextButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
+        );
+      },
+      child: Text(
+        AppLocalizations.of(context)!.forgotPassword,
+        style: const TextStyle(color: Colors.black),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     var languageNotifier = Provider.of<LanguageNotifier>(context);
@@ -231,6 +260,7 @@ class _LoginPageState extends State<LoginPage> {
                   _buildRememberMeCheckbox(context),
                   const SizedBox(height: 20),
                   _buildLoginButton(context),
+                  _buildForgotPasswordButton(context),
                   const SizedBox(height: 20),
                   _buildAuthenticationIcons(),
                 ],

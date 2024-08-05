@@ -66,5 +66,9 @@
   "waiting": "等待中",
   "processing": "处理中",
   "myProject": "我的项目",
-  "allProject": "所有项目"
+  "allProject": "所有项目",
+  "forgotPassword": "忘记密码",
+  "email": "电子邮件",
+  "sendResetLink": "发送重置链接",
+  "enterYourEmail": "请输入您的电子邮件"
 }

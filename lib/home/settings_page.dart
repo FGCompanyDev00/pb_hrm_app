@@ -11,6 +11,7 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -21,6 +22,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final LocalAuthentication auth = LocalAuthentication();
+  final _storage = const FlutterSecureStorage(); // Secure storage instance
   bool _biometricEnabled = false;
   late Future<UserProfile> futureUserProfile;
 
@@ -32,15 +34,14 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadBiometricSetting() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool? isEnabled = await _storage.read(key: 'biometricEnabled') == 'true';
     setState(() {
-      _biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
+      _biometricEnabled = isEnabled ?? false;
     });
   }
 
   Future<void> _saveBiometricSetting(bool enabled) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setBool('biometricEnabled', enabled);
+    await _storage.write(key: 'biometricEnabled', value: enabled.toString());
   }
 
   Future<bool> _onWillPop() async {
@@ -85,6 +86,7 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _biometricEnabled = false;
       });
+      await _storage.deleteAll(); // Remove all stored credentials
       _saveBiometricSetting(false);
     }
   }

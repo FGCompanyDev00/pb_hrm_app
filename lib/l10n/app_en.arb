@@ -67,5 +67,9 @@
   "waiting":"Waiting",
   "processing":"Processing",
   "myProject":"My Project",
-  "allProject":"All Project"
+  "allProject":"All Project",
+  "forgotPassword":"Forgot Password",
+  "email":"Email",
+  "sendResetLink":"Send Reset Link",
+  "enterYourEmail":"Enter Your Email"
 }

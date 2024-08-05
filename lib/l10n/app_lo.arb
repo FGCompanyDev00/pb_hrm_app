@@ -66,5 +66,9 @@
   "waiting": "ລໍຖ້າ",
   "processing": "ກຳລັງດຳເນີນການ",
   "myProject": "ໂຄງການຂອງຂ້ອຍ",
-  "allProject": "ໂຄງການທັງໝົດ"
+  "allProject": "ໂຄງການທັງໝົດ",
+  "forgotPassword": "ລືມລະຫັດຜ່ານ",
+  "email": "ອີເມວ",
+  "sendResetLink": "ສົ່ງລິ້ງຕັ້ງຄ່າໃໝ່",
+  "enterYourEmail": "ກະລຸນາປ້ອນອີເມວຂອງທ່ານ"
 }
