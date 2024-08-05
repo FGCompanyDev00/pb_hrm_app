@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_people_page.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
+import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 
 class AddProjectPage extends StatefulWidget {
   final Function(Map<String, dynamic>) onAddProject;
@@ -55,19 +57,88 @@ class AddProjectPageState extends State<AddProjectPage> {
     }
   }
 
-  void _addProject() {
+  Future<void> _addProject() async {
     if (_formKey.currentState!.validate()) {
+      final String projectId = const Uuid().v4();
       final newProject = {
-        'title': _projectNameController.text,
-        'status': _selectedStatus,
-        'deadline1': _deadline1Controller.text,
-        'deadline2': _deadline2Controller.text,
-        'progress': _progress,
-        'author': 'Author Name', // This can be dynamic or fetched from user data
+        'project_name': _projectNameController.text,
+        'department_id': '1', // Map this to the actual selected department ID
+        'branch_id': '1', // Map this to the actual selected branch ID
+        'status_id': '40d2ba5e-a978-47ce-bc48-caceca8668e9', // Example status ID
+        'precent_of_project': (_progress * 100).toStringAsFixed(0),
+        'deadline': _deadline1Controller.text,
+        'extended': _deadline2Controller.text,
+        'project_id': projectId,
       };
-      widget.onAddProject(newProject);
-      Navigator.pop(context);
+
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Confirm Add Project'),
+            content: const Text('Are you sure you want to add this project?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop(); // Close the confirmation dialog
+                  try {
+                    await WorkTrackingService().addProject(newProject);
+                    widget.onAddProject(newProject);
+                    _showSuccessDialog(); // Show success message and navigate back
+                  } catch (e) {
+                    _showErrorDialog(e.toString());
+                  }
+                },
+                child: const Text('Confirm'),
+              ),
+            ],
+          );
+        },
+      );
     }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Project Added'),
+        content: const Text('Your project has been added successfully.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close the success dialog
+              Navigator.of(context).pop(); // Close the add project page
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
+              );
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -145,11 +216,11 @@ class AddProjectPageState extends State<AddProjectPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildDateField('Deadline 1', _deadline1Controller, isDarkMode),
+                      child: _buildDateField('Deadline', _deadline1Controller, isDarkMode),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: _buildDateField('Deadline 2', _deadline2Controller, isDarkMode),
+                      child: _buildDateField('Extended Deadline', _deadline2Controller, isDarkMode),
                     ),
                   ],
                 ),
@@ -164,23 +235,6 @@ class AddProjectPageState extends State<AddProjectPage> {
                 ),
                 const SizedBox(height: 10),
                 _buildProgressBar(isDarkMode),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const AddPeoplePage()),
-                    );
-                  },
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('Add People'),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white, backgroundColor: Colors.green,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
