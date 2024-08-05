@@ -10,7 +10,7 @@
         android:required="false" />
 
     <application android:requestLegacyExternalStorage="true"
-        android:label="PBHR"
+        android:label="PBHS"
         android:icon="@mipmap/logo">
 
         <activity

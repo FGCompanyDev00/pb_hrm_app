@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
-
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -89,9 +89,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     height: 150,
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    "Welcome to PBHR",
-                    style: TextStyle(
+                   Text(
+                     AppLocalizations.of(context)!.welcomeToPBHR,
+                    style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
