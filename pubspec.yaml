@@ -86,4 +86,4 @@ flutter:
     - assets/Vector.png
     - assets/Vector-1.png
     - assets/Vector-2.png
-    - lib/l10n
+    - lib/l10n/
