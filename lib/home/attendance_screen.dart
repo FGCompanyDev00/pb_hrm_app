@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter_background/flutter_background.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Add this
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -19,6 +20,7 @@ class AttendanceScreen extends StatefulWidget {
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
   final LocalAuthentication auth = LocalAuthentication();
+  final _storage = const FlutterSecureStorage(); // Secure storage instance
   bool _canCheckBiometrics = false;
   bool _biometricEnabled = false;
   List<BiometricType> _availableBiometrics = [];
@@ -108,9 +110,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _loadBiometricSetting() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool? isEnabled = await _storage.read(key: 'biometricEnabled') == 'true';
     setState(() {
-      _biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
+      _biometricEnabled = isEnabled ?? false;
     });
   }
 
@@ -224,16 +226,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             _timer?.cancel(); // Stop the timer on check-out
             _saveAttendanceRecord();
             _clearCurrentSession(); // Clear current session data
+            _showWorkingHoursDialog(context); // Show working hours
           }
         }
       });
-
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return _buildPopupDialog(context, isCheckIn);
-        },
-      );
     } else {
       _showCustomDialog(context, 'Authentication Failed', isCheckIn ? 'Check In Failed' : 'Check Out Failed');
     }
@@ -283,6 +279,49 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               const SizedBox(height: 16),
               Text(
                 message,
+                style: const TextStyle(fontSize: 18),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDAA520), // gold color
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showWorkingHoursDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.access_time, color: Colors.blue, size: 50),
+              const SizedBox(height: 16),
+              const Text(
+                'Work Summary',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'You worked for ${_workingHours.toString().split('.').first.padLeft(8, '0')} hours today.',
                 style: const TextStyle(fontSize: 18),
               ),
               const SizedBox(height: 16),
