@@ -121,17 +121,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
-  Future<void> _loadAttendanceRecords() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? attendanceRecords = prefs.getString('attendanceRecords');
-    if (attendanceRecords != null) {
-      setState(() {
-        _attendanceRecords = Map<String, List<Map<String, String>>>.from(
-          jsonDecode(attendanceRecords) as Map<String, dynamic>,
+Future<void> _loadAttendanceRecords() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? attendanceRecords = prefs.getString('attendanceRecords');
+  if (attendanceRecords != null) {
+    setState(() {
+      // Decode and cast the data safely
+      final decodedData = jsonDecode(attendanceRecords) as Map<String, dynamic>;
+      _attendanceRecords = decodedData.map((key, value) {
+        // Explicitly cast each item in the list to Map<String, String>
+        List<Map<String, String>> castedList = List<Map<String, String>>.from(
+          value.map((item) => Map<String, String>.from(item)),
         );
+        return MapEntry(key, castedList);
       });
-    }
+    });
   }
+}
+
 
   Future<void> _saveAttendanceRecords() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
