@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
 class KpiPage extends StatelessWidget {
-  const KpiPage({super.key});
+  const KpiPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('KPI'),
+        title: Text('KPI'),
       ),
-      body: const Center(
+      body: Center(
         child: Text('KPI Page'),
       ),
     );

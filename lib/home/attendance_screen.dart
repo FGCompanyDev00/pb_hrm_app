@@ -1,15 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:local_auth/local_auth.dart';
-import 'package:provider/provider.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_background/flutter_background.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:convert';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Add this
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:flutter_background/flutter_background.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -20,7 +22,7 @@ class AttendanceScreen extends StatefulWidget {
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
   final LocalAuthentication auth = LocalAuthentication();
-  final _storage = const FlutterSecureStorage(); // Secure storage instance
+  final _storage = const FlutterSecureStorage();
   bool _canCheckBiometrics = false;
   bool _biometricEnabled = false;
   List<BiometricType> _availableBiometrics = [];
@@ -36,6 +38,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   String _currentSection = 'Home';
   bool _isCheckInActive = false;
   String _activeSection = '';
+
+  static const double _allowedDistance = 500; // 500 meters
+  static const LatLng _officeLocation = LatLng(3.1390, 101.6869); // Coordinates for Kementerian Pendidikan Malaysia
 
   @override
   void initState() {
@@ -116,17 +121,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
-  Future<void> _loadAttendanceRecords() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? attendanceRecords = prefs.getString('attendanceRecords');
-    if (attendanceRecords != null) {
-      setState(() {
-        _attendanceRecords = Map<String, List<Map<String, String>>>.from(
-          jsonDecode(attendanceRecords) as Map<String, dynamic>,
+Future<void> _loadAttendanceRecords() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? attendanceRecords = prefs.getString('attendanceRecords');
+  if (attendanceRecords != null) {
+    setState(() {
+      // Decode and cast the data safely
+      final decodedData = jsonDecode(attendanceRecords) as Map<String, dynamic>;
+      _attendanceRecords = decodedData.map((key, value) {
+        // Explicitly cast each item in the list to Map<String, String>
+        List<Map<String, String>> castedList = List<Map<String, String>>.from(
+          value.map((item) => Map<String, String>.from(item)),
         );
+        return MapEntry(key, castedList);
       });
-    }
+    });
   }
+}
+
 
   Future<void> _saveAttendanceRecords() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -208,33 +220,70 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     if (authenticated) {
       final now = DateTime.now();
-      setState(() {
-        if (isCheckIn) {
-          _checkInTime = DateFormat('HH:mm:ss').format(now);
-          _checkInDateTime = now;
-          _checkOutDateTime = null;
-          _workingHours = Duration.zero; // Reset working hours on check-in
-          _startTimer(); // Start the timer
-          _saveCurrentSession(); // Save current session data
-          _isCheckInActive = true;
-          _activeSection = _currentSection;
+      if (isCheckIn) {
+        Position position = await _getCurrentPosition();
+        double distanceToOffice = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          _officeLocation.latitude,
+          _officeLocation.longitude,
+        );
+
+        if (distanceToOffice <= _allowedDistance) {
+          setState(() {
+            _checkInTime = DateFormat('HH:mm:ss').format(now);
+            _checkInDateTime = now;
+            _checkOutDateTime = null;
+            _workingHours = Duration.zero;
+            _startTimer();
+            _saveCurrentSession();
+            _isCheckInActive = true;
+            _activeSection = _currentSection;
+          });
+          _showCustomDialog(context, 'Check-In Successful', 'You have checked in successfully.');
         } else {
+          _showCustomDialog(context, 'Check-In Failed', 'You are not within the allowed distance to check in.');
+        }
+      } else {
+        setState(() {
           _checkOutTime = DateFormat('HH:mm:ss').format(now);
           _checkOutDateTime = now;
           if (_checkInDateTime != null) {
             _workingHours = now.difference(_checkInDateTime!);
-            _timer?.cancel(); // Stop the timer on check-out
+            _timer?.cancel();
             _saveAttendanceRecord();
-            _clearCurrentSession(); // Clear current session data
-            _showWorkingHoursDialog(context); // Show working hours
+            _clearCurrentSession();
+            _showWorkingHoursDialog(context);
           }
-        }
-      });
+        });
+      }
     } else {
       _showCustomDialog(context, 'Authentication Failed', isCheckIn ? 'Check In Failed' : 'Check Out Failed');
     }
 
     setState(() {});
+  }
+
+  Future<Position> _getCurrentPosition() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      await Geolocator.openLocationSettings();
+      return Future.error('Location services are disabled.');
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied.');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error('Location permissions are permanently denied, we cannot request permissions.');
+    }
+
+    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
   }
 
   void _saveAttendanceRecord() {
@@ -341,44 +390,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildPopupDialog(BuildContext context, bool isCheckIn) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.check_circle, color: Colors.green, size: 50),
-          const SizedBox(height: 16),
-          const Text(
-            'Attendance',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            isCheckIn ? 'Check IN success!' : 'Check OUT success!',
-            style: const TextStyle(fontSize: 18),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDAA520), // gold color
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-            ),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 class ReadyPage extends StatefulWidget {
   const ReadyPage({super.key});

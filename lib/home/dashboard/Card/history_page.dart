@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+import 'dart:async';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -21,7 +22,7 @@ class _HistoryPageState extends State<HistoryPage> {
       'statusColor': Colors.amber,
       'icon': Icons.meeting_room,
       'iconColor': Colors.green,
-      'timestamp': DateTime.now().subtract(const Duration(hours: 25)), // Example time
+      'timestamp': DateTime.now().subtract(Duration(hours: 25)), // Example time
     },
     {
       'title': 'Phoutthalom',
@@ -41,7 +42,7 @@ class _HistoryPageState extends State<HistoryPage> {
       'statusColor': Colors.amber,
       'icon': Icons.event,
       'iconColor': Colors.orange,
-      'timestamp': DateTime.now().subtract(const Duration(hours: 30)), // Example time
+      'timestamp': DateTime.now().subtract(Duration(hours: 30)), // Example time
     },
   ];
 
