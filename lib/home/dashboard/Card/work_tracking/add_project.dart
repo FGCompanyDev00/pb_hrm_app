@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
-import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class AddProjectPage extends StatefulWidget {
   final Function(Map<String, dynamic>) onAddProject;
@@ -71,34 +72,26 @@ class AddProjectPageState extends State<AddProjectPage> {
         'project_id': projectId,
       };
 
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Confirm Add Project'),
-            content: const Text('Are you sure you want to add this project?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(context).pop(); // Close the confirmation dialog
-                  try {
-                    await WorkTrackingService().addProject(newProject);
-                    widget.onAddProject(newProject);
-                    _showSuccessDialog(); // Show success message and navigate back
-                  } catch (e) {
-                    _showErrorDialog(e.toString());
-                  }
-                },
-                child: const Text('Confirm'),
-              ),
-            ],
-          );
-        },
-      );
+      final apiUrl = 'https://demo-application-api.flexiflows.co/api/work-tracking/proj/insert';
+      
+      try {
+        final response = await http.post(
+          Uri.parse(apiUrl),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(newProject),
+        );
+
+        if (response.statusCode == 201) {
+          widget.onAddProject(newProject);
+          _showSuccessDialog(); // Show success message and navigate back
+        } else {
+          throw Exception('Failed to add project');
+        }
+      } catch (e) {
+        _showErrorDialog(e.toString());
+      }
     }
   }
 
