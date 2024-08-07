@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "820175078764",
+    "project_id": "pvhs-f5a98",
+    "storage_bucket": "pvhs-f5a98.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:820175078764:android:ff34f548a4d2f37014df49",
+        "android_client_info": {
+          "package_name": "com.phongsavanh.pb_hrsystem"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAC4TCS8n0cUWJ8FrRs6Blt8VnNfA-5eNw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
