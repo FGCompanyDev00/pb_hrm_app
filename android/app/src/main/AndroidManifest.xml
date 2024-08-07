@@ -10,8 +10,8 @@
         android:required="false" />
 
     <application android:requestLegacyExternalStorage="true"
-        android:label="PBHS"
-        android:icon="@mipmap/logo">
+        android:label="PSVB NEXT"
+        android:icon="@mipmap/playstore">
 
         <activity
             android:name="com.phongsavanhbank.pb_hrsystem.MainActivity"
