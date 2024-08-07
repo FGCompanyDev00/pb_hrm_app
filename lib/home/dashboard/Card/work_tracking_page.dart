@@ -77,6 +77,9 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
+    // Get the auth token from wherever it is stored, e.g., from a Provider or a global variable.
+    final String authToken = 'your-auth-token-here';
+
     return WillPopScope(
       onWillPop: () async {
         Navigator.pushReplacement(
@@ -90,7 +93,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
         body: SafeArea(
           child: Column(
             children: [
-              _buildHeader(isDarkMode),
+              _buildHeader(isDarkMode, authToken),
               const SizedBox(height: 10),
               _buildTabs(),
               const SizedBox(height: 8),
@@ -104,7 +107,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     );
   }
 
-  Widget _buildHeader(bool isDarkMode) {
+  Widget _buildHeader(bool isDarkMode, String authToken) {
     return Container(
       height: 80,
       decoration: BoxDecoration(
@@ -143,7 +146,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => AddProjectPage(onAddProject: _addProject)),
+                    MaterialPageRoute(builder: (context) => AddProjectPage(onAddProject: (project) {})),
                   );
                 },
               ),
@@ -370,9 +373,9 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-               builder: (context) => ProjectManagementPage(
-              projectId: project['project_id'],
-            ),
+              builder: (context) => ProjectManagementPage(
+                projectId: project['project_id'],
+              ),
             ),
           );
         },
