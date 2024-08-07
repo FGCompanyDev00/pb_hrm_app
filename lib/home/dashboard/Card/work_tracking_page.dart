@@ -370,7 +370,9 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => ProjectManagementPage(project: project),
+               builder: (context) => ProjectManagementPage(
+              projectId: project['project_id'],
+            ),
             ),
           );
         },

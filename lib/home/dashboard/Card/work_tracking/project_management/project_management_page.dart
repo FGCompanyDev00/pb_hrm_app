@@ -8,28 +8,20 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 import 'dart:io';
 
 class ProjectManagementPage extends StatefulWidget {
-  final Map<String, dynamic> project;
+  final String projectId;
 
-  const ProjectManagementPage({super.key, required this.project});
+  const ProjectManagementPage({super.key, required this.projectId});
 
   @override
   _ProjectManagementPageState createState() => _ProjectManagementPageState();
 }
 
 class _ProjectManagementPageState extends State<ProjectManagementPage> with SingleTickerProviderStateMixin {
-  final List<Map<String, dynamic>> _tasks = [
-    {
-      'title': 'Initial Setup',
-      'status': 'Pending',
-      'start_date': '2024-01-01',
-      'due_date': '2024-02-01',
-      'description': 'Complete initial project setup and requirements gathering.',
-      'images': [],
-    },
-  ];
+  List<Map<String, dynamic>> _tasks = [];
   String _selectedStatus = 'All Status';
   final List<String> _statusOptions = ['All Status', 'Pending', 'Processing', 'Completed'];
   late TabController _tabController;
@@ -43,12 +35,40 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _shortenedProjectId = widget.project['id'].substring(0, 8) + '...';
+    _shortenedProjectId = widget.projectId.substring(0, 8) + '...';
     _initializeRecorder();
+    _fetchProjectData();
   }
 
   Future<void> _initializeRecorder() async {
     await _recorder.openRecorder();
+  }
+
+  Future<void> _fetchProjectData() async {
+    final response = await http.get(
+      Uri.parse('{{baseUrl}}/api/work-tracking/proj/projects?created_by_id=PSV-00-000002'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final List<dynamic> tasks = data['result'];
+
+      setState(() {
+        _tasks = tasks.map((task) {
+          return {
+            'title': task['p_name'],
+            'status': task['s_name'],
+            'start_date': task['created_project_at'].substring(0, 10),
+            'due_date': task['dl'].substring(0, 10),
+            'description': 'Project ID: ${task['project_id']}\nBranch: ${task['b_name']}',
+            'images': [],
+          };
+        }).toList();
+      });
+    } else {
+      // Handle error
+      print('Failed to load project data');
+    }
   }
 
   @override
@@ -230,7 +250,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
                   builder: (BuildContext context) {
                     return AlertDialog(
                       title: const Text('Project ID'),
-                      content: Text(widget.project['id']),
+                      content: Text(widget.projectId),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context),
