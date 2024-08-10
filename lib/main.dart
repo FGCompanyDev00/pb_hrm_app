@@ -8,7 +8,10 @@ import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart'; // Import EasyLoading
+import 'services/notification_polling_service.dart';
+import 'notifications/notification_model.dart';
+import 'notifications/notification_page.dart';
 import 'splash/splashscreen.dart';
 import 'theme/theme.dart';
 import 'home/home_calendar.dart';
@@ -16,7 +19,6 @@ import 'home/attendance_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  configLoading(); // Configure EasyLoading
   runApp(
     DevicePreview(
       enabled: !kReleaseMode,
@@ -32,22 +34,6 @@ void main() {
   );
 }
 
-void configLoading() {
-  EasyLoading.instance
-    ..displayDuration = const Duration(milliseconds: 2000)
-    ..indicatorType = EasyLoadingIndicatorType.fadingCircle
-    ..loadingStyle = EasyLoadingStyle.dark
-    ..indicatorSize = 45.0
-    ..radius = 10.0
-    ..progressColor = Colors.yellow
-    ..backgroundColor = Colors.green
-    ..indicatorColor = Colors.yellow
-    ..textColor = Colors.yellow
-    ..maskColor = Colors.blue.withOpacity(0.5)
-    ..userInteractions = true
-    ..dismissOnTap = false;
-}
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -56,8 +42,10 @@ class MyApp extends StatelessWidget {
     return Consumer2<ThemeNotifier, LanguageNotifier>(
       builder: (context, themeNotifier, languageNotifier, child) {
         return MaterialApp(
-          builder: EasyLoading.init(), // Initialize EasyLoading
-          title: 'PBHR',
+          builder: (context, child) {
+            return EasyLoading.init()(context, child!); // Initialize EasyLoading here
+          },
+          title: 'PSBV',
           theme: ThemeData(
             primarySwatch: Colors.green,
             visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -129,6 +117,8 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 1;
+  final List<NotificationModel> _notifications = [];
+  late NotificationPollingService _notificationPollingService;
 
   static final List<Widget> _widgetOptions = <Widget>[
     const AttendanceScreen(),
@@ -136,10 +126,30 @@ class _MainScreenState extends State<MainScreen> {
     const Dashboard(),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _notificationPollingService = NotificationPollingService(
+      apiUrl: 'https://your-api-url.com/api/work-tracking/proj/notifications',
+      onNewNotifications: (notifications) {
+        setState(() {
+          _notifications.addAll(notifications.map((n) => NotificationModel.fromJson(n as Map<String, dynamic>)));
+        });
+      },
+    );
+    _notificationPollingService.startPolling();
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  @override
+  void dispose() {
+    _notificationPollingService.stopPolling();
+    super.dispose();
   }
 
   @override

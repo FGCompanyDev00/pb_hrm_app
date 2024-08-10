@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:pb_hrsystem/home/profile_screen.dart';
 import 'package:pb_hrsystem/main.dart';
+import 'package:pb_hrsystem/notifications/test_notification_widget.dart';
 import 'package:pb_hrsystem/settings/change_password.dart';
 import 'package:pb_hrsystem/settings/edit_profile.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
@@ -233,6 +234,17 @@ class _SettingsPageState extends State<SettingsPage> {
                             },
                             activeColor: Colors.green,
                           ),
+                        ),
+                        _buildSettingsTile(
+                          context,
+                          title: 'Test Notification',
+                          icon: Icons.arrow_forward_ios,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const TestNotificationWidget()),
+                            );
+                          },
                         ),
                       ],
                     ),

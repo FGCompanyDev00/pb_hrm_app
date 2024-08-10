@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/login/forgot_password_page.dart';
-import 'package:pb_hrsystem/login/notification_page.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
@@ -97,7 +96,7 @@ class _LoginPageState extends State<LoginPage> {
 
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const NotificationPage()),
+        MaterialPageRoute(builder: (context) => const MainScreen()),
       );
     } else {
       _showCustomDialog(context, 'Login Failed', 'Login failed: ${response.reasonPhrase}');
@@ -134,7 +133,28 @@ class _LoginPageState extends State<LoginPage> {
         _login(); // Login automatically using stored credentials
       }
     } else {
-      _showCustomDialog(context, 'Authentication Failed', 'Failed to authenticate using biometrics.');
+      // Fallback to device PIN/password authentication if biometric fails
+      try {
+        authenticated = await auth.authenticate(
+          localizedReason: 'Please authenticate with your PIN or password',
+          options: const AuthenticationOptions(
+            biometricOnly: false,
+            stickyAuth: true,
+          ),
+        );
+
+        if (authenticated) {
+          String? username = await _storage.read(key: 'username');
+          String? password = await _storage.read(key: 'password');
+          if (username != null && password != null) {
+            _usernameController.text = username;
+            _passwordController.text = password;
+            _login(); // Login automatically using stored credentials
+          }
+        }
+      } catch (e) {
+        _showCustomDialog(context, 'Authentication Failed', 'Failed to authenticate.');
+      }
     }
   }
 
@@ -164,7 +184,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _loadBiometricSetting() async {
     bool? isEnabled = await _storage.read(key: 'biometricEnabled') == 'true';
     setState(() {
-      _biometricEnabled = isEnabled ?? false;
+      _biometricEnabled = isEnabled;
     });
   }
 
@@ -234,36 +254,44 @@ class _LoginPageState extends State<LoginPage> {
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     return Scaffold(
-      body: Container(
-        height: MediaQuery.of(context).size.height,
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/background.png'),
-            fit: BoxFit.cover,
+      body: SafeArea(
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/background.png'),
+              fit: BoxFit.cover,
+            ),
           ),
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Padding(
+          child: Center(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _buildLanguageDropdown(languageNotifier, isDarkMode),
-                  const SizedBox(height: 20),
-                  _buildLogoAndText(context),
-                  const SizedBox(height: 40),
-                  _buildDateRow(currentDate),
-                  const SizedBox(height: 40),
-                  _buildTextFields(context),
-                  const SizedBox(height: 20),
-                  _buildRememberMeCheckbox(context),
-                  const SizedBox(height: 20),
-                  _buildLoginButton(context),
-                  _buildForgotPasswordButton(context),
-                  const SizedBox(height: 20),
-                  _buildAuthenticationIcons(),
-                ],
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: MediaQuery.of(context).size.height,
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildLanguageDropdown(languageNotifier, isDarkMode),
+                      const SizedBox(height: 20),
+                      _buildLogoAndText(context),
+                      const SizedBox(height: 20),
+                      _buildDateRow(currentDate),
+                      const SizedBox(height: 40),
+                      _buildTextFields(context),
+                      const SizedBox(height: 20),
+                      _buildRememberMeCheckbox(context),
+                      const SizedBox(height: 20),
+                      _buildLoginButton(context),
+                      _buildForgotPasswordButton(context),
+                      const SizedBox(height: 20),
+                      _buildAuthenticationIcons(),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -323,14 +351,14 @@ class _LoginPageState extends State<LoginPage> {
       children: [
         Image.asset(
           'assets/logo.png',
-          width: 200,
-          height: 150,
+          width: 150,
+          height: 100,
         ),
         const SizedBox(height: 30),
         Text(
           AppLocalizations.of(context)!.welcomeToPBHR,
           style: const TextStyle(
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
@@ -471,22 +499,14 @@ class _LoginPageState extends State<LoginPage> {
           onTap: _biometricEnabled ? () => _authenticate(useBiometric: true) : () {
             _showCustomDialog(context, 'Biometric Disabled', 'Please enable biometric authentication in settings.');
           },
-          child: Image.network(
-            'https://img.icons8.com/ios-filled/50/ffffff/fingerprint.png',
-            width: 40,
-            height: 40,
-          ),
+          child: const Icon(Icons.fingerprint, size: 40, color: Colors.black),
         ),
         const SizedBox(width: 20),
         GestureDetector(
           onTap: _biometricEnabled ? () => _authenticate(useBiometric: false) : () {
             _showCustomDialog(context, 'Biometric Disabled', 'Please enable biometric authentication in settings.');
           },
-          child: Image.network(
-            'https://img.icons8.com/ios-filled/50/ffffff/face-id.png',
-            width: 40,
-            height: 40,
-          ),
+          child: const Icon(Icons.face, size: 40, color: Colors.black),
         ),
       ],
     );

@@ -4,7 +4,6 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:pb_hrsystem/services/leave_request_service.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,7 +23,36 @@ class LeaveManagementPage extends HookWidget {
     final endDateController = useTextEditingController();
     final daysController = useTextEditingController(text: '0');
     final leaveTypeId = useState<int?>(null);
-    final leaveRequestService = LeaveRequestService(); // Initialize the service
+
+    // Function to show a dialog and clear input fields
+    void _showDialog(BuildContext context, String title, String content) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text(title),
+            content: Text(content),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Close'),
+                onPressed: () {
+                  // Clear all input fields
+                  typeController.clear();
+                  descriptionController.clear();
+                  startDateController.clear();
+                  endDateController.clear();
+                  daysController.clear();
+                  leaveTypeId.value = null;
+
+                  // Close the dialog
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
 
     // Fetch leave types from API
     Future<List<Map<String, dynamic>>> fetchLeaveTypes() async {
@@ -87,69 +115,50 @@ class LeaveManagementPage extends HookWidget {
         try {
           final prefs = await SharedPreferences.getInstance();
           final token = prefs.getString('token');
-          final userId = prefs.getString('userId');
 
-          if (token == null || userId == null) {
+          if (token == null) {
             EasyLoading.showError('User not authenticated');
             return;
           }
 
-          await leaveRequestService.addLeaveRequest({
-            'leave_type_id': leaveTypeId.value,
-            'take_leave_reason': descriptionController.text,
+          final requestBody = {
             'take_leave_from': startDateController.text,
             'take_leave_to': endDateController.text,
-            'days': int.parse(daysController.text),
-            'user_id': userId,
-          });
+            'take_leave_type_id': leaveTypeId.value.toString(),
+            'take_leave_reason': descriptionController.text,
+            'days': daysController.text,
+          };
 
-          EasyLoading.showSuccess('Your leave request has been submitted!');
+          final response = await http.post(
+            Uri.parse('https://demo-application-api.flexiflows.co/api/leave_request'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(requestBody),
+          );
+
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            EasyLoading.showSuccess('Your leave request has been submitted!');
+            _showDialog(context, 'Success', 'Your leave request has been submitted successfully.');
+          } else {
+            EasyLoading.showError('Failed to submit leave request');
+            _showDialog(context, 'Error', 'Failed to submit leave request.');
+          }
         } catch (e) {
           EasyLoading.showError('Error: $e');
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: const Text('Error'),
-                content: Text('An error occurred: $e'),
-                actions: <Widget>[
-                  TextButton(
-                    child: const Text('Close'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ],
-              );
-            },
-          );
+          _showDialog(context, 'Error', 'An error occurred: $e');
         }
       } else {
         EasyLoading.showError('Please fill in all fields');
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Error'),
-              content: const Text('Please fill in all fields to submit your leave request.'),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text('Close'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            );
-          },
-        );
+        _showDialog(context, 'Error', 'Please fill in all fields to submit your leave request.');
       }
     }
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text("Leave Management"),
+        title: const Text("Leave"),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -230,7 +239,7 @@ class LeaveManagementPage extends HookWidget {
 
                                     // Find the selected leave type's ID
                                     final selectedLeaveType = leaveTypes.firstWhere(
-                                      (leaveType) => leaveType['name'] == value,
+                                          (leaveType) => leaveType['name'] == value,
                                     );
                                     leaveTypeId.value = selectedLeaveType['leave_type_id'];
                                   },
