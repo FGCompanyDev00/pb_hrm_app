@@ -4,6 +4,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:pb_hrsystem/services/leave_request_service.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,11 +24,17 @@ class LeaveManagementPage extends HookWidget {
     final endDateController = useTextEditingController();
     final daysController = useTextEditingController(text: '0');
     final leaveTypeId = useState<int?>(null);
+    final leaveRequestService = LeaveRequestService(); // Initialize the service
 
     // Fetch leave types from API
     Future<List<Map<String, dynamic>>> fetchLeaveTypes() async {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
+
+      if (token == null) {
+        EasyLoading.showError('User not authenticated');
+        return [];
+      }
 
       final response = await http.get(
         Uri.parse('https://demo-application-api.flexiflows.co/api/leave-types'),
@@ -41,10 +48,12 @@ class LeaveManagementPage extends HookWidget {
         final Map<String, dynamic> data = jsonDecode(response.body);
         return List<Map<String, dynamic>>.from(data['results']);
       } else {
-        throw Exception('Failed to load leave types');
+        EasyLoading.showError('Failed to load leave types');
+        return [];
       }
     }
 
+    // Function to pick a date
     Future<void> pickDate(BuildContext context, TextEditingController controller) async {
       DateTime initialDate = DateTime.now();
       DateTime firstDate = DateTime(2000);
@@ -68,6 +77,7 @@ class LeaveManagementPage extends HookWidget {
       }
     }
 
+    // Function to save leave data
     Future<void> saveData() async {
       if (typeController.text.isNotEmpty &&
           descriptionController.text.isNotEmpty &&
@@ -84,44 +94,16 @@ class LeaveManagementPage extends HookWidget {
             return;
           }
 
-          final response = await http.post(
-            Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests'),
-            headers: {
-              'Content-Type': 'application/json; charset=UTF-8',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode({
-              'leave_type_id': leaveTypeId.value,
-              'take_leave_reason': descriptionController.text,
-              'take_leave_from': startDateController.text,
-              'take_leave_to': endDateController.text,
-              'days': int.parse(daysController.text),
-              'user_id': userId,
-            }),
-          );
+          await leaveRequestService.addLeaveRequest({
+            'leave_type_id': leaveTypeId.value,
+            'take_leave_reason': descriptionController.text,
+            'take_leave_from': startDateController.text,
+            'take_leave_to': endDateController.text,
+            'days': int.parse(daysController.text),
+            'user_id': userId,
+          });
 
-          if (response.statusCode == 200 || response.statusCode == 201) {
-            EasyLoading.showSuccess('Your leave request has been submitted!');
-          } else {
-            EasyLoading.showError('Failed to submit leave request');
-            showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  title: const Text('Error'),
-                  content: Text('Failed to submit leave request. Status code: ${response.statusCode}'),
-                  actions: <Widget>[
-                    TextButton(
-                      child: const Text('Close'),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ],
-                );
-              },
-            );
-          }
+          EasyLoading.showSuccess('Your leave request has been submitted!');
         } catch (e) {
           EasyLoading.showError('Error: $e');
           showDialog(
@@ -227,7 +209,8 @@ class LeaveManagementPage extends HookWidget {
                               icon: const Icon(Icons.add),
                               label: const Text("Add"),
                               style: TextButton.styleFrom(
-                                foregroundColor: isDarkMode ? Colors.white : Colors.black, backgroundColor: Colors.orange,
+                                foregroundColor: isDarkMode ? Colors.white : Colors.black,
+                                backgroundColor: Colors.orange,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
