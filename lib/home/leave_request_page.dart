@@ -22,8 +22,28 @@ class LeaveManagementPage extends HookWidget {
     final startDateController = useTextEditingController();
     final endDateController = useTextEditingController();
     final daysController = useTextEditingController(text: '0');
+    final leaveTypeId = useState<int?>(null);
 
-    final leaveTypes = ['Holiday Leave', 'Sick Leave', 'Unpaid Leave'];
+    // Fetch leave types from API
+    Future<List<Map<String, dynamic>>> fetchLeaveTypes() async {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final response = await http.get(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/leave-types'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        return List<Map<String, dynamic>>.from(data['results']);
+      } else {
+        throw Exception('Failed to load leave types');
+      }
+    }
 
     Future<void> pickDate(BuildContext context, TextEditingController controller) async {
       DateTime initialDate = DateTime.now();
@@ -71,7 +91,7 @@ class LeaveManagementPage extends HookWidget {
               'Authorization': 'Bearer $token',
             },
             body: jsonEncode({
-              'leave_type_id': 17,
+              'leave_type_id': leaveTypeId.value,
               'take_leave_reason': descriptionController.text,
               'take_leave_from': startDateController.text,
               'take_leave_to': endDateController.text,
@@ -166,142 +186,162 @@ class LeaveManagementPage extends HookWidget {
             ),
           ),
           Center(
-            child: Container(
-              padding: const EdgeInsets.all(16.0),
-              margin: const EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                color: isDarkMode ? Colors.black54 : Colors.white.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 10,
-                    spreadRadius: 5,
-                  ),
-                ],
-              ),
-              child: SingleChildScrollView(
-                child: AnimationLimiter(
-                  child: Column(
-                    children: AnimationConfiguration.toStaggeredList(
-                      duration: const Duration(milliseconds: 500),
-                      childAnimationBuilder: (widget) => SlideAnimation(
-                        horizontalOffset: 50.0,
-                        child: FadeInAnimation(child: widget),
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: fetchLeaveTypes(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator();
+                } else if (snapshot.hasError) {
+                  return Text('Error: ${snapshot.error}');
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Text('No leave types found.');
+                }
+
+                final leaveTypes = snapshot.data!;
+                return Container(
+                  padding: const EdgeInsets.all(16.0),
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.black54 : Colors.white.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 10,
+                        spreadRadius: 5,
                       ),
-                      children: [
-                        TextButton.icon(
-                          onPressed: saveData,
-                          icon: const Icon(Icons.add),
-                          label: const Text("Add"),
-                          style: TextButton.styleFrom(
-                            foregroundColor: isDarkMode ? Colors.white : Colors.black, backgroundColor: Colors.orange,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
+                    ],
+                  ),
+                  child: SingleChildScrollView(
+                    child: AnimationLimiter(
+                      child: Column(
+                        children: AnimationConfiguration.toStaggeredList(
+                          duration: const Duration(milliseconds: 500),
+                          childAnimationBuilder: (widget) => SlideAnimation(
+                            horizontalOffset: 50.0,
+                            child: FadeInAnimation(child: widget),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        TextField(
-                          controller: typeController,
-                          readOnly: true,
-                          decoration: InputDecoration(
-                            labelText: 'Type*',
-                            labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                            suffixIcon: PopupMenuButton<String>(
-                              icon: const Icon(Icons.list),
-                              onSelected: (String value) {
-                                typeController.text = value;
-                              },
-                              itemBuilder: (BuildContext context) {
-                                return leaveTypes.map<PopupMenuItem<String>>((String value) {
-                                  return PopupMenuItem<String>(
-                                    value: value,
-                                    child: Text(value),
-                                  );
-                                }).toList();
-                              },
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                        ),
-                        const SizedBox(height: 20),
-                        TextField(
-                          controller: descriptionController,
-                          decoration: InputDecoration(
-                            labelText: 'Description',
-                            labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                          maxLines: 3,
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: TextField(
-                                controller: startDateController,
-                                readOnly: true,
-                                decoration: InputDecoration(
-                                  labelText: 'Start Date',
-                                  labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
+                          children: [
+                            TextButton.icon(
+                              onPressed: saveData,
+                              icon: const Icon(Icons.add),
+                              label: const Text("Add"),
+                              style: TextButton.styleFrom(
+                                foregroundColor: isDarkMode ? Colors.white : Colors.black, backgroundColor: Colors.orange,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                                onTap: () => pickDate(context, startDateController),
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextField(
-                                controller: endDateController,
-                                readOnly: true,
-                                decoration: InputDecoration(
-                                  labelText: 'End Date',
-                                  labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                            const SizedBox(height: 20),
+                            TextField(
+                              controller: typeController,
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                labelText: 'Type*',
+                                labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                                suffixIcon: PopupMenuButton<String>(
+                                  icon: const Icon(Icons.list),
+                                  onSelected: (String value) async {
+                                    typeController.text = value;
+
+                                    // Find the selected leave type's ID
+                                    final selectedLeaveType = leaveTypes.firstWhere(
+                                      (leaveType) => leaveType['name'] == value,
+                                    );
+                                    leaveTypeId.value = selectedLeaveType['leave_type_id'];
+                                  },
+                                  itemBuilder: (BuildContext context) {
+                                    return leaveTypes.map<PopupMenuItem<String>>((leaveType) {
+                                      return PopupMenuItem<String>(
+                                        value: leaveType['name'],
+                                        child: Text(leaveType['name']),
+                                      );
+                                    }).toList();
+                                  },
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                            ),
+                            const SizedBox(height: 20),
+                            TextField(
+                              controller: descriptionController,
+                              decoration: InputDecoration(
+                                labelText: 'Description',
+                                labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                              maxLines: 3,
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: TextField(
+                                    controller: startDateController,
+                                    readOnly: true,
+                                    decoration: InputDecoration(
+                                      labelText: 'Start Date',
+                                      labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                                    onTap: () => pickDate(context, startDateController),
                                   ),
                                 ),
-                                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                                onTap: () => pickDate(context, endDateController),
-                              ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextField(
+                                    controller: endDateController,
+                                    readOnly: true,
+                                    decoration: InputDecoration(
+                                      labelText: 'End Date',
+                                      labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                                    onTap: () => pickDate(context, endDateController),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: TextField(
+                                    controller: daysController,
+                                    readOnly: true,
+                                    decoration: InputDecoration(
+                                      labelText: 'Days*',
+                                      labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: TextField(
-                                controller: daysController,
-                                readOnly: true,
-                                decoration: InputDecoration(
-                                  labelText: 'Days*',
-                                  labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                                keyboardType: TextInputType.number,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ],

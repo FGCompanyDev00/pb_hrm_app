@@ -24,7 +24,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       final event = {
         'title': _titleController.text,
         'description': _descriptionController.text,
-        'startDateTime': _startDateTime,
+        'startDateTime': _startDateTime, 
         'endDateTime': _endDateTime,
         'location': _location,
         'notification': _notification,
