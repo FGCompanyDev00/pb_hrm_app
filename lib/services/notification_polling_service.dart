@@ -20,25 +20,36 @@ class NotificationPollingService {
   }
 
   Future<void> _fetchNotifications() async {
-    final response = await http.get(Uri.parse(apiUrl));
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body)['results'];
-      final List<NotificationModel> notifications = data.map((item) {
-        return NotificationModel(
-          id: item['id'],  // Ensure the id is correctly fetched from the API response
-          type: item['message'],
-          requestor: item['created_by'],
-          date: item['created_at'].substring(0, 10),
-          time: item['created_at'].substring(11, 16),
-          status: item['status'] == 0 ? 'Pending' : 'Read',
-          imageUrl: item['images'] ?? 'https://your-image-url.com', // Replace with actual image URL or use fallback
-        );
-      }).toList();
+      if (response.statusCode == 200) {
+        final contentType = response.headers['content-type'];
+        if (contentType != null && contentType.contains('application/json')) {
+          final List<dynamic> data = json.decode(response.body)['results'];
+          final List<NotificationModel> notifications = data.map((item) {
+            return NotificationModel(
+              id: item['id'],
+              type: item['message'],
+              requestor: item['created_by'],
+              date: item['created_at'].substring(0, 10),
+              time: item['created_at'].substring(11, 16),
+              status: item['status'] == 0 ? 'Pending' : 'Read',
+              imageUrl: item['images'] ?? 'https://your-image-url.com',
+            );
+          }).toList();
 
-      onNewNotifications(notifications);
-    } else {
-      // Handle error response
+          onNewNotifications(notifications);
+        } else {
+          // Handle case where response is not JSON
+          print('Error: Expected JSON response but got $contentType');
+        }
+      } else {
+        print('Error: ${response.statusCode} - ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      // Handle any other exceptions, such as network errors
+      print('Error fetching notifications: $e');
     }
   }
 

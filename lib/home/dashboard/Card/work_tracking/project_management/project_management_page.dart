@@ -46,7 +46,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
 
   Future<void> _fetchProjectData() async {
     final response = await http.get(
-      Uri.parse('{{baseUrl}}/api/work-tracking/proj/projects?created_by_id=PSV-00-000002'),
+      Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/proj/projects?created_by_id=PSV-00-000002'),
     );
 
     if (response.statusCode == 200) {

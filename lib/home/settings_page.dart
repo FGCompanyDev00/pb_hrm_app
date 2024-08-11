@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:pb_hrsystem/home/profile_screen.dart';
 import 'package:pb_hrsystem/main.dart';
@@ -23,15 +24,33 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final LocalAuthentication auth = LocalAuthentication();
-  final _storage = const FlutterSecureStorage(); // Secure storage instance
+  final _storage = const FlutterSecureStorage();
   bool _biometricEnabled = false;
+  bool _notificationEnabled = false;
   late Future<UserProfile> futureUserProfile;
+
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin(); // Notification plugin instance
 
   @override
   void initState() {
     super.initState();
     _loadBiometricSetting();
+    _loadNotificationSetting();
     futureUserProfile = fetchUserProfile();
+
+    // Initialize local notifications
+    _initializeNotifications();
+  }
+
+  Future<void> _initializeNotifications() async {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    final InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    print('Notification system initialized');
   }
 
   Future<void> _loadBiometricSetting() async {
@@ -39,6 +58,17 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _biometricEnabled = isEnabled ?? false;
     });
+  }
+
+  Future<void> _loadNotificationSetting() async {
+    bool? isEnabled = await _storage.read(key: 'notificationEnabled') == 'true';
+    setState(() {
+      _notificationEnabled = isEnabled ?? false;
+    });
+  }
+
+  Future<void> _saveNotificationSetting(bool enabled) async {
+    await _storage.write(key: 'notificationEnabled', value: enabled.toString());
   }
 
   Future<void> _saveBiometricSetting(bool enabled) async {
@@ -87,8 +117,51 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _biometricEnabled = false;
       });
-      await _storage.deleteAll(); // Remove all stored credentials
+      await _storage.deleteAll();
       _saveBiometricSetting(false);
+    }
+  }
+
+  Future<void> _toggleNotification(bool enable) async {
+    if (enable) {
+      print('Notification enabled');
+      setState(() {
+        _notificationEnabled = true;
+      });
+      _saveNotificationSetting(true);
+      _showNotification();
+    } else {
+      print('Notification disabled');
+      setState(() {
+        _notificationEnabled = false;
+      });
+      _saveNotificationSetting(false);
+    }
+  }
+
+  Future<void> _showNotification() async {
+    try {
+      const AndroidNotificationDetails androidPlatformChannelSpecifics =
+          AndroidNotificationDetails(
+        'your_channel_id',
+        'your_channel_name',
+        channelDescription: 'your_channel_description',
+        importance: Importance.max,
+        priority: Priority.high,
+        ticker: 'ticker',
+      );
+      const NotificationDetails platformChannelSpecifics =
+          NotificationDetails(android: androidPlatformChannelSpecifics);
+      await flutterLocalNotificationsPlugin.show(
+        0,
+        'Example Notification',
+        'This is an example notification',
+        platformChannelSpecifics,
+        payload: 'item x',
+      );
+      print('Notification shown');
+    } catch (e) {
+      print('Error showing notification: $e');
     }
   }
 
@@ -106,7 +179,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
     if (response.statusCode == 200) {
       final List<dynamic> results = jsonDecode(response.body)['results'];
-      // Assuming the first result is the logged-in user
       final userProfile = UserProfile.fromJson(results[0]);
       return userProfile;
     } else {
@@ -228,9 +300,9 @@ class _SettingsPageState extends State<SettingsPage> {
                           context,
                           title: 'Notification',
                           trailing: Switch(
-                            value: false,
+                            value: _notificationEnabled,
                             onChanged: (bool value) {
-                              // Handle Notification Toggle
+                              _toggleNotification(value);
                             },
                             activeColor: Colors.green,
                           ),
@@ -293,7 +365,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black, // Always black
+                    color: Colors.black,
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -301,7 +373,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   email,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Colors.grey, // Always grey
+                    color: Colors.grey,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
