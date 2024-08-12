@@ -54,10 +54,13 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadBiometricSetting() async {
-    bool? isEnabled = await _storage.read(key: 'biometricEnabled') == 'true';
-    setState(() {
-      _biometricEnabled = isEnabled ?? false;
-    });
+    final prefs = await SharedPreferences.getInstance();
+    String? storedUserId = await _storage.read(key: 'biometricUserId');
+    if (storedUserId != null) {
+      setState(() {
+        _biometricEnabled = true;
+      });
+    }
   }
 
   Future<void> _loadNotificationSetting() async {
@@ -71,8 +74,12 @@ class _SettingsPageState extends State<SettingsPage> {
     await _storage.write(key: 'notificationEnabled', value: enabled.toString());
   }
 
-  Future<void> _saveBiometricSetting(bool enabled) async {
-    await _storage.write(key: 'biometricEnabled', value: enabled.toString());
+  Future<void> _saveBiometricSetting(bool enabled, String userId) async {
+    if (enabled) {
+      await _storage.write(key: 'biometricUserId', value: userId);
+    } else {
+      await _storage.delete(key: 'biometricUserId');
+    }
   }
 
   Future<bool> _onWillPop() async {
@@ -106,7 +113,13 @@ class _SettingsPageState extends State<SettingsPage> {
           setState(() {
             _biometricEnabled = true;
           });
-          _saveBiometricSetting(true);
+
+          final prefs = await SharedPreferences.getInstance();
+          String? userId = prefs.getString('userId');
+
+          if (userId != null) {
+            _saveBiometricSetting(true, userId);
+          }
         }
       } catch (e) {
         if (kDebugMode) {
@@ -118,7 +131,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _biometricEnabled = false;
       });
       await _storage.deleteAll();
-      _saveBiometricSetting(false);
+      _saveBiometricSetting(false, '');
     }
   }
 
