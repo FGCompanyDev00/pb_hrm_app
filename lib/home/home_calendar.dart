@@ -116,7 +116,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
       final newEvent = await Navigator.push<Map<String, dynamic>>(
         context,
         MaterialPageRoute(
-          builder: (context) => const OfficeAddEventPage(),
+          builder: (context) => const LeaveManagementPage(),
         ),
       );
       if (newEvent != null) {

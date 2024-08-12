@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:provider/provider.dart';
@@ -116,6 +117,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
             }
           },
           isEdit: isEdit,
+          projectId: widget.projectId, // Pass projectId here
         );
       },
     );
@@ -147,21 +149,21 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
                 Column(
                   children: task['images'] != null
                       ? task['images'].map<Widget>((image) {
-                    return GestureDetector(
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => Dialog(
-                            child: Image.memory(base64Decode(image)),
-                          ),
-                        );
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Image.memory(base64Decode(image), width: 100, height: 100, fit: BoxFit.cover),
-                      ),
-                    );
-                  }).toList()
+                          return GestureDetector(
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => Dialog(
+                                  child: Image.memory(base64Decode(image)),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Image.memory(base64Decode(image), width: 100, height: 100, fit: BoxFit.cover),
+                            ),
+                          );
+                        }).toList()
                       : [],
                 ),
               ],
@@ -231,9 +233,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    List<Map<String, dynamic>> filteredTasks = _tasks
-        .where((task) => _selectedStatus == 'All Status' || task['status'] == _selectedStatus)
-        .toList();
+    List<Map<String, dynamic>> filteredTasks = _tasks.where((task) => _selectedStatus == 'All Status' || task['status'] == _selectedStatus).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -307,7 +307,14 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showTaskModal(),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddPeoplePageWorkTracking(projectId: widget.projectId),
+            ),
+          );
+        },
         backgroundColor: Colors.green,
         child: const Icon(Icons.add),
       ),
@@ -609,8 +616,9 @@ class _TaskModal extends StatefulWidget {
   final Map<String, dynamic>? task;
   final Function(Map<String, dynamic>) onSave;
   final bool isEdit;
+  final String projectId; // Accept projectId here
 
-  const _TaskModal({this.task, required this.onSave, this.isEdit = false});
+  const _TaskModal({this.task, required this.onSave, this.isEdit = false, required this.projectId});
 
   @override
   __TaskModalState createState() => __TaskModalState();
@@ -852,7 +860,7 @@ class __TaskModalState extends State<_TaskModal> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const AddPeoplePage()),
+                    MaterialPageRoute(builder: (context) => AddPeoplePageWorkTracking(projectId: widget.projectId)),
                   );
                 },
                 icon: const Icon(Icons.person_add),
@@ -886,18 +894,136 @@ class __TaskModalState extends State<_TaskModal> {
   }
 }
 
-class AddPeoplePage extends StatelessWidget {
-  const AddPeoplePage({super.key});
+class AddPeoplePageWorkTracking extends StatefulWidget {
+  final String projectId;
+
+  const AddPeoplePageWorkTracking({super.key, required this.projectId});
+
+  @override
+  _AddPeoplePageWorkTrackingState createState() => _AddPeoplePageWorkTrackingState();
+}
+
+class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
+  List<Map<String, dynamic>> _members = [];
+  String _searchQuery = '';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchMembers();
+  }
+
+  Future<void> _fetchMembers() async {
+    final workTrackingService = WorkTrackingService();
+    try {
+      final members = await workTrackingService.fetchMembersByProjectId(widget.projectId);
+      setState(() {
+        _members = members;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error fetching members: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _toggleAdmin(int index) {
+    setState(() {
+      _members[index]['isAdmin'] = !_members[index]['isAdmin'];
+    });
+  }
+
+  void _toggleSelection(int index) {
+    setState(() {
+      _members[index]['isSelected'] = !_members[index]['isSelected'];
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final filteredMembers = _members.where((member) {
+      return member['name'].toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add People'),
       ),
-      body: const Center(
-        child: Text('Add People Page'),
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                  child: TextField(
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      hintText: 'Search',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30.0),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filteredMembers.length,
+                    itemBuilder: (context, index) {
+                      return Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundImage: NetworkImage(filteredMembers[index]['image']),
+                          ),
+                          title: Text(filteredMembers[index]['name']),
+                          subtitle: Text('${filteredMembers[index]['surname']} - ${filteredMembers[index]['email']}'),
+                          trailing: Wrap(
+                            spacing: 12, // space between two icons
+                            children: <Widget>[
+                              Checkbox(
+                                value: filteredMembers[index]['isSelected'],
+                                onChanged: (bool? value) {
+                                  _toggleSelection(index);
+                                },
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  filteredMembers[index]['isAdmin'] ? Icons.star : Icons.star_border,
+                                  color: filteredMembers[index]['isAdmin'] ? Colors.amber : Colors.grey,
+                                ),
+                                onPressed: () {
+                                  _toggleAdmin(index);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      // Handle add members action
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add'),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
