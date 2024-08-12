@@ -30,6 +30,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   bool _isRecording = false;
   String _shortenedProjectId = '';
+  String baseUrl = 'https://demo-application-api.flexiflows.co'; // Update with your base URL
 
   @override
   void initState() {
@@ -46,7 +47,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
 
   Future<void> _fetchProjectData() async {
     final response = await http.get(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/proj/projects?created_by_id=PSV-00-000002'),
+      Uri.parse('$baseUrl/api/work-tracking/proj/projects?created_by_id=PSV-00-000002'),
     );
 
     if (response.statusCode == 200) {
@@ -78,10 +79,21 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     super.dispose();
   }
 
-  void _addTask(Map<String, dynamic> task) {
-    setState(() {
-      _tasks.add(task);
-    });
+  Future<void> _addTask(Map<String, dynamic> task) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/work-tracking/ass/insert'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(task),
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _tasks.add(task);
+      });
+    } else {
+      // Handle error
+      print('Failed to add task');
+    }
   }
 
   void _editTask(int index, Map<String, dynamic> updatedTask) {
@@ -293,6 +305,11 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
           _buildProcessingOrDetailTab(filteredTasks),
           _buildChatAndConversationTab(isDarkMode),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showTaskModal(),
+        backgroundColor: Colors.green,
+        child: const Icon(Icons.add),
       ),
     );
   }
