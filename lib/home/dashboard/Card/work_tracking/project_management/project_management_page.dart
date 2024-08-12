@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
-import 'dart:typed_data';
-import 'dart:convert';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:http/http.dart' as http;
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
 import 'dart:io';
 
 class ProjectManagementPage extends StatefulWidget {
@@ -31,7 +29,8 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   bool _isRecording = false;
   String _shortenedProjectId = '';
-  String baseUrl = 'https://demo-application-api.flexiflows.co'; // Update with your base URL
+
+  final WorkTrackingService _workTrackingService = WorkTrackingService();
 
   @override
   void initState() {
@@ -48,14 +47,8 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   }
 
   Future<void> _fetchProjectData() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/work-tracking/proj/projects?created_by_id=PSV-00-000002'),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      final List<dynamic> tasks = data['result'];
-
+    try {
+      final tasks = await _workTrackingService.fetchMyProjects();
       setState(() {
         _tasks = tasks.map((task) {
           return {
@@ -68,138 +61,175 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
           };
         }).toList();
       });
-    } else {
-      // Handle error
-      print('Failed to load project data');
+    } catch (e) {
+      print('Failed to load project data: $e');
     }
   }
 
-Future<void> _loadChatMessages() async {
-  final response = await http.get(
-    Uri.parse('$baseUrl/api/work-tracking/project-comments/comments?project_id=${widget.projectId}'),
-  );
+  Future<void> _loadChatMessages() async {
+    try {
+      final messages = await _workTrackingService.fetchChatMessages(widget.projectId);
+      setState(() {
+        _messages = messages;
+      });
 
-  if (response.statusCode == 200) {
-    final data = jsonDecode(response.body);
-    setState(() {
-      _messages = List<Map<String, dynamic>>.from(data['results']);
-    });
-  } else {
-    // Handle error
-    print('Failed to load chat messages');
+      // Log the messages in the debug console
+      _messages.forEach((message) {
+        print('Chat Message: ${message['comments']} | From: ${message['createBy_name']} | At: ${message['created_at']}');
+      });
+    } catch (e) {
+      print('Failed to load chat messages: $e');
+    }
   }
-}
 
-Widget _buildChatMessage(String message, String time, String senderName, bool isSentByMe, bool isDarkMode, String? filePath, String? fileType) {
+Widget _buildChatInput(bool isDarkMode) {
+  final Color backgroundColor = isDarkMode ? Colors.black : Colors.white;
   final Color textColor = isDarkMode ? Colors.white : Colors.black;
-  final Color backgroundColor = isSentByMe ? Colors.green.shade100 : Colors.blue.shade100;
 
-  return Align(
-    alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
-    child: Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(8.0),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            senderName,
-            style: TextStyle(color: textColor.withOpacity(0.8), fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          if (fileType != null)
-            if (fileType == 'aac')
-              IconButton(
-                icon: const Icon(Icons.play_arrow),
-                onPressed: () {
-                  // Play the audio file
-                },
-              )
-            else
-              GestureDetector(
-                onTap: () {
-                  // Open the file
-                },
-                child: Text(
-                  message,
-                  style: TextStyle(color: textColor, fontSize: 16, decoration: TextDecoration.underline),
-                ),
+  return Padding(
+    padding: const EdgeInsets.all(16.0),
+    child: Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _messageController,
+            decoration: InputDecoration(
+              hintText: 'Type a message',
+              filled: true,
+              fillColor: backgroundColor,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Colors.yellow, width: 2),
               ),
-          if (fileType == null)
-            Text(
-              message,
-              style: TextStyle(color: textColor, fontSize: 16),
+              hintStyle: TextStyle(color: textColor.withOpacity(0.6)),
             ),
-          const SizedBox(height: 4),
-          Text(
-            time,
-            style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
+            style: TextStyle(color: textColor),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 8),
+        CircleAvatar(
+          radius: 25,
+          backgroundColor: Colors.green,
+          child: IconButton(
+            icon: const Icon(Icons.send, color: Colors.white),
+            onPressed: () {
+              if (_messageController.text.isNotEmpty) {
+                _sendMessage(_messageController.text);
+              }
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          icon: Icon(_isRecording ? Icons.stop : Icons.mic, color: Colors.red),
+          onPressed: _isRecording ? _stopRecording : _startRecording,
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          icon: const Icon(Icons.attach_file, color: Colors.blue),
+          onPressed: _pickFile,
+        ),
+      ],
     ),
   );
 }
 
+  Widget _buildChatMessage(String message, String time, String senderName, bool isSentByMe, bool isDarkMode, String? filePath, String? fileType) {
+    final Color textColor = isDarkMode ? Colors.white : Colors.black;
+    final Color backgroundColor = isSentByMe ? Colors.green.shade100 : Colors.blue.shade100;
 
-Widget _buildChatAndConversationTab(bool isDarkMode) {
-  return Stack(
-    children: [
-      Positioned.fill(
-        child: Image.asset(
-          'assets/background.png',
-          fit: BoxFit.cover,
+    return Align(
+      alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(8.0),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              senderName,
+              style: TextStyle(color: textColor.withOpacity(0.8), fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            if (fileType != null)
+              if (fileType == 'aac')
+                IconButton(
+                  icon: const Icon(Icons.play_arrow),
+                  onPressed: () {
+                    // Play the audio file
+                  },
+                )
+              else
+                GestureDetector(
+                  onTap: () {
+                    // Open the file
+                  },
+                  child: Text(
+                    message,
+                    style: TextStyle(color: textColor, fontSize: 16, decoration: TextDecoration.underline),
+                  ),
+                ),
+            if (fileType == null)
+              Text(
+                message,
+                style: TextStyle(color: textColor, fontSize: 16),
+              ),
+            const SizedBox(height: 4),
+            Text(
+              time,
+              style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
+            ),
+          ],
         ),
       ),
-      Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                return _buildChatMessage(
-                    message['comments'],
-                    DateFormat('hh:mm a').format(DateTime.parse(message['created_at'])),
-                    message['createBy_name'],
-                    message['created_by'] == "PSV-00-000002", // Assuming "PSV-00-000002" is the ID of the current user
-                    isDarkMode,
-                    null, // Add handling for filePath and fileType if available
-                    null);
-              },
-            ),
-          ),
-          _buildChatInput(isDarkMode),
-        ],
-      ),
-    ],
-  );
-}
+    );
+  }
 
+  Widget _buildChatAndConversationTab(bool isDarkMode) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Image.asset(
+            'assets/background.png',
+            fit: BoxFit.cover,
+          ),
+        ),
+        Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: _messages.length,
+                itemBuilder: (context, index) {
+                  final message = _messages[index];
+                  return _buildChatMessage(
+                      message['comments'],
+                      DateFormat('hh:mm a').format(DateTime.parse(message['created_at'])),
+                      message['createBy_name'],
+                      message['created_by'] == "PSV-00-000002", // Assuming "PSV-00-000002" is the ID of the current user
+                      isDarkMode,
+                      null, // Add handling for filePath and fileType if available
+                      null);
+                },
+              ),
+            ),
+            _buildChatInput(isDarkMode),
+          ],
+        ),
+      ],
+    );
+  }
 
   Future<void> _sendMessage(String message, {String? filePath, String? fileType}) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/project-comments/insert'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'project_id': widget.projectId,
-        'message': message,
-        'file_path': filePath,
-        'file_type': fileType,
-        'created_at': DateTime.now().toIso8601String(),
-      }),
-    );
-
-    if (response.statusCode == 200) {
+    try {
+      await _workTrackingService.sendChatMessage(widget.projectId, message, filePath: filePath, fileType: fileType);
       _addMessage(message, filePath: filePath, fileType: fileType);
-    } else {
-      // Handle error
-      print('Failed to send message');
+    } catch (e) {
+      print('Failed to send message: $e');
     }
   }
 
@@ -410,142 +440,6 @@ Widget _buildChatAndConversationTab(bool isDarkMode) {
     );
   }
 
-  // Widget _buildChatAndConversationTab(bool isDarkMode) {
-  //   return Stack(
-  //     children: [
-  //       Positioned.fill(
-  //         child: Image.asset(
-  //           'assets/background.png',
-  //           fit: BoxFit.cover,
-  //         ),
-  //       ),
-  //       Column(
-  //         children: [
-  //           Expanded(
-  //             child: ListView.builder(
-  //               padding: const EdgeInsets.all(16.0),
-  //               itemCount: _messages.length,
-  //               itemBuilder: (context, index) {
-  //                 final message = _messages[index];
-  //                 return _buildChatMessage(
-  //                     message['message']!,
-  //                     message['time']!,
-  //                     index % 2 == 0,
-  //                     isDarkMode,
-  //                     message['filePath'],
-  //                     message['fileType']);
-  //               },
-  //             ),
-  //           ),
-  //           _buildChatInput(isDarkMode),
-  //         ],
-  //       ),
-  //     ],
-  //   );
-  // }
-
-  // Widget _buildChatMessage(String message, String time, bool isSentByMe, bool isDarkMode, String? filePath, String? fileType) {
-  //   final Color textColor = isDarkMode ? Colors.white : Colors.black;
-  //   final Color backgroundColor = isSentByMe ? Colors.green.shade100 : Colors.blue.shade100;
-
-  //   return Align(
-  //     alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
-  //     child: Container(
-  //       margin: const EdgeInsets.symmetric(vertical: 8.0),
-  //       padding: const EdgeInsets.all(12.0),
-  //       decoration: BoxDecoration(
-  //         color: backgroundColor,
-  //         borderRadius: BorderRadius.circular(8.0),
-  //       ),
-  //       child: Column(
-  //         crossAxisAlignment: CrossAxisAlignment.start,
-  //         children: [
-  //           if (fileType != null)
-  //             if (fileType == 'aac')
-  //               IconButton(
-  //                 icon: const Icon(Icons.play_arrow),
-  //                 onPressed: () {
-  //                   // Play the audio file
-  //                 },
-  //               )
-  //             else
-  //               GestureDetector(
-  //                 onTap: () {
-  //                   // Open the file
-  //                 },
-  //                 child: Text(
-  //                   message,
-  //                   style: TextStyle(color: textColor, fontSize: 16, decoration: TextDecoration.underline),
-  //                 ),
-  //               ),
-  //           if (fileType == null)
-  //             Text(
-  //               message,
-  //               style: TextStyle(color: textColor, fontSize: 16),
-  //             ),
-  //           const SizedBox(height: 4),
-  //           Text(
-  //             time,
-  //             style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  Widget _buildChatInput(bool isDarkMode) {
-    final Color backgroundColor = isDarkMode ? Colors.black : Colors.white;
-    final Color textColor = isDarkMode ? Colors.white : Colors.black;
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                hintText: 'Type a message',
-                filled: true,
-                fillColor: backgroundColor,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: const BorderSide(color: Colors.yellow, width: 2),
-                ),
-                hintStyle: TextStyle(color: textColor.withOpacity(0.6)),
-              ),
-              style: TextStyle(color: textColor),
-            ),
-          ),
-          const SizedBox(width: 8),
-          CircleAvatar(
-            radius: 25,
-            backgroundColor: Colors.green,
-            child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.white),
-              onPressed: () {
-                if (_messageController.text.isNotEmpty) {
-                  _sendMessage(_messageController.text);
-                }
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: Icon(_isRecording ? Icons.stop : Icons.mic, color: Colors.red),
-            onPressed: _isRecording ? _stopRecording : _startRecording,
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.attach_file, color: Colors.blue),
-            onPressed: _pickFile,
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTaskCard(Map<String, dynamic> task, int index) {
     final progressColors = {
       'Pending': Colors.orange,
@@ -657,19 +551,13 @@ Widget _buildChatAndConversationTab(bool isDarkMode) {
   }
 
   Future<void> _addTask(Map<String, dynamic> task) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/ass/insert'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(task),
-    );
-
-    if (response.statusCode == 200) {
+    try {
+      await _workTrackingService.addProject(task);
       setState(() {
         _tasks.add(task);
       });
-    } else {
-      // Handle error
-      print('Failed to add task');
+    } catch (e) {
+      print('Failed to add task: $e');
     }
   }
 
@@ -1045,9 +933,8 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
   }
 
   Future<void> _fetchMembers() async {
-    final workTrackingService = WorkTrackingService();
     try {
-      final members = await workTrackingService.fetchMembersByProjectId(widget.projectId);
+      final members = await WorkTrackingService().fetchMembersByProjectId(widget.projectId);
       setState(() {
         _members = members;
         _isLoading = false;
@@ -1157,3 +1044,4 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
     );
   }
 }
+
