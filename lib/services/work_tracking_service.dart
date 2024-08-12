@@ -126,31 +126,74 @@ class WorkTrackingService {
     }
   }
 
-Future<List<Map<String, dynamic>>> fetchMembersByProjectId(String projectId) async {
-  final headers = await _getHeaders();
-  final response = await http.get(
-    Uri.parse('$baseUrl/api/work-tracking/project-member/members?project_id=$projectId'),
-    headers: headers,
-  );
+  Future<List<Map<String, dynamic>>> fetchMembersByProjectId(String projectId) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/work-tracking/project-member/members?project_id=$projectId'),
+      headers: headers,
+    );
 
-  if (response.statusCode == 200) {
-    var body = json.decode(response.body);
-    if (body['results'] != null && body['results'] is List) {
-      return (body['results'] as List).map((item) => {
-            'name': item['name'],
-            'surname': item['surname'],
-            'email': item['email'],
-            'isAdmin': item['member_status'] == 2,
-            'image': 'https://via.placeholder.com/150', // Default image
-            'isSelected': false,
-          }).toList();
+    if (response.statusCode == 200) {
+      var body = json.decode(response.body);
+      if (body['results'] != null && body['results'] is List) {
+        return (body['results'] as List).map((item) => {
+              'name': item['name'],
+              'surname': item['surname'],
+              'email': item['email'],
+              'isAdmin': item['member_status'] == 2,
+              'image': 'https://via.placeholder.com/150', // Default image
+              'isSelected': false,
+            }).toList();
+      } else {
+        throw Exception('Unexpected response format');
+      }
     } else {
-      throw Exception('Unexpected response format');
+      print('Error: ${response.statusCode}, ${response.body}');
+      throw Exception('Failed to load project members: ${response.reasonPhrase}');
     }
-  } else {
-    print('Error: ${response.statusCode}, ${response.body}');
-    throw Exception('Failed to load project members: ${response.reasonPhrase}');
   }
-}
 
+  // Fetch chat messages for a specific project
+  Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/work-tracking/project-comments/comments?project_id=$projectId'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      var body = json.decode(response.body);
+      if (body['results'] != null && body['results'] is List) {
+        return List<Map<String, dynamic>>.from(body['results']);
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } else {
+      print('Error: ${response.statusCode}, ${response.body}');
+      throw Exception('Failed to load chat messages: ${response.reasonPhrase}');
+    }
+  }
+
+  // Send a new chat message for a specific project
+  Future<void> sendChatMessage(String projectId, String message, {String? filePath, String? fileType}) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/work-tracking/project-comments/insert'),
+      headers: headers,
+      body: jsonEncode({
+        'project_id': projectId,
+        'message': message,
+        'file_path': filePath,
+        'file_type': fileType,
+        'created_at': DateTime.now().toIso8601String(),
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      print('Message sent successfully.');
+    } else {
+      print('Error: ${response.statusCode}, ${response.body}');
+      throw Exception('Failed to send chat message: ${response.reasonPhrase}');
+    }
+  }
 }

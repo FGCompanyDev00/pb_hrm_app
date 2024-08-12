@@ -23,10 +23,10 @@ class ProjectManagementPage extends StatefulWidget {
 
 class _ProjectManagementPageState extends State<ProjectManagementPage> with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> _tasks = [];
+  List<Map<String, dynamic>> _messages = [];
   String _selectedStatus = 'All Status';
   final List<String> _statusOptions = ['All Status', 'Pending', 'Processing', 'Completed'];
   late TabController _tabController;
-  final List<Map<String, dynamic>> _messages = [];
   final TextEditingController _messageController = TextEditingController();
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   bool _isRecording = false;
@@ -40,6 +40,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     _shortenedProjectId = widget.projectId.substring(0, 8) + '...';
     _initializeRecorder();
     _fetchProjectData();
+    _loadChatMessages();
   }
 
   Future<void> _initializeRecorder() async {
@@ -73,122 +74,133 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     }
   }
 
-  @override
-  void dispose() {
-    _messageController.dispose();
-    _recorder.closeRecorder();
-    super.dispose();
-  }
+Future<void> _loadChatMessages() async {
+  final response = await http.get(
+    Uri.parse('$baseUrl/api/work-tracking/project-comments/comments?project_id=${widget.projectId}'),
+  );
 
-  Future<void> _addTask(Map<String, dynamic> task) async {
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    setState(() {
+      _messages = List<Map<String, dynamic>>.from(data['results']);
+    });
+  } else {
+    // Handle error
+    print('Failed to load chat messages');
+  }
+}
+
+Widget _buildChatMessage(String message, String time, String senderName, bool isSentByMe, bool isDarkMode, String? filePath, String? fileType) {
+  final Color textColor = isDarkMode ? Colors.white : Colors.black;
+  final Color backgroundColor = isSentByMe ? Colors.green.shade100 : Colors.blue.shade100;
+
+  return Align(
+    alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
+    child: Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            senderName,
+            style: TextStyle(color: textColor.withOpacity(0.8), fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          if (fileType != null)
+            if (fileType == 'aac')
+              IconButton(
+                icon: const Icon(Icons.play_arrow),
+                onPressed: () {
+                  // Play the audio file
+                },
+              )
+            else
+              GestureDetector(
+                onTap: () {
+                  // Open the file
+                },
+                child: Text(
+                  message,
+                  style: TextStyle(color: textColor, fontSize: 16, decoration: TextDecoration.underline),
+                ),
+              ),
+          if (fileType == null)
+            Text(
+              message,
+              style: TextStyle(color: textColor, fontSize: 16),
+            ),
+          const SizedBox(height: 4),
+          Text(
+            time,
+            style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+
+Widget _buildChatAndConversationTab(bool isDarkMode) {
+  return Stack(
+    children: [
+      Positioned.fill(
+        child: Image.asset(
+          'assets/background.png',
+          fit: BoxFit.cover,
+        ),
+      ),
+      Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final message = _messages[index];
+                return _buildChatMessage(
+                    message['comments'],
+                    DateFormat('hh:mm a').format(DateTime.parse(message['created_at'])),
+                    message['createBy_name'],
+                    message['created_by'] == "PSV-00-000002", // Assuming "PSV-00-000002" is the ID of the current user
+                    isDarkMode,
+                    null, // Add handling for filePath and fileType if available
+                    null);
+              },
+            ),
+          ),
+          _buildChatInput(isDarkMode),
+        ],
+      ),
+    ],
+  );
+}
+
+
+  Future<void> _sendMessage(String message, {String? filePath, String? fileType}) async {
     final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/ass/insert'),
+      Uri.parse('$baseUrl/api/work-tracking/project-comments/insert'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(task),
+      body: jsonEncode({
+        'project_id': widget.projectId,
+        'message': message,
+        'file_path': filePath,
+        'file_type': fileType,
+        'created_at': DateTime.now().toIso8601String(),
+      }),
     );
 
     if (response.statusCode == 200) {
-      setState(() {
-        _tasks.add(task);
-      });
+      _addMessage(message, filePath: filePath, fileType: fileType);
     } else {
       // Handle error
-      print('Failed to add task');
+      print('Failed to send message');
     }
-  }
-
-  void _editTask(int index, Map<String, dynamic> updatedTask) {
-    setState(() {
-      _tasks[index] = updatedTask;
-    });
-  }
-
-  void _showTaskModal({Map<String, dynamic>? task, int? index, bool isEdit = false}) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return _TaskModal(
-          task: task,
-          onSave: (newTask) {
-            if (task != null && index != null) {
-              _editTask(index, newTask);
-            } else {
-              _addTask(newTask);
-            }
-          },
-          isEdit: isEdit,
-          projectId: widget.projectId, // Pass projectId here
-        );
-      },
-    );
-  }
-
-  void _showTaskViewModal(Map<String, dynamic> task, int index) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: const Text('View Task'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Title: ${task['title']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 10),
-                Text('Status: ${task['status']}', style: TextStyle(color: _getStatusColor(task['status']))),
-                const SizedBox(height: 10),
-                Text('Start Date: ${task['start_date']}', style: const TextStyle(color: Colors.grey)),
-                const SizedBox(height: 10),
-                Text('Due Date: ${task['due_date']}', style: const TextStyle(color: Colors.grey)),
-                const SizedBox(height: 10),
-                Text('Description: ${task['description']}', style: const TextStyle(color: Colors.black87)),
-                const SizedBox(height: 10),
-                const Text('Images:'),
-                const SizedBox(height: 10),
-                Column(
-                  children: task['images'] != null
-                      ? task['images'].map<Widget>((image) {
-                          return GestureDetector(
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => Dialog(
-                                  child: Image.memory(base64Decode(image)),
-                                ),
-                              );
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Image.memory(base64Decode(image), width: 100, height: 100, fit: BoxFit.cover),
-                            ),
-                          );
-                        }).toList()
-                      : [],
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showTaskModal(task: task, index: index, isEdit: true);
-              },
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.black,
-                backgroundColor: Colors.amber,
-              ),
-              child: const Text('Edit'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   void _addMessage(String message, {String? filePath, String? fileType}) {
@@ -207,7 +219,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     final result = await FilePicker.platform.pickFiles();
     if (result != null) {
       final file = result.files.first;
-      _addMessage(file.name, filePath: file.path, fileType: file.extension);
+      _sendMessage(file.name, filePath: file.path, fileType: file.extension);
     }
   }
 
@@ -225,7 +237,14 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     setState(() {
       _isRecording = false;
     });
-    _addMessage('Voice Message', filePath: filePath, fileType: 'aac');
+    _sendMessage('Voice Message', filePath: filePath, fileType: 'aac');
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _recorder.closeRecorder();
+    super.dispose();
   }
 
   @override
@@ -391,89 +410,89 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     );
   }
 
-  Widget _buildChatAndConversationTab(bool isDarkMode) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Image.asset(
-            'assets/background.png',
-            fit: BoxFit.cover,
-          ),
-        ),
-        Column(
-          children: [
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: _messages.length,
-                itemBuilder: (context, index) {
-                  final message = _messages[index];
-                  return _buildChatMessage(
-                      message['message']!,
-                      message['time']!,
-                      index % 2 == 0,
-                      isDarkMode,
-                      message['filePath'],
-                      message['fileType']);
-                },
-              ),
-            ),
-            _buildChatInput(isDarkMode),
-          ],
-        ),
-      ],
-    );
-  }
+  // Widget _buildChatAndConversationTab(bool isDarkMode) {
+  //   return Stack(
+  //     children: [
+  //       Positioned.fill(
+  //         child: Image.asset(
+  //           'assets/background.png',
+  //           fit: BoxFit.cover,
+  //         ),
+  //       ),
+  //       Column(
+  //         children: [
+  //           Expanded(
+  //             child: ListView.builder(
+  //               padding: const EdgeInsets.all(16.0),
+  //               itemCount: _messages.length,
+  //               itemBuilder: (context, index) {
+  //                 final message = _messages[index];
+  //                 return _buildChatMessage(
+  //                     message['message']!,
+  //                     message['time']!,
+  //                     index % 2 == 0,
+  //                     isDarkMode,
+  //                     message['filePath'],
+  //                     message['fileType']);
+  //               },
+  //             ),
+  //           ),
+  //           _buildChatInput(isDarkMode),
+  //         ],
+  //       ),
+  //     ],
+  //   );
+  // }
 
-  Widget _buildChatMessage(String message, String time, bool isSentByMe, bool isDarkMode, String? filePath, String? fileType) {
-    final Color textColor = isDarkMode ? Colors.white : Colors.black;
-    final Color backgroundColor = isSentByMe ? Colors.green.shade100 : Colors.blue.shade100;
+  // Widget _buildChatMessage(String message, String time, bool isSentByMe, bool isDarkMode, String? filePath, String? fileType) {
+  //   final Color textColor = isDarkMode ? Colors.white : Colors.black;
+  //   final Color backgroundColor = isSentByMe ? Colors.green.shade100 : Colors.blue.shade100;
 
-    return Align(
-      alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
-        padding: const EdgeInsets.all(12.0),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (fileType != null)
-              if (fileType == 'aac')
-                IconButton(
-                  icon: const Icon(Icons.play_arrow),
-                  onPressed: () {
-                    // Play the audio file
-                  },
-                )
-              else
-                GestureDetector(
-                  onTap: () {
-                    // Open the file
-                  },
-                  child: Text(
-                    message,
-                    style: TextStyle(color: textColor, fontSize: 16, decoration: TextDecoration.underline),
-                  ),
-                ),
-            if (fileType == null)
-              Text(
-                message,
-                style: TextStyle(color: textColor, fontSize: 16),
-              ),
-            const SizedBox(height: 4),
-            Text(
-              time,
-              style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  //   return Align(
+  //     alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
+  //     child: Container(
+  //       margin: const EdgeInsets.symmetric(vertical: 8.0),
+  //       padding: const EdgeInsets.all(12.0),
+  //       decoration: BoxDecoration(
+  //         color: backgroundColor,
+  //         borderRadius: BorderRadius.circular(8.0),
+  //       ),
+  //       child: Column(
+  //         crossAxisAlignment: CrossAxisAlignment.start,
+  //         children: [
+  //           if (fileType != null)
+  //             if (fileType == 'aac')
+  //               IconButton(
+  //                 icon: const Icon(Icons.play_arrow),
+  //                 onPressed: () {
+  //                   // Play the audio file
+  //                 },
+  //               )
+  //             else
+  //               GestureDetector(
+  //                 onTap: () {
+  //                   // Open the file
+  //                 },
+  //                 child: Text(
+  //                   message,
+  //                   style: TextStyle(color: textColor, fontSize: 16, decoration: TextDecoration.underline),
+  //                 ),
+  //               ),
+  //           if (fileType == null)
+  //             Text(
+  //               message,
+  //               style: TextStyle(color: textColor, fontSize: 16),
+  //             ),
+  //           const SizedBox(height: 4),
+  //           Text(
+  //             time,
+  //             style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildChatInput(bool isDarkMode) {
     final Color backgroundColor = isDarkMode ? Colors.black : Colors.white;
@@ -507,7 +526,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
               icon: const Icon(Icons.send, color: Colors.white),
               onPressed: () {
                 if (_messageController.text.isNotEmpty) {
-                  _addMessage(_messageController.text);
+                  _sendMessage(_messageController.text);
                 }
               },
             ),
@@ -609,6 +628,117 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
       default:
         return Colors.black;
     }
+  }
+
+  void _showTaskModal({Map<String, dynamic>? task, int? index, bool isEdit = false}) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return _TaskModal(
+          task: task,
+          onSave: (newTask) {
+            if (task != null && index != null) {
+              _editTask(index, newTask);
+            } else {
+              _addTask(newTask);
+            }
+          },
+          isEdit: isEdit,
+          projectId: widget.projectId, // Pass projectId here
+        );
+      },
+    );
+  }
+
+  void _editTask(int index, Map<String, dynamic> updatedTask) {
+    setState(() {
+      _tasks[index] = updatedTask;
+    });
+  }
+
+  Future<void> _addTask(Map<String, dynamic> task) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/work-tracking/ass/insert'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(task),
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        _tasks.add(task);
+      });
+    } else {
+      // Handle error
+      print('Failed to add task');
+    }
+  }
+
+  void _showTaskViewModal(Map<String, dynamic> task, int index) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: const Text('View Task'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Title: ${task['title']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                Text('Status: ${task['status']}', style: TextStyle(color: _getStatusColor(task['status']))),
+                const SizedBox(height: 10),
+                Text('Start Date: ${task['start_date']}', style: const TextStyle(color: Colors.grey)),
+                const SizedBox(height: 10),
+                Text('Due Date: ${task['due_date']}', style: const TextStyle(color: Colors.grey)),
+                const SizedBox(height: 10),
+                Text('Description: ${task['description']}', style: const TextStyle(color: Colors.black87)),
+                const SizedBox(height: 10),
+                const Text('Images:'),
+                const SizedBox(height: 10),
+                Column(
+                  children: task['images'] != null
+                      ? task['images'].map<Widget>((image) {
+                          return GestureDetector(
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => Dialog(
+                                  child: Image.memory(base64Decode(image)),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Image.memory(base64Decode(image), width: 100, height: 100, fit: BoxFit.cover),
+                            ),
+                          );
+                        }).toList()
+                      : [],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showTaskModal(task: task, index: index, isEdit: true);
+              },
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.black,
+                backgroundColor: Colors.amber,
+              ),
+              child: const Text('Edit'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
