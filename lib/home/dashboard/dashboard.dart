@@ -29,6 +29,7 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   bool _hasUnreadNotifications = true;
   late Future<UserProfile> futureUserProfile;
+  // late Future<List<String>> futureBanners;
   late PageController _pageController;
   int _currentPage = 0;
 
@@ -36,6 +37,7 @@ class _DashboardState extends State<Dashboard> {
   void initState() {
     super.initState();
     futureUserProfile = fetchUserProfile();
+    // futureBanners = fetchBanners();
     _pageController = PageController(initialPage: _currentPage);
   }
 
@@ -59,6 +61,26 @@ class _DashboardState extends State<Dashboard> {
       throw Exception('Failed to load user profile');
     }
   }
+
+  // Future<List<String>> fetchBanners() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final String? token = prefs.getString('token');
+
+  //   final response = await http.get(
+  //     Uri.parse('{{PORT}}/api/app/admin/files/active'),
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //       'Authorization': 'Bearer $token',
+  //     },
+  //   );
+
+  //   if (response.statusCode == 200) {
+  //     final List<dynamic> results = jsonDecode(response.body)['files'];
+  //     return results.map((file) => '{{PORT}}/${file['file_path']}').toList();
+  //   } else {
+  //     throw Exception('Failed to load banners');
+  //   }
+  // }
 
   Future<void> _refreshUserProfile() async {
     setState(() {
@@ -200,42 +222,50 @@ class _DashboardState extends State<Dashboard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          height: 150.0,
-                          child: PageView.builder(
-                            controller: _pageController,
-                            itemCount: 3, // or the length of your banners list
-                            onPageChanged: (int index) {
-                              setState(() {
-                                _currentPage = index;
-                              });
-                            },
-                            itemBuilder: (context, index) {
-                              final banners = [
-                                'assets/banner1.png',
-                                'assets/banner2.png',
-                                'assets/banner3.png'
-                              ];
-                              return Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(12),
-                                  image: DecorationImage(
-                                    image: AssetImage(banners[index]),
-                                    fit: BoxFit.cover,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Colors.black26,
-                                      blurRadius: 10,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
+                        // SizedBox(
+                        //   height: 150.0,
+                        //   child: FutureBuilder<List<String>>(
+                        //     future: futureBanners,
+                        //     builder: (context, snapshot) {
+                        //       if (snapshot.connectionState == ConnectionState.waiting) {
+                        //         return const Center(child: CircularProgressIndicator());
+                        //       } else if (snapshot.hasError) {
+                        //         return Center(child: Text('Error: ${snapshot.error}'));
+                        //       } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                        //         return PageView.builder(
+                        //           controller: _pageController,
+                        //           itemCount: snapshot.data!.length,
+                        //           onPageChanged: (int index) {
+                        //             setState(() {
+                        //               _currentPage = index;
+                        //             });
+                        //           },
+                        //           itemBuilder: (context, index) {
+                        //             return Container(
+                        //               margin: const EdgeInsets.symmetric(horizontal: 5.0),
+                        //               decoration: BoxDecoration(
+                        //                 borderRadius: BorderRadius.circular(12),
+                        //                 image: DecorationImage(
+                        //                   image: NetworkImage(snapshot.data![index]),
+                        //                   fit: BoxFit.cover,
+                        //                 ),
+                        //                 boxShadow: const [
+                        //                   BoxShadow(
+                        //                     color: Colors.black26,
+                        //                     blurRadius: 10,
+                        //                     offset: Offset(0, 4),
+                        //                   ),
+                        //                 ],
+                        //               ),
+                        //             );
+                        //           },
+                        //         );
+                        //       } else {
+                        //         return const Center(child: Text('No banners available'));
+                        //       }
+                        //     },
+                        //   ),
+                        // ),
                         const SizedBox(height: 16),
                         Row(
                           children: [
@@ -470,6 +500,7 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 }
+
 
 class UserProfile {
   final int id;
