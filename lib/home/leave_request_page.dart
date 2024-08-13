@@ -25,10 +25,10 @@ class LeaveManagementPage extends HookWidget {
     final leaveTypeId = useState<int?>(null);
 
     // Function to show a dialog and clear input fields
-    void _showDialog(BuildContext context, String title, String content) {
+    void showCustomDialog(BuildContext context, String title, String content) {
       showDialog(
         context: context,
-        builder: (BuildContext context) {
+        builder: (BuildContext dialogContext) {
           return AlertDialog(
             title: Text(title),
             content: Text(content),
@@ -45,7 +45,7 @@ class LeaveManagementPage extends HookWidget {
                   leaveTypeId.value = null;
 
                   // Close the dialog
-                  Navigator.of(context).pop();
+                  Navigator.of(dialogContext).pop();
                 },
               ),
             ],
@@ -140,18 +140,18 @@ class LeaveManagementPage extends HookWidget {
 
           if (response.statusCode == 200 || response.statusCode == 201) {
             EasyLoading.showSuccess('Your leave request has been submitted!');
-            _showDialog(context, 'Success', 'Your leave request has been submitted successfully.');
+            showCustomDialog(context, 'Success', 'Your leave request has been submitted successfully.');
           } else {
             EasyLoading.showError('Failed to submit leave request');
-            _showDialog(context, 'Error', 'Failed to submit leave request.');
+            showCustomDialog(context, 'Error', 'Failed to submit leave request.');
           }
         } catch (e) {
           EasyLoading.showError('Error: $e');
-          _showDialog(context, 'Error', 'An error occurred: $e');
+          showCustomDialog(context, 'Error', 'An error occurred: $e');
         }
       } else {
         EasyLoading.showError('Please fill in all fields');
-        _showDialog(context, 'Error', 'Please fill in all fields to submit your leave request.');
+        showCustomDialog(context, 'Error', 'Please fill in all fields to submit your leave request.');
       }
     }
 

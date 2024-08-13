@@ -8,7 +8,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
-import 'dart:io';
 
 class ProjectManagementPage extends StatefulWidget {
   final String projectId;
@@ -36,7 +35,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _shortenedProjectId = widget.projectId.substring(0, 8) + '...';
+    _shortenedProjectId = '${widget.projectId.substring(0, 8)}...';
     _initializeRecorder();
     _fetchProjectData();
     _loadChatMessages();
@@ -74,9 +73,9 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
       });
 
       // Log the messages in the debug console
-      _messages.forEach((message) {
+      for (var message in _messages) {
         print('Chat Message: ${message['comments']} | From: ${message['createBy_name']} | At: ${message['created_at']}');
-      });
+      }
     } catch (e) {
       print('Failed to load chat messages: $e');
     }

@@ -78,7 +78,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     // Get the auth token from wherever it is stored, e.g., from a Provider or a global variable.
-    final String authToken = 'your-auth-token-here';
+    const String authToken = 'your-auth-token-here';
 
     return WillPopScope(
       onWillPop: () async {

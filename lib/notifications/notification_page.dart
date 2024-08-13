@@ -15,7 +15,7 @@ class NotificationPage extends StatefulWidget {
 class _NotificationPageState extends State<NotificationPage> {
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   List<NotificationModel> _notifications = [];
-  List<int> _selectedNotifications = [];
+  final List<int> _selectedNotifications = [];
   bool _isDeleting = false;
 
   @override

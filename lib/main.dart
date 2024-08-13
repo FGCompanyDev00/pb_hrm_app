@@ -8,10 +8,9 @@ import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_easyloading/flutter_easyloading.dart'; // Import EasyLoading
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'services/notification_polling_service.dart';
 import 'notifications/notification_model.dart';
-import 'notifications/notification_page.dart';
 import 'splash/splashscreen.dart';
 import 'theme/theme.dart';
 import 'home/home_calendar.dart';
@@ -130,7 +129,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _notificationPollingService = NotificationPollingService(
-      apiUrl: 'https://your-api-url.com/api/work-tracking/proj/notifications',
+      apiUrl: 'https://demo-application-api.flexiflows.co/api/work-tracking/proj/notifications',
       onNewNotifications: (notifications) {
         setState(() {
           _notifications.addAll(notifications.map((n) => NotificationModel.fromJson(n as Map<String, dynamic>)));

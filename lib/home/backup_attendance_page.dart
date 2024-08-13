@@ -13,7 +13,6 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:flutter_background/flutter_background.dart';
-import 'package:pb_hrsystem/home/monthly_attendance_record.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -621,47 +620,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       length: 3,
       child: Scaffold(
         appBar: _buildHeader(context, isDarkMode),
-        body: Stack(
+        body: Column(
           children: [
-            Column(
-              children: [
-                _buildTabs(context),
-                Expanded(
-                  child: TabBarView(
-                    physics: const NeverScrollableScrollPhysics(), // Disable swipe gesture
-                    children: [
-                      _buildTabContent(context, isDarkMode, Colors.yellow, Colors.yellow, 'Home'),
-                      _buildTabContent(context, isDarkMode, Colors.green, Colors.green, 'Office'),
-                      _buildTabContent(context, isDarkMode, Colors.red, Colors.red, 'Offsite'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            Positioned(
-              bottom: 30.0,
-              left: 0.0,
-              right: 0.0,
-              child: Center(
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => MonthlyAttendanceReport()),
-                    );
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
-                    child: const Text(
-                      'View More',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ),
-                ),
+            _buildTabs(context),
+            Expanded(
+              child: TabBarView(
+                physics: const NeverScrollableScrollPhysics(), // Disable swipe gesture
+                children: [
+                  _buildTabContent(context, isDarkMode, Colors.yellow, Colors.yellow, 'Home'),
+                  _buildTabContent(context, isDarkMode, Colors.green, Colors.green, 'Office'),
+                  _buildTabContent(context, isDarkMode, Colors.red, Colors.red, 'Offsite'),
+                ],
               ),
             ),
           ],
