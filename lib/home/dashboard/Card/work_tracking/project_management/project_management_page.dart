@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
+import 'dart:io';
 
 class ProjectManagementPage extends StatefulWidget {
   final String projectId;
@@ -35,7 +36,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _shortenedProjectId = '${widget.projectId.substring(0, 8)}...';
+    _shortenedProjectId = widget.projectId.substring(0, 8) + '...';
     _initializeRecorder();
     _fetchProjectData();
     _loadChatMessages();
@@ -73,9 +74,9 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
       });
 
       // Log the messages in the debug console
-      for (var message in _messages) {
+      _messages.forEach((message) {
         print('Chat Message: ${message['comments']} | From: ${message['createBy_name']} | At: ${message['created_at']}');
-      }
+      });
     } catch (e) {
       print('Failed to load chat messages: $e');
     }
@@ -354,18 +355,6 @@ Widget _buildChatInput(bool isDarkMode) {
           _buildChatAndConversationTab(isDarkMode),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddPeoplePageWorkTracking(projectId: widget.projectId),
-            ),
-          );
-        },
-        backgroundColor: Colors.green,
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
@@ -633,7 +622,7 @@ class _TaskModal extends StatefulWidget {
   final Map<String, dynamic>? task;
   final Function(Map<String, dynamic>) onSave;
   final bool isEdit;
-  final String projectId; // Accept projectId here
+  final String projectId;
 
   const _TaskModal({this.task, required this.onSave, this.isEdit = false, required this.projectId});
 
@@ -649,6 +638,7 @@ class __TaskModalState extends State<_TaskModal> {
   String _selectedStatus = 'Pending';
   final ImagePicker _picker = ImagePicker();
   List<String> _images = [];
+  List<Map<String, dynamic>> _selectedPeople = [];
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -726,11 +716,34 @@ class __TaskModalState extends State<_TaskModal> {
         'description': _descriptionController.text,
         'status': _selectedStatus,
         'images': _images,
+        'members': _selectedPeople,  // Add the selected members to the task data
       };
 
       widget.onSave(task);
 
       Navigator.pop(context);
+    }
+  }
+
+  void _openAddPeoplePage() async {
+    final selectedPeople = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddPeoplePageWorkTracking(
+          projectId: widget.projectId,
+          onSelectedPeople: (people) {
+            setState(() {
+              _selectedPeople = people;
+            });
+          },
+        ),
+      ),
+    );
+
+    if (selectedPeople != null) {
+      setState(() {
+        _selectedPeople = selectedPeople;
+      });
     }
   }
 
@@ -874,18 +887,27 @@ class __TaskModalState extends State<_TaskModal> {
               ),
               const SizedBox(height: 10),
               ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => AddPeoplePageWorkTracking(projectId: widget.projectId)),
-                  );
-                },
+                onPressed: _openAddPeoplePage,
                 icon: const Icon(Icons.person_add),
-                label: const Text('Add People'),
+                label: const Text('Add Members'),
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
-                  backgroundColor: Colors.green,
+                  backgroundColor: Colors.blue,
                 ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8.0,
+                children: _selectedPeople.map((person) {
+                  return Chip(
+                    label: Text(person['name']),
+                    onDeleted: () {
+                      setState(() {
+                        _selectedPeople.remove(person);
+                      });
+                    },
+                  );
+                }).toList(),
               ),
             ],
           ),
@@ -911,10 +933,12 @@ class __TaskModalState extends State<_TaskModal> {
   }
 }
 
+
 class AddPeoplePageWorkTracking extends StatefulWidget {
   final String projectId;
+  final Function(List<Map<String, dynamic>>) onSelectedPeople;
 
-  const AddPeoplePageWorkTracking({super.key, required this.projectId});
+  const AddPeoplePageWorkTracking({super.key, required this.projectId, required this.onSelectedPeople});
 
   @override
   _AddPeoplePageWorkTrackingState createState() => _AddPeoplePageWorkTrackingState();
@@ -922,6 +946,7 @@ class AddPeoplePageWorkTracking extends StatefulWidget {
 
 class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
   List<Map<String, dynamic>> _members = [];
+  List<Map<String, dynamic>> _selectedPeople = [];
   String _searchQuery = '';
   bool _isLoading = true;
 
@@ -946,16 +971,20 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
     }
   }
 
-  void _toggleAdmin(int index) {
-    setState(() {
-      _members[index]['isAdmin'] = !_members[index]['isAdmin'];
-    });
-  }
-
   void _toggleSelection(int index) {
     setState(() {
       _members[index]['isSelected'] = !_members[index]['isSelected'];
+      if (_members[index]['isSelected']) {
+        _selectedPeople.add(_members[index]);
+      } else {
+        _selectedPeople.removeWhere((person) => person['id'] == _members[index]['id']);
+      }
     });
+  }
+
+  void _confirmSelection() {
+    widget.onSelectedPeople(_selectedPeople);
+    Navigator.pop(context);
   }
 
   @override
@@ -1003,25 +1032,11 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
                           ),
                           title: Text(filteredMembers[index]['name']),
                           subtitle: Text('${filteredMembers[index]['surname']} - ${filteredMembers[index]['email']}'),
-                          trailing: Wrap(
-                            spacing: 12, // space between two icons
-                            children: <Widget>[
-                              Checkbox(
-                                value: filteredMembers[index]['isSelected'],
-                                onChanged: (bool? value) {
-                                  _toggleSelection(index);
-                                },
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  filteredMembers[index]['isAdmin'] ? Icons.star : Icons.star_border,
-                                  color: filteredMembers[index]['isAdmin'] ? Colors.amber : Colors.grey,
-                                ),
-                                onPressed: () {
-                                  _toggleAdmin(index);
-                                },
-                              ),
-                            ],
+                          trailing: Checkbox(
+                            value: filteredMembers[index]['isSelected'],
+                            onChanged: (bool? value) {
+                              _toggleSelection(index);
+                            },
                           ),
                         ),
                       );
@@ -1031,9 +1046,7 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      // Handle add members action
-                    },
+                    onPressed: _confirmSelection,
                     icon: const Icon(Icons.add),
                     label: const Text('Add'),
                   ),
@@ -1043,4 +1056,3 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
     );
   }
 }
-

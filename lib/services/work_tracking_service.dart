@@ -137,6 +137,7 @@ class WorkTrackingService {
       var body = json.decode(response.body);
       if (body['results'] != null && body['results'] is List) {
         return (body['results'] as List).map((item) => {
+              'id': item['member_id'],
               'name': item['name'],
               'surname': item['surname'],
               'email': item['email'],
@@ -194,6 +195,24 @@ class WorkTrackingService {
     } else {
       print('Error: ${response.statusCode}, ${response.body}');
       throw Exception('Failed to send chat message: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> addPersonToProject(String projectId, String personId) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/work-tracking/project-member/insert'),
+      headers: headers,
+      body: jsonEncode({
+        'project_id': projectId,
+        'member_id': personId,
+        'member_status': 1, // Example status
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      print('Error: ${response.statusCode}, ${response.body}');
+      throw Exception('Failed to add person to project: ${response.reasonPhrase}');
     }
   }
 }

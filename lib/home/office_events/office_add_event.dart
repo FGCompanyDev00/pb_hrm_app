@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_people_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/project_management_page.dart';
 
 class OfficeAddEventPage extends StatefulWidget {
   const OfficeAddEventPage({super.key});
@@ -18,16 +19,18 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   String? _location;
   String? _notification;
   final _formKey = GlobalKey<FormState>();
+  List<Map<String, dynamic>> _selectedPeople = [];
 
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       final event = {
         'title': _titleController.text,
         'description': _descriptionController.text,
-        'startDateTime': _startDateTime, 
+        'startDateTime': _startDateTime,
         'endDateTime': _endDateTime,
         'location': _location,
         'notification': _notification,
+        'selectedPeople': _selectedPeople,
       };
       Navigator.pop(context, event);
     } else {
@@ -40,7 +43,16 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   void _navigateToAddPeople() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AddPeoplePage()),
+      MaterialPageRoute(
+        builder: (context) => AddPeoplePageWorkTracking(
+          projectId: 'your_project_id', // Replace with actual projectId if available
+          onSelectedPeople: (selectedPeople) {
+            setState(() {
+              _selectedPeople = selectedPeople;
+            });
+          },
+        ),
+      ),
     );
   }
 
@@ -302,30 +314,15 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       ),
                     ),
                     const SizedBox(height: 16.0),
-                    const Center(
+                    Center(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircleAvatar(
-                            backgroundImage: AssetImage('assets/person1.jpg'),
-                          ),
-                          SizedBox(width: 8.0),
-                          CircleAvatar(
-                            backgroundImage: AssetImage('assets/person2.jpg'),
-                          ),
-                          SizedBox(width: 8.0),
-                          CircleAvatar(
-                            backgroundImage: AssetImage('assets/person3.jpg'),
-                          ),
-                          SizedBox(width: 8.0),
-                          CircleAvatar(
-                            backgroundImage: AssetImage('assets/person4.jpg'),
-                          ),
-                          SizedBox(width: 8.0),
-                          CircleAvatar(
-                            child: Text('+3'),
-                          ),
-                        ],
+                        children: _selectedPeople.map((person) {
+                          return CircleAvatar(
+                            backgroundImage: NetworkImage(person['image']),
+                            radius: 20.0,
+                          );
+                        }).toList(),
                       ),
                     ),
                   ],
@@ -338,6 +335,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     );
   }
 }
+
 
 /**
  * ini saja 2 test untuk push dan pull okay

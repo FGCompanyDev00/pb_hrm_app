@@ -1,101 +1,170 @@
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_project.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/project_management_page.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
+import 'package:pb_hrsystem/services/work_tracking_service.dart';
+import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 
-class AddPeoplePage extends StatefulWidget {
-  const AddPeoplePage({super.key});
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
+import 'package:pb_hrsystem/services/work_tracking_service.dart';
+import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
+
+class AddProjectPage extends StatefulWidget {
+  final Function(Map<String, dynamic>) onAddProject;
+
+  const AddProjectPage({required this.onAddProject, super.key});
 
   @override
-  _AddPeoplePageState createState() => _AddPeoplePageState();
+  AddProjectPageState createState() => AddProjectPageState();
 }
 
-class _AddPeoplePageState extends State<AddPeoplePage> {
-  final List<Map<String, dynamic>> _members = [
-    {
-      'name': 'Alanlove',
-      'role': 'Travel Blogger',
-      'email': 'alan@psvb.com.la',
-      'isAdmin': false,
-      'isSelected': false,
-      'image': 'assets/avatar_placeholder.png'
-    },
-    {
-      'name': 'Charlotte',
-      'role': 'Chief Travel',
-      'email': 'charlotte@psvb.com.la',
-      'isAdmin': true,
-      'isSelected': false,
-      'image': 'assets/avatar_placeholder.png'
-    },
-    {
-      'name': 'Evangeline',
-      'role': 'Chief Travel',
-      'email': 'evangeline@psvb.com.la',
-      'isAdmin': true,
-      'isSelected': false,
-      'image': 'assets/avatar_placeholder.png'
-    },
-    {
-      'name': 'Geraldine',
-      'role': 'Private tour',
-      'email': 'geraldine@psvb.com.la',
-      'isAdmin': false,
-      'isSelected': false,
-      'image': 'assets/avatar_placeholder.png'
-    },
-    {
-      'name': 'Prudence',
-      'role': 'Travel',
-      'email': 'prudence@psvb.com.la',
-      'isAdmin': false,
-      'isSelected': false,
-      'image': 'assets/avatar_placeholder.png'
-    },
+class AddProjectPageState extends State<AddProjectPage> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _projectNameController = TextEditingController();
+  final TextEditingController _deadline1Controller = TextEditingController();
+  final TextEditingController _deadline2Controller = TextEditingController();
+
+  String _selectedStatus = 'Processing';
+  String _selectedBranch = 'HQ Office';
+  String _selectedDepartment = 'Digital Banking Dept';
+  double _progress = 0.5;
+  List<Map<String, dynamic>> _selectedPeople = [];
+
+  final List<String> _statusOptions = ['Processing', 'Pending', 'Finished'];
+  final List<String> _branchOptions = [
+    'HQ Office',
+    'Samsen thai B',
+    'HQ office premier room',
+    'HQ office loan meeting room',
+    'Back Can yon 2F(1)',
+    'Back Can yon 2F(2)'
+  ];
+  final List<String> _departmentOptions = [
+    'Digital Banking Dept',
+    'IT department',
+    'Teller',
+    'HQ office loan meeting room',
+    'Back Can yon 2F(1)',
+    'Back Can yon 2F(2)'
   ];
 
-  String _searchQuery = '';
-
-  void _toggleAdmin(int index) {
-    setState(() {
-      _members[index]['isAdmin'] = !_members[index]['isAdmin'];
-    });
+  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null) {
+      setState(() {
+        controller.text = "${picked.toLocal()}".split(' ')[0];
+      });
+    }
   }
 
-  void _toggleSelection(int index) {
-    setState(() {
-      _members[index]['isSelected'] = !_members[index]['isSelected'];
-    });
+  Future<void> _addProject() async {
+    if (_formKey.currentState!.validate()) {
+      final String projectId = const Uuid().v4();
+      final newProject = {
+        'project_name': _projectNameController.text,
+        'department_id': '1', // Map this to the actual selected department ID
+        'branch_id': '1', // Map this to the actual selected branch ID
+        'status_id': '40d2ba5e-a978-47ce-bc48-caceca8668e9', // Example status ID
+        'precent_of_project': (_progress * 100).toStringAsFixed(0),
+        'deadline': _deadline1Controller.text,
+        'extended': _deadline2Controller.text,
+        'project_id': projectId,
+      };
+
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Confirm Add Project'),
+            content: const Text('Are you sure you want to add this project?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop(); // Close the confirmation dialog
+                  try {
+                    await WorkTrackingService().addProject(newProject);
+                    widget.onAddProject(newProject);
+                    await _addPeopleToProject(projectId);
+                    _showSuccessDialog(); // Show success message and navigate back
+                  } catch (e) {
+                    _showErrorDialog(e.toString());
+                  }
+                },
+                child: const Text('Confirm'),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 
-  void _addMembers() {
+  Future<void> _addPeopleToProject(String projectId) async {
+    try {
+      for (var person in _selectedPeople) {
+        await WorkTrackingService().addPersonToProject(projectId, person['id']);
+      }
+    } catch (e) {
+      _showErrorDialog(e.toString());
+    }
+  }
+
+  void _showErrorDialog(String message) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Members Added'),
-          content: const Text('Members have been added successfully to this project.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close the dialog
-                Navigator.pop(context); // Close the add people page
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => AddProjectPage(onAddProject: (project) {})),
-                ); // Navigate back to AddProjectPage
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Project Added'),
+        content: const Text('Your project has been added successfully.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close the success dialog
+              Navigator.of(context).pop(); // Close the add project page
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
+              );
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredMembers = _members.where((member) {
-      return member['name'].toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
 
     return Scaffold(
       appBar: AppBar(
@@ -104,110 +173,235 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
           'assets/background.png',
           fit: BoxFit.cover,
         ),
-        title: const Text(
-          'Add Member',
+        title: Text(
+          'Create New Project',
           style: TextStyle(
-            color: Colors.black,
+            color: isDarkMode ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
           onPressed: () {
             Navigator.pop(context);
           },
         ),
       ),
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 70.0),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-                  child: TextField(
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search),
-                      hintText: 'Search',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30.0),
-                      ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _projectNameController,
+                  decoration: InputDecoration(
+                    labelText: 'Name of Project',
+                    labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.0),
                     ),
                   ),
+                  style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter the project name';
+                    }
+                    return null;
+                  },
                 ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: filteredMembers.length,
-                    itemBuilder: (context, index) {
-                      return Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: AssetImage(filteredMembers[index]['image']),
-                          ),
-                          title: Text(filteredMembers[index]['name']),
-                          subtitle: Text('${filteredMembers[index]['role']} ${filteredMembers[index]['email']}'),
-                          trailing: Wrap(
-                            spacing: 12, // space between two icons
-                            children: <Widget>[
-                              Checkbox(
-                                value: filteredMembers[index]['isSelected'],
-                                onChanged: (bool? value) {
-                                  _toggleSelection(index);
-                                },
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  filteredMembers[index]['isAdmin'] ? Icons.star : Icons.star_border,
-                                  color: filteredMembers[index]['isAdmin'] ? Colors.amber : Colors.grey,
-                                ),
-                                onPressed: () {
-                                  _toggleAdmin(index);
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                const SizedBox(height: 10),
+                _buildDropdownField('Status', _selectedStatus, _statusOptions, (value) {
+                  setState(() {
+                    _selectedStatus = value!;
+                  });
+                }, isDarkMode),
+                const SizedBox(height: 10),
+                _buildDropdownField('Branch', _selectedBranch, _branchOptions, (value) {
+                  setState(() {
+                    _selectedBranch = value!;
+                  });
+                }, isDarkMode),
+                const SizedBox(height: 10),
+                _buildDropdownField('Department', _selectedDepartment, _departmentOptions, (value) {
+                  setState(() {
+                    _selectedDepartment = value!;
+                  });
+                }, isDarkMode),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildDateField('Deadline', _deadline1Controller, isDarkMode),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildDateField('Extended Deadline', _deadline2Controller, isDarkMode),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Percent *',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black,
                   ),
+                ),
+                const SizedBox(height: 10),
+                _buildProgressBar(isDarkMode),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddPeoplePageWorkTracking(
+                          projectId: 'temp_project_id',
+                          onSelectedPeople: (selectedPeople) {
+                            setState(() {
+                              _selectedPeople = selectedPeople;
+                            });
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.person_add),
+                  label: const Text('Add People'),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.green,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _addProject,
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.amber,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: const Text('+ Add'),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          Positioned(
-            bottom: 16.0,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: SizedBox(
-                width: 120,
-                child: ElevatedButton.icon(
-                  onPressed: _addMembers,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add'),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.amber,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownField(String label, String value, List<String> options, ValueChanged<String?> onChanged, bool isDarkMode) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black),
+        ),
+        const SizedBox(height: 5),
+        DropdownButtonFormField<String>(
+          value: value,
+          onChanged: onChanged,
+          items: options.map((option) {
+            return DropdownMenuItem<String>(
+              value: option,
+              child: Text(
+                option,
+                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
               ),
+            );
+          }).toList(),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8.0),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateField(String label, TextEditingController controller, bool isDarkMode) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black),
+        ),
+        const SizedBox(height: 5),
+        GestureDetector(
+          onTap: () => _selectDate(context, controller),
+          child: AbsorbPointer(
+            child: TextFormField(
+              controller: controller,
+              decoration: InputDecoration(
+                suffixIcon: Icon(Icons.calendar_today, color: isDarkMode ? Colors.white : Colors.black),
+                filled: true,
+                fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+              ),
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please select a date';
+                }
+                return null;
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProgressBar(bool isDarkMode) {
+    return Row(
+      children: [
+        Expanded(
+          child: Slider(
+            value: _progress,
+            onChanged: (value) {
+              setState(() {
+                _progress = value;
+              });
+            },
+            min: 0,
+            max: 1,
+            divisions: 100,
+            label: '${(_progress * 100).toStringAsFixed(0)}%',
+            activeColor: isDarkMode ? Colors.amber : Colors.blue,
+            inactiveColor: isDarkMode ? Colors.grey : Colors.grey[300],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          '${(_progress * 100).toStringAsFixed(0)}%',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
+      ],
     );
   }
 }
