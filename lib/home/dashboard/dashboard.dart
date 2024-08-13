@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/history_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approval/approvals_page.dart';
@@ -29,7 +30,7 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   bool _hasUnreadNotifications = true;
   late Future<UserProfile> futureUserProfile;
-  // late Future<List<String>> futureBanners;
+  late Future<List<String>> futureBanners;
   late PageController _pageController;
   int _currentPage = 0;
 
@@ -37,8 +38,23 @@ class _DashboardState extends State<Dashboard> {
   void initState() {
     super.initState();
     futureUserProfile = fetchUserProfile();
-    // futureBanners = fetchBanners();
+    futureBanners = fetchBanners();
     _pageController = PageController(initialPage: _currentPage);
+
+    // Auto-swiping the carousel every 5 seconds
+    Timer.periodic(const Duration(seconds: 5), (Timer timer) {
+      if (_pageController.hasClients) {
+        int nextPage = _currentPage + 1;
+        if (nextPage >= _pageController.positions.length) {
+          nextPage = 0;
+        }
+        _pageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeIn,
+        );
+      }
+    });
   }
 
   Future<UserProfile> fetchUserProfile() async {
@@ -62,25 +78,25 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
-  // Future<List<String>> fetchBanners() async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   final String? token = prefs.getString('token');
+  Future<List<String>> fetchBanners() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('token');
 
-  //   final response = await http.get(
-  //     Uri.parse('{{PORT}}/api/app/admin/files/active'),
-  //     headers: {
-  //       'Content-Type': 'application/json',
-  //       'Authorization': 'Bearer $token',
-  //     },
-  //   );
+    final response = await http.get(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/app/promotions/files/active'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-  //   if (response.statusCode == 200) {
-  //     final List<dynamic> results = jsonDecode(response.body)['files'];
-  //     return results.map((file) => '{{PORT}}/${file['file_path']}').toList();
-  //   } else {
-  //     throw Exception('Failed to load banners');
-  //   }
-  // }
+    if (response.statusCode == 200) {
+      final List<dynamic> results = jsonDecode(response.body)['results'];
+      return results.map<String>((file) => file['files']).toList();
+    } else {
+      throw Exception('Failed to load banners');
+    }
+  }
 
   Future<void> _refreshUserProfile() async {
     setState(() {
@@ -222,50 +238,50 @@ class _DashboardState extends State<Dashboard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // SizedBox(
-                        //   height: 150.0,
-                        //   child: FutureBuilder<List<String>>(
-                        //     future: futureBanners,
-                        //     builder: (context, snapshot) {
-                        //       if (snapshot.connectionState == ConnectionState.waiting) {
-                        //         return const Center(child: CircularProgressIndicator());
-                        //       } else if (snapshot.hasError) {
-                        //         return Center(child: Text('Error: ${snapshot.error}'));
-                        //       } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                        //         return PageView.builder(
-                        //           controller: _pageController,
-                        //           itemCount: snapshot.data!.length,
-                        //           onPageChanged: (int index) {
-                        //             setState(() {
-                        //               _currentPage = index;
-                        //             });
-                        //           },
-                        //           itemBuilder: (context, index) {
-                        //             return Container(
-                        //               margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                        //               decoration: BoxDecoration(
-                        //                 borderRadius: BorderRadius.circular(12),
-                        //                 image: DecorationImage(
-                        //                   image: NetworkImage(snapshot.data![index]),
-                        //                   fit: BoxFit.cover,
-                        //                 ),
-                        //                 boxShadow: const [
-                        //                   BoxShadow(
-                        //                     color: Colors.black26,
-                        //                     blurRadius: 10,
-                        //                     offset: Offset(0, 4),
-                        //                   ),
-                        //                 ],
-                        //               ),
-                        //             );
-                        //           },
-                        //         );
-                        //       } else {
-                        //         return const Center(child: Text('No banners available'));
-                        //       }
-                        //     },
-                        //   ),
-                        // ),
+                        SizedBox(
+                          height: 150.0,
+                          child: FutureBuilder<List<String>>(
+                            future: futureBanners,
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              } else if (snapshot.hasError) {
+                                return Center(child: Text('Error: ${snapshot.error}'));
+                              } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                                return PageView.builder(
+                                  controller: _pageController,
+                                  itemCount: snapshot.data!.length,
+                                  onPageChanged: (int index) {
+                                    setState(() {
+                                      _currentPage = index;
+                                    });
+                                  },
+                                  itemBuilder: (context, index) {
+                                    return Container(
+                                      margin: const EdgeInsets.symmetric(horizontal: 5.0),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        image: DecorationImage(
+                                          image: NetworkImage(snapshot.data![index]),
+                                          fit: BoxFit.cover,
+                                        ),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Colors.black26,
+                                            blurRadius: 10,
+                                            offset: Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                );
+                              } else {
+                                return const Center(child: Text('No banners available'));
+                              }
+                            },
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         Row(
                           children: [
@@ -500,7 +516,6 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 }
-
 
 class UserProfile {
   final int id;

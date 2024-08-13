@@ -6,12 +6,6 @@ import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 
-import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
-import 'package:pb_hrsystem/services/work_tracking_service.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 
 class AddProjectPage extends StatefulWidget {
   final Function(Map<String, dynamic>) onAddProject;

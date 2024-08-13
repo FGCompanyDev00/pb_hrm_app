@@ -647,7 +647,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => MonthlyAttendanceReport()),
+                      MaterialPageRoute(builder: (context) => const MonthlyAttendanceReport()),
                     );
                   },
                   child: Container(

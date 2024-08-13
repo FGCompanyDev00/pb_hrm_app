@@ -94,7 +94,7 @@ class _LoginPageState extends State<LoginPage> {
         await _storage.write(key: 'biometricEnabled', value: 'true');
       }
 
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const MainScreen()),
       );
