@@ -24,19 +24,17 @@ class WorkTrackingService {
     if (response.statusCode == 200) {
       var body = json.decode(response.body);
       if (body['result'] != null && body['result'] is List) {
-        return (body['result'] as List)
-            .map((item) => {
-                  'project_id': item['project_id'],
-                  'p_name': item['p_name'],
-                  's_name': item['s_name'],
-                  'precent': item['precent'],
-                  'dl': item['dl'],
-                  'extend': item['extend'],
-                  'create_project_by': item['create_project_by'],
-                  'd_name': item['d_name'],
-                  'b_name': item['b_name'],
-                })
-            .toList();
+        return (body['result'] as List).map((item) => {
+          'project_id': item['project_id'],
+          'p_name': item['p_name'],
+          's_name': item['s_name'],
+          'precent': item['precent'],
+          'dl': item['dl'],
+          'extend': item['extend'],
+          'create_project_by': item['create_project_by'],
+          'd_name': item['d_name'],
+          'b_name': item['b_name'],
+        }).toList();
       } else {
         throw Exception('Unexpected response format');
       }
@@ -56,19 +54,17 @@ class WorkTrackingService {
     if (response.statusCode == 200) {
       var body = json.decode(response.body);
       if (body['result'] != null && body['result'] is List) {
-        return (body['result'] as List)
-            .map((item) => {
-                  'project_id': item['project_id'],
-                  'p_name': item['p_name'],
-                  's_name': item['s_name'],
-                  'precent': item['precent'],
-                  'dl': item['dl'],
-                  'extend': item['extend'],
-                  'create_project_by': item['create_project_by'],
-                  'd_name': item['d_name'],
-                  'b_name': item['b_name'],
-                })
-            .toList();
+        return (body['result'] as List).map((item) => {
+          'project_id': item['project_id'],
+          'p_name': item['p_name'],
+          's_name': item['s_name'],
+          'precent': item['precent'],
+          'dl': item['dl'],
+          'extend': item['extend'],
+          'create_project_by': item['create_project_by'],
+          'd_name': item['d_name'],
+          'b_name': item['b_name'],
+        }).toList();
       } else {
         throw Exception('Unexpected response format');
       }
@@ -137,14 +133,14 @@ class WorkTrackingService {
       var body = json.decode(response.body);
       if (body['results'] != null && body['results'] is List) {
         return (body['results'] as List).map((item) => {
-              'id': item['member_id'],
-              'name': item['name'],
-              'surname': item['surname'],
-              'email': item['email'],
-              'isAdmin': item['member_status'] == 2,
-              'image': 'https://via.placeholder.com/150', // Default image
-              'isSelected': false,
-            }).toList();
+          'id': item['member_id'],
+          'name': item['name'],
+          'surname': item['surname'],
+          'email': item['email'],
+          'isAdmin': item['member_status'] == 2,
+          'image': 'https://via.placeholder.com/150', // Default image
+          'isSelected': false,
+        }).toList();
       } else {
         throw Exception('Unexpected response format');
       }
@@ -154,7 +150,6 @@ class WorkTrackingService {
     }
   }
 
-  // Fetch chat messages for a specific project
   Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
     final headers = await _getHeaders();
     final response = await http.get(
@@ -175,7 +170,6 @@ class WorkTrackingService {
     }
   }
 
-  // Send a new chat message for a specific project
   Future<void> sendChatMessage(String projectId, String message, {String? filePath, String? fileType}) async {
     final headers = await _getHeaders();
     final response = await http.post(
@@ -213,6 +207,109 @@ class WorkTrackingService {
     if (response.statusCode != 200) {
       print('Error: ${response.statusCode}, ${response.body}');
       throw Exception('Failed to add person to project: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchAssignments(String projectId) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/work-tracking/ass/assignments?proj_id=$projectId'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      var body = json.decode(response.body);
+      if (body['results'] != null && body['results'] is List) {
+        return List<Map<String, dynamic>>.from(body['results']);
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } else {
+      print('Error: ${response.statusCode}, ${response.body}');
+      throw Exception('Failed to load assignments: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> addAssignment(String projectId, Map<String, dynamic> taskData) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/work-tracking/ass/insert'),
+      headers: headers,
+      body: jsonEncode({
+        'project_id': projectId,
+        ...taskData,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      print('Assignment successfully created.');
+    } else {
+      print('Error: ${response.statusCode}, ${response.body}');
+      throw Exception('Failed to add assignment: ${response.reasonPhrase}');
+    }
+  }
+
+
+  Future<void> updateAssignment(String assignmentId, Map<String, dynamic> taskData) async {
+    final headers = await _getHeaders();
+    final response = await http.put(
+      Uri.parse('$baseUrl/api/work-tracking/ass/update/$assignmentId'),
+      headers: headers,
+      body: jsonEncode(taskData),
+    );
+
+    if (response.statusCode != 200) {
+      print('Error: ${response.statusCode}, ${response.body}');
+      throw Exception('Failed to update assignment: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> deleteAssignment(String assignmentId) async {
+    final headers = await _getHeaders();
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/work-tracking/ass/delete/$assignmentId'),
+      headers: headers,
+    );
+
+    if (response.statusCode != 200) {
+      print('Error: ${response.statusCode}, ${response.body}');
+      throw Exception('Failed to delete assignment: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> addFilesToAssignment(String assignmentId, List<String> fileNames) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/work-tracking/ass/add-files/$assignmentId'),
+      headers: headers,
+      body: jsonEncode({
+        "file_name": fileNames,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      print('Files added successfully.');
+    } else {
+      print('Error: ${response.statusCode}, ${response.body}');
+      throw Exception('Failed to add files to assignment: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> deleteFileFromAssignment(String assignmentId, String fileName) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/work-tracking/ass/delete-file/$assignmentId'),
+      headers: headers,
+      body: jsonEncode({
+        "file_name": fileName,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      print('File deleted successfully.');
+    } else {
+      print('Error: ${response.statusCode}, ${response.body}');
+      throw Exception('Failed to delete file from assignment: ${response.reasonPhrase}');
     }
   }
 }

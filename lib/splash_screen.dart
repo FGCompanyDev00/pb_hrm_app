@@ -89,7 +89,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   ),
                   const SizedBox(height: 20),
                   const Text(
-                    "Welcome to PBHR",
+                    "Welcome to PSBV Next",
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,

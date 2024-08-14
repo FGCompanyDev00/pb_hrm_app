@@ -90,7 +90,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   ),
                   const SizedBox(height: 20),
                    Text(
-                     AppLocalizations.of(context)!.welcomeToPBHR,
+                     AppLocalizations.of(context)!.welcomeToPSBV,
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,

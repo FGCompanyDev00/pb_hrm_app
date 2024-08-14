@@ -8,9 +8,11 @@ import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class WorkTrackingPage extends StatefulWidget {
   const WorkTrackingPage({super.key});
+  static const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
   @override
   _WorkTrackingPageState createState() => _WorkTrackingPageState();
@@ -23,14 +25,25 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
   final List<String> _statusOptions = ['All Status', 'Pending', 'Processing', 'Completed'];
   List<Map<String, dynamic>> _projects = [];
   bool _isLoading = false;
+  String? _authToken;
 
   @override
   void initState() {
     super.initState();
-    _fetchProjects();
+    _loadAuthToken();
   }
 
-  void _fetchProjects() async {
+  Future<void> _loadAuthToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _authToken = prefs.getString('token');
+    });
+    if (_authToken != null) {
+      _fetchProjects();
+    }
+  }
+
+  Future<void> _fetchProjects() async {
     setState(() {
       _isLoading = true;
     });
@@ -77,9 +90,6 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    // Get the auth token from wherever it is stored, e.g., from a Provider or a global variable.
-    const String authToken = 'your-auth-token-here';
-
     return WillPopScope(
       onWillPop: () async {
         Navigator.pushReplacement(
@@ -93,7 +103,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
         body: SafeArea(
           child: Column(
             children: [
-              _buildHeader(isDarkMode, authToken),
+              _buildHeader(isDarkMode),
               const SizedBox(height: 10),
               _buildTabs(),
               const SizedBox(height: 8),
@@ -107,7 +117,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     );
   }
 
-  Widget _buildHeader(bool isDarkMode, String authToken) {
+  Widget _buildHeader(bool isDarkMode) {
     return Container(
       height: 80,
       decoration: BoxDecoration(
@@ -375,6 +385,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
             MaterialPageRoute(
               builder: (context) => ProjectManagementPage(
                 projectId: project['project_id'],
+                baseUrl: WorkTrackingService.baseUrl,
               ),
             ),
           );
@@ -424,7 +435,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Project ID: ${project['project_id']}', // Correct field name for project ID
+                  'Project ID: ${project['project_id']}',
                   style: TextStyle(
                     color: isDarkMode ? Colors.white70 : Colors.black54,
                   ),

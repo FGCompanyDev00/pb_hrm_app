@@ -3,16 +3,15 @@ import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
-import 'package:flutter_sound/flutter_sound.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
+import 'package:flutter_pdfview/flutter_pdfview.dart';
 
 class ProjectManagementPage extends StatefulWidget {
   final String projectId;
+  final String baseUrl;
 
-  const ProjectManagementPage({super.key, required this.projectId});
+  const ProjectManagementPage({super.key, required this.projectId, required this.baseUrl});
 
   @override
   _ProjectManagementPageState createState() => _ProjectManagementPageState();
@@ -25,8 +24,6 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   final List<String> _statusOptions = ['All Status', 'Pending', 'Processing', 'Completed'];
   late TabController _tabController;
   final TextEditingController _messageController = TextEditingController();
-  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
-  bool _isRecording = false;
   String _shortenedProjectId = '';
 
   final WorkTrackingService _workTrackingService = WorkTrackingService();
@@ -36,27 +33,24 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _shortenedProjectId = '${widget.projectId.substring(0, 8)}...';
-    _initializeRecorder();
     _fetchProjectData();
     _loadChatMessages();
   }
 
-  Future<void> _initializeRecorder() async {
-    await _recorder.openRecorder();
-  }
-
   Future<void> _fetchProjectData() async {
     try {
-      final tasks = await _workTrackingService.fetchMyProjects();
+      final tasks = await _workTrackingService.fetchAssignments(widget.projectId);
       setState(() {
-        _tasks = tasks.map((task) {
+        _tasks = tasks.where((task) => task['proj_id'] == widget.projectId).map((task) {
           return {
-            'title': task['p_name'],
+            'id': task['id'],
+            'title': task['title'],
             'status': task['s_name'],
-            'start_date': task['created_project_at'].substring(0, 10),
-            'due_date': task['dl'].substring(0, 10),
-            'description': 'Project ID: ${task['project_id']}\nBranch: ${task['b_name']}',
-            'images': [],
+            'start_date': task['created_at'].substring(0, 10),
+            'due_date': task['updated_at'].substring(0, 10),
+            'description': task['description'],
+            'images': task['file_name'] != null ? task['file_name'].split(',') : [],
+            'files': task['file_name'] != null ? task['file_name'].split(',') : [],
           };
         }).toList();
       });
@@ -71,69 +65,54 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
       setState(() {
         _messages = messages;
       });
-
-      // Log the messages in the debug console
-      for (var message in _messages) {
-        print('Chat Message: ${message['comments']} | From: ${message['createBy_name']} | At: ${message['created_at']}');
-      }
     } catch (e) {
       print('Failed to load chat messages: $e');
     }
   }
 
-Widget _buildChatInput(bool isDarkMode) {
-  final Color backgroundColor = isDarkMode ? Colors.black : Colors.white;
-  final Color textColor = isDarkMode ? Colors.white : Colors.black;
+  Widget _buildChatInput(bool isDarkMode) {
+    final Color backgroundColor = isDarkMode ? Colors.black : Colors.white;
+    final Color textColor = isDarkMode ? Colors.white : Colors.black;
 
-  return Padding(
-    padding: const EdgeInsets.all(16.0),
-    child: Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _messageController,
-            decoration: InputDecoration(
-              hintText: 'Type a message',
-              filled: true,
-              fillColor: backgroundColor,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-                borderSide: const BorderSide(color: Colors.yellow, width: 2),
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _messageController,
+              decoration: InputDecoration(
+                hintText: 'Type a message',
+                filled: true,
+                fillColor: backgroundColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: const BorderSide(color: Colors.yellow, width: 2),
+                ),
+                hintStyle: TextStyle(color: textColor.withOpacity(0.6)),
               ),
-              hintStyle: TextStyle(color: textColor.withOpacity(0.6)),
+              style: TextStyle(color: textColor),
             ),
-            style: TextStyle(color: textColor),
           ),
-        ),
-        const SizedBox(width: 8),
-        CircleAvatar(
-          radius: 25,
-          backgroundColor: Colors.green,
-          child: IconButton(
-            icon: const Icon(Icons.send, color: Colors.white),
-            onPressed: () {
-              if (_messageController.text.isNotEmpty) {
-                _sendMessage(_messageController.text);
-              }
-            },
+          const SizedBox(width: 8),
+          CircleAvatar(
+            radius: 25,
+            backgroundColor: Colors.green,
+            child: IconButton(
+              icon: const Icon(Icons.send, color: Colors.white),
+              onPressed: () {
+                if (_messageController.text.isNotEmpty) {
+                  _sendMessage(_messageController.text);
+                }
+              },
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        IconButton(
-          icon: Icon(_isRecording ? Icons.stop : Icons.mic, color: Colors.red),
-          onPressed: _isRecording ? _stopRecording : _startRecording,
-        ),
-        const SizedBox(width: 8),
-        IconButton(
-          icon: const Icon(Icons.attach_file, color: Colors.blue),
-          onPressed: _pickFile,
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
-  Widget _buildChatMessage(String message, String time, String senderName, bool isSentByMe, bool isDarkMode, String? filePath, String? fileType) {
+  Widget _buildChatMessage(String message, String time, String senderName, bool isSentByMe, bool isDarkMode) {
     final Color textColor = isDarkMode ? Colors.white : Colors.black;
     final Color backgroundColor = isSentByMe ? Colors.green.shade100 : Colors.blue.shade100;
 
@@ -154,29 +133,10 @@ Widget _buildChatInput(bool isDarkMode) {
               style: TextStyle(color: textColor.withOpacity(0.8), fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
-            if (fileType != null)
-              if (fileType == 'aac')
-                IconButton(
-                  icon: const Icon(Icons.play_arrow),
-                  onPressed: () {
-                    // Play the audio file
-                  },
-                )
-              else
-                GestureDetector(
-                  onTap: () {
-                    // Open the file
-                  },
-                  child: Text(
-                    message,
-                    style: TextStyle(color: textColor, fontSize: 16, decoration: TextDecoration.underline),
-                  ),
-                ),
-            if (fileType == null)
-              Text(
-                message,
-                style: TextStyle(color: textColor, fontSize: 16),
-              ),
+            Text(
+              message,
+              style: TextStyle(color: textColor, fontSize: 16),
+            ),
             const SizedBox(height: 4),
             Text(
               time,
@@ -210,9 +170,7 @@ Widget _buildChatInput(bool isDarkMode) {
                       DateFormat('hh:mm a').format(DateTime.parse(message['created_at'])),
                       message['createBy_name'],
                       message['created_by'] == "PSV-00-000002", // Assuming "PSV-00-000002" is the ID of the current user
-                      isDarkMode,
-                      null, // Add handling for filePath and fileType if available
-                      null);
+                      isDarkMode);
                 },
               ),
             ),
@@ -223,56 +181,28 @@ Widget _buildChatInput(bool isDarkMode) {
     );
   }
 
-  Future<void> _sendMessage(String message, {String? filePath, String? fileType}) async {
+  Future<void> _sendMessage(String message) async {
     try {
-      await _workTrackingService.sendChatMessage(widget.projectId, message, filePath: filePath, fileType: fileType);
-      _addMessage(message, filePath: filePath, fileType: fileType);
+      await _workTrackingService.sendChatMessage(widget.projectId, message);
+      _addMessage(message);
     } catch (e) {
       print('Failed to send message: $e');
     }
   }
 
-  void _addMessage(String message, {String? filePath, String? fileType}) {
+  void _addMessage(String message) {
     setState(() {
       _messages.add({
         'time': DateFormat('hh:mm a').format(DateTime.now()),
         'message': message,
-        'filePath': filePath,
-        'fileType': fileType
       });
     });
     _messageController.clear();
   }
 
-  Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles();
-    if (result != null) {
-      final file = result.files.first;
-      _sendMessage(file.name, filePath: file.path, fileType: file.extension);
-    }
-  }
-
-  Future<void> _startRecording() async {
-    final tempDir = await getTemporaryDirectory();
-    final filePath = '${tempDir.path}/temp.aac';
-    await _recorder.startRecorder(toFile: filePath);
-    setState(() {
-      _isRecording = true;
-    });
-  }
-
-  Future<void> _stopRecording() async {
-    final filePath = await _recorder.stopRecorder();
-    setState(() {
-      _isRecording = false;
-    });
-    _sendMessage('Voice Message', filePath: filePath, fileType: 'aac');
-  }
-
   @override
   void dispose() {
     _messageController.dispose();
-    _recorder.closeRecorder();
     super.dispose();
   }
 
@@ -415,12 +345,15 @@ Widget _buildChatInput(bool isDarkMode) {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16.0),
-            itemCount: filteredTasks.length,
-            itemBuilder: (context, index) {
-              return _buildTaskCard(filteredTasks[index], index);
-            },
+          child: RefreshIndicator(
+            onRefresh: _fetchProjectData,
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: filteredTasks.length,
+              itemBuilder: (context, index) {
+                return _buildTaskCard(filteredTasks[index], index);
+              },
+            ),
           ),
         ),
       ],
@@ -525,7 +458,7 @@ Widget _buildChatInput(bool isDarkMode) {
             }
           },
           isEdit: isEdit,
-          projectId: widget.projectId, // Pass projectId here
+          projectId: widget.projectId,
         );
       },
     );
@@ -539,10 +472,8 @@ Widget _buildChatInput(bool isDarkMode) {
 
   Future<void> _addTask(Map<String, dynamic> task) async {
     try {
-      await _workTrackingService.addProject(task);
-      setState(() {
-        _tasks.add(task);
-      });
+      await _workTrackingService.addAssignment(widget.projectId, task); // Pass projectId and task data
+      _fetchProjectData();  // Refresh task list after adding a new task
     } catch (e) {
       print('Failed to add task: $e');
     }
@@ -569,27 +500,51 @@ Widget _buildChatInput(bool isDarkMode) {
                 const SizedBox(height: 10),
                 Text('Description: ${task['description']}', style: const TextStyle(color: Colors.black87)),
                 const SizedBox(height: 10),
-                const Text('Images:'),
+                const Text('Attachments:'),
                 const SizedBox(height: 10),
                 Column(
-                  children: task['images'] != null
-                      ? task['images'].map<Widget>((image) {
-                          return GestureDetector(
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => Dialog(
-                                  child: Image.memory(base64Decode(image)),
-                                ),
-                              );
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Image.memory(base64Decode(image), width: 100, height: 100, fit: BoxFit.cover),
+                  children: [
+                    ...task['images'].map<Widget>((imagePath) {
+                      return GestureDetector(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => Dialog(
+                              child: Image.network('${widget.baseUrl}/$imagePath'),  // Use the passed baseUrl
                             ),
                           );
-                        }).toList()
-                      : [],
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Image.network('${widget.baseUrl}/$imagePath', width: 100, height: 100, fit: BoxFit.cover),
+                        ),
+                      );
+                    }).toList(),
+                    ...task['files'].map<Widget>((filePath) {
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PdfViewer(
+                                filePath: '${WorkTrackingService.baseUrl}/$filePath',  // Use the correct baseUrl
+                              ),
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.picture_as_pdf),
+                              const SizedBox(width: 8),
+                              Text(filePath.split('/').last),  // Display the file name
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ],
                 ),
               ],
             ),
@@ -845,12 +800,6 @@ class __TaskModalState extends State<_TaskModal> {
                 controller: _descriptionController,
                 decoration: const InputDecoration(labelText: 'Description'),
                 maxLines: 3,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a description';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: 10),
               ElevatedButton.icon(
@@ -932,7 +881,6 @@ class __TaskModalState extends State<_TaskModal> {
   }
 }
 
-
 class AddPeoplePageWorkTracking extends StatefulWidget {
   final String projectId;
   final Function(List<Map<String, dynamic>>) onSelectedPeople;
@@ -999,59 +947,78 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-                  child: TextField(
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search),
-                      hintText: 'Search',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30.0),
-                      ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+            child: TextField(
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: 'Search',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30.0),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: filteredMembers.length,
+              itemBuilder: (context, index) {
+                return Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: NetworkImage(filteredMembers[index]['image']),
+                    ),
+                    title: Text(filteredMembers[index]['name']),
+                    subtitle: Text('${filteredMembers[index]['surname']} - ${filteredMembers[index]['email']}'),
+                    trailing: Checkbox(
+                      value: filteredMembers[index]['isSelected'],
+                      onChanged: (bool? value) {
+                        _toggleSelection(index);
+                      },
                     ),
                   ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: filteredMembers.length,
-                    itemBuilder: (context, index) {
-                      return Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: NetworkImage(filteredMembers[index]['image']),
-                          ),
-                          title: Text(filteredMembers[index]['name']),
-                          subtitle: Text('${filteredMembers[index]['surname']} - ${filteredMembers[index]['email']}'),
-                          trailing: Checkbox(
-                            value: filteredMembers[index]['isSelected'],
-                            onChanged: (bool? value) {
-                              _toggleSelection(index);
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ElevatedButton.icon(
-                    onPressed: _confirmSelection,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add'),
-                  ),
-                ),
-              ],
+                );
+              },
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton.icon(
+              onPressed: _confirmSelection,
+              icon: const Icon(Icons.add),
+              label: const Text('Add'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// PdfViewer Widget to display PDF files
+class PdfViewer extends StatelessWidget {
+  final String filePath;
+
+  const PdfViewer({super.key, required this.filePath});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('PDF Viewer'),
+      ),
+      body: PDFView(
+        filePath: filePath,
+      ),
     );
   }
 }
