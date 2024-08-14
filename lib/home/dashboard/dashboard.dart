@@ -62,7 +62,7 @@ class _DashboardState extends State<Dashboard> {
     final String? token = prefs.getString('token');
 
     final response = await http.get(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
+      Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -70,8 +70,9 @@ class _DashboardState extends State<Dashboard> {
     );
 
     if (response.statusCode == 200) {
-      final List<dynamic> results = jsonDecode(response.body)['results'];
-      final userProfile = UserProfile.fromJson(results[0]);
+      final Map<String, dynamic> responseJson = jsonDecode(response.body);
+      final Map<String, dynamic> userJson = responseJson['results'][0];
+      final userProfile = UserProfile.fromJson(userJson);
       return userProfile;
     } else {
       throw Exception('Failed to load user profile');
@@ -156,7 +157,7 @@ class _DashboardState extends State<Dashboard> {
                           } else if (snapshot.hasError) {
                             return Center(child: Text('Error: ${snapshot.error}'));
                           } else if (snapshot.hasData) {
-                            String title = snapshot.data!.gender == "Male" ? "Mr." : "Ms.";
+                            String title = snapshot.data!.name;
                             return Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -170,7 +171,7 @@ class _DashboardState extends State<Dashboard> {
                                   child: CircleAvatar(
                                     radius: 20,
                                     backgroundImage: snapshot.data!.imgName != 'default_avatar.jpg'
-                                        ? NetworkImage('https://demo-application-api.flexiflows.co/images/${snapshot.data!.imgName}')
+                                        ? NetworkImage(snapshot.data!.imgName)
                                         : null,
                                     backgroundColor: Colors.white,
                                   ),
@@ -185,7 +186,7 @@ class _DashboardState extends State<Dashboard> {
                                       );
                                     },
                                     child: Text(
-                                      '$title ${snapshot.data!.name} ${snapshot.data!.surname}',
+                                      '$title ${snapshot.data!.surname}',
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w600,
@@ -518,57 +519,30 @@ class _DashboardState extends State<Dashboard> {
 }
 
 class UserProfile {
-  final int id;
-  final String employeeId;
+  final String id;
   final String name;
   final String surname;
-  final int branchId;
-  final String branchName;
-  final int departmentId;
-  final String departmentName;
-  final String tel;
   final String email;
-  final String employeeStatus;
-  final String gender;
-  final String createAt;
-  final String updateAt;
   final String imgName;
+  final String roles;
 
   UserProfile({
     required this.id,
-    required this.employeeId,
     required this.name,
     required this.surname,
-    required this.branchId,
-    required this.branchName,
-    required this.departmentId,
-    required this.departmentName,
-    required this.tel,
     required this.email,
-    required this.employeeStatus,
-    required this.gender,
-    required this.createAt,
-    required this.updateAt,
     required this.imgName,
+    required this.roles,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
       id: json['id'],
-      employeeId: json['employee_id'],
-      name: json['name'],
-      surname: json['surname'],
-      branchId: json['branch_id'],
-      branchName: json['b_name'],
-      departmentId: json['department_id'],
-      departmentName: json['d_name'],
-      tel: json['tel'],
-      email: json['email'],
-      employeeStatus: json['employee_status'],
-      gender: json['gender'],
-      createAt: json['create_at'],
-      updateAt: json['update_at'],
-      imgName: json['img_name'],
+      name: json['employee_name'],
+      surname: json['employee_surname'],
+      email: json['employee_email'],
+      imgName: json['images'],
+      roles: json['roles'],
     );
   }
 }
