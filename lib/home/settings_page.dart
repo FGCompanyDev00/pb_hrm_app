@@ -53,13 +53,10 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadBiometricSetting() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? storedUserId = await _storage.read(key: 'biometricUserId');
-    if (storedUserId != null) {
-      setState(() {
-        _biometricEnabled = true;
-      });
-    }
+    bool? isEnabled = await _storage.read(key: 'biometricEnabled') == 'true';
+    setState(() {
+      _biometricEnabled = isEnabled ?? false;
+    });
   }
 
   Future<void> _loadNotificationSetting() async {
@@ -73,12 +70,8 @@ class _SettingsPageState extends State<SettingsPage> {
     await _storage.write(key: 'notificationEnabled', value: enabled.toString());
   }
 
-  Future<void> _saveBiometricSetting(bool enabled, String userId) async {
-    if (enabled) {
-      await _storage.write(key: 'biometricUserId', value: userId);
-    } else {
-      await _storage.delete(key: 'biometricUserId');
-    }
+  Future<void> _saveBiometricSetting(bool enabled) async {
+    await _storage.write(key: 'biometricEnabled', value: enabled.toString());
   }
 
   Future<bool> _onWillPop() async {
@@ -112,13 +105,7 @@ class _SettingsPageState extends State<SettingsPage> {
           setState(() {
             _biometricEnabled = true;
           });
-
-          final prefs = await SharedPreferences.getInstance();
-          String? userId = prefs.getString('userId');
-
-          if (userId != null) {
-            _saveBiometricSetting(true, userId);
-          }
+          _saveBiometricSetting(true);
         }
       } catch (e) {
         if (kDebugMode) {
@@ -129,21 +116,19 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _biometricEnabled = false;
       });
-      await _storage.deleteAll();
-      _saveBiometricSetting(false, '');
+      await _storage.deleteAll(); // Remove all stored credentials
+      _saveBiometricSetting(false);
     }
   }
 
   Future<void> _toggleNotification(bool enable) async {
     if (enable) {
-      print('Notification enabled');
       setState(() {
         _notificationEnabled = true;
       });
       _saveNotificationSetting(true);
       _showNotification();
     } else {
-      print('Notification disabled');
       setState(() {
         _notificationEnabled = false;
       });

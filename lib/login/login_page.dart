@@ -59,6 +59,14 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
+  // Fixed: Ensure the biometric setting is properly loaded
+  Future<void> _loadBiometricSetting() async {
+    String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
+    setState(() {
+      _biometricEnabled = biometricEnabled == 'true';
+    });
+  }
+
   Future<void> _login() async {
     final String username = _usernameController.text;
     final String password = _passwordController.text;
@@ -103,6 +111,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  // Fixed: Ensure the biometric authentication flow is correct
   Future<void> _authenticate({bool useBiometric = true}) async {
     if (!_biometricEnabled) {
       _showCustomDialog(context, 'Biometric Disabled', 'Please enable biometric authentication in settings.');
@@ -133,28 +142,7 @@ class _LoginPageState extends State<LoginPage> {
         _login(); // Login automatically using stored credentials
       }
     } else {
-      // Fallback to device PIN/password authentication if biometric fails
-      try {
-        authenticated = await auth.authenticate(
-          localizedReason: 'Please authenticate with your PIN or password',
-          options: const AuthenticationOptions(
-            biometricOnly: false,
-            stickyAuth: true,
-          ),
-        );
-
-        if (authenticated) {
-          String? username = await _storage.read(key: 'username');
-          String? password = await _storage.read(key: 'password');
-          if (username != null && password != null) {
-            _usernameController.text = username;
-            _passwordController.text = password;
-            _login(); // Login automatically using stored credentials
-          }
-        }
-      } catch (e) {
-        _showCustomDialog(context, 'Authentication Failed', 'Failed to authenticate.');
-      }
+      _showCustomDialog(context, 'Authentication Failed', 'Biometric authentication failed. Please try again.');
     }
   }
 
@@ -179,13 +167,6 @@ class _LoginPageState extends State<LoginPage> {
     prefs.remove('username');
     prefs.remove('password');
     prefs.remove('rememberMe');
-  }
-
-  Future<void> _loadBiometricSetting() async {
-    bool? isEnabled = await _storage.read(key: 'biometricEnabled') == 'true';
-    setState(() {
-      _biometricEnabled = isEnabled;
-    });
   }
 
   void _showCustomDialog(BuildContext context, String title, String message) {
