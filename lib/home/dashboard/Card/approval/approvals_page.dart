@@ -111,52 +111,6 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
     );
   }
 
-  void _showEditApproval(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: EditApprovalPopup(
-              item: item,
-              isDarkMode: isDarkMode,
-              onSave: (editedItem) {
-                setState(() {
-                  final index = _approvalItems.indexWhere((i) => i['id'] == editedItem['id']);
-                  if (index != -1) {
-                    _approvalItems[index] = editedItem;
-                  }
-                });
-                Navigator.pop(context);
-                _showConfirmationDialog(context);
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showConfirmationDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Confirmation'),
-          content: const Text('The changes have been saved successfully.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
@@ -289,33 +243,26 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
     );
   }
 
-  Widget _buildApprovalCard(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
-    return Slidable(
-      key: Key(item['id'].toString()),
-      startActionPane: ActionPane(
-        motion: const ScrollMotion(),
-        children: [
-          SlidableAction(
-            onPressed: (context) => _showEditApproval(context, item, isDarkMode),
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
-            icon: Icons.edit,
-            label: 'Edit',
-          ),
-        ],
-      ),
-      endActionPane: ActionPane(
-        motion: const ScrollMotion(),
-        children: [
-          SlidableAction(
-            onPressed: (context) => _showApprovalDetail(context, item, isDarkMode),
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-            icon: Icons.visibility,
-            label: 'View',
-          ),
-        ],
-      ),
+Widget _buildApprovalCard(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
+  return Slidable(
+    key: Key(item['id'].toString()),
+    // Define the start action pane for edit only
+    startActionPane: ActionPane(
+      motion: const ScrollMotion(),
+      children: [
+        SlidableAction(
+          onPressed: (context) => _showEditApproval(context, item, isDarkMode),
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          icon: Icons.edit,
+          label: 'Edit',
+        ),
+      ],
+    ),
+    // No endActionPane, so no sliding to the left for additional actions
+    endActionPane: null,
+    child: GestureDetector(
+      onTap: () => _showApprovalDetail(context, item, isDarkMode),
       child: Card(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8.0),
@@ -405,10 +352,57 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 
+void _showEditApproval(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (context) {
+      return SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: EditApprovalPopup(
+            item: item,
+            isDarkMode: isDarkMode,
+            onSave: (editedItem) {
+              setState(() {
+                final index = _approvalItems.indexWhere((i) => i['id'] == editedItem['id']);
+                if (index != -1) {
+                  _approvalItems[index] = editedItem;
+                }
+              });
+              Navigator.pop(context);
+              _showConfirmationDialog(context);
+            },
+          ),
+        ),
+      );
+    },
+  );
+}
+
+void _showConfirmationDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: const Text('Confirmation'),
+        content: const Text('The changes have been saved successfully.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+}
 class EditApprovalPopup extends StatefulWidget {
   final Map<String, dynamic> item;
   final bool isDarkMode;
@@ -497,7 +491,8 @@ class _EditApprovalPopupState extends State<EditApprovalPopup> {
               }
             },
             style: ElevatedButton.styleFrom(
-              foregroundColor: Colors.black, backgroundColor: isDarkMode ? Colors.grey[800] : Colors.amber,
+              foregroundColor: Colors.black,
+              backgroundColor: isDarkMode ? Colors.grey[800] : Colors.amber,
             ),
             child: const Text('Save'),
           ),
