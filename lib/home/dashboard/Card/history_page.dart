@@ -22,6 +22,7 @@ class _HistoryPageState extends State<HistoryPage> {
       'icon': Icons.meeting_room,
       'iconColor': Colors.green,
       'timestamp': DateTime.now().subtract(const Duration(hours: 25)), // Example time
+      'details': 'Detailed description about the meeting and booking room.',
     },
     {
       'title': 'Phoutthalom',
@@ -32,6 +33,7 @@ class _HistoryPageState extends State<HistoryPage> {
       'icon': Icons.directions_car,
       'iconColor': Colors.blue,
       'timestamp': DateTime.now(),
+      'details': 'Detailed description about Phoutthalom.',
     },
     {
       'title': 'Phoutthalom Douangphila',
@@ -42,6 +44,7 @@ class _HistoryPageState extends State<HistoryPage> {
       'icon': Icons.event,
       'iconColor': Colors.orange,
       'timestamp': DateTime.now().subtract(const Duration(hours: 30)), // Example time
+      'details': 'Detailed description about sick leave.',
     },
   ];
 
@@ -54,6 +57,7 @@ class _HistoryPageState extends State<HistoryPage> {
       'statusColor': Colors.green,
       'icon': Icons.meeting_room,
       'iconColor': Colors.green,
+      'details': 'Detailed description about meeting with the team.',
     },
     {
       'title': 'Client Meeting',
@@ -63,6 +67,7 @@ class _HistoryPageState extends State<HistoryPage> {
       'statusColor': Colors.red,
       'icon': Icons.business_center,
       'iconColor': Colors.red,
+      'details': 'Detailed description about client meeting.',
     },
   ];
 
@@ -214,82 +219,159 @@ class _HistoryPageState extends State<HistoryPage> {
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8.0),
-        side: BorderSide(color: item['iconColor']),
-      ),
-      elevation: 5,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              item['icon'],
-              color: item['iconColor'],
-              size: 40,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item['title'],
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    item['date'],
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.white70 : Colors.black54,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    item['room'],
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.white70 : Colors.black54,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Text(
-                        'Status: ',
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black,
-                        ),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailsPage(item: item),
+          ),
+        );
+      },
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8.0),
+          side: BorderSide(color: item['iconColor']),
+        ),
+        elevation: 5,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                item['icon'],
+                color: item['iconColor'],
+                size: 40,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item['title'],
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                        decoration: BoxDecoration(
-                          color: item['statusColor'],
-                          borderRadius: BorderRadius.circular(4.0),
-                        ),
-                        child: Text(
-                          item['status'],
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      item['date'],
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      item['room'],
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          'Status: ',
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                          decoration: BoxDecoration(
+                            color: item['statusColor'],
+                            borderRadius: BorderRadius.circular(4.0),
+                          ),
+                          child: Text(
+                            item['status'],
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              const CircleAvatar(
+                backgroundImage: AssetImage('assets/avatar_placeholder.png'),
+                radius: 30,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DetailsPage extends StatelessWidget {
+  final Map<String, dynamic> item;
+
+  const DetailsPage({Key? key, required this.item}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Details'),
+        backgroundColor: isDarkMode ? Colors.grey[900] : Colors.amber,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item['title'],
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
-            const SizedBox(width: 16),
-            const CircleAvatar(
-              backgroundImage: AssetImage('assets/avatar_placeholder.png'),
-              radius: 30,
+            const SizedBox(height: 16),
+            Text(
+              item['date'],
+              style: TextStyle(
+                fontSize: 18,
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              item['room'],
+              style: TextStyle(
+                fontSize: 18,
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Status: ${item['status']}',
+              style: TextStyle(
+                fontSize: 18,
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              item['details'],
+              style: TextStyle(
+                fontSize: 16,
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+              ),
             ),
           ],
         ),
