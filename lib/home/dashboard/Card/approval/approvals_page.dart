@@ -23,7 +23,6 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
   void initState() {
     super.initState();
     _fetchApprovalsData();
-    _moveExpiredApprovalsToHistory(); // Check and move expired approvals
   }
 
   Future<void> _fetchApprovalsData() async {
@@ -56,6 +55,9 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
           _approvalItems = approvalItems;
           _historyItems = historyItems;
         });
+
+        // Move expired approvals to history after the list is fetched
+        _moveExpiredApprovalsToHistory();
       } else {
         print('Failed to load data: ${response.statusCode}');
       }
@@ -66,18 +68,24 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
 
   void _moveExpiredApprovalsToHistory() {
     final now = DateTime.now();
-    setState(() {
-      _approvalItems.removeWhere((item) {
-        final timestamp = DateTime.parse(item['timestamp']);
-        if (now.difference(timestamp).inHours >= 24) {
-          if (item['is_approve'] == 'Waiting') {
-            item['is_approve'] = 'Waiting';
-          }
-          _historyItems.add(item);
-          return true;
+    final List<Map<String, dynamic>> newApprovalItems = [];
+    final List<Map<String, dynamic>> newHistoryItems = List.from(_historyItems);
+
+    for (var item in _approvalItems) {
+      final timestamp = item['timestamp'] != null ? DateTime.tryParse(item['timestamp']) : null;
+      if (timestamp != null && now.difference(timestamp).inHours >= 24) {
+        if (item['is_approve'] == 'Waiting') {
+          item['is_approve'] = 'Waiting';
         }
-        return false;
-      });
+        newHistoryItems.add(item);
+      } else {
+        newApprovalItems.add(item);
+      }
+    }
+
+    setState(() {
+      _approvalItems = newApprovalItems;
+      _historyItems = newHistoryItems;
     });
   }
 
@@ -153,9 +161,6 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
-
-    final List<Map<String, dynamic>> approvalItems = _approvalItems;
-    final List<Map<String, dynamic>> historyItems = _historyItems;
 
     return Scaffold(
       body: Column(
@@ -269,11 +274,13 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                   fit: BoxFit.cover,
                 ),
               ),
-              child: ListView(
+              child: ListView.builder(
                 padding: const EdgeInsets.all(16.0),
-                children: _isApprovalSelected
-                    ? approvalItems.map((item) => _buildApprovalCard(context, item, isDarkMode)).toList()
-                    : historyItems.map((item) => _buildApprovalCard(context, item, isDarkMode)).toList(),
+                itemCount: _isApprovalSelected ? _approvalItems.length : _historyItems.length,
+                itemBuilder: (context, index) {
+                  final item = _isApprovalSelected ? _approvalItems[index] : _historyItems[index];
+                  return _buildApprovalCard(context, item, isDarkMode);
+                },
               ),
             ),
           ),
@@ -341,14 +348,14 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'From: ${item['take_leave_from']} To: ${item['take_leave_to']}',
+                      'From: ${item['take_leave_from'] ?? 'N/A'} To: ${item['take_leave_to'] ?? 'N/A'}',
                       style: TextStyle(
                         color: isDarkMode ? Colors.white70 : Colors.black54,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Days: ${item['days']}',
+                      'Days: ${item['days'] ?? 'N/A'}',
                       style: TextStyle(
                         color: isDarkMode ? Colors.white70 : Colors.black54,
                       ),
@@ -390,7 +397,8 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
               ),
               const SizedBox(width: 16),
               CircleAvatar(
-                backgroundImage: NetworkImage(item['img_path'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
+                backgroundImage: NetworkImage(item['img_path'] ??
+                    'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
                 radius: 30,
               ),
             ],
