@@ -62,10 +62,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _initializeBackgroundService() async {
-    const androidConfig = FlutterBackgroundAndroidConfig(
+    var androidConfig = const FlutterBackgroundAndroidConfig(
       notificationTitle: 'PBHR Attendance',
       notificationText: 'Running in background',
-      notificationImportance: AndroidNotificationImportance.Default,
       enableWifiLock: true,
     );
 

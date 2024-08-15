@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:pb_hrsystem/main.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
-import 'approvals_view_page.dart'; // Import the approvals_view_page.dart
+import 'approvals_view_page.dart';
 
 class StaffApprovalsPage extends StatefulWidget {
   const StaffApprovalsPage({super.key});
@@ -140,7 +141,10 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                   child: IconButton(
                     icon: const Icon(Icons.arrow_back, size: 30, color: Colors.black),
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const MainScreen()),
+                      );
                     },
                   ),
                 ),

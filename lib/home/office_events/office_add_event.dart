@@ -44,7 +44,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       context,
       MaterialPageRoute(
         builder: (context) => AddPeoplePageWorkTracking(
-          projectId: 'your_project_id', // Replace with actual projectId if available
+          projectId: 'your_project_id',
           onSelectedPeople: (selectedPeople) {
             setState(() {
               _selectedPeople = selectedPeople;

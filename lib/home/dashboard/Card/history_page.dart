@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/main.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 
@@ -124,7 +125,10 @@ class _HistoryPageState extends State<HistoryPage> {
                       IconButton(
                         icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
                         onPressed: () {
-                          Navigator.pop(context);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => const MainScreen()),
+                          );
                         },
                       ),
                       Text(
@@ -316,7 +320,7 @@ class _HistoryPageState extends State<HistoryPage> {
 class DetailsPage extends StatelessWidget {
   final Map<String, dynamic> item;
 
-  const DetailsPage({Key? key, required this.item}) : super(key: key);
+  const DetailsPage({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -325,7 +329,7 @@ class DetailsPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Details'),
+        title: const Text('Details'),
         backgroundColor: isDarkMode ? Colors.grey[900] : Colors.amber,
       ),
       body: Padding(

@@ -6,7 +6,7 @@ import 'package:pb_hrsystem/home/dashboard/Card/approval/approvals_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/inventory_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/kpi_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
-import 'package:pb_hrsystem/home/profile_screen.dart';
+import 'package:pb_hrsystem/home/qr_profile_page.dart';
 import 'package:pb_hrsystem/roles.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';

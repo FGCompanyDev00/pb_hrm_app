@@ -10,6 +10,7 @@
         android:required="false" />
 
     <application android:requestLegacyExternalStorage="true"
+        android:enableOnBackInvokedCallback="true"
         android:label="PSVB NEXT"
         android:icon="@mipmap/playstore">
 

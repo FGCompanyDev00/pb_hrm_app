@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:pb_hrsystem/home/profile_screen.dart';
+import 'package:pb_hrsystem/home/qr_profile_page.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/notifications/test_notification_widget.dart';
 import 'package:pb_hrsystem/settings/change_password.dart';
@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -27,9 +28,10 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _biometricEnabled = false;
   bool _notificationEnabled = false;
   late Future<UserProfile> futureUserProfile;
+  String _appVersion = 'PSBV Next v1.10';
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin(); // Notification plugin instance
+  FlutterLocalNotificationsPlugin();
 
   @override
   void initState() {
@@ -37,32 +39,38 @@ class _SettingsPageState extends State<SettingsPage> {
     _loadBiometricSetting();
     _loadNotificationSetting();
     futureUserProfile = fetchUserProfile();
-
-    // Initialize local notifications
     _initializeNotifications();
+    _loadAppVersion();
   }
 
   Future<void> _initializeNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid);
+    InitializationSettings(android: initializationSettingsAndroid);
 
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
     print('Notification system initialized');
   }
 
+  Future<void> _loadAppVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    setState(() {
+      _appVersion = 'Version ${packageInfo.version}';
+    });
+  }
+
   Future<void> _loadBiometricSetting() async {
     bool? isEnabled = await _storage.read(key: 'biometricEnabled') == 'true';
     setState(() {
-      _biometricEnabled = isEnabled ?? false;
+      _biometricEnabled = isEnabled;
     });
   }
 
   Future<void> _loadNotificationSetting() async {
     bool? isEnabled = await _storage.read(key: 'notificationEnabled') == 'true';
     setState(() {
-      _notificationEnabled = isEnabled ?? false;
+      _notificationEnabled = isEnabled;
     });
   }
 
@@ -139,7 +147,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _showNotification() async {
     try {
       const AndroidNotificationDetails androidPlatformChannelSpecifics =
-          AndroidNotificationDetails(
+      AndroidNotificationDetails(
         'your_channel_id',
         'your_channel_name',
         channelDescription: 'your_channel_description',
@@ -148,7 +156,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ticker: 'ticker',
       );
       const NotificationDetails platformChannelSpecifics =
-          NotificationDetails(android: androidPlatformChannelSpecifics);
+      NotificationDetails(android: androidPlatformChannelSpecifics);
       await flutterLocalNotificationsPlugin.show(
         0,
         'Example Notification',
@@ -314,6 +322,14 @@ class _SettingsPageState extends State<SettingsPage> {
                               MaterialPageRoute(builder: (context) => const TestNotificationWidget()),
                             );
                           },
+                        ),
+
+                        const SizedBox(height: 20),
+                        Center(
+                          child: Text(
+                            _appVersion,
+                            style: themeNotifier.textStyle.copyWith(fontSize: 14, color: Colors.grey),
+                          ),
                         ),
                       ],
                     ),

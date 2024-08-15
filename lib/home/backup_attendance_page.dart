@@ -64,7 +64,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     const androidConfig = FlutterBackgroundAndroidConfig(
       notificationTitle: 'PBHR Attendance',
       notificationText: 'Running in background',
-      notificationImportance: AndroidNotificationImportance.Default,
       enableWifiLock: true,
     );
 
