@@ -186,7 +186,7 @@ class _DashboardState extends State<Dashboard> {
                                       );
                                     },
                                     child: Text(
-                                      '$title ${snapshot.data!.surname}',
+                                      ' ${snapshot.data!.name}',
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w600,
