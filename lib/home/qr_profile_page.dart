@@ -263,7 +263,7 @@ END:VCARD
                             child: Column(
                               children: [
                                 Text(
-                                  'Hi, Mr. ${data['employee_name']} ${data['employee_surname']}',
+                                  'Hi, Mr. ${data['employee_name']} ',
                                   style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
