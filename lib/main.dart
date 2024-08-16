@@ -15,9 +15,56 @@ import 'splash/splashscreen.dart';
 import 'theme/theme.dart';
 import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp();
+
+  // Local notifications plugin initialize
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+  const AndroidInitializationSettings initializationSettingsAndroid =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  // Request permission for notifications
+  await messaging.requestPermission(
+    alert: true,
+    announcement: false,
+    badge: true,
+    carPlay: false,
+    criticalAlert: false,
+    provisional: false,
+    sound: true,
+  );
+
+  // Handle foreground notifications
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    if (message.notification != null) {
+      // Show notification
+      _showNotification(
+        flutterLocalNotificationsPlugin,
+        message.notification!.title,
+        message.notification!.body,
+        message.data,
+      );
+    }
+  });
+
+  // Handle background notifications
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   runApp(
     DevicePreview(
       enabled: !kReleaseMode,
@@ -33,6 +80,48 @@ void main() {
   );
 }
 
+// Background message handler
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  if (kDebugMode) {
+    print('Handling a background message: ${message.messageId}');
+  }
+  // Here you can handle background notifications or trigger local notifications
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  _showNotification(
+    flutterLocalNotificationsPlugin,
+    message.notification?.title,
+    message.notification?.body,
+    message.data,
+  );
+}
+
+// Method to show local notification
+Future<void> _showNotification(
+    FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin,
+    String? title,
+    String? body,
+    Map<String, dynamic> data,
+    ) async {
+  const AndroidNotificationDetails androidPlatformChannelSpecifics =
+  AndroidNotificationDetails(
+    'your_channel_id',
+    'your_channel_name',
+    importance: Importance.max,
+    priority: Priority.high,
+    ticker: 'ticker',
+  );
+  const NotificationDetails platformChannelSpecifics = NotificationDetails(
+    android: androidPlatformChannelSpecifics,
+  );
+  await flutterLocalNotificationsPlugin.show(
+    0, // Notification ID
+    title,
+    body,
+    platformChannelSpecifics,
+    payload: data.toString(),
+  );
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -42,7 +131,7 @@ class MyApp extends StatelessWidget {
       builder: (context, themeNotifier, languageNotifier, child) {
         return MaterialApp(
           builder: (context, child) {
-            return EasyLoading.init()(context, child!); // Initialize EasyLoading here
+            return EasyLoading.init()(context, child!);
           },
           title: 'PSBV',
           theme: ThemeData(

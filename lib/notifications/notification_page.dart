@@ -54,16 +54,7 @@ class _NotificationPageState extends State<NotificationPage> {
       final List<dynamic> data = json.decode(response.body)['results'];
       setState(() {
         _notifications = data.map((item) {
-          return NotificationModel(
-            id: item['id'], // Ensure your NotificationModel has an 'id' field
-            type: item['message'],
-            requestor: item['created_by'],
-            date: item['created_at'].substring(0, 10),
-            time: item['created_at'].substring(11, 16),
-            status: item['status'] == 0 ? 'Pending' : 'Read',
-            imageUrl:
-            'https://your-image-url.com', // Replace with actual image URL if available
-          );
+          return NotificationModel.fromJson(item);
         }).toList();
       });
     } else {
@@ -146,9 +137,8 @@ class _NotificationPageState extends State<NotificationPage> {
                         leading: CircleAvatar(
                           backgroundImage: NetworkImage(notification.imageUrl),
                         ),
-                        title: Text(notification.type),
-                        subtitle:
-                        Text('${notification.date} - ${notification.time}'),
+                        title: Text(notification.message),
+                        subtitle: Text('${notification.createdAt.toString().substring(0, 10)} - ${notification.createdAt.toString().substring(11, 16)}'),
                         trailing: _isDeleting
                             ? (isSelected
                             ? const Icon(Icons.check_box)
@@ -167,8 +157,7 @@ class _NotificationPageState extends State<NotificationPage> {
                 onPressed: _fetchNotificationsFromBackend,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 100, vertical: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 20),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),

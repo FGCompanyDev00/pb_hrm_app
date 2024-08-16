@@ -13,7 +13,7 @@ class NotificationWidget extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: notification.backgroundColor,
         borderRadius: BorderRadius.circular(12.0),
         boxShadow: const [
           BoxShadow(
@@ -22,42 +22,51 @@ class NotificationWidget extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            backgroundImage: NetworkImage(notification.imageUrl),
-            radius: 30.0,
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundImage: NetworkImage(notification.imageUrl),
+                radius: 30.0,
+              ),
+              const SizedBox(width: 16.0),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      notification.message,
+                      style: TextStyle(
+                        color: notification.textColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.0,
+                      ),
+                    ),
+                    const SizedBox(height: 8.0),
+                    Text(
+                      'Requestor: ${notification.createdBy}',
+                      style: TextStyle(fontSize: 14.0, color: notification.textColor),
+                    ),
+                    Text(
+                      'Date: ${notification.createdAt.toString().substring(0, 10)}',
+                      style: TextStyle(fontSize: 14.0, color: notification.textColor),
+                    ),
+                    Text(
+                      'Time: ${notification.createdAt.toString().substring(11, 16)}',
+                      style: TextStyle(fontSize: 14.0, color: notification.textColor),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                notification.statusIcon,
+                color: notification.statusColor,
+                size: 24.0,
+              ),
+            ],
           ),
-          const SizedBox(width: 16.0),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  notification.type,
-                  style: TextStyle(
-                    color: notification.statusColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16.0,
-                  ),
-                ),
-                const SizedBox(height: 8.0),
-                Text(
-                  'Requestor: ${notification.requestor}',
-                  style: const TextStyle(fontSize: 14.0),
-                ),
-                Text(
-                  'Date: ${notification.date}',
-                  style: const TextStyle(fontSize: 14.0),
-                ),
-                Text(
-                  'Time: ${notification.time}',
-                  style: const TextStyle(fontSize: 14.0),
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.arrow_forward_ios, size: 16.0),
         ],
       ),
     );

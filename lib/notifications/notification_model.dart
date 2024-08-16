@@ -1,32 +1,41 @@
 class NotificationModel {
   final int id;
-  final String type;
-  final String requestor;
-  final String date;
-  final String time;
-  final String status;
-  final String imageUrl;
+  final String employeeId;
+  final String projectId;
+  final String meetingId;
+  final String assignmentId;
+  final String message;
+  final int status;
+  final String createdBy;
+  final DateTime createdAt;
+  final String imageUrl; // Add this field to the model
 
   NotificationModel({
     required this.id,
-    required this.type,
-    required this.requestor,
-    required this.date,
-    required this.time,
+    required this.employeeId,
+    required this.projectId,
+    required this.meetingId,
+    required this.assignmentId,
+    required this.message,
     required this.status,
-    required this.imageUrl,
+    required this.createdBy,
+    required this.createdAt,
+    this.imageUrl = 'https://your-image-url.com',
   });
 
   // Factory constructor to create an instance of NotificationModel from JSON data
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
       id: json['id'],
-      type: json['message'],
-      requestor: json['created_by'],
-      date: json['created_at'].substring(0, 10),
-      time: json['created_at'].substring(11, 16),
-      status: json['status'] == 0 ? 'Pending' : 'Read',
-      imageUrl: json['images'] ?? 'https://default-image-url.com', // Fallback to a default image URL if not provided
+      employeeId: json['employee_id'] ?? '',
+      projectId: json['project_id'] ?? '',
+      meetingId: json['meeting_id'] ?? '',
+      assignmentId: json['assignment_id'] ?? '',
+      message: json['message'] ?? '',
+      status: json['status'] ?? 0,
+      createdBy: json['created_by'] ?? '',
+      createdAt: DateTime.parse(json['created_at']),
+      imageUrl: json['imageUrl'] ?? 'https://your-image-url.com',
     );
   }
 }

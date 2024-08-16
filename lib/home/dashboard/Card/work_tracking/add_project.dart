@@ -361,3 +361,23 @@ class AddProjectPageState extends State<AddProjectPage> {
     );
   }
 }
+
+//function to trigger notification to another group members when they re members of certain project
+
+// void onAssignmentCreated() async {
+//   final snsService = SNSService();
+//
+//   await snsService.sendNotification(
+//     'A new assignment has been created for you.',
+//     'New Assignment',
+//   );
+//
+//   // Optionally, trigger local notification
+//   _showNotification(
+//     flutterLocalNotificationsPlugin,
+//     'New Assignment',
+//     'Check out your new task!',
+//     {},
+//   );
+// }
+//

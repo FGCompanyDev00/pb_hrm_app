@@ -28,15 +28,7 @@ class NotificationPollingService {
         if (contentType != null && contentType.contains('application/json')) {
           final List<dynamic> data = json.decode(response.body)['results'];
           final List<NotificationModel> notifications = data.map((item) {
-            return NotificationModel(
-              id: item['id'],
-              type: item['message'],
-              requestor: item['created_by'],
-              date: item['created_at'].substring(0, 10),
-              time: item['created_at'].substring(11, 16),
-              status: item['status'] == 0 ? 'Pending' : 'Read',
-              imageUrl: item['images'] ?? 'https://your-image-url.com',
-            );
+            return NotificationModel.fromJson(item);
           }).toList();
 
           onNewNotifications(notifications);
