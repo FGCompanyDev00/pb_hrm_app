@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -47,6 +48,11 @@ class _MyProfilePageState extends State<MyProfilePage> {
     } else {
       throw Exception('Failed to load user profile: ${response.reasonPhrase}');
     }
+  }
+
+  String formatDate(String dateStr) {
+    DateTime dateTime = DateTime.parse(dateStr);
+    return DateFormat('MMM dd, yyyy').format(dateTime);  // Format as 'Nov 23, 2022'
   }
 
   @override
@@ -96,21 +102,27 @@ class _MyProfilePageState extends State<MyProfilePage> {
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else if (snapshot.hasData) {
-            return Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ProfileInfoRow(icon: Icons.person, label: 'Gender', value: snapshot.data!.gender),
-                  ProfileInfoRow(icon: Icons.badge, label: 'Name & Surname', value: '${snapshot.data!.name} ${snapshot.data!.surname}'),
-                  ProfileInfoRow(icon: Icons.date_range, label: 'Date Start Work', value: snapshot.data!.createAt.split('T')[0]),
-                  ProfileInfoRow(icon: Icons.date_range, label: 'Passes Probation Date', value: snapshot.data!.updateAt.split('T')[0]),
-                  ProfileInfoRow(icon: Icons.account_balance, label: 'Department', value: snapshot.data!.departmentName),
-                  ProfileInfoRow(icon: Icons.location_on, label: 'Branch', value: snapshot.data!.branchName),
-                  ProfileInfoRow(icon: Icons.phone, label: 'Tel.', value: snapshot.data!.tel),
-                  ProfileInfoRow(icon: Icons.email, label: 'Emails', value: snapshot.data!.email),
-                ],
-              ),
+            return Column(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ProfileInfoRow(icon: Icons.person, label: 'Gender', value: snapshot.data!.gender),
+                        ProfileInfoRow(icon: Icons.badge, label: 'Name & Surname', value: '${snapshot.data!.name} ${snapshot.data!.surname}'),
+                        ProfileInfoRow(icon: Icons.date_range, label: 'Date Start Work', value: formatDate(snapshot.data!.createAt)),
+                        ProfileInfoRow(icon: Icons.date_range, label: 'Passes Probation Date', value: formatDate(snapshot.data!.updateAt)),
+                        ProfileInfoRow(icon: Icons.account_balance, label: 'Department', value: snapshot.data!.departmentName),
+                        ProfileInfoRow(icon: Icons.location_on, label: 'Branch', value: snapshot.data!.branchName),
+                        ProfileInfoRow(icon: Icons.phone, label: 'Tel.', value: snapshot.data!.tel),
+                        ProfileInfoRow(icon: Icons.email, label: 'Emails', value: snapshot.data!.email),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             );
           } else {
             return const Center(child: Text('No data available'));
