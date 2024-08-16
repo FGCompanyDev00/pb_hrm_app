@@ -13,6 +13,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pb_hrsystem/home/myprofile_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -241,9 +242,37 @@ END:VCARD
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          CircleAvatar(
-                            radius: 60,
-                            backgroundImage: NetworkImage(data['images']),
+                          Stack(
+                            children: [
+                              Center(
+                                child: CircleAvatar(
+                                  radius: 60,
+                                  backgroundImage:
+                                  NetworkImage(data['images']),
+                                ),
+                              ),
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                bottom: 0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                        const MyProfilePage(),
+                                      ),
+                                    );
+                                  },
+                                  child: const Icon(
+                                    Icons.arrow_forward_ios,
+                                    size: 30,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 20),
                           Container(
@@ -309,7 +338,8 @@ END:VCARD
                                 gapless: false,
                                 embeddedImage:
                                 const AssetImage('assets/logo.png'),
-                                embeddedImageStyle: const QrEmbeddedImageStyle(
+                                embeddedImageStyle:
+                                const QrEmbeddedImageStyle(
                                   size: Size(40, 40),
                                 ),
                                 backgroundColor: Colors.white,
@@ -344,7 +374,8 @@ END:VCARD
                                   backgroundColor: Colors.blue,
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 20, vertical: 10),
-                                  textStyle: const TextStyle(fontSize: 18),
+                                  textStyle:
+                                  const TextStyle(fontSize: 18),
                                 ),
                               ),
                               ElevatedButton.icon(
@@ -355,7 +386,8 @@ END:VCARD
                                   backgroundColor: Colors.green,
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 20, vertical: 10),
-                                  textStyle: const TextStyle(fontSize: 18),
+                                  textStyle:
+                                  const TextStyle(fontSize: 18),
                                 ),
                               ),
                             ],
