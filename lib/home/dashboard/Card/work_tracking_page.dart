@@ -318,78 +318,100 @@ Widget _buildProjectCard(BuildContext context, bool isDarkMode, Map<String, dyna
         Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
-              width: 80, // Set a fixed width for the action buttons
-              height: 80, // Set a fixed height for each action button
-              child: SlidableAction(
-                onPressed: (context) {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (BuildContext context) {
-                      return Container(
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery.of(context).size.height * 0.8,
+            GestureDetector(
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  builder: (BuildContext context) {
+                    return Container(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.8,
+                      ),
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: ViewProjectPage(project: project),
                         ),
-                        child: SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: ViewProjectPage(project: project),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                icon: Icons.visibility,
-                label: 'View',
-                autoClose: true,
+                      ),
+                    );
+                  },
+                );
+              },
+              child: Container(
+                width: 80, // Set a fixed width for the action buttons
+                height: 80, // Set a fixed height for each action button
+                color: Colors.blue, // Background color for the button
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/layer.png', // Use your custom image here
+                      width: 40,
+                      height: 40,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'View',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 8), // Space between the buttons
-            SizedBox(
-              width: 80, // Set a fixed width for the action buttons
-              height: 80, // Set a fixed height for each action button
-              child: SlidableAction(
-                onPressed: (context) {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (BuildContext context) {
-                      return Container(
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery.of(context).size.height * 0.8,
-                        ),
-                        child: SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: EditProjectPage(
-                              project: project,
-                              onUpdate: (updatedProject) {
-                                setState(() {
-                                  _projects[index] = updatedProject;
-                                });
-                              },
-                              onDelete: () {
-                                setState(() {
-                                  _projects.removeAt(index);
-                                });
-                                Navigator.pop(context);
-                              },
-                            ),
+            GestureDetector(
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  builder: (BuildContext context) {
+                    return Container(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.8,
+                      ),
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: EditProjectPage(
+                            project: project,
+                            onUpdate: (updatedProject) {
+                              setState(() {
+                                _projects[index] = updatedProject;
+                              });
+                            },
+                            onDelete: () {
+                              setState(() {
+                                _projects.removeAt(index);
+                              });
+                              Navigator.pop(context);
+                            },
                           ),
                         ),
+                      ),
                       );
                     },
                   );
-                },
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                icon: Icons.edit,
-                label: 'Edit',
-                autoClose: true,
+              },
+              child: Container(
+                width: 80, // Set a fixed width for the action buttons
+                height: 80, // Set a fixed height for each action button
+                color: Colors.green, // Background color for the button
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/element-plus.png', // Use your custom image here
+                      width: 40,
+                      height: 40,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Edit',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -490,6 +512,7 @@ Widget _buildProjectCard(BuildContext context, bool isDarkMode, Map<String, dyna
     ),
   );
 }
+
 
 
 
