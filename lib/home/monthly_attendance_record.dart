@@ -13,10 +13,11 @@ class MonthlyAttendanceReport extends StatefulWidget {
 
 class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
   List<Map<String, String>> _attendanceRecords = [];
-  String _currentMonthKey = 'January 2024'; // Default month
+  DateTime _currentMonth = DateTime.now();
   String _selectedType = 'Office'; // Default selected type
   String _dropdownValue = 'Office'; // For the dropdown
   bool _errorFetchingData = false;
+  String _totalWorkDuration = '00:00:00'; // Total work duration for the month
 
   @override
   void initState() {
@@ -26,7 +27,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
 
   Future<void> _fetchAttendanceRecords() async {
     String? token = await _getToken();
-    if (token == null) {
+    if (token == null || token.isEmpty) {
       _showCustomDialog(context, 'Error', 'Unable to retrieve authentication token.');
       return;
     }
@@ -44,33 +45,44 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
       final response = await http.get(
         Uri.parse(url),
         headers: {
-          'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $token', // Pass the retrieved token
           'Content-Type': 'application/json',
         },
       );
 
       if (response.statusCode == 200) {
-        List<dynamic> data = jsonDecode(response.body);
+        final data = jsonDecode(response.body);
+        List<dynamic> monthlyRecords = data['monthly'] ?? [];
+
         setState(() {
-          _attendanceRecords = data.map<Map<String, String>>((item) {
+          _attendanceRecords = monthlyRecords.where((item) {
+            String checkInDate = item['check_in_date']?.toString() ?? '';
+            DateTime parsedDate = DateFormat('yyyy-MM-dd').parse(checkInDate);
+            String monthYearKey = DateFormat('MMMM yyyy').format(parsedDate);
+            return monthYearKey == DateFormat('MMMM yyyy').format(_currentMonth);
+          }).map<Map<String, String>>((item) {
             return {
-              'checkIn': item['checkInTime']?.toString() ?? '--:--:--',
-              'checkOut': item['checkOutTime']?.toString() ?? '--:--:--',
-              'workingHours': item['workingHours']?.toString() ?? '00:00:00',
-              'date': item['date']?.toString() ?? 'N/A',
+              'checkIn': item['check_in_time']?.toString() ?? '--:--:--',
+              'checkOut': item['check_out_time']?.toString() ?? '--:--:--',
+              'workDuration': item['workDuration']?.toString() ?? '00:00:00',
+              'date': item['check_in_date']?.toString() ?? 'N/A',
             };
           }).toList();
+
+          _totalWorkDuration = data['TotalWorkDurationForMonth']['totalWorkDuration']?.toString() ?? '00:00:00';
           _errorFetchingData = _attendanceRecords.isEmpty;
         });
       } else {
         setState(() {
           _errorFetchingData = true;
         });
+        _showCustomDialog(context, 'Error', 'Failed to retrieve data: ${response.statusCode} - ${response.reasonPhrase}');
       }
     } catch (e) {
       setState(() {
         _errorFetchingData = true;
       });
+      _showCustomDialog(context, 'Error', 'An error occurred while fetching data.');
     }
   }
 
@@ -135,7 +147,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
           children: [
             _buildAttendanceItem('Check In', record['checkIn']!, iconColor),
             _buildAttendanceItem('Check Out', record['checkOut']!, iconColor),
-            _buildAttendanceItem('Working Hours', record['workingHours']!, Colors.blue),
+            _buildAttendanceItem('Working Hours', record['workDuration']!, Colors.blue),
           ],
         ),
       ),
@@ -181,22 +193,69 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Attendance Report'),
-        centerTitle: true,
-      ),
+      appBar: _buildAppBar(context),
       body: Column(
         children: [
           _buildHeader(context),
+          const SizedBox(height: 8),
+          _buildTotalWorkDurationRow(),
           Expanded(
             child: _errorFetchingData
-                ? const Center(child: Text("Can't retrieve data at the moment", style: TextStyle(color: Colors.black)))
+                ? Center(
+              child: Text(
+                "No $_selectedType attendance record data for this month.",
+                style: const TextStyle(color: Colors.black),
+              ),
+            )
                 : ListView.builder(
               itemCount: _attendanceRecords.length,
               itemBuilder: (context, index) {
                 return _buildAttendanceRow(_attendanceRecords[index], iconColor);
               },
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(50.50),
+      child: AppBar(
+        flexibleSpace: Stack(
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/background.png'), // Ensure this path is correct
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0, // Remove shadow
+      ),
+    );
+  }
+
+  Widget _buildTotalWorkDurationRow() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      color: Colors.orange.shade300,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Total Work Duration:',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            _totalWorkDuration,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -222,13 +281,13 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () {
                   setState(() {
-                    final previousMonth = DateTime.now().subtract(Duration(days: DateTime.now().day));
-                    _currentMonthKey = DateFormat('MMMM yyyy').format(previousMonth);
+                    _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
+                    _fetchAttendanceRecords(); // Fetch records for the previous month
                   });
                 },
               ),
               Text(
-                _currentMonthKey,
+                DateFormat('MMMM yyyy').format(_currentMonth),
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -238,8 +297,8 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
                 icon: const Icon(Icons.arrow_forward),
                 onPressed: () {
                   setState(() {
-                    final nextMonth = DateTime.now().add(Duration(days: 30 - DateTime.now().day));
-                    _currentMonthKey = DateFormat('MMMM yyyy').format(nextMonth);
+                    _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+                    _fetchAttendanceRecords(); // Fetch records for the next month
                   });
                 },
               ),

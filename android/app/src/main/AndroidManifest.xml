@@ -23,6 +23,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
+        android:enableOnBackInvokedCallback="true"
         android:requestLegacyExternalStorage="true"
         android:label="PSVB NEXT"
         android:icon="@mipmap/playstore">

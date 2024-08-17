@@ -16,11 +16,12 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
-  late String _name = '';
-  late String _surname = '';
-  late String _email = '';
+  late String _province = '';
+  late String _district = '';
+  late String _village = '';
   late String _tel = '';
   File? _image;
+  String _imageUrl = '';
   bool _isLoading = false;
 
   @override
@@ -34,7 +35,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final String? token = prefs.getString('token');
 
     final response = await http.get(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
+      Uri.parse('https://demo-application-api.flexiflows.co/api/profile'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -42,15 +43,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
 
     if (response.statusCode == 200) {
-      final List<dynamic> results = jsonDecode(response.body)['results'];
-      // Assuming the first result is the logged-in user
-      final userProfile = results[0];
+      final Map<String, dynamic> userProfile = jsonDecode(response.body)['results'];
 
       setState(() {
-        _name = userProfile['name'];
-        _surname = userProfile['surname'];
-        _email = userProfile['email'];
-        _tel = userProfile['tel'];
+        _province = userProfile['employee_province'];
+        _district = userProfile['employee_district'];
+        _village = userProfile['employee_village'];
+        _tel = userProfile['employee_tel'];
+        _imageUrl = userProfile['images'] ?? ''; // Load the profile image URL
       });
     } else {
       throw Exception('Failed to load user profile');
@@ -79,21 +79,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://demo-application-api.flexiflows.co/api/user/profile/update'),
+        Uri.parse('https://demo-application-api.flexiflows.co/api/profile/request-change'),
       );
       request.headers['Authorization'] = 'Bearer $token';
-      request.fields['name'] = _name;
-      request.fields['surname'] = _surname;
-      request.fields['email'] = _email;
-      request.fields['tel'] = _tel;
+      request.fields['employee_province'] = _province;
+      request.fields['employee_district'] = _district;
+      request.fields['employee_village'] = _village;
+      request.fields['employee_tel'] = _tel;
+
       if (_image != null) {
-        request.files.add(await http.MultipartFile.fromPath('image', _image!.path));
+        request.files.add(await http.MultipartFile.fromPath('images', _image!.path));
       }
 
       final response = await request.send();
       setState(() {
         _isLoading = false;
       });
+
       if (response.statusCode == 200) {
         final responseData = await http.Response.fromStream(response);
         final Map<String, dynamic> responseBody = jsonDecode(responseData.body);
@@ -160,15 +162,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Profile'),
+        centerTitle: true,
         flexibleSpace: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
               image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
-            ),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
             ),
           ),
         ),
@@ -195,88 +194,115 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   Center(
                     child: GestureDetector(
                       onTap: _getImage,
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundImage: _image != null ? FileImage(_image!) : null,
-                        child: _image == null ? const Icon(Icons.add_a_photo, size: 50) : null,
+                      child: Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundImage: _image != null
+                                ? FileImage(_image!)
+                                : (_imageUrl.isNotEmpty
+                                ? NetworkImage(_imageUrl) as ImageProvider
+                                : const AssetImage('assets/default_avatar.jpg')),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(8.0),
+                              decoration: BoxDecoration(
+                                color: Colors.orange,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.edit, color: Colors.white),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
-                    initialValue: _name,
+                    initialValue: _province,
                     decoration: InputDecoration(
-                      labelText: 'Name',
+                      labelText: 'Province',
                       border: const OutlineInputBorder(),
                       fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
                       filled: true,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your name';
+                        return 'Please enter your province';
                       }
                       return null;
                     },
                     onSaved: (value) {
-                      _name = value!;
+                      _province = value!;
                     },
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
-                    initialValue: _surname,
+                    initialValue: _district,
                     decoration: InputDecoration(
-                      labelText: 'Surname',
+                      labelText: 'City',
                       border: const OutlineInputBorder(),
                       fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
                       filled: true,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your surname';
+                        return 'Please enter your city';
                       }
                       return null;
                     },
                     onSaved: (value) {
-                      _surname = value!;
+                      _district = value!;
                     },
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
-                    initialValue: _email,
+                    initialValue: _village,
                     decoration: InputDecoration(
-                      labelText: 'Email',
+                      labelText: 'Village',
                       border: const OutlineInputBorder(),
                       fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
                       filled: true,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
+                        return 'Please enter your village';
                       }
                       return null;
                     },
                     onSaved: (value) {
-                      _email = value!;
+                      _village = value!;
                     },
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     initialValue: _tel,
                     decoration: InputDecoration(
-                      labelText: 'Telephone',
+                      labelText: 'Phone Number',
                       border: const OutlineInputBorder(),
                       fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
                       filled: true,
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your telephone number';
+                        return 'Please enter your phone number';
                       }
                       return null;
                     },
                     onSaved: (value) {
                       _tel = value!;
                     },
+                  ),
+                  const SizedBox(height: 16),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 8.0),
+                    child: Text(
+                      '* Please Note\nAny changes to your information require approval and may take some time. Thank you for your patience!',
+                      style: TextStyle(fontSize: 12, color: Colors.black),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
@@ -290,7 +316,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                     child: const Center(
                       child: Text(
-                        'Save',
+                        'Update',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

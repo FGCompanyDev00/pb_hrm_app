@@ -14,6 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:flutter_background/flutter_background.dart';
 import 'package:pb_hrsystem/home/monthly_attendance_record.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:uuid/uuid.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -22,13 +24,13 @@ class AttendanceScreen extends StatefulWidget {
   _AttendanceScreenState createState() => _AttendanceScreenState();
 }
 
-class _AttendanceScreenState extends State<AttendanceScreen> {
+class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerProviderStateMixin {
   final LocalAuthentication auth = LocalAuthentication();
   final _storage = const FlutterSecureStorage();
+  late TabController _tabController;
   bool _canCheckBiometrics = false;
   bool _biometricEnabled = false;
   List<BiometricType> _availableBiometrics = [];
-  Color _indicatorColor = Colors.yellow;
   String _checkInTime = '--:--:--';
   String _checkOutTime = '--:--:--';
   DateTime? _checkInDateTime;
@@ -40,6 +42,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   String _currentSection = 'Home';
   bool _isCheckInActive = false;
   String _activeSection = '';
+  String _deviceId = '';
+  List<Map<String, String>> _weeklyRecords = [];
+  int _currentWeekIndex = 0;
 
   static const double _allowedDistance = 500; // 500 meters
   static const LatLng _officeLocation = LatLng(3.1390, 101.6869); // Coordinates for Kementerian Pendidikan Malaysia
@@ -47,23 +52,42 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      setState(() {
+        switch (_tabController.index) {
+          case 0:
+            _currentSection = 'Home';
+            break;
+          case 1:
+            _currentSection = 'Office';
+            break;
+          case 2:
+            _currentSection = 'Offsite';
+            break;
+        }
+      });
+    });
     _initializeBackgroundService();
     _checkBiometrics();
     _loadBiometricSetting();
     _loadAttendanceRecords();
     _currentMonthKey = DateFormat('MMMM - yyyy').format(DateTime.now());
     _loadCurrentSession();
+    _retrieveDeviceId();
+    _fetchWeeklyRecords(); // Fetch weekly records on init
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _timer?.cancel();
     super.dispose();
   }
 
   Future<void> _initializeBackgroundService() async {
     var androidConfig = const FlutterBackgroundAndroidConfig(
-      notificationTitle: 'PBHR Attendance',
+      notificationTitle: 'PSBV Attendance',
       notificationText: 'Running in background',
       enableWifiLock: true,
     );
@@ -127,10 +151,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     String? attendanceRecords = prefs.getString('attendanceRecords');
     if (attendanceRecords != null) {
       setState(() {
-        // Decode and cast the data safely
         final decodedData = jsonDecode(attendanceRecords) as Map<String, dynamic>;
         _attendanceRecords = decodedData.map((key, value) {
-          // Explicitly cast each item in the list to Map<String, String>
           List<Map<String, String>> castedList = List<Map<String, String>>.from(
             value.map((item) => Map<String, String>.from(item)),
           );
@@ -180,6 +202,61 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
+  Future<void> _retrieveDeviceId() async {
+    try {
+      final DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+        setState(() {
+          _deviceId = androidInfo.id; // Retrieve the Android device ID
+        });
+      } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+        IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+        setState(() {
+          _deviceId = iosInfo.identifierForVendor ?? 'Unknown'; // Retrieve the iOS device ID
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to get device ID: $e');
+      }
+    }
+  }
+
+  Future<void> _fetchWeeklyRecords() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offices/weekly/me'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          final decodedData = jsonDecode(response.body) as List<dynamic>;
+          _weeklyRecords = decodedData.map((record) {
+            return {
+              'date': record['date'] as String,
+              'checkIn': record['checkIn'] as String,
+              'checkOut': record['checkOut'] as String,
+              'workingHours': record['workingHours'] as String,
+            };
+          }).toList();
+        });
+      } else {
+        if (kDebugMode) {
+          print('Failed to fetch weekly records');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching weekly records: $e');
+      }
+      _showCustomDialog(context, 'Error', 'Failed to fetch weekly records.');
+    }
+  }
+
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -221,28 +298,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (authenticated) {
       final now = DateTime.now();
       if (isCheckIn) {
-        if (_currentSection == 'Office') {
-          Position position = await _getCurrentPosition();
-          double distanceToOffice = Geolocator.distanceBetween(
-            position.latitude,
-            position.longitude,
-            _officeLocation.latitude,
-            _officeLocation.longitude,
-          );
-
-          if (distanceToOffice <= _allowedDistance) {
-            _performCheckIn(now);
-            _showCustomDialog(context, 'Check-In Successful', 'You have checked in successfully.');
-          } else {
-            _showCustomDialog(context, 'Check-In Failed', 'You are not within the allowed distance to check in.');
-          }
-        } else {
-          // For Home and Offsite sections, send the user's location to the API
-          await _sendLocationToAPI();
+        if (_currentSection == 'Offsite' || _currentSection == 'Office' || _currentSection == 'Home') {
+          await _sendAttendanceDataToAPI(isCheckIn);
           _performCheckIn(now);
           _showCustomDialog(context, 'Check-In Successful', 'You have checked in successfully.');
         }
       } else {
+        await _sendAttendanceDataToAPI(isCheckIn);
         _performCheckOut(now);
       }
     } else {
@@ -252,34 +314,91 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     setState(() {});
   }
 
-  Future<void> _sendLocationToAPI() async {
+  Future<void> _sendAttendanceDataToAPI(bool isCheckIn) async {
     try {
-      Position position = await _getCurrentPosition();
-      final response = await http.post(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/clock-in-out'),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode({
-          'device_id': '0090290', // You might want to replace this with a dynamic value
-          'latitude': position.latitude.toString(),
-          'longitude': position.longitude.toString(),
-        }),
-      );
+      Position? position = await _getCurrentPosition();
+      if (position != null) {
+        const uuid = Uuid();
+        final String uid = uuid.v4();
+        const String employeeId = "PSV-00-000002"; // Replace with the current user's ID
+        const String employeeName = "John Doe"; // Replace with the current user's name
+        final String checkInDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+        final String checkInTime = isCheckIn
+            ? DateFormat('HH:mm:ss').format(DateTime.now())
+            : _checkInTime; // Use saved check-in time for checkout
+        final String checkOutTime = isCheckIn ? "00:00:00" : DateFormat('HH:mm:ss').format(DateTime.now());
+        final String workDuration = isCheckIn
+            ? "00:00:00"
+            : _workingHours.toString().split('.').first.padLeft(8, '0');
+        final String officeStatus = _currentSection.toLowerCase(); // offsite, office, or home
 
-      if (response.statusCode == 200) {
-        if (kDebugMode) {
-          print('Location sent successfully');
+        final response = await http.post(
+          Uri.parse('https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offsite'),
+          headers: <String, String>{
+            'Content-Type': 'application/json; charset=UTF-8',
+          },
+          body: jsonEncode({
+            'uid': uid,
+            'employee_id': employeeId,
+            'employee_name': employeeName,
+            'device_token': _deviceId,
+            'check_in_date': checkInDate,
+            'check_in_time': checkInTime,
+            'check_out_time': checkOutTime,
+            'latitude': position.latitude.toString(),
+            'longitude': position.longitude.toString(),
+            'office_status': officeStatus,
+            'workDuration': workDuration,
+          }),
+        );
+
+        if (response.statusCode == 200) {
+          if (kDebugMode) {
+            print('Attendance data sent successfully');
+          }
+        } else {
+          if (kDebugMode) {
+            print('Failed to send attendance data');
+          }
+          _showCustomDialog(context, 'Error', 'Failed to send attendance data to the server.');
         }
       } else {
-        if (kDebugMode) {
-          print('Failed to send location');
-        }
+        _showCustomDialog(context, 'Error', 'Failed to retrieve location.');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error sending location to API: $e');
+        print('Error sending attendance data to API: $e');
       }
+      _showCustomDialog(context, 'Error', 'Failed to send attendance data to the server.');
+    }
+  }
+
+  Future<Position?> _getCurrentPosition() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        await Geolocator.openLocationSettings();
+        return Future.error('Location services are disabled.');
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return Future.error('Location permissions are denied.');
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        return Future.error('Location permissions are permanently denied, we cannot request permissions.');
+      }
+
+      return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error retrieving location: $e');
+      }
+      return null;
     }
   }
 
@@ -308,28 +427,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _showWorkingHoursDialog(context);
       }
     });
-  }
-
-  Future<Position> _getCurrentPosition() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      await Geolocator.openLocationSettings();
-      return Future.error('Location services are disabled.');
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return Future.error('Location permissions are denied.');
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      return Future.error('Location permissions are permanently denied, we cannot request permissions.');
-    }
-
-    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
   }
 
   void _saveAttendanceRecord() {
@@ -491,6 +588,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return Column(children: attendanceList);
   }
 
+  Widget _buildWeeklyRecordsList(bool isDarkMode) {
+    if (_weeklyRecords.isEmpty) {
+      return Center(
+        child: Text(
+          'No weekly records found.',
+          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+        ),
+      );
+    }
+
+    return Column(
+      children: _weeklyRecords.map((record) => _buildAttendanceRow(record, isDarkMode)).toList(),
+    );
+  }
+
   Widget _buildSummaryRow(String checkIn, String checkOut, String workingHours, bool isDarkMode) {
     return Card(
       color: Colors.white.withOpacity(0.8),
@@ -520,6 +632,52 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         Text(title, style: TextStyle(color: isDarkMode ? Colors.black : Colors.black)),
       ],
     );
+  }
+
+  Widget _buildWeekNavigation(BuildContext context, bool isDarkMode) {
+    final DateTime now = DateTime.now();
+    final int currentWeekOfYear = weekNumber(now);
+    final String currentWeekText = 'Week $currentWeekOfYear - ${DateFormat('MMMM yyyy').format(now)}';
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
+          onPressed: () {
+            setState(() {
+              _currentWeekIndex--;
+              _fetchWeeklyRecords(); // Fetch previous week data
+            });
+          },
+        ),
+        Text(
+          currentWeekText,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
+        IconButton(
+          icon: Icon(Icons.arrow_forward, color: isDarkMode ? Colors.white : Colors.black),
+          onPressed: () {
+            if (_currentWeekIndex < 0) {
+              setState(() {
+                _currentWeekIndex++;
+                _fetchWeeklyRecords(); // Fetch next week data
+              });
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  int weekNumber(DateTime date) {
+    final startOfYear = DateTime(date.year, 1, 1);
+    final dayOfYear = date.difference(startOfYear).inDays + 1;
+    return ((dayOfYear - 1) / 7).ceil();
   }
 
   Widget _buildHeaderContent(BuildContext context, bool isDarkMode, Color fingerprintColor, String section) {
@@ -555,7 +713,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               const SizedBox(height: 8),
               Text(
                 'Register Your Presence and Start Your Work',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: isDarkMode ? Colors.black : Colors.black),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: isDarkMode ? Colors.black : Colors.black),
               ),
               const SizedBox(height: 8),
               const Text(
@@ -627,7 +785,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 _buildTabs(context),
                 Expanded(
                   child: TabBarView(
-                    physics: const NeverScrollableScrollPhysics(), // Disable swipe gesture
+                    physics: const NeverScrollableScrollPhysics(),
+                    controller: _tabController,
                     children: [
                       _buildTabContent(context, isDarkMode, Colors.yellow, Colors.yellow, 'Home'),
                       _buildTabContent(context, isDarkMode, Colors.green, Colors.green, 'Office'),
@@ -713,32 +872,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: TabBar(
-                onTap: (index) {
-                  if (!_isCheckInActive) {
-                    setState(() {
-                      switch (index) {
-                        case 0:
-                          _indicatorColor = Colors.yellow;
-                          _currentSection = 'Home';
-                          break;
-                        case 1:
-                          _indicatorColor = Colors.green;
-                          _currentSection = 'Office';
-                          break;
-                        case 2:
-                          _indicatorColor = Colors.red;
-                          _currentSection = 'Offsite';
-                          break;
-                      }
-                    });
-                  }
-                },
+                controller: _tabController,
                 indicator: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
-                  color: _indicatorColor,
+                  color: _getIndicatorColor(),
                   boxShadow: [
                     BoxShadow(
-                      color: _indicatorColor.withOpacity(0.5),
+                      color: _getIndicatorColor().withOpacity(0.5),
                       spreadRadius: 2,
                       blurRadius: 8,
                       offset: const Offset(0, 3),
@@ -785,42 +925,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     const SizedBox(height: 16),
                     _buildSummaryRow(_checkInTime, _checkOutTime, _workingHours.toString().split('.').first.padLeft(8, '0'), isDarkMode),
                     const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '$_currentSection $_currentMonthKey',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: isDarkMode ? Colors.white : Colors.black,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
-                              onPressed: () {
-                                setState(() {
-                                  final previousMonth = DateTime.now().subtract(Duration(days: DateTime.now().day));
-                                  _currentMonthKey = DateFormat('MMMM - yyyy').format(previousMonth);
-                                });
-                              },
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.arrow_forward, color: isDarkMode ? Colors.white : Colors.black),
-                              onPressed: () {
-                                setState(() {
-                                  final nextMonth = DateTime.now().add(Duration(days: 30 - DateTime.now().day));
-                                  _currentMonthKey = DateFormat('MMMM - yyyy').format(nextMonth);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    _buildAttendanceList(isDarkMode),
+                    _buildWeekNavigation(context, isDarkMode),
+                    const SizedBox(height: 16),
+                    section == 'Office' ? _buildWeeklyRecordsList(isDarkMode) : _buildAttendanceList(isDarkMode),
                   ],
                 ),
               ),
@@ -829,5 +936,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ),
       ],
     );
+  }
+
+  Color _getIndicatorColor() {
+    switch (_tabController.index) {
+      case 0:
+        return Colors.yellow;
+      case 1:
+        return Colors.green;
+      case 2:
+        return Colors.red;
+      default:
+        return Colors.yellow;
+    }
   }
 }

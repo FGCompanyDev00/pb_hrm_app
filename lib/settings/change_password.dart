@@ -35,7 +35,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     final String? token = prefs.getString('token');
 
     final response = await http.get(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
+      Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -43,8 +43,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     );
 
     if (response.statusCode == 200) {
-      final List<dynamic> results = jsonDecode(response.body)['results'];
-      final userProfile = UserProfile.fromJson(results[0]);
+      final Map<String, dynamic> results = jsonDecode(response.body)['results'][0];
+      final userProfile = UserProfile.fromJson(results);
       return userProfile;
     } else {
       throw Exception('Failed to load user profile');
@@ -59,8 +59,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     final prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
 
-    final response = await http.post(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/change-password'),
+    final response = await http.put(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/changepassword'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -249,14 +249,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         children: [
           CircleAvatar(
             radius: 50,
-            backgroundImage: userProfile.imgName != 'default_avatar.jpg'
-                ? NetworkImage('https://demo-application-api.flexiflows.co/images/${userProfile.imgName}')
-                : const AssetImage('assets/avatar_placeholder.png'),
+            backgroundImage: NetworkImage(userProfile.imgUrl),
             backgroundColor: Colors.transparent,
           ),
           const SizedBox(height: 16),
           Text(
-            'Change Password',
+            '${userProfile.name} ${userProfile.surname}',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -279,7 +277,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           const SizedBox(height: 16),
           _buildPasswordField(
             context,
-            'Password *',
+            'New Password *',
             _newPasswordController,
             isDarkMode,
             _isNewPasswordVisible,
@@ -292,7 +290,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           const SizedBox(height: 16),
           _buildPasswordField(
             context,
-            'Password (Confirm) *',
+            'Confirm Password *',
             _confirmPasswordController,
             isDarkMode,
             _isConfirmPasswordVisible,
@@ -385,13 +383,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 }
 
 class UserProfile {
-  final int id;
   final String employeeId;
   final String name;
   final String surname;
-  final int branchId;
+  final String branchId;
   final String branchName;
-  final int departmentId;
+  final String departmentId;
   final String departmentName;
   final String tel;
   final String email;
@@ -399,10 +396,9 @@ class UserProfile {
   final String gender;
   final String createAt;
   final String updateAt;
-  final String imgName;
+  final String imgUrl;
 
   UserProfile({
-    required this.id,
     required this.employeeId,
     required this.name,
     required this.surname,
@@ -416,26 +412,25 @@ class UserProfile {
     required this.gender,
     required this.createAt,
     required this.updateAt,
-    required this.imgName,
+    required this.imgUrl,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
-      id: json['id'],
-      employeeId: json['employee_id'],
-      name: json['name'],
-      surname: json['surname'],
-      branchId: json['branch_id'],
-      branchName: json['b_name'],
-      departmentId: json['department_id'],
-      departmentName: json['d_name'],
-      tel: json['tel'],
-      email: json['email'],
-      employeeStatus: json['employee_status'],
-      gender: json['gender'],
-      createAt: json['create_at'],
-      updateAt: json['update_at'],
-      imgName: json['img_name'],
+      employeeId: json['id'] ?? '',
+      name: json['employee_name'] ?? '',
+      surname: json['employee_surname'] ?? '',
+      branchId: '',
+      branchName: '',
+      departmentId: '',
+      departmentName: '',
+      tel: '',
+      email: json['employee_email'] ?? '',
+      employeeStatus: '',
+      gender: '',
+      createAt: '',
+      updateAt: '',
+      imgUrl: json['images'] ?? 'default_avatar.jpg',
     );
   }
 }
