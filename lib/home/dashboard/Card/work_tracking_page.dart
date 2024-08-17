@@ -301,175 +301,197 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     );
   }
 
-  Widget _buildProjectCard(BuildContext context, bool isDarkMode, Map<String, dynamic> project, int index) {
-    final progressColors = {
-      'Pending': Colors.orange,
-      'Processing': Colors.blue,
-      'Completed': Colors.green,
-    };
+Widget _buildProjectCard(BuildContext context, bool isDarkMode, Map<String, dynamic> project, int index) {
+  final progressColors = {
+    'Pending': Colors.orange,
+    'Processing': Colors.blue,
+    'Completed': Colors.green,
+  };
 
-    double progress = double.tryParse(project['precent']?.toString() ?? '0.0') ?? 0.0;
-    return Slidable(
-      startActionPane: ActionPane(
-        motion: const DrawerMotion(),
-        children: [
-          SlidableAction(
-            onPressed: (context) {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder: (BuildContext context) {
-                  return Container(
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(context).size.height * 0.8,
-                    ),
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: ViewProjectPage(project: project),
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
-            icon: Icons.visibility,
-            label: 'View',
-          ),
-          SlidableAction(
-            onPressed: (context) {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                builder: (BuildContext context) {
-                  return Container(
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(context).size.height * 0.8,
-                    ),
-                    child: SingleChildScrollView(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: EditProjectPage(
-                          project: project,
-                          onUpdate: (updatedProject) {
-                            setState(() {
-                              _projects[index] = updatedProject;
-                            });
-                          },
-                          onDelete: () {
-                            setState(() {
-                              _projects.removeAt(index);
-                            });
-                            Navigator.pop(context);
-                          },
+  double progress = double.tryParse(project['precent']?.toString() ?? '0.0') ?? 0.0;
+
+  return Slidable(
+    startActionPane: ActionPane(
+      motion: const ScrollMotion(),
+      extentRatio: 0.25, // Adjust the width of the slide-out area
+      children: [
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 80, // Set a fixed width for the action buttons
+              height: 80, // Set a fixed height for each action button
+              child: SlidableAction(
+                onPressed: (context) {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (BuildContext context) {
+                      return Container(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.8,
                         ),
-                      ),
-                    ),
+                        child: SingleChildScrollView(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: ViewProjectPage(project: project),
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
-              );
-            },
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-            icon: Icons.edit,
-            label: 'Edit',
-          ),
-        ],
-      ),
-      child: GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ProjectManagementPage(
-                projectId: project['project_id'],
-                baseUrl: WorkTrackingService.baseUrl,
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                icon: Icons.visibility,
+                label: 'View',
+                autoClose: true,
               ),
             ),
-          );
-        },
-        child: Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16.0),
-          ),
-          elevation: 5,
-          margin: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: LinearProgressIndicator(
-                        value: progress / 100,
-                        color: progressColors[project['s_name']],
-                        backgroundColor: Colors.grey.shade300,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${project['precent']}%',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.update,
-                      color: progressColors[project['s_name']],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Title: ${project['p_name']}',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Project ID: ${project['project_id']}',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Deadline: ${project['dl']}',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text(
-                      'Status: ',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    Text(
-                      project['s_name'] ?? 'Unknown',
-                      style: TextStyle(
-                        color: progressColors[project['s_name']] ?? Colors.grey,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            const SizedBox(height: 8), // Space between the buttons
+            SizedBox(
+              width: 80, // Set a fixed width for the action buttons
+              height: 80, // Set a fixed height for each action button
+              child: SlidableAction(
+                onPressed: (context) {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (BuildContext context) {
+                      return Container(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.8,
+                        ),
+                        child: SingleChildScrollView(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: EditProjectPage(
+                              project: project,
+                              onUpdate: (updatedProject) {
+                                setState(() {
+                                  _projects[index] = updatedProject;
+                                });
+                              },
+                              onDelete: () {
+                                setState(() {
+                                  _projects.removeAt(index);
+                                });
+                                Navigator.pop(context);
+                              },
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                icon: Icons.edit,
+                label: 'Edit',
+                autoClose: true,
+              ),
             ),
+          ],
+        ),
+      ],
+    ),
+    child: GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProjectManagementPage(
+              projectId: project['project_id'],
+              baseUrl: WorkTrackingService.baseUrl,
+            ),
+          ),
+        );
+      },
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        elevation: 5,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: progress / 100,
+                      color: progressColors[project['s_name']],
+                      backgroundColor: Colors.grey.shade300,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${project['precent']}%',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.update,
+                    color: progressColors[project['s_name']],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Title: ${project['p_name']}',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Project ID: ${project['project_id']}',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Deadline: ${project['dl']}',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    'Status: ',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  Text(
+                    project['s_name'] ?? 'Unknown',
+                    style: TextStyle(
+                      color: progressColors[project['s_name']] ?? Colors.grey,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+
+
+
 }

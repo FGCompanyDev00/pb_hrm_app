@@ -24,7 +24,6 @@ class LeaveManagementPage extends HookWidget {
     final daysController = useTextEditingController(text: '0');
     final leaveTypeId = useState<int?>(null);
 
-    // Function to show a dialog and clear input fields
     void showCustomDialog(BuildContext context, String title, String content) {
       showDialog(
         context: context,
@@ -36,15 +35,12 @@ class LeaveManagementPage extends HookWidget {
               TextButton(
                 child: const Text('Close'),
                 onPressed: () {
-                  // Clear all input fields
                   typeController.clear();
                   descriptionController.clear();
                   startDateController.clear();
                   endDateController.clear();
                   daysController.clear();
                   leaveTypeId.value = null;
-
-                  // Close the dialog
                   Navigator.of(dialogContext).pop();
                 },
               ),
@@ -54,7 +50,6 @@ class LeaveManagementPage extends HookWidget {
       );
     }
 
-    // Fetch leave types from API
     Future<List<Map<String, dynamic>>> fetchLeaveTypes() async {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
@@ -81,7 +76,6 @@ class LeaveManagementPage extends HookWidget {
       }
     }
 
-    // Function to pick a date
     Future<void> pickDate(BuildContext context, TextEditingController controller) async {
       DateTime initialDate = DateTime.now();
       DateTime firstDate = DateTime(2000);
@@ -105,55 +99,79 @@ class LeaveManagementPage extends HookWidget {
       }
     }
 
-    // Function to save leave data
     Future<void> saveData() async {
-      if (typeController.text.isNotEmpty &&
-          descriptionController.text.isNotEmpty &&
-          startDateController.text.isNotEmpty &&
-          endDateController.text.isNotEmpty &&
-          daysController.text.isNotEmpty) {
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          final token = prefs.getString('token');
+  if (typeController.text.isNotEmpty &&
+      descriptionController.text.isNotEmpty &&
+      startDateController.text.isNotEmpty &&
+      endDateController.text.isNotEmpty &&
+      daysController.text.isNotEmpty) {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
 
-          if (token == null) {
-            EasyLoading.showError('User not authenticated');
-            return;
-          }
-
-          final requestBody = {
-            'take_leave_from': startDateController.text,
-            'take_leave_to': endDateController.text,
-            'take_leave_type_id': leaveTypeId.value.toString(),
-            'take_leave_reason': descriptionController.text,
-            'days': daysController.text,
-          };
-
-          final response = await http.post(
-            Uri.parse('https://demo-application-api.flexiflows.co/api/leave_request'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: jsonEncode(requestBody),
-          );
-
-          if (response.statusCode == 200 || response.statusCode == 201) {
-            EasyLoading.showSuccess('Your leave request has been submitted!');
-            showCustomDialog(context, 'Success', 'Your leave request has been submitted successfully.');
-          } else {
-            EasyLoading.showError('Failed to submit leave request');
-            showCustomDialog(context, 'Error', 'Failed to submit leave request.');
-          }
-        } catch (e) {
-          EasyLoading.showError('Error: $e');
-          showCustomDialog(context, 'Error', 'An error occurred: $e');
-        }
-      } else {
-        EasyLoading.showError('Please fill in all fields');
-        showCustomDialog(context, 'Error', 'Please fill in all fields to submit your leave request.');
+      if (token == null) {
+        EasyLoading.showError('User not authenticated');
+        return;
       }
+
+      final requestBody = {
+        'take_leave_from': startDateController.text,
+        'take_leave_to': endDateController.text,
+        'take_leave_type_id': leaveTypeId.value.toString(),
+        'take_leave_reason': descriptionController.text,
+        'days': daysController.text,
+      };
+
+      final response = await http.post(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_request'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      // Log the raw response to inspect what the API is returning
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      // Check if response is empty or invalid JSON
+      if (response.body.isEmpty) {
+        throw FormatException("Empty response body");
+      }
+
+      // Try parsing the response and handle potential format issues
+      dynamic responseBody;
+      try {
+        responseBody = jsonDecode(response.body);
+      } catch (e) {
+        throw FormatException("Failed to parse response: $e");
+      }
+
+      // Assume success if the status code is 200 or 201, or if the response contains success indicators
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        EasyLoading.showSuccess('Your leave request has been submitted!');
+        showCustomDialog(context, 'Success', 'Your leave request has been submitted successfully.');
+      } else if (responseBody['success'] == true || responseBody.containsKey('data')) {
+        // Handle potential success scenarios in case the API returns non-standard success responses
+        EasyLoading.showSuccess('Your leave request has been submitted!');
+        showCustomDialog(context, 'Success', 'Your leave request has been submitted successfully.');
+      } else {
+        // If the response doesn't match expected success conditions, treat it as an error
+        EasyLoading.showError('Failed to submit leave request');
+        showCustomDialog(context, 'Error', 'Failed to submit leave request. Please check your input and try again.');
+      }
+    } catch (e) {
+      EasyLoading.showError('Error: $e');
+      showCustomDialog(context, 'Error', 'An error occurred: $e');
     }
+  } else {
+    EasyLoading.showError('Please fill in all fields');
+    showCustomDialog(context, 'Error', 'Please fill in all fields to submit your leave request.');
+  }
+}
+
+
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -237,7 +255,6 @@ class LeaveManagementPage extends HookWidget {
                                   onSelected: (String value) async {
                                     typeController.text = value;
 
-                                    // Find the selected leave type's ID
                                     final selectedLeaveType = leaveTypes.firstWhere(
                                           (leaveType) => leaveType['name'] == value,
                                     );
