@@ -60,7 +60,6 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
-  // Fixed: Ensure the biometric setting is properly loaded
   Future<void> _loadBiometricSetting() async {
     String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
     setState(() {
@@ -68,52 +67,6 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
-  // for development.. direct to MainScreen even first timer
-  // Future<void> _login() async {
-  //   final String username = _usernameController.text;
-  //   final String password = _passwordController.text;
-  //
-  //   final response = await http.post(
-  //     Uri.parse('https://demo-application-api.flexiflows.co/api/login'),
-  //     headers: <String, String>{
-  //       'Content-Type': 'application/json; charset=UTF-8',
-  //     },
-  //     body: jsonEncode(<String, String>{
-  //       'username': username,
-  //       'password': password,
-  //     }),
-  //   );
-  //
-  //   if (response.statusCode == 200) {
-  //     final Map<String, dynamic> responseBody = jsonDecode(response.body);
-  //     final String token = responseBody['token'];
-  //
-  //     final prefs = await SharedPreferences.getInstance();
-  //     await prefs.setString('token', token); // Save token
-  //
-  //     if (_rememberMe) {
-  //       _saveCredentials();
-  //     } else {
-  //       _clearCredentials();
-  //     }
-  //
-  //     // Save the credentials securely if biometric is enabled
-  //     if (_biometricEnabled) {
-  //       await _storage.write(key: 'username', value: username);
-  //       await _storage.write(key: 'password', value: password);
-  //       await _storage.write(key: 'biometricEnabled', value: 'true');
-  //     }
-  //
-  //     Navigator.pushReplacement(
-  //       context,
-  //       MaterialPageRoute(builder: (context) => const MainScreen()),
-  //     );
-  //   } else {
-  //     _showCustomDialog(context, 'Login Failed', 'Login failed: ${response.reasonPhrase}');
-  //   }
-  // }
-
-  // enable this function for first time user per device to redirect to permission pages first. for production will use this.. for development will use above
   Future<void> _login() async {
     final String username = _usernameController.text;
     final String password = _passwordController.text;
@@ -152,35 +105,36 @@ class _LoginPageState extends State<LoginPage> {
       // Check if it's the first login on this device
       bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
       if (isFirstLogin) {
-        // Navigate to the NotificationPage
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const NotificationPage()),
         );
-        await prefs.setBool('isFirstLogin', false);  // Mark as not first login anymore
+        await prefs.setBool('isFirstLogin', false); // Mark as not first login anymore
       } else {
-        // Navigate to the MainScreen if not the first login
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MainScreen()),
         );
       }
     } else {
-      _showCustomDialog(context, 'Login Failed', 'Login failed: ${response.reasonPhrase}');
+      _showCustomDialog(
+          context,
+          AppLocalizations.of(context)!.loginFailed,
+          '${AppLocalizations.of(context)!.loginFailedMessage} ${response.reasonPhrase}'
+      );
     }
   }
 
-  // Fixed: Ensure the biometric authentication flow is correct
   Future<void> _authenticate({bool useBiometric = true}) async {
     if (!_biometricEnabled) {
-      _showCustomDialog(context, 'Biometric Disabled', 'Please enable biometric authentication in settings.');
+      _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled, AppLocalizations.of(context)!.enableBiometric);
       return;
     }
 
     bool authenticated = false;
     try {
       authenticated = await auth.authenticate(
-        localizedReason: 'Please authenticate to login',
+        localizedReason: AppLocalizations.of(context)!.authenticateToLogin,
         options: AuthenticationOptions(
           biometricOnly: useBiometric,
           stickyAuth: true,
@@ -201,7 +155,7 @@ class _LoginPageState extends State<LoginPage> {
         _login(); // Login automatically using stored credentials
       }
     } else {
-      _showCustomDialog(context, 'Authentication Failed', 'Biometric authentication failed. Please try again.');
+      _showCustomDialog(context, AppLocalizations.of(context)!.authFailed, AppLocalizations.of(context)!.tryAgain);
     }
   }
 
@@ -537,14 +491,14 @@ class _LoginPageState extends State<LoginPage> {
       children: [
         GestureDetector(
           onTap: _biometricEnabled ? () => _authenticate(useBiometric: true) : () {
-            _showCustomDialog(context, 'Biometric Disabled', 'Please enable biometric authentication in settings.');
+            _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled, AppLocalizations.of(context)!.enableBiometric);
           },
           child: const Icon(Icons.fingerprint, size: 40, color: Colors.black),
         ),
         const SizedBox(width: 20),
         GestureDetector(
           onTap: _biometricEnabled ? () => _authenticate(useBiometric: false) : () {
-            _showCustomDialog(context, 'Biometric Disabled', 'Please enable biometric authentication in settings.');
+            _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled, AppLocalizations.of(context)!.enableBiometric);
           },
           child: const Icon(Icons.face, size: 40, color: Colors.black),
         ),
