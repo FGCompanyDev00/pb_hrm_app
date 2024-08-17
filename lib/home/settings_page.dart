@@ -257,17 +257,17 @@ class _SettingsPageState extends State<SettingsPage> {
                       padding: const EdgeInsets.all(16.0),
                       children: [
                         _buildSettingsSection('Account Settings', themeNotifier),
-                        _buildSettingsTile(
-                          context,
-                          title: 'Profile Details',
-                          icon: Icons.arrow_forward_ios,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                            );
-                          },
-                        ),
+                        // _buildSettingsTile(
+                        //   context,
+                        //   title: 'Profile Details',
+                        //   icon: Icons.arrow_forward_ios,
+                        //   onTap: () {
+                        //     Navigator.push(
+                        //       context,
+                        //       MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                        //     );
+                        //   },
+                        // ),
                         _buildSettingsTile(
                           context,
                           title: 'Change Password',
