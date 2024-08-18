@@ -10,7 +10,6 @@ import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:http/http.dart' as http;
-import 'dart:ui' as ui;
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -25,6 +24,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
+  List<Map<String, dynamic>> _leaveRequests = [];
 
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
@@ -36,15 +36,16 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+    AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings =
+    InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     // Fetch approvals and initialize events in the calendar
-    _fetchApprovalEvents();
+    _fetchLeaveRequests();
   }
 
-  Future<void> _fetchApprovalEvents() async {
+  Future<void> _fetchLeaveRequests() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
@@ -61,11 +62,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
       if (response.statusCode == 200) {
         final List<dynamic> results = json.decode(response.body)['results'];
-        final approvalItems = results.where((item) => item['is_approve'] == 'Waiting').toList();
+
+        _leaveRequests = List<Map<String, dynamic>>.from(results);
 
         // Map API data to calendar events
         final Map<DateTime, List<Event>> approvalEvents = {};
-        for (var item in approvalItems) {
+        for (var item in _leaveRequests) {
           final DateTime startDate = DateTime.parse(item['take_leave_from']);
           final DateTime endDate = DateTime.parse(item['take_leave_to']);
           final event = Event(
@@ -73,13 +75,19 @@ class _HomeCalendarState extends State<HomeCalendar> {
             startDate,
             endDate,
             item['take_leave_reason'] ?? 'Approval Pending',
-            0, // Assuming attendees are not relevant for approvals
+            item['is_approve'], // Status: Approved, Rejected, Waiting
+            false, // isMeeting set to false for leave requests
           );
 
-          if (approvalEvents.containsKey(startDate)) {
-            approvalEvents[startDate]!.add(event);
-          } else {
-            approvalEvents[startDate] = [event];
+          // Add event to each day between startDate and endDate
+          for (var day = startDate;
+          day.isBefore(endDate.add(const Duration(days: 1)));
+          day = day.add(const Duration(days: 1))) {
+            if (approvalEvents.containsKey(day)) {
+              approvalEvents[day]!.add(event);
+            } else {
+              approvalEvents[day] = [event];
+            }
           }
         }
 
@@ -87,10 +95,10 @@ class _HomeCalendarState extends State<HomeCalendar> {
           _events.value = approvalEvents;
         });
       } else {
-        print('Failed to load approvals: ${response.statusCode}');
+        print('Failed to load leave requests: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching approvals: $e');
+      print('Error fetching leave requests: $e');
     }
   }
 
@@ -99,7 +107,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   bool _hasPendingApprovals(DateTime day) {
-    return _getEventsForDay(day).any((event) => event.description == 'Approval Pending');
+    return _getEventsForDay(day).any((event) => event.status == 'Waiting');
   }
 
   @override
@@ -108,8 +116,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
     super.dispose();
   }
 
-  void _addEvent(String title, DateTime startDateTime, DateTime endDateTime, String description, int attendees) {
-    final newEvent = Event(title, startDateTime, endDateTime, description, attendees);
+  void _addEvent(String title, DateTime startDateTime, DateTime endDateTime, String description, String status, bool isMeeting) {
+    final newEvent = Event(title, startDateTime, endDateTime, description, status, isMeeting);
     final eventsForDay = _getEventsForDay(_selectedDay!);
     setState(() {
       _events.value = {
@@ -169,7 +177,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
           newEvent['startDateTime'],
           newEvent['endDateTime'],
           newEvent['description'] ?? '',
-          newEvent['attendees'] ?? 0,
+          'Pending', // Default to pending status for new events
+          true, // isMeeting set to true for office events
         );
       }
     }
@@ -282,7 +291,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     defaultBuilder: (context, date, _) {
                       final hasPendingApproval = _hasPendingApprovals(date);
                       return CustomPaint(
-                        painter: hasPendingApproval ? GreyLineBorderPainter() : null,
+                        painter: hasPendingApproval ? DottedBorderPainter() : null,
                         child: Container(
                           decoration: BoxDecoration(
                             color: isSameDay(_singleTapSelectedDay, date) ? Colors.yellow : Colors.transparent,
@@ -304,6 +313,16 @@ class _HomeCalendarState extends State<HomeCalendar> {
                             margin: const EdgeInsets.symmetric(horizontal: 1.5),
                             height: 4.0,
                             color: Colors.green,
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: _getEventsForDay(date).any((event) => event.status == 'Waiting')
+                                      ? Colors.orange
+                                      : Colors.green,
+                                  style: BorderStyle.solid,
+                                ),
+                              ),
+                            ),
                           ),
                         );
                       }
@@ -328,7 +347,10 @@ class _HomeCalendarState extends State<HomeCalendar> {
                         itemCount: events.length,
                         itemBuilder: (context, index) {
                           final event = events[index];
-                          return CustomEventBox(event: event, isDarkMode: isDarkMode);
+                          return GestureDetector(
+                            onTap: () => _showEventDetails(context, event),
+                            child: CustomEventBox(event: event, isDarkMode: isDarkMode),
+                          );
                         },
                       );
                     },
@@ -341,15 +363,24 @@ class _HomeCalendarState extends State<HomeCalendar> {
       ),
     );
   }
+
+  void _showEventDetails(BuildContext context, Event event) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return EventDetailsPopup(event: event);
+      },
+    );
+  }
 }
 
-class GreyLineBorderPainter extends CustomPainter {
+class DottedBorderPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     const double dashWidth = 4.0;
     const double dashSpace = 4.0;
     final Paint paint = Paint()
-      ..color = Colors.grey
+      ..color = Colors.orange
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 
@@ -457,9 +488,10 @@ class Event {
   final DateTime startDateTime;
   final DateTime endDateTime;
   final String description;
-  final int attendees;
+  final String status; // New property to hold the status of the leave request
+  final bool isMeeting; // New property to indicate if the event is a meeting
 
-  Event(this.title, this.startDateTime, this.endDateTime, this.description, this.attendees);
+  Event(this.title, this.startDateTime, this.endDateTime, this.description, this.status, this.isMeeting);
 
   String get formattedTime => DateFormat.jm().format(startDateTime);
 
@@ -483,7 +515,9 @@ class CustomEventBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.black54 : Colors.white,
         border: Border.all(
-          color: event.attendees > 5 ? Colors.red : Colors.green,
+          color: event.status == 'Rejected' ? Colors.red :
+          event.status == 'Approved' ? Colors.green :
+          Colors.orange,
         ),
         borderRadius: BorderRadius.circular(12.0),
         boxShadow: const [
@@ -532,8 +566,8 @@ class CustomEventBox extends StatelessWidget {
             const SizedBox(height: 4),
             Row(
               children: List.generate(
-                event.attendees > 10 ? 10 : event.attendees,
-                (index) {
+                event.status == 'Approved' ? 10 : event.status == 'Rejected' ? 5 : 0,
+                    (index) {
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 2.0),
                     width: 24,
@@ -541,7 +575,7 @@ class CustomEventBox extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Colors.green,
+                        color: event.status == 'Approved' ? Colors.green : Colors.red,
                         width: 2,
                       ),
                       image: const DecorationImage(
@@ -553,22 +587,16 @@ class CustomEventBox extends StatelessWidget {
                 },
               ),
             ),
-            if (event.attendees > 10)
+            if (event.status == 'Approved' || event.status == 'Rejected')
               Padding(
                 padding: const EdgeInsets.only(left: 4.0),
                 child: Text(
-                  '+${event.attendees - 10}',
-                  style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                  event.status,
+                  style: TextStyle(color: event.status == 'Approved' ? Colors.green : Colors.red),
                 ),
               ),
           ],
         ),
-        trailing: event.attendees > 10
-            ? CircleAvatar(
-                backgroundColor: Colors.grey,
-                child: Text('+${event.attendees - 10}', style: const TextStyle(color: Colors.black)),
-              )
-            : null,
       ),
     );
   }
