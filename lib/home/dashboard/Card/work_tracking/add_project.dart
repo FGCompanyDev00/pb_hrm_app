@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_people_page.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
@@ -19,11 +20,13 @@ class AddProjectPageState extends State<AddProjectPage> {
   final TextEditingController _projectNameController = TextEditingController();
   final TextEditingController _deadline1Controller = TextEditingController();
   final TextEditingController _deadline2Controller = TextEditingController();
+  
 
   String _selectedStatus = 'Processing';
   String _selectedBranch = 'HQ Office';
   String _selectedDepartment = 'Digital Banking Dept';
   double _progress = 0.5;
+  List<Map<String, dynamic>> _selectedPeople = [];
 
   final List<String> _statusOptions = ['Processing', 'Pending', 'Finished'];
   final List<String> _branchOptions = [
@@ -69,6 +72,7 @@ class AddProjectPageState extends State<AddProjectPage> {
         'deadline': _deadline1Controller.text,
         'extended': _deadline2Controller.text,
         'project_id': projectId,
+        'members': _selectedPeople.map((p) => p['id']).toList(),
       };
 
       showDialog(
@@ -139,6 +143,21 @@ class AddProjectPageState extends State<AddProjectPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _navigateToAddPeoplePage() async {
+    final selectedPeople = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddPeoplePage(selectedPeople: _selectedPeople),
+      ),
+    );
+
+    if (selectedPeople != null) {
+      setState(() {
+        _selectedPeople = selectedPeople;
+      });
+    }
   }
 
   @override
@@ -235,6 +254,40 @@ class AddProjectPageState extends State<AddProjectPage> {
                 ),
                 const SizedBox(height: 10),
                 _buildProgressBar(isDarkMode),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: _navigateToAddPeoplePage,
+                  icon: const Icon(Icons.group_add),
+                  label: const Text('Add People'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                if (_selectedPeople.isNotEmpty) ...[
+                  const Text(
+                    'Selected People:',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    children: _selectedPeople.map((person) {
+                      return Chip(
+                        label: Text(person['name']),
+                        onDeleted: () {
+                          setState(() {
+                            _selectedPeople.remove(person);
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -361,23 +414,3 @@ class AddProjectPageState extends State<AddProjectPage> {
     );
   }
 }
-
-//function to trigger notification to another group members when they re members of certain project
-
-// void onAssignmentCreated() async {
-//   final snsService = SNSService();
-//
-//   await snsService.sendNotification(
-//     'A new assignment has been created for you.',
-//     'New Assignment',
-//   );
-//
-//   // Optionally, trigger local notification
-//   _showNotification(
-//     flutterLocalNotificationsPlugin,
-//     'New Assignment',
-//     'Check out your new task!',
-//     {},
-//   );
-// }
-//

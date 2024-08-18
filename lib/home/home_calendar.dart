@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
+import 'dart:ui' as ui;
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -31,7 +32,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
     _events = ValueNotifier(_initializeEvents());
 
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
@@ -39,23 +41,39 @@ class _HomeCalendarState extends State<HomeCalendar> {
   Map<DateTime, List<Event>> _initializeEvents() {
     return {
       DateTime.now(): [
-        Event('Sale Presentation: HI App production', DateTime.now().add(const Duration(hours: 1)), DateTime.now().add(const Duration(hours: 2)), 'Meeting Onsite', 8),
-        Event('Pick up from Hotel to Bank', DateTime.now().add(const Duration(hours: 2)), DateTime.now().add(const Duration(hours: 3)), 'Travel', 4),
-        Event('Japan Vendor', DateTime.now().add(const Duration(hours: 3)), DateTime.now().add(const Duration(hours: 4)), 'Meeting Online', 6),
-        Event('Deadline for HIAPP product', DateTime.now().add(const Duration(hours: 4)), DateTime.now().add(const Duration(hours: 5)), 'Deadline', 2),
+        Event('Sale Presentation: HI App production', DateTime.now().add(const Duration(hours: 1)),
+            DateTime.now().add(const Duration(hours: 2)), 'Meeting Onsite', 8),
+        Event('Pick up from Hotel to Bank', DateTime.now().add(const Duration(hours: 2)),
+            DateTime.now().add(const Duration(hours: 3)), 'Travel', 4),
+        Event('Japan Vendor', DateTime.now().add(const Duration(hours: 3)), DateTime.now().add(const Duration(hours: 4)),
+            'Meeting Online', 6),
+        Event('Deadline for HIAPP product', DateTime.now().add(const Duration(hours: 4)),
+            DateTime.now().add(const Duration(hours: 5)), 'Deadline', 2),
       ],
       DateTime.now().add(const Duration(days: 1)): [
-        Event('Team Meeting', DateTime.now().add(const Duration(days: 1, hours: 1)), DateTime.now().add(const Duration(days: 1, hours: 2)), 'Meeting Onsite', 5),
-        Event('Client Call', DateTime.now().add(const Duration(days: 1, hours: 2)), DateTime.now().add(const Duration(days: 1, hours: 3)), 'Call', 3),
+        Event('Team Meeting', DateTime.now().add(const Duration(days: 1, hours: 1)),
+            DateTime.now().add(const Duration(days: 1, hours: 2)), 'Meeting Onsite', 5),
+        Event('Client Call', DateTime.now().add(const Duration(days: 1, hours: 2)),
+            DateTime.now().add(const Duration(days: 1, hours: 3)), 'Call', 3),
       ],
       DateTime.now().add(const Duration(days: 2)): [
-        Event('Project Deadline', DateTime.now().add(const Duration(days: 2, hours: 3)), DateTime.now().add(const Duration(days: 2, hours: 4)), 'Deadline', 1),
+        Event('Project Deadline', DateTime.now().add(const Duration(days: 2, hours: 3)),
+            DateTime.now().add(const Duration(days: 2, hours: 4)), 'Deadline', 1),
+      ],
+      // Pending approval example event
+      DateTime.now().add(const Duration(days: 3)): [
+        Event('Pending Approval', DateTime.now().add(const Duration(days: 3, hours: 1)),
+            DateTime.now().add(const Duration(days: 3, hours: 2)), 'Approval Needed', 0),
       ],
     };
   }
 
   List<Event> _getEventsForDay(DateTime day) {
     return _events.value[day] ?? [];
+  }
+
+  bool _hasPendingApprovals(DateTime day) {
+    return _getEventsForDay(day).any((event) => event.title == 'Pending Approval');
   }
 
   @override
@@ -234,52 +252,14 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     _focusedDay = focusedDay;
                   },
                   eventLoader: _getEventsForDay,
-                  calendarStyle: CalendarStyle(
-                    outsideDaysVisible: false,
-                    markerDecoration: BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.rectangle,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    todayDecoration: BoxDecoration(
-                      color: Colors.greenAccent,
-                      shape: BoxShape.rectangle,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    selectedDecoration: const BoxDecoration(
-                      color: Colors.yellow,
-                      shape: BoxShape.rectangle,
-                    ),
-                    defaultTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                    weekendTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                    todayTextStyle: TextStyle(color: isDarkMode ? Colors.black : Colors.white),
-                    selectedTextStyle: TextStyle(color: isDarkMode ? Colors.black : Colors.white),
-                  ),
-                  headerStyle: HeaderStyle(
-                    formatButtonVisible: false,
-                    titleCentered: true,
-                    titleTextStyle: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    leftChevronIcon: Icon(
-                      Icons.chevron_left,
-                      color: isDarkMode ? Colors.white : Colors.black,
-                    ),
-                    rightChevronIcon: Icon(
-                      Icons.chevron_right,
-                      color: isDarkMode ? Colors.white : Colors.black,
-                    ),
-                  ),
                   calendarBuilders: CalendarBuilders(
                     defaultBuilder: (context, date, _) {
-                      return GestureDetector(
-                        onDoubleTap: () => _showDayView(date),
+                      final hasPendingApproval = _hasPendingApprovals(date);
+                      return CustomPaint(
+                        painter: hasPendingApproval ? DottedBorderPainter() : null,
                         child: Container(
                           decoration: BoxDecoration(
                             color: isSameDay(_singleTapSelectedDay, date) ? Colors.yellow : Colors.transparent,
-                            shape: BoxShape.rectangle,
                           ),
                           child: Center(
                             child: Text(
@@ -337,6 +317,41 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 }
 
+class DottedBorderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    const double dashWidth = 4.0;
+    const double dashSpace = 4.0;
+    final Paint paint = Paint()
+      ..color = Colors.red
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+
+    double startX = 0;
+    final Path path = Path();
+
+    while (startX < size.width) {
+      path.moveTo(startX, 0);
+      path.lineTo(startX + dashWidth, 0);
+      startX += dashWidth + dashSpace;
+    }
+
+    double startY = 0;
+    while (startY < size.height) {
+      path.moveTo(0, startY);
+      path.lineTo(0, startY + dashWidth);
+      startY += dashWidth + dashSpace;
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
+  }
+}
+
 class DayViewScreen extends StatelessWidget {
   final DateTime date;
   final List<Event> events;
@@ -376,7 +391,8 @@ class DayViewScreen extends StatelessWidget {
                   },
                   child: Column(
                     children: [
-                      Text(DateFormat('E').format(day), style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)),
+                      Text(DateFormat('E').format(day),
+                          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black)),
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.all(8),
@@ -491,7 +507,7 @@ class CustomEventBox extends StatelessWidget {
             Row(
               children: List.generate(
                 event.attendees > 10 ? 10 : event.attendees,
-                    (index) {
+                (index) {
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 2.0),
                     width: 24,
@@ -523,9 +539,9 @@ class CustomEventBox extends StatelessWidget {
         ),
         trailing: event.attendees > 10
             ? CircleAvatar(
-          backgroundColor: Colors.grey,
-          child: Text('+${event.attendees - 10}', style: const TextStyle(color: Colors.black)),
-        )
+                backgroundColor: Colors.grey,
+                child: Text('+${event.attendees - 10}', style: const TextStyle(color: Colors.black)),
+              )
             : null,
       ),
     );

@@ -312,4 +312,47 @@ class WorkTrackingService {
       throw Exception('Failed to delete file from assignment: ${response.reasonPhrase}');
     }
   }
+
+  // Method to fetch all employees
+  Future<List<Map<String, dynamic>>> getAllEmployees() async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/work-tracking/project-member/get-all-employees'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final body = json.decode(response.body);
+      if (body['results'] != null && body['results'] is List) {
+        return List<Map<String, dynamic>>.from(body['results']);
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } else {
+      print('Error: ${response.statusCode}, ${response.body}');
+      throw Exception('Failed to fetch employees: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getProjectMembers(String projectId) async {
+  final headers = await _getHeaders();
+  final response = await http.get(
+    Uri.parse('$baseUrl/api/work-tracking/proj/find-Member-By-ProjectId/$projectId'),
+    headers: headers,
+  );
+
+  if (response.statusCode == 200) {
+    var body = json.decode(response.body);
+    if (body['results'] != null && body['results'] is List) {
+      return List<Map<String, dynamic>>.from(body['results']);
+    } else {
+      throw Exception('Unexpected response format');
+    }
+  } else {
+    throw Exception('Failed to load project members: ${response.reasonPhrase}');
+  }
+}
+
+
+
 }

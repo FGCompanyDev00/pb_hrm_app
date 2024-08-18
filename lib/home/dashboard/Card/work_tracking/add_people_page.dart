@@ -1,118 +1,44 @@
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/project_management_page.dart';
-import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 
+class AddPeoplePage extends StatefulWidget {
+  final List<Map<String, dynamic>> selectedPeople;
 
-class AddProjectPage extends StatefulWidget {
-  final Function(Map<String, dynamic>) onAddProject;
-
-  const AddProjectPage({required this.onAddProject, super.key});
+  const AddPeoplePage({Key? key, required this.selectedPeople}) : super(key: key);
 
   @override
-  AddProjectPageState createState() => AddProjectPageState();
+  _AddPeoplePageState createState() => _AddPeoplePageState();
 }
 
-class AddProjectPageState extends State<AddProjectPage> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _projectNameController = TextEditingController();
-  final TextEditingController _deadline1Controller = TextEditingController();
-  final TextEditingController _deadline2Controller = TextEditingController();
-
-  String _selectedStatus = 'Processing';
-  String _selectedBranch = 'HQ Office';
-  String _selectedDepartment = 'Digital Banking Dept';
-  double _progress = 0.5;
+class _AddPeoplePageState extends State<AddPeoplePage> {
+  List<Map<String, dynamic>> _employees = [];
   List<Map<String, dynamic>> _selectedPeople = [];
 
-  final List<String> _statusOptions = ['Processing', 'Pending', 'Finished'];
-  final List<String> _branchOptions = [
-    'HQ Office',
-    'Samsen thai B',
-    'HQ office premier room',
-    'HQ office loan meeting room',
-    'Back Can yon 2F(1)',
-    'Back Can yon 2F(2)'
-  ];
-  final List<String> _departmentOptions = [
-    'Digital Banking Dept',
-    'IT department',
-    'Teller',
-    'HQ office loan meeting room',
-    'Back Can yon 2F(1)',
-    'Back Can yon 2F(2)'
-  ];
+  bool _isLoading = false;
 
-  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null) {
-      setState(() {
-        controller.text = "${picked.toLocal()}".split(' ')[0];
-      });
-    }
+  @override
+  void initState() {
+    super.initState();
+    _selectedPeople = List.from(widget.selectedPeople);
+    _fetchEmployees();
   }
 
-  Future<void> _addProject() async {
-    if (_formKey.currentState!.validate()) {
-      final String projectId = const Uuid().v4();
-      final newProject = {
-        'project_name': _projectNameController.text,
-        'department_id': '1', // Map this to the actual selected department ID
-        'branch_id': '1', // Map this to the actual selected branch ID
-        'status_id': '40d2ba5e-a978-47ce-bc48-caceca8668e9', // Example status ID
-        'precent_of_project': (_progress * 100).toStringAsFixed(0),
-        'deadline': _deadline1Controller.text,
-        'extended': _deadline2Controller.text,
-        'project_id': projectId,
-      };
+  Future<void> _fetchEmployees() async {
+    setState(() {
+      _isLoading = true;
+    });
 
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Confirm Add Project'),
-            content: const Text('Are you sure you want to add this project?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(context).pop(); // Close the confirmation dialog
-                  try {
-                    await WorkTrackingService().addProject(newProject);
-                    widget.onAddProject(newProject);
-                    await _addPeopleToProject(projectId);
-                    _showSuccessDialog(); // Show success message and navigate back
-                  } catch (e) {
-                    _showErrorDialog(e.toString());
-                  }
-                },
-                child: const Text('Confirm'),
-              ),
-            ],
-          );
-        },
-      );
-    }
-  }
-
-  Future<void> _addPeopleToProject(String projectId) async {
     try {
-      for (var person in _selectedPeople) {
-        await WorkTrackingService().addPersonToProject(projectId, person['id']);
-      }
+      final employees = await WorkTrackingService().getAllEmployees();
+      setState(() {
+        _employees = employees;
+      });
     } catch (e) {
       _showErrorDialog(e.toString());
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -132,270 +58,158 @@ class AddProjectPageState extends State<AddProjectPage> {
     );
   }
 
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Project Added'),
-        content: const Text('Your project has been added successfully.'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop(); // Close the success dialog
-              Navigator.of(context).pop(); // Close the add project page
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
-              );
-            },
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+  void _toggleSelection(Map<String, dynamic> employee) {
+    setState(() {
+      if (_selectedPeople.contains(employee)) {
+        _selectedPeople.remove(employee);
+      } else {
+        _selectedPeople.add(employee);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        elevation: 0,
         flexibleSpace: Image.asset(
           'assets/background.png',
           fit: BoxFit.cover,
         ),
-        title: Text(
-          'Create New Project',
+        title: const Text(
+          'Add Member',
           style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black,
+            color: Colors.black,
             fontWeight: FontWeight.bold,
-            fontSize: 20,
+            fontSize: 24,
           ),
         ),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                TextFormField(
-                  controller: _projectNameController,
-                  decoration: InputDecoration(
-                    labelText: 'Name of Project',
-                    labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                  ),
-                  style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter the project name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 10),
-                _buildDropdownField('Status', _selectedStatus, _statusOptions, (value) {
-                  setState(() {
-                    _selectedStatus = value!;
-                  });
-                }, isDarkMode),
-                const SizedBox(height: 10),
-                _buildDropdownField('Branch', _selectedBranch, _branchOptions, (value) {
-                  setState(() {
-                    _selectedBranch = value!;
-                  });
-                }, isDarkMode),
-                const SizedBox(height: 10),
-                _buildDropdownField('Department', _selectedDepartment, _departmentOptions, (value) {
-                  setState(() {
-                    _selectedDepartment = value!;
-                  });
-                }, isDarkMode),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildDateField('Deadline', _deadline1Controller, isDarkMode),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildDateField('Extended Deadline', _deadline2Controller, isDarkMode),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Percent *',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _buildProgressBar(isDarkMode),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AddPeoplePageWorkTracking(
-                          projectId: 'temp_project_id',
-                          onSelectedPeople: (selectedPeople) {
-                            setState(() {
-                              _selectedPeople = selectedPeople;
-                            });
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('Add People'),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.green,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    ElevatedButton(
-                      onPressed: _addProject,
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.amber,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      child: const Text('+ Add'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDropdownField(String label, String value, List<String> options, ValueChanged<String?> onChanged, bool isDarkMode) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black),
-        ),
-        const SizedBox(height: 5),
-        DropdownButtonFormField<String>(
-          value: value,
-          onChanged: onChanged,
-          items: options.map((option) {
-            return DropdownMenuItem<String>(
-              value: option,
-              child: Text(
-                option,
-                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-              ),
-            );
-          }).toList(),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDateField(String label, TextEditingController controller, bool isDarkMode) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black),
-        ),
-        const SizedBox(height: 5),
-        GestureDetector(
-          onTap: () => _selectDate(context, controller),
-          child: AbsorbPointer(
-            child: TextFormField(
-              controller: controller,
-              decoration: InputDecoration(
-                suffixIcon: Icon(Icons.calendar_today, color: isDarkMode ? Colors.white : Colors.black),
-                filled: true,
-                fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-              ),
-              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please select a date';
-                }
-                return null;
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProgressBar(bool isDarkMode) {
-    return Row(
-      children: [
-        Expanded(
-          child: Slider(
-            value: _progress,
-            onChanged: (value) {
-              setState(() {
-                _progress = value;
-              });
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add, color: Colors.black),
+            onPressed: () {
+              Navigator.pop(context, _selectedPeople);
             },
-            min: 0,
-            max: 1,
-            divisions: 100,
-            label: '${(_progress * 100).toStringAsFixed(0)}%',
-            activeColor: isDarkMode ? Colors.amber : Colors.blue,
-            inactiveColor: isDarkMode ? Colors.grey : Colors.grey[300],
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          '${(_progress * 100).toStringAsFixed(0)}%',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : Colors.black,
-          ),
-        ),
-      ],
+          )
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  // Selected Members Preview
+                  SizedBox(
+                    height: 70,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _selectedPeople.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index < _selectedPeople.length) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: CircleAvatar(
+                              radius: 30,
+                              backgroundColor: Colors.grey[300],
+                              backgroundImage: _selectedPeople[index]['image'] != null
+                                  ? NetworkImage(_selectedPeople[index]['image'])
+                                  : null, // Use image if available
+                              child: _selectedPeople[index]['image'] == null
+                                  ? const Icon(Icons.person, size: 30, color: Colors.white)
+                                  : null, // Display default icon if no image
+                            ),
+                          );
+                        } else {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: CircleAvatar(
+                              radius: 30,
+                              backgroundColor: Colors.grey[300],
+                              child: Text(
+                                '+${_selectedPeople.length}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Search Bar and Group Toggle
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.search),
+                            hintText: 'Search',
+                            filled: true,
+                            fillColor: Colors.grey[200],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: const [
+                            Text('Group'),
+                            SizedBox(width: 8),
+                            Icon(Icons.list),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Members List
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: _employees.length,
+                      itemBuilder: (context, index) {
+                        final employee = _employees[index];
+                        final isSelected = _selectedPeople.contains(employee);
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.grey[300],
+                            backgroundImage: employee['image'] != null
+                                ? NetworkImage(employee['image'])
+                                : null, // Use image if available
+                            child: employee['image'] == null
+                                ? const Icon(Icons.person, size: 24, color: Colors.white)
+                                : null, // Display default icon if no image
+                          ),
+                          title: Text(employee['name']),
+                          subtitle: Text(employee['email']),
+                          trailing: Icon(
+                            Icons.star,
+                            color: isSelected ? Colors.amber : Colors.grey,
+                          ),
+                          onTap: () => _toggleSelection(employee),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }

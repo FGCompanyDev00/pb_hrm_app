@@ -7,6 +7,8 @@ class ViewProjectPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final List<Map<String, dynamic>> people = project['people'] ?? [];
+
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -57,6 +59,17 @@ class ViewProjectPage extends StatelessWidget {
             const SizedBox(height: 10),
             _buildProgressBar(project['precent']),
             const SizedBox(height: 20),
+            const Text(
+              'People Added',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            people.isEmpty
+                ? const Text(
+                    'No people added',
+                    style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+                  )
+                : _buildPeopleList(people),
           ],
         ),
       ),
@@ -129,6 +142,25 @@ class ViewProjectPage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPeopleList(List<Map<String, dynamic>> people) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: people.length,
+      itemBuilder: (context, index) {
+        final person = people[index];
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: Colors.grey[300],
+            child: const Icon(Icons.person, color: Colors.white),
+          ),
+          title: Text(person['name'] ?? 'Unknown'),
+          subtitle: Text(person['email'] ?? ''),
+        );
+      },
     );
   }
 }
