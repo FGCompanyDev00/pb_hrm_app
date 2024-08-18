@@ -595,6 +595,8 @@ class __TaskModalState extends State<_TaskModal> {
   List<Map<String, dynamic>> _selectedPeople = [];
   final _formKey = GlobalKey<FormState>();
 
+  final WorkTrackingService _workTrackingService = WorkTrackingService();
+
   @override
   void initState() {
     super.initState();
@@ -661,7 +663,7 @@ class __TaskModalState extends State<_TaskModal> {
     }
   }
 
-  void _saveTask() {
+  void _saveTask() async {
     if (_formKey.currentState!.validate()) {
       final task = {
         'title': _titleController.text,
@@ -673,9 +675,21 @@ class __TaskModalState extends State<_TaskModal> {
         'members': _selectedPeople,  // Add the selected members to the task data
       };
 
-      widget.onSave(task);
-
-      Navigator.pop(context);
+      if (widget.isEdit && widget.task != null) {
+        // Ensure all values are correctly formatted as strings
+        try {
+          await _workTrackingService.updateAssignment(
+            widget.task!['id'].toString(), // Convert ID to string if it's an int
+            task,
+          );
+          Navigator.pop(context);
+        } catch (e) {
+          print('Failed to update task: $e');
+        }
+      } else {
+        widget.onSave(task);
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -880,6 +894,8 @@ class __TaskModalState extends State<_TaskModal> {
     );
   }
 }
+
+
 
 class AddPeoplePageWorkTracking extends StatefulWidget {
   final String projectId;
