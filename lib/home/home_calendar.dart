@@ -1,12 +1,15 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/popups/event_details_popups.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
+import 'package:http/http.dart' as http;
 import 'dart:ui' as ui;
 
 class HomeCalendar extends StatefulWidget {
@@ -29,43 +32,66 @@ class _HomeCalendarState extends State<HomeCalendar> {
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _events = ValueNotifier(_initializeEvents());
+    _events = ValueNotifier({});
 
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+    // Fetch approvals and initialize events in the calendar
+    _fetchApprovalEvents();
   }
 
-  Map<DateTime, List<Event>> _initializeEvents() {
-    return {
-      DateTime.now(): [
-        Event('Sale Presentation: HI App production', DateTime.now().add(const Duration(hours: 1)),
-            DateTime.now().add(const Duration(hours: 2)), 'Meeting Onsite', 8),
-        Event('Pick up from Hotel to Bank', DateTime.now().add(const Duration(hours: 2)),
-            DateTime.now().add(const Duration(hours: 3)), 'Travel', 4),
-        Event('Japan Vendor', DateTime.now().add(const Duration(hours: 3)), DateTime.now().add(const Duration(hours: 4)),
-            'Meeting Online', 6),
-        Event('Deadline for HIAPP product', DateTime.now().add(const Duration(hours: 4)),
-            DateTime.now().add(const Duration(hours: 5)), 'Deadline', 2),
-      ],
-      DateTime.now().add(const Duration(days: 1)): [
-        Event('Team Meeting', DateTime.now().add(const Duration(days: 1, hours: 1)),
-            DateTime.now().add(const Duration(days: 1, hours: 2)), 'Meeting Onsite', 5),
-        Event('Client Call', DateTime.now().add(const Duration(days: 1, hours: 2)),
-            DateTime.now().add(const Duration(days: 1, hours: 3)), 'Call', 3),
-      ],
-      DateTime.now().add(const Duration(days: 2)): [
-        Event('Project Deadline', DateTime.now().add(const Duration(days: 2, hours: 3)),
-            DateTime.now().add(const Duration(days: 2, hours: 4)), 'Deadline', 1),
-      ],
-      // Pending approval example event
-      DateTime.now().add(const Duration(days: 3)): [
-        Event('Pending Approval', DateTime.now().add(const Duration(days: 3, hours: 1)),
-            DateTime.now().add(const Duration(days: 3, hours: 2)), 'Approval Needed', 0),
-      ],
-    };
+  Future<void> _fetchApprovalEvents() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      print('Token is null');
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> results = json.decode(response.body)['results'];
+        final approvalItems = results.where((item) => item['is_approve'] == 'Waiting').toList();
+
+        // Map API data to calendar events
+        final Map<DateTime, List<Event>> approvalEvents = {};
+        for (var item in approvalItems) {
+          final DateTime startDate = DateTime.parse(item['take_leave_from']);
+          final DateTime endDate = DateTime.parse(item['take_leave_to']);
+          final event = Event(
+            item['name'],
+            startDate,
+            endDate,
+            item['take_leave_reason'] ?? 'Approval Pending',
+            0, // Assuming attendees are not relevant for approvals
+          );
+
+          if (approvalEvents.containsKey(startDate)) {
+            approvalEvents[startDate]!.add(event);
+          } else {
+            approvalEvents[startDate] = [event];
+          }
+        }
+
+        setState(() {
+          _events.value = approvalEvents;
+        });
+      } else {
+        print('Failed to load approvals: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching approvals: $e');
+    }
   }
 
   List<Event> _getEventsForDay(DateTime day) {
@@ -73,7 +99,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   bool _hasPendingApprovals(DateTime day) {
-    return _getEventsForDay(day).any((event) => event.title == 'Pending Approval');
+    return _getEventsForDay(day).any((event) => event.description == 'Approval Pending');
   }
 
   @override
@@ -256,7 +282,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     defaultBuilder: (context, date, _) {
                       final hasPendingApproval = _hasPendingApprovals(date);
                       return CustomPaint(
-                        painter: hasPendingApproval ? DottedBorderPainter() : null,
+                        painter: hasPendingApproval ? GreyLineBorderPainter() : null,
                         child: Container(
                           decoration: BoxDecoration(
                             color: isSameDay(_singleTapSelectedDay, date) ? Colors.yellow : Colors.transparent,
@@ -317,13 +343,13 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 }
 
-class DottedBorderPainter extends CustomPainter {
+class GreyLineBorderPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     const double dashWidth = 4.0;
     const double dashSpace = 4.0;
     final Paint paint = Paint()
-      ..color = Colors.red
+      ..color = Colors.grey
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 

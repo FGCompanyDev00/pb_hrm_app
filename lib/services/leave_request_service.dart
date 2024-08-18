@@ -13,17 +13,23 @@ class LeaveRequestService {
       throw Exception('User not authenticated');
     }
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/leave-type'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(leaveRequestData),
-    );
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/leave-type'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(leaveRequestData),
+      );
 
-    if (response.statusCode != 200) {
-      throw Exception('Failed to submit leave request');
+      if (response.statusCode == 403) {
+        throw Exception('403 Forbidden: Access denied. Check your token or permissions.');
+      } else if (response.statusCode != 200) {
+        throw Exception('Failed to submit leave request. Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error during the API call: $e');
     }
   }
 }
