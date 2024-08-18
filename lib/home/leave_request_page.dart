@@ -76,7 +76,7 @@ class LeaveManagementPage extends HookWidget {
       }
     }
 
-    Future<void> pickDate(BuildContext context, TextEditingController controller) async {
+    Future<void> pickDate(BuildContext context, TextEditingController controller, bool isStartDate) async {
       DateTime initialDate = DateTime.now();
       DateTime firstDate = DateTime(2000);
       DateTime lastDate = DateTime(2100);
@@ -89,7 +89,29 @@ class LeaveManagementPage extends HookWidget {
       );
 
       if (pickedDate != null) {
-        controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+        if (isStartDate) {
+          // Check if the start date is after the end date
+          if (endDateController.text.isNotEmpty) {
+            final endDate = DateFormat('yyyy-MM-dd').parse(endDateController.text);
+            if (pickedDate.isAfter(endDate)) {
+              showCustomDialog(context, 'Invalid Date', 'Start date cannot be after the end date.');
+              return;
+            }
+          }
+          controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+        } else {
+          // Check if the end date is before the start date
+          if (startDateController.text.isNotEmpty) {
+            final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
+            if (pickedDate.isBefore(startDate)) {
+              showCustomDialog(context, 'Invalid Date', 'End date cannot be before the start date.');
+              return;
+            }
+          }
+          controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+        }
+
+        // Calculate the number of days if both dates are selected
         if (startDateController.text.isNotEmpty && endDateController.text.isNotEmpty) {
           final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
           final endDate = DateFormat('yyyy-MM-dd').parse(endDateController.text);
@@ -100,78 +122,66 @@ class LeaveManagementPage extends HookWidget {
     }
 
     Future<void> saveData() async {
-  if (typeController.text.isNotEmpty &&
-      descriptionController.text.isNotEmpty &&
-      startDateController.text.isNotEmpty &&
-      endDateController.text.isNotEmpty &&
-      daysController.text.isNotEmpty) {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      if (typeController.text.isNotEmpty &&
+          descriptionController.text.isNotEmpty &&
+          startDateController.text.isNotEmpty &&
+          endDateController.text.isNotEmpty &&
+          daysController.text.isNotEmpty) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final token = prefs.getString('token');
 
-      if (token == null) {
-        EasyLoading.showError('User not authenticated');
-        return;
-      }
+          if (token == null) {
+            EasyLoading.showError('User not authenticated');
+            return;
+          }
 
-      final requestBody = {
-        'take_leave_from': startDateController.text,
-        'take_leave_to': endDateController.text,
-        'take_leave_type_id': leaveTypeId.value.toString(),
-        'take_leave_reason': descriptionController.text,
-        'days': daysController.text,
-      };
+          final requestBody = {
+            'take_leave_from': startDateController.text,
+            'take_leave_to': endDateController.text,
+            'take_leave_type_id': leaveTypeId.value.toString(),
+            'take_leave_reason': descriptionController.text,
+            'days': daysController.text,
+          };
 
-      final response = await http.post(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_request'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(requestBody),
-      );
+          final response = await http.post(
+            Uri.parse('https://demo-application-api.flexiflows.co/api/leave_request'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(requestBody),
+          );
 
-      // Log the raw response to inspect what the API is returning
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+          // Log the raw response to inspect what the API is returning
+          print('Response status: ${response.statusCode}');
+          print('Response body: ${response.body}');
 
-      // Check if response is empty or invalid JSON
-      if (response.body.isEmpty) {
-        throw FormatException("Empty response body");
-      }
-
-      // Try parsing the response and handle potential format issues
-      dynamic responseBody;
-      try {
-        responseBody = jsonDecode(response.body);
-      } catch (e) {
-        throw FormatException("Failed to parse response: $e");
-      }
-
-      // Assume success if the status code is 200 or 201, or if the response contains success indicators
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        EasyLoading.showSuccess('Your leave request has been submitted!');
-        showCustomDialog(context, 'Success', 'Your leave request has been submitted successfully.');
-      } else if (responseBody['success'] == true || responseBody.containsKey('data')) {
-        // Handle potential success scenarios in case the API returns non-standard success responses
-        EasyLoading.showSuccess('Your leave request has been submitted!');
-        showCustomDialog(context, 'Success', 'Your leave request has been submitted successfully.');
+          // Handle different status codes
+          if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
+            showCustomDialog(context, 'Success', 'Your leave request has been submitted successfully.');
+          } else {
+            // Handle other status codes or unexpected responses
+            try {
+              final responseBody = jsonDecode(response.body);
+              if (responseBody['success'] == true || responseBody.containsKey('data')) {
+                showCustomDialog(context, 'Success', 'Your leave request has been submitted successfully.');
+              } else {
+                showCustomDialog(context, 'Error', 'Failed to submit leave request. Please check your input and try again.');
+              }
+            } catch (e) {
+              showCustomDialog(context, 'Error', 'Failed to submit leave request. Please check your input and try again.');
+            }
+          }
+        } catch (e) {
+          EasyLoading.showError('Error: $e');
+          showCustomDialog(context, 'Error', 'An error occurred: $e');
+        }
       } else {
-        // If the response doesn't match expected success conditions, treat it as an error
-        EasyLoading.showError('Failed to submit leave request');
-        showCustomDialog(context, 'Error', 'Failed to submit leave request. Please check your input and try again.');
+        EasyLoading.showError('Please fill in all fields');
+        showCustomDialog(context, 'Error', 'Please fill in all fields to submit your leave request.');
       }
-    } catch (e) {
-      EasyLoading.showError('Error: $e');
-      showCustomDialog(context, 'Error', 'An error occurred: $e');
     }
-  } else {
-    EasyLoading.showError('Please fill in all fields');
-    showCustomDialog(context, 'Error', 'Please fill in all fields to submit your leave request.');
-  }
-}
-
-
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -303,7 +313,7 @@ class LeaveManagementPage extends HookWidget {
                                       ),
                                     ),
                                     style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                                    onTap: () => pickDate(context, startDateController),
+                                    onTap: () => pickDate(context, startDateController, true),
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -319,7 +329,7 @@ class LeaveManagementPage extends HookWidget {
                                       ),
                                     ),
                                     style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                                    onTap: () => pickDate(context, endDateController),
+                                    onTap: () => pickDate(context, endDateController, false),
                                   ),
                                 ),
                               ],
