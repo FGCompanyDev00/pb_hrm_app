@@ -123,6 +123,31 @@ class WorkTrackingService {
     }
   }
 
+  // Fetch the list of projects and find the project to delete
+  Future<void> deleteProjectByName(String projectName) async {
+    try {
+      // Fetch the projects
+      List<Map<String, dynamic>> projects = await fetchMyProjects();
+
+      // Find the project by name
+      final projectToDelete = projects.firstWhere(
+            (project) => project['p_name'] == projectName,
+        orElse: () => {},
+      );
+
+      if (projectToDelete.isNotEmpty) {
+        final String projectId = projectToDelete['project_id'];
+        await deleteProject(projectId); // Call the deleteProject method with the project_id
+        print('Project deleted successfully.');
+      } else {
+        print('Project not found.');
+      }
+    } catch (e) {
+      throw Exception('Failed to delete project: $e');
+    }
+  }
+
+// Delete the project using project_id
   Future<String> deleteProject(String projectId) async {
     final headers = await _getHeaders();
     final response = await http.put(

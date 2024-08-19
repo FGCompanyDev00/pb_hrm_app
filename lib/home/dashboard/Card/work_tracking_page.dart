@@ -39,7 +39,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
   void initState() {
     super.initState();
     _highlightedProjectId = widget
-        .highlightedProjectId; // Initialize with the value passed from the widget
+        .highlightedProjectId;
     _loadAuthToken();
   }
 
@@ -77,6 +77,10 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
         _isLoading = false;
       });
     }
+  }
+
+  void _refreshProjects() {
+    _fetchProjects();
   }
 
   void _addProject(Map<String, dynamic> project) {
@@ -182,7 +186,8 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const AddProjectPage()),
+                    MaterialPageRoute(
+                        builder: (context) => const AddProjectPage()),
                   );
                 },
               ),
@@ -357,6 +362,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // View button
               GestureDetector(
                 onTap: () {
                   showModalBottomSheet(
@@ -373,7 +379,8 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                         child: SingleChildScrollView(
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
-                            child: ViewProjectPage(project: project),
+                            child: ViewProjectPage(
+                                project: project), // View button action
                           ),
                         ),
                       );
@@ -402,6 +409,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 ),
               ),
               const SizedBox(height: 8),
+              // Edit button
               GestureDetector(
                 onTap: () {
                   showModalBottomSheet(
@@ -409,31 +417,27 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                     isScrollControlled: true,
                     builder: (BuildContext context) {
                       return Container(
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery
-                              .of(context)
-                              .size
-                              .height * 0.8,
-                        ),
-                        child: SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: EditProjectPage(
-                              project: project,
-                              onUpdate: (updatedProject) {
-                                setState(() {
-                                  _projects[index] = updatedProject;
-                                });
-                              },
-                              onDelete: () {
-                                setState(() {
-                                  _projects.removeAt(index);
-                                });
-                                Navigator.pop(context);
-                              },
+                          constraints: BoxConstraints(
+                            maxHeight: MediaQuery
+                                .of(context)
+                                .size
+                                .height * 0.8,
+                          ),
+                          child: SingleChildScrollView(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: EditProjectPage(
+                                project: project,
+                                onUpdate: (updatedProject) {
+                                  setState(() {
+                                    _projects[index] = updatedProject;
+                                  });
+                                  _refreshProjects(); // Auto-refresh after update
+                                },
+                                onDelete: _refreshProjects, // Pass the refresh callback here
+                              ),
                             ),
                           ),
-                        ),
                       );
                     },
                   );
@@ -517,7 +521,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black,
                     fontWeight: FontWeight.bold,
-                    fontSize: 18.0, // Increase font size for the title
+                    fontSize: 18.0,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -576,8 +580,10 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                             TextSpan(
                               text: project['create_project_by'],
                               style: const TextStyle(
-                                color: Colors.black, // Black color for the creator's name
-                                fontWeight: FontWeight.normal, // Normal weight for creator's name
+                                color: Colors.black,
+                                // Black color for the creator's name
+                                fontWeight: FontWeight
+                                    .normal, // Normal weight for creator's name
                               ),
                             ),
                           ],

@@ -65,37 +65,61 @@ class _EditProjectPageState extends State<EditProjectPage> {
     try {
       await WorkTrackingService().updateProject(widget.project['project_id'], updatedProject);
       widget.onUpdate(updatedProject);
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Project Updated'),
-            content: const Text('Your project has been updated successfully.'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close the dialog
-                  Navigator.pop(context); // Close the edit page
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
+
+      // Show a success snackbar or dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Project "${_nameController.text}" has been successfully updated.'),
+          duration: const Duration(seconds: 3),
+        ),
       );
+
+      // Close the edit page
+      Navigator.pop(context);
     } catch (e) {
       _showErrorDialog(e.toString());
     }
   }
 
   Future<void> _deleteProject() async {
-    try {
-      await WorkTrackingService().deleteProject(widget.project['project_id']);
-      widget.onDelete();
-      Navigator.pop(context);
-      Navigator.pop(context);
-    } catch (e) {
-      _showErrorDialog(e.toString());
+    bool confirmed = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Deletion'),
+          content: Text('Are you sure you want to delete the project "${widget.project['p_name']}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false), // Cancel deletion
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true), // Confirm deletion
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed) {
+      try {
+        await WorkTrackingService().deleteProject(widget.project['project_id']);
+        widget.onDelete();
+
+        // Show a success snackbar or dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Project "${widget.project['p_name']}" has been successfully deleted.'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+
+        // Close the edit page
+        Navigator.pop(context);
+      } catch (e) {
+        _showErrorDialog(e.toString());
+      }
     }
   }
 
