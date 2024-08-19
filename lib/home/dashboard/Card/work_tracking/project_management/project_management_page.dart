@@ -166,11 +166,12 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
                 itemBuilder: (context, index) {
                   final message = _messages[index];
                   return _buildChatMessage(
-                      message['comments'],
-                      DateFormat('hh:mm a').format(DateTime.parse(message['created_at'])),
-                      message['createBy_name'],
-                      message['created_by'] == "PSV-00-000002", // Assuming "PSV-00-000002" is the ID of the current user
-                      isDarkMode);
+                    message['comments'],
+                    DateFormat('hh:mm a').format(DateTime.parse(message['created_at'])),
+                    message['createBy_name'],
+                    message['created_by'] == "PSV-00-000002", // Assuming "PSV-00-000002" is the ID of the current user
+                    isDarkMode,
+                  );
                 },
               ),
             ),
@@ -193,8 +194,10 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   void _addMessage(String message) {
     setState(() {
       _messages.add({
-        'time': DateFormat('hh:mm a').format(DateTime.now()),
-        'message': message,
+        'comments': message,
+        'created_at': DateTime.now().toIso8601String(),
+        'createBy_name': 'You',
+        'created_by': "PSV-00-000002", // Assuming "PSV-00-000002" is the ID of the current user
       });
     });
     _messageController.clear();
@@ -894,8 +897,6 @@ class __TaskModalState extends State<_TaskModal> {
     );
   }
 }
-
-
 
 class AddPeoplePageWorkTracking extends StatefulWidget {
   final String projectId;

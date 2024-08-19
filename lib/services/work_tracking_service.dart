@@ -179,14 +179,13 @@ Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
       headers: headers,
       body: jsonEncode({
         'project_id': projectId,
-        'message': message,
+        'comments': message,
         'file_path': filePath,
         'file_type': fileType,
-        'created_at': DateTime.now().toIso8601String(),
       }),
     );
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 201) {
       print('Message sent successfully.');
     } else {
       print('Error: ${response.statusCode}, ${response.body}');
