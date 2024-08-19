@@ -150,25 +150,27 @@ class WorkTrackingService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
-    final headers = await _getHeaders();
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/work-tracking/project-comments/comments?project_id=$projectId'),
-      headers: headers,
-    );
+Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
+  final headers = await _getHeaders();
+  final response = await http.get(
+    Uri.parse('$baseUrl/api/work-tracking/project-comments/comments?project_id=$projectId'),
+    headers: headers,
+  );
 
-    if (response.statusCode == 200) {
-      var body = json.decode(response.body);
-      if (body['results'] != null && body['results'] is List) {
-        return List<Map<String, dynamic>>.from(body['results']);
-      } else {
-        throw Exception('Unexpected response format');
-      }
+  if (response.statusCode == 200) {
+    var body = json.decode(response.body);
+    if (body['results'] != null && body['results'] is List) {
+      // Filter the messages to ensure they belong to the specified project
+      return List<Map<String, dynamic>>.from(body['results'].where((item) => item['project_id'] == projectId));
     } else {
-      print('Error: ${response.statusCode}, ${response.body}');
-      throw Exception('Failed to load chat messages: ${response.reasonPhrase}');
+      throw Exception('Unexpected response format');
     }
+  } else {
+    print('Error: ${response.statusCode}, ${response.body}');
+    throw Exception('Failed to load chat messages: ${response.reasonPhrase}');
   }
+}
+
 
   Future<void> sendChatMessage(String projectId, String message, {String? filePath, String? fileType}) async {
     final headers = await _getHeaders();
