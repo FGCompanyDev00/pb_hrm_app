@@ -8,6 +8,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:pb_hrsystem/services/attendance_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,6 +28,7 @@ class AttendanceScreen extends StatefulWidget {
 class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerProviderStateMixin {
   final LocalAuthentication auth = LocalAuthentication();
   final _storage = const FlutterSecureStorage();
+  final AttendanceService _attendanceService = AttendanceService();
   late TabController _tabController;
   bool _canCheckBiometrics = false;
   bool _biometricEnabled = false;
@@ -320,8 +322,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
       if (position != null) {
         const uuid = Uuid();
         final String uid = uuid.v4();
-        const String employeeId = "PSV-00-000002"; // Replace with the current user's ID
-        const String employeeName = "John Doe"; // Replace with the current user's name
+        const String employeeId = "PSV-00-000002"; 
+        const String employeeName = "John Doe"; 
         final String checkInDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
         final String checkInTime = isCheckIn
             ? DateFormat('HH:mm:ss').format(DateTime.now())
@@ -330,37 +332,26 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
         final String workDuration = isCheckIn
             ? "00:00:00"
             : _workingHours.toString().split('.').first.padLeft(8, '0');
-        final String officeStatus = _currentSection.toLowerCase(); // offsite, office, or home
+        final String officeStatus = _currentSection.toLowerCase(); 
 
-        final response = await http.post(
-          Uri.parse('https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offsite'),
-          headers: <String, String>{
-            'Content-Type': 'application/json; charset=UTF-8',
-          },
-          body: jsonEncode({
-            'uid': uid,
-            'employee_id': employeeId,
-            'employee_name': employeeName,
-            'device_token': _deviceId,
-            'check_in_date': checkInDate,
-            'check_in_time': checkInTime,
-            'check_out_time': checkOutTime,
-            'latitude': position.latitude.toString(),
-            'longitude': position.longitude.toString(),
-            'office_status': officeStatus,
-            'workDuration': workDuration,
-          }),
-        );
+        final attendanceData = {
+          'uid': uid,
+          'employee_id': employeeId,
+          'employee_name': employeeName,
+          'device_token': _deviceId,
+          'check_in_date': checkInDate,
+          'check_in_time': checkInTime,
+          'check_out_time': checkOutTime,
+          'latitude': position.latitude.toString(),
+          'longitude': position.longitude.toString(),
+          'office_status': officeStatus,
+          'workDuration': workDuration,
+        };
 
-        if (response.statusCode == 200) {
-          if (kDebugMode) {
-            print('Attendance data sent successfully');
-          }
-        } else {
-          if (kDebugMode) {
-            print('Failed to send attendance data');
-          }
-          _showCustomDialog(context, 'Error', 'Failed to send attendance data to the server.');
+        await _attendanceService.checkInOrCheckOut(isCheckIn, attendanceData);
+
+        if (kDebugMode) {
+          print('Attendance data sent successfully');
         }
       } else {
         _showCustomDialog(context, 'Error', 'Failed to retrieve location.');
@@ -682,8 +673,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
 
   Widget _buildHeaderContent(BuildContext context, bool isDarkMode, Color fingerprintColor, String section) {
     final now = DateTime.now();
-    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 8, 0); // 8:00 AM
-    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 13, 0); // 1:00 PM
+    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 18, 0); // 8:00 AM
+    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 24, 0); // 1:00 PM
     bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
     bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 8);
 
