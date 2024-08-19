@@ -11,7 +11,9 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WorkTrackingPage extends StatefulWidget {
-  const WorkTrackingPage({super.key});
+  final String? highlightedProjectId;
+
+  const WorkTrackingPage({super.key, this.highlightedProjectId});
   static const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
   @override
@@ -22,14 +24,22 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
   bool _isMyProjectsSelected = true;
   String _searchText = '';
   String _selectedStatus = 'All Status';
-  final List<String> _statusOptions = ['All Status', 'Pending', 'Processing', 'Completed'];
+  final List<String> _statusOptions = [
+    'All Status',
+    'Pending',
+    'Processing',
+    'Completed'
+  ];
   List<Map<String, dynamic>> _projects = [];
   bool _isLoading = false;
   String? _authToken;
+  String? _highlightedProjectId;
 
   @override
   void initState() {
     super.initState();
+    _highlightedProjectId = widget
+        .highlightedProjectId; // Initialize with the value passed from the widget
     _loadAuthToken();
   }
 
@@ -52,7 +62,13 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       if (_isMyProjectsSelected) {
         _projects = await WorkTrackingService().fetchMyProjects();
       } else {
-        _projects = await WorkTrackingService().fetchAllProjects();
+        final allProjects = await WorkTrackingService().fetchAllProjects();
+        final prefs = await SharedPreferences.getInstance();
+        final currentUser = prefs.getString('user_id');
+
+        _projects = allProjects.where((project) {
+          return project['create_project_by'] != currentUser;
+        }).toList();
       }
     } catch (e) {
       _showErrorDialog(e.toString());
@@ -72,16 +88,17 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+      builder: (context) =>
+          AlertDialog(
+            title: const Text('Error'),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -101,16 +118,21 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       child: Scaffold(
         backgroundColor: isDarkMode ? Colors.black : Colors.white,
         body: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(isDarkMode),
-              const SizedBox(height: 10),
-              _buildTabs(),
-              const SizedBox(height: 8),
-              _buildSearchBar(isDarkMode),
-              const SizedBox(height: 8),
-              Expanded(child: _isLoading ? _buildLoading() : _buildProjectsList(context, isDarkMode)),
-            ],
+          child: RefreshIndicator(
+            onRefresh: _fetchProjects,
+            child: Column(
+              children: [
+                _buildHeader(isDarkMode),
+                const SizedBox(height: 10),
+                _buildTabs(),
+                const SizedBox(height: 8),
+                _buildSearchBar(isDarkMode),
+                const SizedBox(height: 8),
+                Expanded(
+                    child: _isLoading ? _buildLoading() : _buildProjectsList(
+                        context, isDarkMode)),
+              ],
+            ),
           ),
         ),
       ),
@@ -122,7 +144,8 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       height: 80,
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+          image: AssetImage(
+              isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
           fit: BoxFit.cover,
         ),
         borderRadius: const BorderRadius.only(
@@ -136,7 +159,8 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             IconButton(
-              icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
+              icon: Icon(Icons.arrow_back,
+                  color: isDarkMode ? Colors.white : Colors.black),
               onPressed: () {
                 Navigator.pushReplacement(
                   context,
@@ -146,7 +170,9 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
             ),
             Text(
               'Work Tracking',
-              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold),
             ),
             CircleAvatar(
               radius: 25,
@@ -156,7 +182,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => AddProjectPage(onAddProject: (project) {})),
+                    MaterialPageRoute(builder: (context) => const AddProjectPage()),
                   );
                 },
               ),
@@ -200,15 +226,20 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12.0),
           decoration: BoxDecoration(
-            color: isSelected ? (isDarkMode ? Colors.amber : Colors.orange) : Colors.transparent,
+            color: isSelected
+                ? (isDarkMode ? Colors.amber : Colors.orange)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(8.0),
-            border: isSelected ? null : Border.all(color: isDarkMode ? Colors.white : Colors.black),
+            border: isSelected ? null : Border.all(
+                color: isDarkMode ? Colors.white : Colors.black),
           ),
           child: Center(
             child: Text(
               title,
               style: TextStyle(
-                color: isSelected ? (isDarkMode ? Colors.black : Colors.white) : (isDarkMode ? Colors.white : Colors.black),
+                color: isSelected
+                    ? (isDarkMode ? Colors.black : Colors.white)
+                    : (isDarkMode ? Colors.white : Colors.black),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -227,14 +258,16 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Search name',
-                hintStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
+                hintStyle: TextStyle(
+                    color: isDarkMode ? Colors.white70 : Colors.black54),
                 filled: true,
                 fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
                   borderSide: BorderSide.none,
                 ),
-                prefixIcon: Icon(Icons.search, color: isDarkMode ? Colors.white : Colors.black),
+                prefixIcon: Icon(Icons.search,
+                    color: isDarkMode ? Colors.white : Colors.black),
               ),
               style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
               onChanged: (value) {
@@ -247,7 +280,8 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           const SizedBox(width: 8),
           DropdownButton<String>(
             value: _selectedStatus,
-            icon: Icon(Icons.arrow_downward, color: isDarkMode ? Colors.white : Colors.black),
+            icon: Icon(Icons.arrow_downward,
+                color: isDarkMode ? Colors.white : Colors.black),
             iconSize: 24,
             elevation: 16,
             style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
@@ -280,14 +314,16 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     List<Map<String, dynamic>> filteredProjects = _projects
         .where((project) =>
     (_selectedStatus == 'All Status' || project['s_name'] == _selectedStatus) &&
-        (project['p_name']?.toLowerCase()?.contains(_searchText.toLowerCase()) ?? false))
+        (project['p_name']?.toLowerCase()?.contains(
+            _searchText.toLowerCase()) ?? false))
         .toList();
 
     if (filteredProjects.isEmpty) {
       return Center(
         child: Text(
           'Sorry, no projects match your search.',
-          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black, fontSize: 16),
+          style: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black, fontSize: 16),
         ),
       );
     }
@@ -296,225 +332,264 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       padding: const EdgeInsets.all(16.0),
       itemCount: filteredProjects.length,
       itemBuilder: (context, index) {
-        return _buildProjectCard(context, isDarkMode, filteredProjects[index], index);
+        return _buildProjectCard(
+            context, isDarkMode, filteredProjects[index], index);
       },
     );
   }
 
-Widget _buildProjectCard(BuildContext context, bool isDarkMode, Map<String, dynamic> project, int index) {
-  final progressColors = {
-    'Pending': Colors.orange,
-    'Processing': Colors.blue,
-    'Completed': Colors.green,
-  };
+  Widget _buildProjectCard(BuildContext context, bool isDarkMode,
+      Map<String, dynamic> project, int index) {
+    final progressColors = {
+      'Pending': Colors.orange,
+      'Processing': Colors.blue,
+      'Completed': Colors.green,
+    };
 
-  double progress = double.tryParse(project['precent']?.toString() ?? '0.0') ?? 0.0;
+    double progress = double.tryParse(
+        project['precent']?.toString() ?? '0.0') ?? 0.0;
 
-  return Slidable(
-    startActionPane: ActionPane(
-      motion: const ScrollMotion(),
-      extentRatio: 0.25, // Adjust the width of the slide-out area
-      children: [
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            GestureDetector(
-              onTap: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  builder: (BuildContext context) {
-                    return Container(
-                      constraints: BoxConstraints(
-                        maxHeight: MediaQuery.of(context).size.height * 0.8,
-                      ),
-                      child: SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: ViewProjectPage(project: project),
+    return Slidable(
+      startActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        extentRatio: 0.25,
+        children: [
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (BuildContext context) {
+                      return Container(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery
+                              .of(context)
+                              .size
+                              .height * 0.8,
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
-              child: Container(
-                width: 80, // Set a fixed width for the action buttons
-                height: 80, // Set a fixed height for each action button
-                color: Colors.blue, // Background color for the button
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset(
-                      'assets/layer.png', // Use your custom image here
-                      width: 40,
-                      height: 40,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'View',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 8), // Space between the buttons
-            GestureDetector(
-              onTap: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  builder: (BuildContext context) {
-                    return Container(
-                      constraints: BoxConstraints(
-                        maxHeight: MediaQuery.of(context).size.height * 0.8,
-                      ),
-                      child: SingleChildScrollView(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: EditProjectPage(
-                            project: project,
-                            onUpdate: (updatedProject) {
-                              setState(() {
-                                _projects[index] = updatedProject;
-                              });
-                            },
-                            onDelete: () {
-                              setState(() {
-                                _projects.removeAt(index);
-                              });
-                              Navigator.pop(context);
-                            },
+                        child: SingleChildScrollView(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: ViewProjectPage(project: project),
                           ),
                         ),
-                      ),
                       );
                     },
                   );
-              },
-              child: Container(
-                width: 80, // Set a fixed width for the action buttons
-                height: 80, // Set a fixed height for each action button
-                color: Colors.green, // Background color for the button
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset(
-                      'assets/element-plus.png', // Use your custom image here
-                      width: 40,
-                      height: 40,
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Edit',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    ),
-    child: GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProjectManagementPage(
-              projectId: project['project_id'],
-              baseUrl: WorkTrackingService.baseUrl,
-            ),
-          ),
-        );
-      },
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16.0),
-        ),
-        elevation: 5,
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: LinearProgressIndicator(
-                      value: progress / 100,
-                      color: progressColors[project['s_name']],
-                      backgroundColor: Colors.grey.shade300,
-                    ),
+                },
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  color: Colors.blue,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/layer.png',
+                        width: 40,
+                        height: 40,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'View',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${project['precent']}%',
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.update,
-                    color: progressColors[project['s_name']],
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Title: ${project['p_name']}',
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white : Colors.black,
-                  fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                'Project ID: ${project['project_id']}',
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white70 : Colors.black54,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Deadline: ${project['dl']}',
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white70 : Colors.black54,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Text(
-                    'Status: ',
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
-                    ),
+              GestureDetector(
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    builder: (BuildContext context) {
+                      return Container(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery
+                              .of(context)
+                              .size
+                              .height * 0.8,
+                        ),
+                        child: SingleChildScrollView(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: EditProjectPage(
+                              project: project,
+                              onUpdate: (updatedProject) {
+                                setState(() {
+                                  _projects[index] = updatedProject;
+                                });
+                              },
+                              onDelete: () {
+                                setState(() {
+                                  _projects.removeAt(index);
+                                });
+                                Navigator.pop(context);
+                              },
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  color: Colors.green,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/element-plus.png',
+                        width: 40,
+                        height: 40,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Edit',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
                   ),
-                  Text(
-                    project['s_name'] ?? 'Unknown',
-                    style: TextStyle(
-                      color: progressColors[project['s_name']] ?? Colors.grey,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ],
           ),
+        ],
+      ),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  ProjectManagementPage(
+                    projectId: project['project_id'],
+                    baseUrl: WorkTrackingService.baseUrl,
+                  ),
+            ),
+          );
+        },
+        child: Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          elevation: 5,
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: LinearProgressIndicator(
+                        value: progress / 100,
+                        color: progressColors[project['s_name']],
+                        backgroundColor: Colors.grey.shade300,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${project['precent']}%',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.update,
+                      color: progressColors[project['s_name']],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Title: ${project['p_name']}',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18.0, // Increase font size for the title
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Project ID: ${project['project_id']}',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Deadline: ${project['dl']}',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+                Text(
+                  'Extended Deadline: ${project['extend']}',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      'Status: ',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                        fontSize: 16.0, // Increase font size for the status label
+                      ),
+                    ),
+                    Text(
+                      project['s_name'] ?? 'Unknown',
+                      style: TextStyle(
+                        color: progressColors[project['s_name']] ?? Colors.grey,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.0, // Increase font size for the status value
+                      ),
+                    ),
+                  ],
+                ),
+                if (!_isMyProjectsSelected) // Show creator's name only in "All Projects" section
+                  Align(
+                    alignment: Alignment.bottomRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: RichText(
+                        text: TextSpan(
+                          text: 'Created by: ',
+                          style: const TextStyle(
+                            color: Colors.blue, // Blue color for "Created by"
+                            fontWeight: FontWeight.bold, // Bold "Created by"
+                          ),
+                          children: [
+                            TextSpan(
+                              text: project['create_project_by'],
+                              style: const TextStyle(
+                                color: Colors.black, // Black color for the creator's name
+                                fontWeight: FontWeight.normal, // Normal weight for creator's name
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
-    ),
-  );
-}
-
-
-
-
-
+    );
+  }
 }

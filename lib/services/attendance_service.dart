@@ -16,7 +16,7 @@ class AttendanceService {
     try {
       final endpoint = isCheckIn
           ? '$baseUrl/api/attendance/checkin-checkout/office'
-          : '$baseUrl/api/attendance/checkin-checkout/office'; // Use the same endpoint for check-in and check-out
+          : '$baseUrl/api/attendance/checkin-checkout/office';
 
       final response = await http.post(
         Uri.parse(endpoint),

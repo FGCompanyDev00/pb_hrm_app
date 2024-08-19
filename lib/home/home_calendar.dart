@@ -41,8 +41,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
     InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-    // Fetch approvals and initialize events in the calendar
-    _fetchLeaveRequests();
+    _fetchLeaveRequests(); // Fetch approvals and initialize events in the calendar
   }
 
   Future<void> _fetchLeaveRequests() async {
@@ -50,7 +49,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
     final token = prefs.getString('token');
 
     if (token == null) {
-      print('Token is null');
+      _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');
       return;
     }
 
@@ -62,7 +61,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
       if (response.statusCode == 200) {
         final List<dynamic> results = json.decode(response.body)['results'];
-
         _leaveRequests = List<Map<String, dynamic>>.from(results);
 
         // Map API data to calendar events
@@ -75,7 +73,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
             startDate,
             endDate,
             item['take_leave_reason'] ?? 'Approval Pending',
-            item['is_approve'], // Status: Approved, Rejected, Waiting
+            item['is_approve'] ?? 'Waiting', // Status: Approved, Rejected, Waiting
             false, // isMeeting set to false for leave requests
           );
 
@@ -95,10 +93,11 @@ class _HomeCalendarState extends State<HomeCalendar> {
           _events.value = approvalEvents;
         });
       } else {
-        print('Failed to load leave requests: ${response.statusCode}');
+        _showErrorDialog(
+            'Failed to Load Leave Requests', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
-      print('Error fetching leave requests: $e');
+      _showErrorDialog('Error Fetching Leave Requests', 'An unexpected error occurred: $e');
     }
   }
 
@@ -191,6 +190,26 @@ class _HomeCalendarState extends State<HomeCalendar> {
       MaterialPageRoute(
         builder: (context) => DayViewScreen(date: date, events: events),
       ),
+    );
+  }
+
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
     );
   }
 

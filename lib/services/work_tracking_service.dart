@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -39,7 +40,6 @@ class WorkTrackingService {
         throw Exception('Unexpected response format');
       }
     } else {
-      print('Error: ${response.statusCode}, ${response.body}');
       throw Exception('Failed to load projects: ${response.reasonPhrase}');
     }
   }
@@ -69,12 +69,12 @@ class WorkTrackingService {
         throw Exception('Unexpected response format');
       }
     } else {
-      print('Error: ${response.statusCode}, ${response.body}');
       throw Exception('Failed to load projects: ${response.reasonPhrase}');
     }
   }
 
-  Future<void> addProject(Map<String, dynamic> projectData) async {
+  // Create a new project
+  Future<String?> addProject(Map<String, dynamic> projectData) async {
     final headers = await _getHeaders();
     final response = await http.post(
       Uri.parse('$baseUrl/api/work-tracking/proj/insert'),
@@ -82,15 +82,27 @@ class WorkTrackingService {
       body: jsonEncode(projectData),
     );
 
-    if (response.statusCode == 201) {
-      print('Project successfully created.');
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+
+      print('API Response: $responseBody');
+
+      // Check if 'project_id' is in response, handle nulls safely
+      if (responseBody != null && responseBody['project_id'] != null) {
+        final String projectId = responseBody['project_id'];
+        if (kDebugMode) {
+          print('Project successfully created with ID: $projectId');
+        }
+        return projectId;
+      } else {
+        return null;
+      }
     } else {
-      print('Error: ${response.statusCode}, ${response.body}');
       throw Exception('Failed to add project: ${response.reasonPhrase}');
     }
   }
 
-  Future<void> updateProject(String projectId, Map<String, dynamic> projectData) async {
+  Future<String> updateProject(String projectId, Map<String, dynamic> projectData) async {
     final headers = await _getHeaders();
     final response = await http.put(
       Uri.parse('$baseUrl/api/work-tracking/proj/update/$projectId'),
@@ -98,13 +110,17 @@ class WorkTrackingService {
       body: jsonEncode(projectData),
     );
 
-    if (response.statusCode != 200) {
-      print('Error: ${response.statusCode}, ${response.body}');
-      throw Exception('Failed to update project: ${response.reasonPhrase}');
+    if (response.statusCode == 200) {
+      return 'Project successfully updated.';
+    } else {
+      if (kDebugMode) {
+        print('Error: ${response.statusCode}, ${response.body}');
+      }
+      return 'Failed to update project: ${response.reasonPhrase}. Details: ${response.body}';
     }
   }
 
-  Future<void> deleteProject(String projectId) async {
+  Future<String> deleteProject(String projectId) async {
     final headers = await _getHeaders();
     final response = await http.put(
       Uri.parse('$baseUrl/api/work-tracking/proj/delete'),
@@ -116,9 +132,13 @@ class WorkTrackingService {
       }),
     );
 
-    if (response.statusCode != 200) {
-      print('Error: ${response.statusCode}, ${response.body}');
-      throw Exception('Failed to delete project: ${response.reasonPhrase}');
+    if (response.statusCode == 200) {
+      return 'Project successfully deleted.';
+    } else {
+      if (kDebugMode) {
+        print('Error: ${response.statusCode}, ${response.body}');
+      }
+      return 'Failed to delete project: ${response.reasonPhrase}. Details: ${response.body}';
     }
   }
 
@@ -145,32 +165,28 @@ class WorkTrackingService {
         throw Exception('Unexpected response format');
       }
     } else {
-      print('Error: ${response.statusCode}, ${response.body}');
       throw Exception('Failed to load project members: ${response.reasonPhrase}');
     }
   }
 
-Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
-  final headers = await _getHeaders();
-  final response = await http.get(
-    Uri.parse('$baseUrl/api/work-tracking/project-comments/comments?project_id=$projectId'),
-    headers: headers,
-  );
+  Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/work-tracking/project-comments/comments?project_id=$projectId'),
+      headers: headers,
+    );
 
-  if (response.statusCode == 200) {
-    var body = json.decode(response.body);
-    if (body['results'] != null && body['results'] is List) {
-      // Filter the messages to ensure they belong to the specified project
-      return List<Map<String, dynamic>>.from(body['results'].where((item) => item['project_id'] == projectId));
+    if (response.statusCode == 200) {
+      var body = json.decode(response.body);
+      if (body['results'] != null && body['results'] is List) {
+        return List<Map<String, dynamic>>.from(body['results'].where((item) => item['project_id'] == projectId));
+      } else {
+        throw Exception('Unexpected response format');
+      }
     } else {
-      throw Exception('Unexpected response format');
+      throw Exception('Failed to load chat messages: ${response.reasonPhrase}');
     }
-  } else {
-    print('Error: ${response.statusCode}, ${response.body}');
-    throw Exception('Failed to load chat messages: ${response.reasonPhrase}');
   }
-}
-
 
   Future<void> sendChatMessage(String projectId, String message, {String? filePath, String? fileType}) async {
     final headers = await _getHeaders();
@@ -186,10 +202,11 @@ Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
     );
 
     if (response.statusCode == 201) {
-      print('Message sent successfully.');
+      if (kDebugMode) {
+        print('Message sent successfully.');
+      }
     } else {
-      print('Error: ${response.statusCode}, ${response.body}');
-      throw Exception('Failed to send chat message: ${response.reasonPhrase}');
+      throw Exception('Failed to send chat message: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
 
@@ -205,9 +222,12 @@ Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
       }),
     );
 
-    if (response.statusCode != 200) {
-      print('Error: ${response.statusCode}, ${response.body}');
-      throw Exception('Failed to add person to projects: ${response.reasonPhrase}');
+    if (response.statusCode == 200) {
+      if (kDebugMode) {
+        print('Person successfully added to the project.');
+      }
+    } else {
+      throw Exception('Failed to add person to project: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
 
@@ -226,7 +246,6 @@ Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
         throw Exception('Unexpected response format');
       }
     } else {
-      print('Error: ${response.statusCode}, ${response.body}');
       throw Exception('Failed to load assignments: ${response.reasonPhrase}');
     }
   }
@@ -243,13 +262,13 @@ Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
     );
 
     if (response.statusCode == 201) {
-      print('Assignment successfully created.');
+      if (kDebugMode) {
+        print('Assignment successfully created.');
+      }
     } else {
-      print('Error: ${response.statusCode}, ${response.body}');
-      throw Exception('Failed to add assignment: ${response.reasonPhrase}');
+      throw Exception('Failed to add assignment: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
-
 
   Future<void> updateAssignment(String assignmentId, Map<String, dynamic> taskData) async {
     final headers = await _getHeaders();
@@ -259,9 +278,12 @@ Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
       body: jsonEncode(taskData),
     );
 
-    if (response.statusCode != 200) {
-      print('Error: ${response.statusCode}, ${response.body}');
-      throw Exception('Failed to update assignment: ${response.reasonPhrase}');
+    if (response.statusCode == 200) {
+      if (kDebugMode) {
+        print('Assignment successfully updated.');
+      }
+    } else {
+      throw Exception('Failed to update assignment: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
 
@@ -272,9 +294,12 @@ Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
       headers: headers,
     );
 
-    if (response.statusCode != 200) {
-      print('Error: ${response.statusCode}, ${response.body}');
-      throw Exception('Failed to delete assignment: ${response.reasonPhrase}');
+    if (response.statusCode == 200) {
+      if (kDebugMode) {
+        print('Assignment successfully deleted.');
+      }
+    } else {
+      throw Exception('Failed to delete assignment: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
 
@@ -289,10 +314,11 @@ Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
     );
 
     if (response.statusCode == 200) {
-      print('Files added successfully.');
+      if (kDebugMode) {
+        print('Files added successfully.');
+      }
     } else {
-      print('Error: ${response.statusCode}, ${response.body}');
-      throw Exception('Failed to add files to assignment: ${response.reasonPhrase}');
+      throw Exception('Failed to add files to assignment: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
 
@@ -307,14 +333,14 @@ Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
     );
 
     if (response.statusCode == 200) {
-      print('File deleted successfully.');
+      if (kDebugMode) {
+        print('File deleted successfully.');
+      }
     } else {
-      print('Error: ${response.statusCode}, ${response.body}');
-      throw Exception('Failed to delete file from assignment: ${response.reasonPhrase}');
+      throw Exception('Failed to delete file from assignment: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
 
-  // Method to fetch all employees
   Future<List<Map<String, dynamic>>> getAllEmployees() async {
     final headers = await _getHeaders();
     final response = await http.get(
@@ -330,30 +356,78 @@ Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
         throw Exception('Unexpected response format');
       }
     } else {
-      print('Error: ${response.statusCode}, ${response.body}');
       throw Exception('Failed to fetch employees: ${response.reasonPhrase}');
     }
   }
 
   Future<List<Map<String, dynamic>>> getProjectMembers(String projectId) async {
-  final headers = await _getHeaders();
-  final response = await http.get(
-    Uri.parse('$baseUrl/api/work-tracking/proj/find-Member-By-ProjectId/$projectId'),
-    headers: headers,
-  );
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/work-tracking/proj/find-Member-By-ProjectId/$projectId'),
+      headers: headers,
+    );
 
-  if (response.statusCode == 200) {
-    var body = json.decode(response.body);
-    if (body['results'] != null && body['results'] is List) {
-      return List<Map<String, dynamic>>.from(body['results']);
+    if (response.statusCode == 200) {
+      var body = json.decode(response.body);
+      if (body['results'] != null && body['results'] is List) {
+        return List<Map<String, dynamic>>.from(body['results']);
+      } else {
+        throw Exception('Unexpected response format');
+      }
     } else {
-      throw Exception('Unexpected response format');
+      throw Exception('Failed to load project members: ${response.reasonPhrase}');
     }
-  } else {
-    throw Exception('Failed to load project members: ${response.reasonPhrase}');
   }
-}
 
+  // Add members to the created project
+  Future<void> addMembersToProject(String projectId, List<Map<String, dynamic>> members) async {
+    final headers = await _getHeaders();
+    final memberData = {
+      "project_id": projectId,
+      "employees_member": members.map((member) => {"employee_id": member['id']}).toList(),
+    };
 
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/work-tracking/project-member/insert'),
+      headers: headers,
+      body: jsonEncode(memberData),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      if (kDebugMode) {
+        print('Members successfully added to the project.');
+      }
+    } else {
+      throw Exception('Failed to add members to the project: ${response.reasonPhrase}');
+    }
+  }
+
+  // Fetch members by project ID
+  Future<List<Map<String, dynamic>>> fetchProjectMembers(String projectId) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/work-tracking/proj//find-Member-By-ProjectId/$projectId'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      var body = json.decode(response.body);
+      if (body is List) {
+        return (body).map((item) => {
+          'id': item['member_id'],
+          'name': item['name'],
+          'surname': item['surname'],
+          'email': item['email'],
+          'isAdmin': item['member_status'] == 2,
+          'image': item['image'],
+          'isSelected': false,
+        }).toList();
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } else {
+      throw Exception('Failed to load project members: ${response.reasonPhrase}');
+    }
+  }
 
 }

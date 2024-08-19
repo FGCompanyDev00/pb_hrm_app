@@ -49,7 +49,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
   int _currentWeekIndex = 0;
 
   static const double _allowedDistance = 500; // 500 meters
-  static const LatLng _officeLocation = LatLng(3.1390, 101.6869); // Coordinates for Kementerian Pendidikan Malaysia
+  static const LatLng _officeLocation = LatLng(18.019683463911665, 102.65139957427881); // Coordinates for Phongsavanh Bank Office
 
   @override
   void initState() {
@@ -77,7 +77,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> with SingleTickerPr
     _currentMonthKey = DateFormat('MMMM - yyyy').format(DateTime.now());
     _loadCurrentSession();
     _retrieveDeviceId();
-    _fetchWeeklyRecords(); // Fetch weekly records on init
+    _fetchWeeklyRecords();
   }
 
   @override

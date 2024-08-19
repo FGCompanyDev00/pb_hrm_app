@@ -1,14 +1,56 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-class ViewProjectPage extends StatelessWidget {
+class ViewProjectPage extends StatefulWidget {
   final Map<String, dynamic> project;
 
   const ViewProjectPage({super.key, required this.project});
 
   @override
-  Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> people = project['people'] ?? [];
+  _ViewProjectPageState createState() => _ViewProjectPageState();
+}
 
+class _ViewProjectPageState extends State<ViewProjectPage> {
+  List<Map<String, dynamic>> projectMembers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProjectMembers();
+  }
+
+  Future<void> _fetchProjectMembers() async {
+    final projectId = widget.project['project_id'];
+    final url = 'https://demo-application-api.flexiflows.co/api/work-tracking/proj//find-Member-By-ProjectId/$projectId';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as List;
+        setState(() {
+          projectMembers = data.map((member) => {
+            'name': member['name'],
+            'profileImage': member['profile_image_url'], // Assuming the API returns a URL for the profile image
+          }).toList();
+        });
+      } else {
+        // Handle error response
+        if (kDebugMode) {
+          print('Failed to load project members: ${response.statusCode}');
+        }
+      }
+    } catch (e) {
+      // Handle network errors
+      if (kDebugMode) {
+        print('Failed to load project members: $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -38,38 +80,38 @@ class ViewProjectPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-            _buildTextField('Created by', project['create_project_by']),
+            _buildTextField('Created by', widget.project['create_project_by']),
             const SizedBox(height: 10),
-            _buildTextField('Name of Project', project['p_name']),
+            _buildTextField('Name of Project', widget.project['p_name']),
             const SizedBox(height: 10),
-            _buildTextField('Department', project['d_name']),
+            _buildTextField('Department', widget.project['d_name']),
             const SizedBox(height: 10),
-            _buildTextField('Branch', project['b_name']),
+            _buildTextField('Branch', widget.project['b_name']),
             const SizedBox(height: 10),
-            _buildTextField('Status', project['s_name']),
+            _buildTextField('Status', widget.project['s_name']),
             const SizedBox(height: 10),
-            _buildDateField('Deadline', project['dl']),
+            _buildDateField('Deadline', widget.project['dl']),
             const SizedBox(height: 10),
-            _buildDateField('Extended Deadline', project['extend']),
+            _buildDateField('Extended Deadline', widget.project['extend']),
             const SizedBox(height: 20),
             const Text(
               'Progress',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            _buildProgressBar(project['precent']),
+            _buildProgressBar(widget.project['precent']),
             const SizedBox(height: 20),
             const Text(
-              'People Added',
+              'Project Members',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            people.isEmpty
+            projectMembers.isEmpty
                 ? const Text(
-                    'No people added',
-                    style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
-                  )
-                : _buildPeopleList(people),
+              'No project members found',
+              style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+            )
+                : _buildProjectMembersGrid(projectMembers),
           ],
         ),
       ),
@@ -145,20 +187,30 @@ class ViewProjectPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPeopleList(List<Map<String, dynamic>> people) {
-    return ListView.builder(
+  Widget _buildProjectMembersGrid(List<Map<String, dynamic>> members) {
+    return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: people.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        childAspectRatio: 1,
+      ),
+      itemCount: members.length,
       itemBuilder: (context, index) {
-        final person = people[index];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: Colors.grey[300],
-            child: const Icon(Icons.person, color: Colors.white),
-          ),
-          title: Text(person['name'] ?? 'Unknown'),
-          subtitle: Text(person['email'] ?? ''),
+        final member = members[index];
+        return Column(
+          children: [
+            CircleAvatar(
+              backgroundImage: NetworkImage(member['profileImage']),
+              radius: 25,
+            ),
+            const SizedBox(height: 5),
+            Text(
+              member['name'] ?? 'Unknown',
+              style: const TextStyle(fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ],
         );
       },
     );
