@@ -206,7 +206,7 @@ class WorkTrackingService {
 
     if (response.statusCode != 200) {
       print('Error: ${response.statusCode}, ${response.body}');
-      throw Exception('Failed to add person to project: ${response.reasonPhrase}');
+      throw Exception('Failed to add person to projects: ${response.reasonPhrase}');
     }
   }
 
