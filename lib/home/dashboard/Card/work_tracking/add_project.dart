@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_people_page.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
 
 class AddProjectPage extends StatefulWidget {
@@ -44,7 +43,6 @@ class AddProjectPageState extends State<AddProjectPage> {
         _isLoading = true;
       });
 
-      final String? projectId; // Allow projectId to be nullable
       final newProject = {
         'project_name': _projectNameController.text.trim(),
         'department_id': '1', // Replace with actual selected department ID
@@ -56,32 +54,20 @@ class AddProjectPageState extends State<AddProjectPage> {
       };
 
       try {
-        projectId = await WorkTrackingService().addProject(newProject);
+        await WorkTrackingService().addProject(newProject);
 
-        if (projectId != null && projectId.isNotEmpty) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('Success'),
-              content: const Text('Your project has been successfully created. Please select your project members on the next page.'),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Close the dialog
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AddPeoplePage(projectId: projectId!),
-                      ),
-                    );
-                  },
-                  child: const Text('OK'),
-                ),
-              ],
+        // Fetch the latest project to get its project_id
+        final latestProject = await WorkTrackingService().fetchLatestProject();
+
+        if (latestProject != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddPeoplePage(projectId: latestProject['project_id']),
             ),
           );
         } else {
-          _showErrorDialog('Failed to create project. Please try again.');
+          _showErrorDialog('Failed to fetch the latest project. Please try again.');
         }
       } catch (e) {
         _showErrorDialog(e.toString());

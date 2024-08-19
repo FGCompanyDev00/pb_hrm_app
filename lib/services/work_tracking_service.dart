@@ -44,6 +44,14 @@ class WorkTrackingService {
     }
   }
 
+  Future<Map<String, dynamic>?> fetchLatestProject() async {
+    final projects = await fetchMyProjects();
+    if (projects.isNotEmpty) {
+      return projects.first;
+    }
+    return null;
+  }
+
   Future<List<Map<String, dynamic>>> fetchAllProjects() async {
     final headers = await _getHeaders();
     final response = await http.post(
@@ -73,7 +81,6 @@ class WorkTrackingService {
     }
   }
 
-  // Create a new project
   Future<String?> addProject(Map<String, dynamic> projectData) async {
     final headers = await _getHeaders();
     final response = await http.post(
@@ -84,10 +91,6 @@ class WorkTrackingService {
 
     if (response.statusCode == 201 || response.statusCode == 200) {
       final responseBody = jsonDecode(response.body);
-
-      print('API Response: $responseBody');
-
-      // Check if 'project_id' is in response, handle nulls safely
       if (responseBody != null && responseBody['project_id'] != null) {
         final String projectId = responseBody['project_id'];
         if (kDebugMode) {
@@ -158,7 +161,7 @@ class WorkTrackingService {
           'surname': item['surname'],
           'email': item['email'],
           'isAdmin': item['member_status'] == 2,
-          'image': 'https://via.placeholder.com/150', // Default image
+          'image': 'https://via.placeholder.com/150',
           'isSelected': false,
         }).toList();
       } else {
@@ -218,7 +221,7 @@ class WorkTrackingService {
       body: jsonEncode({
         'project_id': projectId,
         'member_id': personId,
-        'member_status': 1, // Example status
+        'member_status': 1,
       }),
     );
 
@@ -379,34 +382,10 @@ class WorkTrackingService {
     }
   }
 
-  // Add members to the created project
-  Future<void> addMembersToProject(String projectId, List<Map<String, dynamic>> members) async {
-    final headers = await _getHeaders();
-    final memberData = {
-      "project_id": projectId,
-      "employees_member": members.map((member) => {"employee_id": member['id']}).toList(),
-    };
-
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/project-member/insert'),
-      headers: headers,
-      body: jsonEncode(memberData),
-    );
-
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      if (kDebugMode) {
-        print('Members successfully added to the project.');
-      }
-    } else {
-      throw Exception('Failed to add members to the project: ${response.reasonPhrase}');
-    }
-  }
-
-  // Fetch members by project ID
   Future<List<Map<String, dynamic>>> fetchProjectMembers(String projectId) async {
     final headers = await _getHeaders();
     final response = await http.get(
-      Uri.parse('$baseUrl/api/work-tracking/proj//find-Member-By-ProjectId/$projectId'),
+      Uri.parse('$baseUrl/api/work-tracking/proj/find-Member-By-ProjectId/$projectId'),
       headers: headers,
     );
 
@@ -430,4 +409,26 @@ class WorkTrackingService {
     }
   }
 
+  // Add members to the created project
+  Future<void> addMembersToProject(String projectId, List<Map<String, dynamic>> members) async {
+    final headers = await _getHeaders();
+    final memberData = {
+      "project_id": projectId,
+      "employees_member": members.map((member) => {"employee_id": member['id']}).toList(),
+    };
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/work-tracking/project-member/insert'),
+      headers: headers,
+      body: jsonEncode(memberData),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      if (kDebugMode) {
+        print('Members successfully added to the project.');
+      }
+    } else {
+      throw Exception('Failed to add members to the project: ${response.reasonPhrase}');
+    }
+  }
 }

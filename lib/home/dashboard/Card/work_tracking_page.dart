@@ -547,7 +547,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                       'Status: ',
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
-                        fontSize: 16.0, // Increase font size for the status label
+                        fontSize: 16.0,
                       ),
                     ),
                     Text(
@@ -555,7 +555,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                       style: TextStyle(
                         color: progressColors[project['s_name']] ?? Colors.grey,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16.0, // Increase font size for the status value
+                        fontSize: 16.0,
                       ),
                     ),
                   ],
