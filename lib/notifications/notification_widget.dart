@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'notification_model.dart';
-import 'notification_style.dart';
 
 class NotificationWidget extends StatelessWidget {
   final NotificationModel notification;
@@ -13,7 +12,7 @@ class NotificationWidget extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: notification.backgroundColor,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12.0),
         boxShadow: const [
           BoxShadow(
@@ -25,6 +24,20 @@ class NotificationWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'Message: ${notification.message}',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16.0,
+            ),
+          ),
+          const SizedBox(height: 8.0),
+          Text('Requestor: ${notification.createdBy}'),
+          Text('Date: ${notification.createdAt.toString().substring(0, 10)}'),
+          Text('Time: ${notification.createdAt.toString().substring(11, 16)}'),
+          Text('Employee ID: ${notification.employeeId}'),
+          Text('Project ID: ${notification.projectId}'),
+          const SizedBox(height: 8.0),
           Row(
             children: [
               CircleAvatar(
@@ -32,37 +45,9 @@ class NotificationWidget extends StatelessWidget {
                 radius: 30.0,
               ),
               const SizedBox(width: 16.0),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      notification.message,
-                      style: TextStyle(
-                        color: notification.textColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16.0,
-                      ),
-                    ),
-                    const SizedBox(height: 8.0),
-                    Text(
-                      'Requestor: ${notification.createdBy}',
-                      style: TextStyle(fontSize: 14.0, color: notification.textColor),
-                    ),
-                    Text(
-                      'Date: ${notification.createdAt.toString().substring(0, 10)}',
-                      style: TextStyle(fontSize: 14.0, color: notification.textColor),
-                    ),
-                    Text(
-                      'Time: ${notification.createdAt.toString().substring(11, 16)}',
-                      style: TextStyle(fontSize: 14.0, color: notification.textColor),
-                    ),
-                  ],
-                ),
-              ),
               Icon(
-                notification.statusIcon,
-                color: notification.statusColor,
+                Icons.circle,
+                color: notification.status == 1 ? Colors.green : Colors.red,
                 size: 24.0,
               ),
             ],

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
+import 'package:pb_hrsystem/notifications/notification_widget.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -254,3 +255,50 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
+
+// class MainScreen extends StatefulWidget {
+//   const MainScreen({super.key});
+
+//   @override
+//   _MainScreenState createState() => _MainScreenState();
+// }
+
+// class _MainScreenState extends State<MainScreen> {
+//   final List<NotificationModel> _notifications = [];
+//   late NotificationPollingService _notificationPollingService;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _notificationPollingService = NotificationPollingService(
+//       apiUrl: 'https://demo-application-api.flexiflows.co/api/work-tracking/proj/notifications',
+//       onNewNotifications: (notifications) {
+//         setState(() {
+//           _notifications.addAll(notifications);
+//         });
+//       },
+//     );
+//     _notificationPollingService.startPolling();
+//   }
+
+//   @override
+//   void dispose() {
+//     _notificationPollingService.stopPolling();
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text('Notifications'),
+//       ),
+//       body: ListView.builder(
+//         itemCount: _notifications.length,
+//         itemBuilder: (context, index) {
+//           return NotificationWidget(notification: _notifications[index]);
+//         },
+//       ),
+//     );
+//   }
+// }
