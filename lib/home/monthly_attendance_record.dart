@@ -14,10 +14,7 @@ class MonthlyAttendanceReport extends StatefulWidget {
 class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
   List<Map<String, String>> _attendanceRecords = [];
   DateTime _currentMonth = DateTime.now();
-  String _selectedType = 'Office'; // Default selected type
-  String _dropdownValue = 'Office'; // For the dropdown
   bool _errorFetchingData = false;
-  String _totalWorkDuration = '00:00:00'; // Total work duration for the month
 
   @override
   void initState() {
@@ -26,26 +23,19 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
   }
 
   Future<void> _fetchAttendanceRecords() async {
-    String? token = await _getToken();
+    String? token = await _getToken(); // Fetch the authentication token from SharedPreferences
     if (token == null || token.isEmpty) {
       _showCustomDialog(context, 'Error', 'Unable to retrieve authentication token.');
       return;
     }
 
-    String url = '';
-    if (_selectedType == 'Home') {
-      url = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/home/months/me';
-    } else if (_selectedType == 'Office') {
-      url = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offices/months/me';
-    } else if (_selectedType == 'Offsite') {
-      url = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offices/offsite/me';
-    }
+    const String url = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offices/months/me';
 
     try {
       final response = await http.get(
         Uri.parse(url),
         headers: {
-          'Authorization': 'Bearer $token', // Pass the retrieved token
+          'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
       );
@@ -58,18 +48,21 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
           _attendanceRecords = monthlyRecords.where((item) {
             String checkInDate = item['check_in_date']?.toString() ?? '';
             DateTime parsedDate = DateFormat('yyyy-MM-dd').parse(checkInDate);
-            String monthYearKey = DateFormat('MMMM yyyy').format(parsedDate);
-            return monthYearKey == DateFormat('MMMM yyyy').format(_currentMonth);
+            return parsedDate.year == _currentMonth.year && parsedDate.month == _currentMonth.month;
           }).map<Map<String, String>>((item) {
             return {
               'checkIn': item['check_in_time']?.toString() ?? '--:--:--',
               'checkOut': item['check_out_time']?.toString() ?? '--:--:--',
               'workDuration': item['workDuration']?.toString() ?? '00:00:00',
-              'date': item['check_in_date']?.toString() ?? 'N/A',
+              'date': DateFormat('EEEE MMMM dd - yyyy').format(
+                DateFormat('yyyy-MM-dd').parse(
+                  item['check_in_date']?.toString() ?? '',
+                ),
+              ),
+              'officeStatus': item['office_status']?.toString() ?? 'office', // office, home, or offsite
             };
           }).toList();
 
-          _totalWorkDuration = data['TotalWorkDurationForMonth']['totalWorkDuration']?.toString() ?? '00:00:00';
           _errorFetchingData = _attendanceRecords.isEmpty;
         });
       } else {
@@ -82,9 +75,10 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
       setState(() {
         _errorFetchingData = true;
       });
-      _showCustomDialog(context, 'Error', 'An error occurred while fetching data.');
+      _showCustomDialog(context, 'Error', 'An error occurred while fetching data: $e');
     }
   }
+
 
   Future<String?> _getToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -134,14 +128,29 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
     );
   }
 
-  Widget _buildAttendanceRow(Map<String, String> record, Color iconColor) {
+  Widget _buildAttendanceRow(Map<String, String> record) {
+    Color iconColor;
+    switch (record['officeStatus']) {
+      case 'home':
+        iconColor = Colors.yellow;
+        break;
+      case 'office':
+        iconColor = Colors.green;
+        break;
+      case 'offsite':
+        iconColor = Colors.red;
+        break;
+      default:
+        iconColor = Colors.green;
+    }
+
     return Card(
       color: Colors.white.withOpacity(0.8),
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        title: Text(record['date']!, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Center(child: Text(record['date']!, style: const TextStyle(fontWeight: FontWeight.bold))),
         subtitle: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
@@ -177,40 +186,23 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
 
   @override
   Widget build(BuildContext context) {
-    Color iconColor;
-    switch (_selectedType) {
-      case 'Home':
-        iconColor = Colors.yellow;
-        break;
-      case 'Office':
-        iconColor = Colors.green;
-        break;
-      case 'Offsite':
-        iconColor = Colors.red;
-        break;
-      default:
-        iconColor = Colors.green;
-    }
-
     return Scaffold(
       appBar: _buildAppBar(context),
       body: Column(
         children: [
-          _buildHeader(context),
-          const SizedBox(height: 8),
-          _buildTotalWorkDurationRow(),
+          _buildMonthNavigationHeader(),
           Expanded(
             child: _errorFetchingData
-                ? Center(
+                ? const Center(
               child: Text(
-                "No $_selectedType attendance record data for this month.",
-                style: const TextStyle(color: Colors.black),
+                "No attendance record data for this month.",
+                style: TextStyle(color: Colors.black),
               ),
             )
                 : ListView.builder(
               itemCount: _attendanceRecords.length,
               itemBuilder: (context, index) {
-                return _buildAttendanceRow(_attendanceRecords[index], iconColor);
+                return _buildAttendanceRow(_attendanceRecords[index]);
               },
             ),
           ),
@@ -238,36 +230,27 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0, // Remove shadow
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          color: Colors.black,
+        ),
+        title: const Text(
+          'Attendance Report',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
 
-  Widget _buildTotalWorkDurationRow() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      color: Colors.orange.shade300,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            'Total Work Duration:',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          Text(
-            _totalWorkDuration,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildMonthNavigationHeader() {
     return Container(
       padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.orange.shade300,
-        borderRadius: const BorderRadius.only(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(20),
           bottomRight: Radius.circular(20),
         ),
@@ -295,7 +278,9 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
               ),
               IconButton(
                 icon: const Icon(Icons.arrow_forward),
-                onPressed: () {
+                onPressed: _currentMonth.month == DateTime.now().month && _currentMonth.year == DateTime.now().year
+                    ? null
+                    : () {
                   setState(() {
                     _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
                     _fetchAttendanceRecords(); // Fetch records for the next month
@@ -305,42 +290,51 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildDropdownButton(),
-            ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDAA520), // Gold color
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 4,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      'Check In',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      'Check Out',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      'Working Hours',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDropdownButton() {
-    return DropdownButton<String>(
-      value: _dropdownValue,
-      icon: const Icon(Icons.arrow_downward),
-      iconSize: 24,
-      elevation: 16,
-      style: const TextStyle(color: Colors.black, fontSize: 16),
-      underline: Container(
-        height: 2,
-        color: Colors.black,
-      ),
-      onChanged: (String? newValue) {
-        setState(() {
-          _dropdownValue = newValue!;
-          _selectedType = newValue;
-          _fetchAttendanceRecords();
-        });
-      },
-      items: <String>['Home', 'Office', 'Offsite']
-          .map<DropdownMenuItem<String>>((String value) {
-        return DropdownMenuItem<String>(
-          value: value,
-          child: Text(value),
-        );
-      }).toList(),
     );
   }
 }

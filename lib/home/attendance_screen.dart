@@ -9,6 +9,7 @@ import 'package:pb_hrsystem/services/attendance_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import "package:pb_hrsystem/home/monthly_attendance_record.dart";
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -33,7 +34,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   List<Map<String, String>> _weeklyRecords = [];
 
   static const double _officeRange = 20; // Office location is considered within 20 meters
-  static const LatLng _officeLocation = LatLng(18.019683463911665, 102.65139957427881);
+  static const LatLng _officeLocation = LatLng(
+      18.019683463911665, 102.65139957427881);
 
   @override
   void initState() {
@@ -175,7 +177,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (isCheckIn) {
       await _sendAttendanceDataToAPI(isCheckIn);
       _performCheckIn(now);
-      _showCustomDialog(context, 'Check-In Successful', 'You have checked in successfully.');
+      _showCustomDialog(
+          context, 'Check-In Successful', 'You have checked in successfully.');
     } else {
       await _sendAttendanceDataToAPI(isCheckIn);
       _performCheckOut(now);
@@ -186,7 +189,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<Position?> _getCurrentPosition() async {
     try {
-      return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      return await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
     } catch (e) {
       if (kDebugMode) {
         print('Error retrieving location: $e');
@@ -202,10 +206,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         final String checkInTime = isCheckIn
             ? DateFormat('HH:mm:ss').format(DateTime.now())
             : _checkInTime; // Use saved check-in time for checkout
-        final String checkOutTime = isCheckIn ? "00:00:00" : DateFormat('HH:mm:ss').format(DateTime.now());
+        final String checkOutTime = isCheckIn ? "00:00:00" : DateFormat(
+            'HH:mm:ss').format(DateTime.now());
         final String workDuration = isCheckIn
             ? "00:00:00"
-            : _workingHours.toString().split('.').first.padLeft(8, '0');
+            : _workingHours
+            .toString()
+            .split('.')
+            .first
+            .padLeft(8, '0');
         final String officeStatus = _currentSection.toLowerCase();
 
         final attendanceData = {
@@ -228,7 +237,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (kDebugMode) {
         print('Error sending attendance data to API: $e');
       }
-      _showCustomDialog(context, 'Error', 'Failed to send attendance data to the server.');
+      _showCustomDialog(
+          context, 'Error', 'Failed to send attendance data to the server.');
     }
   }
 
@@ -261,7 +271,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -304,7 +315,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -319,7 +331,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'You worked for ${_workingHours.toString().split('.').first.padLeft(8, '0')} hours today.',
+                'You worked for ${_workingHours
+                    .toString()
+                    .split('.')
+                    .first
+                    .padLeft(8, '0')} hours today.',
                 style: const TextStyle(fontSize: 18),
               ),
               const SizedBox(height: 16),
@@ -351,13 +367,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       margin: const EdgeInsets.symmetric(vertical: 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        title: Text(record['date']!, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(record['date']!,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildAttendanceItem('Check In', record['checkIn']!, isHome ? Colors.orange : Colors.green),
-            _buildAttendanceItem('Check Out', record['checkOut']!, isOffice ? Colors.green : Colors.red),
-            _buildAttendanceItem('Working Hours', record['workingHours']!, Colors.blue),
+            _buildAttendanceItem('Check In', record['checkIn']!,
+                isHome ? Colors.orange : Colors.green),
+            _buildAttendanceItem('Check Out', record['checkOut']!,
+                isOffice ? Colors.green : Colors.red),
+            _buildAttendanceItem(
+                'Working Hours', record['workingHours']!, Colors.blue),
           ],
         ),
       ),
@@ -384,12 +404,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildHeaderContent(BuildContext context) {
-    final fingerprintColor = _currentSection == 'Office' ? Colors.green : Colors.orange;
+    final fingerprintColor = _currentSection == 'Office'
+        ? Colors.green
+        : _currentSection == 'Home'
+        ? Colors.orange
+        : Colors.red;
     final now = DateTime.now();
-    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 8, 0); // 8:00 AM
-    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 13, 0); // 1:00 PM
-    bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
-    bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 8);
+    final checkInTimeAllowed = DateTime(
+        now.year, now.month, now.day, 8, 0); // 8:00 AM
+    final checkInDisabledTime = DateTime(
+        now.year, now.month, now.day, 13, 0); // 1:00 PM
+    bool isCheckInEnabled = !_isCheckInActive &&
+        now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
+    bool isCheckOutEnabled = _isCheckInActive &&
+        _workingHours >= const Duration(hours: 8);
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -431,17 +459,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ElevatedButton(
                     onPressed: () {
                       if (now.isBefore(checkInTimeAllowed)) {
-                        _showCustomDialog(context, 'Too Early', 'Check-in will be available at 8:00 AM.');
+                        _showCustomDialog(context, 'Too Early',
+                            'Check-in will be available at 8:00 AM.');
                       } else if (isCheckInEnabled) {
                         _authenticate(context, true);
                       } else if (_isCheckInActive) {
-                        _showCustomDialog(context, 'Already Checked In', 'You have already checked in.');
+                        _showCustomDialog(context, 'Already Checked In',
+                            'You have already checked in.');
                       } else {
-                        _showCustomDialog(context, 'Check-In Disabled', 'Check-in is only available between 8:00 AM and 1:00 PM.');
+                        _showCustomDialog(context, 'Check-In Disabled',
+                            'Check-in is only available between 8:00 AM and 1:00 PM.');
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isCheckInEnabled ? fingerprintColor : Colors.grey,
+                      backgroundColor: isCheckInEnabled
+                          ? fingerprintColor
+                          : Colors.grey,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8.0),
                       ),
@@ -451,13 +484,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ElevatedButton(
                     onPressed: () {
                       if (_isCheckInActive && !isCheckOutEnabled) {
-                        _showCustomDialog(context, 'Too Early', 'Wait until working hours hit 8 hours of working time.');
+                        _showCustomDialog(context, 'Too Early',
+                            'Wait until working hours hit 8 hours of working time.');
                       } else if (isCheckOutEnabled) {
                         _authenticate(context, false);
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isCheckOutEnabled ? Colors.red : Colors.grey,
+                      backgroundColor: isCheckOutEnabled ? Colors.red : Colors
+                          .grey,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8.0),
                       ),
@@ -478,7 +513,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       children: [
         Container(
           decoration: BoxDecoration(
-            color: _selectedIndex == 0 ? Colors.green.shade50 : Colors.red.shade50,
+            gradient: LinearGradient(
+              colors: [
+                Colors.orange.shade50,
+                Colors.green.shade50,
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              stops: [0.5, 0.5],
+            ),
           ),
         ),
         Column(
@@ -492,7 +535,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     _buildHeaderContent(context),
                     const SizedBox(height: 16),
                     _buildSummaryRow(
-                        _checkInTime, _checkOutTime, _workingHours.toString().split('.').first.padLeft(8, '0')),
+                        _checkInTime, _checkOutTime, _workingHours
+                        .toString()
+                        .split('.')
+                        .first
+                        .padLeft(8, '0')),
                     const SizedBox(height: 16),
                     _buildWeeklyRecordsList(),
                   ],
@@ -505,7 +552,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildSummaryRow(String checkIn, String checkOut, String workingHours) {
+  Widget _buildSummaryRow(String checkIn, String checkOut,
+      String workingHours) {
     return Card(
       color: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -517,19 +565,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           children: [
             _buildSummaryItem('Check In', checkIn, Icons.login, Colors.green),
             _buildSummaryItem('Check Out', checkOut, Icons.logout, Colors.red),
-            _buildSummaryItem('Working Hours', workingHours, Icons.timer, Colors.blue),
+            _buildSummaryItem(
+                'Working Hours', workingHours, Icons.timer, Colors.blue),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSummaryItem(String title, String time, IconData icon, Color color) {
+  Widget _buildSummaryItem(String title, String time, IconData icon,
+      Color color) {
     return Column(
       children: [
         Icon(icon, color: color, size: 36),
         const SizedBox(height: 8),
-        Text(time, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(time,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         Text(title, style: const TextStyle(color: Colors.black)),
       ],
@@ -548,7 +599,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     return Column(
       children: [
-        // Add the header section above the list
+        // Header section (already added)
         Container(
           margin: const EdgeInsets.symmetric(vertical: 8),
           padding: const EdgeInsets.all(8),
@@ -570,7 +621,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 child: Center(
                   child: Text(
                     'Check In',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                 ),
               ),
@@ -578,7 +630,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 child: Center(
                   child: Text(
                     'Check Out',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                 ),
               ),
@@ -586,23 +639,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 child: Center(
                   child: Text(
                     'Working Hours',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                 ),
               ),
             ],
           ),
         ),
-        // The list of weekly records
+        // Weekly records list
         Column(
-          children: _weeklyRecords.map((record) => _buildAttendanceRow(record)).toList(),
+          children: _weeklyRecords.map((record) => _buildAttendanceRow(record))
+              .toList(),
         ),
       ],
     );
   }
 
-
-  Widget _buildSectionButton(int index, String title, IconData icon, Color activeColor, Color inactiveColor) {
+  Widget _buildSectionButton(int index, String title, IconData icon,
+      Color activeColor, Color inactiveColor) {
     final bool isSelected = _selectedIndex == index;
     return Expanded(
       child: GestureDetector(
@@ -624,7 +679,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               const SizedBox(width: 5),
               Text(
                 title,
-                style: TextStyle(color: isSelected ? Colors.white : Colors.black),
+                style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black),
               ),
             ],
           ),
@@ -635,18 +691,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final homeColor = _currentSection == 'Home' ? Colors.orange : Colors.grey.shade200;
-    final officeColor = _currentSection == 'Office' ? Colors.green : Colors.grey.shade200;
-    final offsiteColor = _selectedIndex == 1 ? Colors.red : Colors.grey.shade200;
+    final homeColor = _currentSection == 'Home' ? Colors.orange : Colors.grey
+        .shade200;
+    final officeColor = _currentSection == 'Office' ? Colors.green : Colors.grey
+        .shade200;
+    final offsiteColor = _selectedIndex == 1 ? Colors.red : Colors.grey
+        .shade200;
 
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(MediaQuery.of(context).size.height * 0.1),
+        preferredSize: Size.fromHeight(MediaQuery
+            .of(context)
+            .size
+            .height * 0.1),
         child: Container(
           width: double.infinity,
           decoration: const BoxDecoration(
             image: DecorationImage(
-              image: AssetImage("assets/background.png"), // Use the background image
+              image: AssetImage("assets/background.png"),
+              // Use the background image
               fit: BoxFit.cover,
             ),
             borderRadius: BorderRadius.only(
@@ -671,22 +734,59 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                _buildSectionButton(0, 'Home', Icons.home, homeColor, Colors.grey.shade200),
-                const SizedBox(width: 8),
-                _buildSectionButton(0, 'Office', Icons.apartment, officeColor, Colors.grey.shade200),
-                const SizedBox(width: 8),
-                _buildSectionButton(1, 'Offsite', Icons.location_on, offsiteColor, Colors.grey.shade200),
-              ],
-            ),
+          Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    _buildSectionButton(
+                        0, 'Home', Icons.home, homeColor, Colors.grey.shade200),
+                    const SizedBox(width: 8),
+                    _buildSectionButton(
+                        0, 'Office', Icons.apartment, officeColor,
+                        Colors.grey.shade200),
+                    const SizedBox(width: 8),
+                    _buildSectionButton(
+                        1, 'Offsite', Icons.location_on, offsiteColor,
+                        Colors.grey.shade200),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: _buildTabContent(context),
+              ),
+            ],
           ),
-          Expanded(
-            child: _buildTabContent(context),
+          Positioned(
+            bottom: 16, // Position it just above the bottom navigation bar
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const MonthlyAttendanceReport()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 12),
+                ),
+                child: const Text(
+                  'View All',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+            ),
           ),
         ],
       ),
