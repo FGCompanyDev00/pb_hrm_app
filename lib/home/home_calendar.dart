@@ -36,9 +36,9 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
-    InitializationSettings(android: initializationSettingsAndroid);
+        InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     _fetchLeaveRequests(); // Fetch approvals and initialize events in the calendar
@@ -79,8 +79,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
           // Add event to each day between startDate and endDate
           for (var day = startDate;
-          day.isBefore(endDate.add(const Duration(days: 1)));
-          day = day.add(const Duration(days: 1))) {
+              day.isBefore(endDate.add(const Duration(days: 1)));
+              day = day.add(const Duration(days: 1))) {
             if (approvalEvents.containsKey(day)) {
               approvalEvents[day]!.add(event);
             } else {
@@ -126,32 +126,80 @@ class _HomeCalendarState extends State<HomeCalendar> {
     });
   }
 
-  void _showAddEventOptions() {
-    showModalBottomSheet(
+  void _showAddEventOptionsPopup() {
+    showDialog(
       context: context,
-      builder: (context) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
+      barrierColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Stack(
           children: [
-            ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('Personal'),
-              onTap: () {
-                Navigator.pop(context);
-                _navigateToAddEvent('Personal');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.work),
-              title: const Text('Office'),
-              onTap: () {
-                Navigator.pop(context);
-                _navigateToAddEvent('Office');
-              },
+            Positioned(
+              top: 75,
+              right: 40,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  width: 160,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildPopupOption(
+                        icon: Icons.person,
+                        label: '1. Personal',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _navigateToAddEvent('Personal');
+                        },
+                      ),
+                      const Divider(height: 1),
+                      _buildPopupOption(
+                        icon: Icons.work,
+                        label: '2. Office',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _navigateToAddEvent('Office');
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildPopupOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: Colors.black54),
+            const SizedBox(width: 12),
+            Text(label, style: const TextStyle(color: Colors.black87)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -257,7 +305,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                           size: 40,
                           color: Colors.green,
                         ),
-                        onPressed: _showAddEventOptions,
+                        onPressed: _showAddEventOptionsPopup,
                       ),
                     ),
                   ],
@@ -617,6 +665,37 @@ class CustomEventBox extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class EventDetailsPopup extends StatelessWidget {
+  final Event event;
+
+  const EventDetailsPopup({required this.event, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(event.title),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Time: ${event.formattedTime}'),
+          Text('Status: ${event.status}'),
+          const SizedBox(height: 10),
+          Text(event.description),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text('Close'),
+        ),
+      ],
     );
   }
 }
