@@ -9,6 +9,7 @@ import 'package:pb_hrsystem/services/attendance_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import "package:pb_hrsystem/home/monthly_attendance_record.dart";
 
 class AttendanceScreen extends StatefulWidget {
@@ -33,6 +34,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   String _deviceId = '';
   List<Map<String, String>> _weeklyRecords = [];
 
+  Color _fingerprintColor = Colors.orange;
+
   static const double _officeRange = 20; // Office location is considered within 20 meters
   static const LatLng _officeLocation = LatLng(
       18.019683463911665, 102.65139957427881);
@@ -43,6 +46,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _retrieveDeviceId();
     _fetchWeeklyRecords();
     _startLocationMonitoring();
+    _startTimerForLiveTime();
+
+    _fingerprintColor =
+    _currentSection == 'Office' ? Colors.green : Colors.orange;
   }
 
   @override
@@ -54,9 +61,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _retrieveDeviceId() async {
     try {
-      const uuid = Uuid();
+      final deviceInfo = DeviceInfoPlugin();
+      final androidInfo = await deviceInfo.androidInfo;
       setState(() {
-        _deviceId = uuid.v4();
+        _deviceId = androidInfo.id;
       });
     } catch (e) {
       if (kDebugMode) {
@@ -70,7 +78,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     const String endpoint = '$baseUrl/api/attendance/checkin-checkout/offices/weekly/me';
 
     try {
-      // Retrieve the token from SharedPreferences
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('token');
 
@@ -149,14 +156,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (distanceToOffice <= _officeRange) {
         _currentSection = 'Office';
         _selectedIndex = 0;
+        _fingerprintColor = Colors.green;
       } else {
         _currentSection = 'Home';
         _selectedIndex = 0;
+        _fingerprintColor = Colors.orange;
       }
     });
   }
 
-  void _startTimer() {
+  void _startTimerForLiveTime() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {}); // Update the UI every second
+    });
+  }
+
+  void _startTimerForWorkingHours() {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_checkInDateTime != null && _checkOutDateTime == null) {
@@ -179,6 +194,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _performCheckIn(now);
       _showCustomDialog(
           context, 'Check-In Successful', 'You have checked in successfully.');
+
+      if (_currentSection == 'Offsite') {
+        _showOffsiteModal(context);
+      }
     } else {
       await _sendAttendanceDataToAPI(isCheckIn);
       _performCheckOut(now);
@@ -218,18 +237,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         final String officeStatus = _currentSection.toLowerCase();
 
         final attendanceData = {
-          'employee_id': "PSV-00-000002",
-          'employee_name': "John Doe",
-          'device_token': _deviceId,
-          'check_in_time': checkInTime,
-          'check_out_time': checkOutTime,
+          'device_id': _deviceId,
           'latitude': position.latitude.toString(),
           'longitude': position.longitude.toString(),
-          'office_status': officeStatus,
+          'check_in_time': checkInTime,
+          // Ensure these fields are used if needed
+          'check_out_time': checkOutTime,
           'workDuration': workDuration,
+          'office_status': officeStatus,
         };
 
-        await _attendanceService.checkInOrCheckOut(isCheckIn, attendanceData);
+        if (_currentSection == 'Offsite') {
+          await _attendanceService.checkInOrCheckOutOffsite(
+              isCheckIn, attendanceData);
+        } else {
+          await _attendanceService.checkInOrCheckOut(isCheckIn, attendanceData);
+        }
       } else {
         _showCustomDialog(context, 'Error', 'Failed to retrieve location.');
       }
@@ -249,7 +272,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _checkOutDateTime = null;
       _workingHours = Duration.zero;
       _isCheckInActive = true;
-      _startTimer();
+      _startTimerForWorkingHours();
     });
   }
 
@@ -289,6 +312,50 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               Text(
                 message,
                 style: const TextStyle(fontSize: 18),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDAA520), // gold color
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showOffsiteModal(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.info, color: Colors.green, size: 50),
+              const SizedBox(height: 16),
+              const Text(
+                'Log IN by Offsite',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Your location will be saved into the system.',
+                style: TextStyle(fontSize: 18),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
@@ -668,28 +735,57 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildSectionButton(int index, String title, IconData icon,
       Color activeColor, Color inactiveColor) {
     final bool isSelected = _selectedIndex == index;
+    final bool isDisabled = (title == 'Home' && _currentSection == 'Office') ||
+        (title == 'Office' && _currentSection == 'Home');
+
     return Expanded(
       child: GestureDetector(
-        onTap: () {
+        onTap: () async {
+          if (isDisabled) return;
+
+          Position? currentPosition = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high);
+          _determineSectionFromPosition(currentPosition);
+
           setState(() {
-            _selectedIndex = index;
+            if (_selectedIndex != 1) {
+              // Only set if not Offsite
+              _selectedIndex = index;
+            }
+
+            if (_selectedIndex == 1) {
+              // Keep Offsite active unless location dictates otherwise
+              _currentSection = 'Offsite';
+              _fingerprintColor = Colors.red;
+            }
           });
         },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
+          margin: const EdgeInsets.symmetric(horizontal: 4.0),
           decoration: BoxDecoration(
-            color: isSelected ? activeColor : inactiveColor,
+            color: isDisabled ? Colors.grey.shade200 : (isSelected
+                ? activeColor
+                : inactiveColor),
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? activeColor : Colors.grey,
+              width: 2.0,
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: isSelected ? Colors.white : Colors.black),
+              Icon(icon, color: isDisabled ? Colors.grey : (isSelected
+                  ? Colors.white
+                  : Colors.black)),
               const SizedBox(width: 5),
               Text(
                 title,
                 style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.black),
+                    color: isDisabled ? Colors.grey : (isSelected
+                        ? Colors.white
+                        : Colors.black)),
               ),
             ],
           ),
@@ -698,15 +794,53 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
+  Widget _buildSectionContainer() {
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: Container(
+            padding: const EdgeInsets.all(4.0),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.grey.shade400, width: 1),
+            ),
+            child: Row(
+              children: [
+                _buildSectionButton(
+                    0, 'Home', Icons.home, Colors.orange, Colors.grey.shade200),
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                  color: Colors.grey.shade500,
+                  width: 1,
+                  height: 40,
+                ),
+                _buildSectionButton(0, 'Office', Icons.apartment, Colors.green,
+                    Colors.grey.shade200),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 20),
+        Container(
+          height: 40,
+          width: 1,
+          color: Colors.grey.shade500,
+        ),
+        const SizedBox(width: 16),
+        Container(
+          width: 120,
+          child: _buildSectionButton(
+              1, 'Offsite', Icons.location_on, Colors.red,
+              Colors.grey.shade200),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final homeColor = _currentSection == 'Home' ? Colors.orange : Colors.grey
-        .shade200;
-    final officeColor = _currentSection == 'Office' ? Colors.green : Colors.grey
-        .shade200;
-    final offsiteColor = _selectedIndex == 1 ? Colors.red : Colors.grey
-        .shade200;
-
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(MediaQuery
@@ -718,7 +852,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           decoration: const BoxDecoration(
             image: DecorationImage(
               image: AssetImage("assets/background.png"),
-              // Use the background image
               fit: BoxFit.cover,
             ),
             borderRadius: BorderRadius.only(
@@ -749,20 +882,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             children: [
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    _buildSectionButton(
-                        0, 'Home', Icons.home, homeColor, Colors.grey.shade200),
-                    const SizedBox(width: 8),
-                    _buildSectionButton(
-                        0, 'Office', Icons.apartment, officeColor,
-                        Colors.grey.shade200),
-                    const SizedBox(width: 8),
-                    _buildSectionButton(
-                        1, 'Offsite', Icons.location_on, offsiteColor,
-                        Colors.grey.shade200),
-                  ],
-                ),
+                child: _buildSectionContainer(),
               ),
               Expanded(
                 child: _buildTabContent(context),
@@ -770,7 +890,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ],
           ),
           Positioned(
-            bottom: 16, // Position it just above the bottom navigation bar
+            bottom: 30,
             left: 0,
             right: 0,
             child: Center(
@@ -787,7 +907,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 12),
                 ),
                 child: const Text(
                   'View All',

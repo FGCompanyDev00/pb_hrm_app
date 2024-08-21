@@ -109,7 +109,7 @@ class _LoginPageState extends State<LoginPage> {
           context,
           MaterialPageRoute(builder: (context) => const NotificationPage()),
         );
-        await prefs.setBool('isFirstLogin', false); // Mark as not first login anymore
+        await prefs.setBool('isFirstLogin', false);
       } else {
         Navigator.pushReplacement(
           context,
