@@ -37,7 +37,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests'),
+        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests/all'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
