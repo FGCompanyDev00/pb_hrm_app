@@ -56,7 +56,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _loadAppVersion() async {
     final packageInfo = await PackageInfo.fromPlatform();
     setState(() {
-      _appVersion = 'Version ${packageInfo.version}';
+      _appVersion = 'PSBV Next v1.12.0';
+      // _appVersion = 'PSBV Next v${packageInfo.version}';
     });
   }
 

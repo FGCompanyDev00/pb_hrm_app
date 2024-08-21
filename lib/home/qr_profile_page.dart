@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:saver_gallery/saver_gallery.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -141,10 +141,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final byteData = await image.toByteData(format: ImageByteFormat.png);
       final uint8List = byteData!.buffer.asUint8List();
 
-      final result = await ImageGallerySaver.saveImage(uint8List,
-          quality: 100, name: "qr_code");
+      // Since `saveImage` requires a positional argument, provide the byte array directly
+      final result = await SaverGallery.saveImage(
+          uint8List,
+          quality: 100,
+          name: "qr_code.png",
+          androidExistNotSave: false // Required boolean parameter
+      );
 
-      if (result['isSuccess']) {
+      if (result.isSuccess) {
         Fluttertoast.showToast(
           msg: "QR Code downloaded successfully",
           toastLength: Toast.LENGTH_SHORT,

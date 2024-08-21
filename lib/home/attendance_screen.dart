@@ -513,14 +513,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       children: [
         Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
+            gradient: _selectedIndex == 1
+                ? LinearGradient(
+              colors: [
+                Colors.red.shade50,
+                Colors.red.shade100,
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            )
+                : LinearGradient(
               colors: [
                 Colors.orange.shade50,
                 Colors.green.shade50,
               ],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
-              stops: [0.5, 0.5],
+              stops: const [0.5, 0.5],
             ),
           ),
         ),
@@ -774,12 +783,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
+                  backgroundColor: Colors.orange,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
                 child: const Text(
                   'View All',
