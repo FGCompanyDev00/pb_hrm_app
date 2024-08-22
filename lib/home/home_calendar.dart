@@ -3477,10 +3477,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
                           ),
                           child: Row(
                             children: [
-                              const CircleAvatar(
-                                backgroundImage: AssetImage('assets/profile_picture.png'), // Placeholder avatar
-                                radius: 24,
+                              CircleAvatar(
+                              backgroundImage: NetworkImage(
+                                leaveRequest['img_path'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
                               ),
+                              radius: 24, 
+                            ),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
