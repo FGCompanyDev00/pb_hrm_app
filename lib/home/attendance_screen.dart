@@ -36,9 +36,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Color _fingerprintColor = Colors.orange;
 
-  static const double _officeRange = 20; // Office location is considered within 20 meters
+  static const double _officeRange = 500;
   static const LatLng _officeLocation = LatLng(
-      18.019683463911665, 102.65139957427881);
+      2.891589, 101.524822);
 
   @override
   void initState() {
@@ -797,6 +797,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildSectionContainer() {
     return Row(
       children: [
+        // Container for Home and Office buttons
         Expanded(
           flex: 2,
           child: Container(
@@ -808,32 +809,135 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
             child: Row(
               children: [
-                _buildSectionButton(
-                    0, 'Home', Icons.home, Colors.orange, Colors.grey.shade200),
+                // Home button (enabled if user is outside the office)
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_currentSection == 'Home' || _selectedIndex == 1) {
+                        setState(() {
+                          _selectedIndex = 0;
+                          _currentSection = 'Home';
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: (_currentSection == 'Home' && _selectedIndex != 1)
+                            ? Colors.orange
+                            : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.home,
+                            color: (_currentSection == 'Home' && _selectedIndex != 1)
+                                ? Colors.white
+                                : Colors.orange,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Home',
+                            style: TextStyle(
+                              color: (_currentSection == 'Home' && _selectedIndex != 1)
+                                  ? Colors.white
+                                  : Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 4.0),
                   color: Colors.grey.shade500,
                   width: 1,
                   height: 40,
                 ),
-                _buildSectionButton(0, 'Office', Icons.apartment, Colors.green,
-                    Colors.grey.shade200),
+                // Office button (enabled if user is within the office range)
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_currentSection == 'Office' || _selectedIndex == 1) {
+                        setState(() {
+                          _selectedIndex = 0;
+                          _currentSection = 'Office';
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: (_currentSection == 'Office' && _selectedIndex != 1)
+                            ? Colors.green
+                            : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.apartment,
+                            color: (_currentSection == 'Office' && _selectedIndex != 1)
+                                ? Colors.white
+                                : Colors.green,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Office',
+                            style: TextStyle(
+                              color: (_currentSection == 'Office' && _selectedIndex != 1)
+                                  ? Colors.white
+                                  : Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
         ),
         const SizedBox(width: 20),
-        Container(
-          height: 40,
-          width: 1,
-          color: Colors.grey.shade500,
-        ),
-        const SizedBox(width: 16),
-        Container(
-          width: 120,
-          child: _buildSectionButton(
-              1, 'Offsite', Icons.location_on, Colors.red,
-              Colors.grey.shade200),
+        // Separate Offsite button outside the box
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedIndex = 1;
+              _currentSection = 'Offsite';
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 25),
+            decoration: BoxDecoration(
+              color: _selectedIndex == 1 ? Colors.red : Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.location_on,
+                  color: _selectedIndex == 1 ? Colors.white : Colors.red,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Offsite',
+                  style: TextStyle(
+                    color: _selectedIndex == 1 ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
