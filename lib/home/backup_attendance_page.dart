@@ -11,6 +11,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import "package:pb_hrsystem/home/monthly_attendance_record.dart";
+import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -20,6 +22,7 @@ class AttendanceScreen extends StatefulWidget {
 }
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
+  final LocalAuthentication auth = LocalAuthentication();
   final AttendanceService _attendanceService = AttendanceService();
   int _selectedIndex = 0; // 0 for Home/Office, 1 for Offsite
   bool _isCheckInActive = false;
@@ -36,9 +39,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Color _fingerprintColor = Colors.orange;
 
-  static const double _officeRange = 20; // Office location is considered within 20 meters
+  static const double _officeRange = 500;
   static const LatLng _officeLocation = LatLng(
-      18.019683463911665, 102.65139957427881);
+      2.891589, 101.524822);
 
   @override
   void initState() {
@@ -182,7 +185,61 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
+  // Due to no api endpoint to accept those data. later will update back
+
+  // Function to store the check-in time locally
+  Future<void> _storeCheckInTime(String checkInTime) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('checkInTime', checkInTime);
+  }
+
+// Function to store the check-out time locally
+  Future<void> _storeCheckOutTime(String checkOutTime) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('checkOutTime', checkOutTime);
+  }
+
+// Function to store the working hours locally
+  Future<void> _storeWorkingHours(Duration workingHours) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('workingHours', workingHours.toString());
+  }
+
+// Function to retrieve the check-in time
+  Future<String?> _getCheckInTime() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('checkInTime');
+  }
+
+// Function to retrieve the check-out time
+  Future<String?> _getCheckOutTime() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('checkOutTime');
+  }
+
+  Future<Duration?> _getWorkingHours() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? workingHoursStr = prefs.getString('workingHours');
+    if (workingHoursStr != null) {
+      List<String> parts = workingHoursStr.split(':');
+      if (parts.length == 3) {
+        int hours = int.parse(parts[0]);
+        int minutes = int.parse(parts[1]);
+        int seconds = int.parse(parts[2]);
+        return Duration(hours: hours, minutes: minutes, seconds: seconds);
+      }
+    }
+    return null;
+  }
+
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
+    final bool didAuthenticate = await _authenticateWithBiometrics();
+
+    if (!didAuthenticate) {
+      _showCustomDialog(context, 'Authentication Failed', 'You must authenticate to continue.');
+      return;
+    }
+
     final now = DateTime.now();
     Position? currentPosition = await _getCurrentPosition();
     if (currentPosition != null) {
@@ -206,6 +263,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     setState(() {});
   }
 
+  Future<bool> _authenticateWithBiometrics() async {
+    try {
+      return await auth.authenticate(
+        localizedReason: 'Please authenticate to Check-In or Check-Out',
+        options: const AuthenticationOptions(
+          useErrorDialogs: true,
+          stickyAuth: true,
+        ),
+      );
+    } catch (e) {
+      print('Error using biometrics: $e');
+      return false;
+    }
+  }
+
   Future<Position?> _getCurrentPosition() async {
     try {
       return await Geolocator.getCurrentPosition(
@@ -222,34 +294,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     try {
       Position? position = await _getCurrentPosition();
       if (position != null) {
-        final String checkInTime = isCheckIn
-            ? DateFormat('HH:mm:ss').format(DateTime.now())
-            : _checkInTime; // Use saved check-in time for checkout
-        final String checkOutTime = isCheckIn ? "00:00:00" : DateFormat(
-            'HH:mm:ss').format(DateTime.now());
-        final String workDuration = isCheckIn
-            ? "00:00:00"
-            : _workingHours
-            .toString()
-            .split('.')
-            .first
-            .padLeft(8, '0');
-        final String officeStatus = _currentSection.toLowerCase();
-
         final attendanceData = {
           'device_id': _deviceId,
           'latitude': position.latitude.toString(),
           'longitude': position.longitude.toString(),
-          'check_in_time': checkInTime,
-          // Ensure these fields are used if needed
-          'check_out_time': checkOutTime,
-          'workDuration': workDuration,
-          'office_status': officeStatus,
         };
 
         if (_currentSection == 'Offsite') {
-          await _attendanceService.checkInOrCheckOutOffsite(
-              isCheckIn, attendanceData);
+          await _attendanceService.checkInOrCheckOutOffsite(isCheckIn, attendanceData);
         } else {
           await _attendanceService.checkInOrCheckOut(isCheckIn, attendanceData);
         }
@@ -260,12 +312,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (kDebugMode) {
         print('Error sending attendance data to API: $e');
       }
-      _showCustomDialog(
-          context, 'Error', 'Failed to send attendance data to the server.');
+      _showCustomDialog(context, 'Error', 'Failed to send attendance data to the server.');
     }
   }
 
-  void _performCheckIn(DateTime now) {
+  void _performCheckIn(DateTime now) async {
     setState(() {
       _checkInTime = DateFormat('HH:mm:ss').format(now);
       _checkInDateTime = now;
@@ -274,9 +325,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _isCheckInActive = true;
       _startTimerForWorkingHours();
     });
+
+    // Store check-in time locally
+    await _storeCheckInTime(_checkInTime);
   }
 
-  void _performCheckOut(DateTime now) {
+  void _performCheckOut(DateTime now) async {
     setState(() {
       _checkOutTime = DateFormat('HH:mm:ss').format(now);
       _checkOutDateTime = now;
@@ -287,6 +341,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _showWorkingHoursDialog(context);
       }
     });
+
+    // Store check-out time and working hours locally
+    await _storeCheckOutTime(_checkOutTime);
+    await _storeWorkingHours(_workingHours);
   }
 
   void _showCustomDialog(BuildContext context, String title, String message) {
@@ -484,7 +542,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     bool isCheckInEnabled = !_isCheckInActive &&
         now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
     bool isCheckOutEnabled = _isCheckInActive &&
-        _workingHours >= const Duration(hours: 8);
+        _workingHours >= const Duration(hours: 8); // changed for awhile for testing A
 
     return Container(
       padding: const EdgeInsets.all(16.0),
@@ -797,6 +855,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildSectionContainer() {
     return Row(
       children: [
+        // Container for Home and Office buttons
         Expanded(
           flex: 2,
           child: Container(
@@ -808,32 +867,135 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
             child: Row(
               children: [
-                _buildSectionButton(
-                    0, 'Home', Icons.home, Colors.orange, Colors.grey.shade200),
+                // Home button (enabled if user is outside the office)
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_currentSection == 'Home' || _selectedIndex == 1) {
+                        setState(() {
+                          _selectedIndex = 0;
+                          _currentSection = 'Home';
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: (_currentSection == 'Home' && _selectedIndex != 1)
+                            ? Colors.orange
+                            : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.home,
+                            color: (_currentSection == 'Home' && _selectedIndex != 1)
+                                ? Colors.white
+                                : Colors.orange,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Home',
+                            style: TextStyle(
+                              color: (_currentSection == 'Home' && _selectedIndex != 1)
+                                  ? Colors.white
+                                  : Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 4.0),
                   color: Colors.grey.shade500,
                   width: 1,
                   height: 40,
                 ),
-                _buildSectionButton(0, 'Office', Icons.apartment, Colors.green,
-                    Colors.grey.shade200),
+                // Office button (enabled if user is within the office range)
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_currentSection == 'Office' || _selectedIndex == 1) {
+                        setState(() {
+                          _selectedIndex = 0;
+                          _currentSection = 'Office';
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: (_currentSection == 'Office' && _selectedIndex != 1)
+                            ? Colors.green
+                            : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.apartment,
+                            color: (_currentSection == 'Office' && _selectedIndex != 1)
+                                ? Colors.white
+                                : Colors.green,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Office',
+                            style: TextStyle(
+                              color: (_currentSection == 'Office' && _selectedIndex != 1)
+                                  ? Colors.white
+                                  : Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
         ),
         const SizedBox(width: 20),
-        Container(
-          height: 40,
-          width: 1,
-          color: Colors.grey.shade500,
-        ),
-        const SizedBox(width: 16),
-        Container(
-          width: 120,
-          child: _buildSectionButton(
-              1, 'Offsite', Icons.location_on, Colors.red,
-              Colors.grey.shade200),
+        // Separate Offsite button outside the box
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedIndex = 1;
+              _currentSection = 'Offsite';
+            });
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 25),
+            decoration: BoxDecoration(
+              color: _selectedIndex == 1 ? Colors.red : Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.location_on,
+                  color: _selectedIndex == 1 ? Colors.white : Colors.red,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Offsite',
+                  style: TextStyle(
+                    color: _selectedIndex == 1 ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );

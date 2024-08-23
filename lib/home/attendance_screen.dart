@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import "package:pb_hrsystem/home/monthly_attendance_record.dart";
 import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -184,6 +185,53 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
+  // Due to no api endpoint to accept those data. later will update back
+
+  // Function to store the check-in time locally
+  Future<void> _storeCheckInTime(String checkInTime) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('checkInTime', checkInTime);
+  }
+
+// Function to store the check-out time locally
+  Future<void> _storeCheckOutTime(String checkOutTime) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('checkOutTime', checkOutTime);
+  }
+
+// Function to store the working hours locally
+  Future<void> _storeWorkingHours(Duration workingHours) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('workingHours', workingHours.toString());
+  }
+
+// Function to retrieve the check-in time
+  Future<String?> _getCheckInTime() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('checkInTime');
+  }
+
+// Function to retrieve the check-out time
+  Future<String?> _getCheckOutTime() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('checkOutTime');
+  }
+
+  Future<Duration?> _getWorkingHours() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? workingHoursStr = prefs.getString('workingHours');
+    if (workingHoursStr != null) {
+      List<String> parts = workingHoursStr.split(':');
+      if (parts.length == 3) {
+        int hours = int.parse(parts[0]);
+        int minutes = int.parse(parts[1]);
+        int seconds = int.parse(parts[2]);
+        return Duration(hours: hours, minutes: minutes, seconds: seconds);
+      }
+    }
+    return null;
+  }
+
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
     final bool didAuthenticate = await _authenticateWithBiometrics();
 
@@ -246,23 +294,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     try {
       Position? position = await _getCurrentPosition();
       if (position != null) {
-        final String checkInTime = isCheckIn
-            ? DateFormat('HH:mm:ss').format(DateTime.now())
-            : _checkInTime;
-        final String checkOutTime = isCheckIn ? "00:00:00" : DateFormat('HH:mm:ss').format(DateTime.now());
-        final String workDuration = isCheckIn
-            ? "00:00:00"
-            : _workingHours.toString().split('.').first.padLeft(8, '0');
-        final String officeStatus = _currentSection.toLowerCase();
-
         final attendanceData = {
           'device_id': _deviceId,
           'latitude': position.latitude.toString(),
           'longitude': position.longitude.toString(),
-          'check_in_time': checkInTime,
-          'check_out_time': checkOutTime,
-          'workDuration': workDuration,
-          'office_status': officeStatus,
         };
 
         if (_currentSection == 'Offsite') {
@@ -281,7 +316,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  void _performCheckIn(DateTime now) {
+  void _performCheckIn(DateTime now) async {
     setState(() {
       _checkInTime = DateFormat('HH:mm:ss').format(now);
       _checkInDateTime = now;
@@ -290,9 +325,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _isCheckInActive = true;
       _startTimerForWorkingHours();
     });
+
+    // Store check-in time locally
+    await _storeCheckInTime(_checkInTime);
   }
 
-  void _performCheckOut(DateTime now) {
+  void _performCheckOut(DateTime now) async {
     setState(() {
       _checkOutTime = DateFormat('HH:mm:ss').format(now);
       _checkOutDateTime = now;
@@ -303,6 +341,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         _showWorkingHoursDialog(context);
       }
     });
+
+    // Store check-out time and working hours locally
+    await _storeCheckOutTime(_checkOutTime);
+    await _storeWorkingHours(_workingHours);
   }
 
   void _showCustomDialog(BuildContext context, String title, String message) {
@@ -500,7 +542,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     bool isCheckInEnabled = !_isCheckInActive &&
         now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
     bool isCheckOutEnabled = _isCheckInActive &&
-        _workingHours >= const Duration(hours: 0); // changed for awhile for testing A
+        _workingHours >= const Duration(hours: 8); // changed for awhile for testing A
 
     return Container(
       padding: const EdgeInsets.all(16.0),
