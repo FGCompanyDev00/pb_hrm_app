@@ -13,6 +13,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import "package:pb_hrsystem/home/monthly_attendance_record.dart";
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_background/flutter_background.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -46,6 +47,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
+    _initializeBackgroundService();
+    _retrieveSavedState();
     _retrieveDeviceId();
     _fetchWeeklyRecords();
     _startLocationMonitoring();
@@ -53,6 +56,35 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     _fingerprintColor =
     _currentSection == 'Office' ? Colors.green : Colors.orange;
+  }
+
+  Future<void> _initializeBackgroundService() async {
+    final hasPermissions = await FlutterBackground.hasPermissions;
+
+    if (hasPermissions == null || !hasPermissions) {
+      await FlutterBackground.initialize();
+    }
+
+    if (!await FlutterBackground.isBackgroundExecutionEnabled) {
+      await FlutterBackground.enableBackgroundExecution();
+    }
+  }
+
+  Future<void> _retrieveSavedState() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? savedCheckInTime = await _getCheckInTime();
+    Duration? savedWorkingHours = await _getWorkingHours();
+
+    if (savedCheckInTime != null) {
+      setState(() {
+        _checkInTime = savedCheckInTime;
+        _checkInDateTime = DateFormat('HH:mm:ss').parse(savedCheckInTime);
+        _isCheckInActive = true;
+        _workingHours = savedWorkingHours ?? Duration.zero;
+      });
+
+      _startTimerForWorkingHours();
+    }
   }
 
   @override
@@ -176,11 +208,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   void _startTimerForWorkingHours() {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       if (_checkInDateTime != null && _checkOutDateTime == null) {
         setState(() {
           _workingHours = DateTime.now().difference(_checkInDateTime!);
         });
+
+        // Save the working hours in SharedPreferences
+        await _storeWorkingHours(_workingHours);
       }
     });
   }
@@ -233,6 +268,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
+    // First, check if biometric is enabled in the settings
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
+
+    if (!biometricEnabled) {
+      _showCustomDialog(context, 'Biometric Not Enabled', 'Please enable biometric authentication in the settings first.');
+      return;
+    }
+
+    // If biometric is enabled, proceed with authentication
     final bool didAuthenticate = await _authenticateWithBiometrics();
 
     if (!didAuthenticate) {
@@ -240,6 +285,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       return;
     }
 
+    // Existing check-in or check-out logic
     final now = DateTime.now();
     Position? currentPosition = await _getCurrentPosition();
     if (currentPosition != null) {
@@ -249,8 +295,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     if (isCheckIn) {
       await _sendAttendanceDataToAPI(isCheckIn);
       _performCheckIn(now);
-      _showCustomDialog(
-          context, 'Check-In Successful', 'You have checked in successfully.');
+      _showCustomDialog(context, 'Check-In Successful', 'You have checked in successfully.');
 
       if (_currentSection == 'Offsite') {
         _showOffsiteModal(context);

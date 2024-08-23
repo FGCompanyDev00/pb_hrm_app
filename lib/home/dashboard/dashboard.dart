@@ -301,6 +301,14 @@ class _DashboardState extends State<Dashboard> {
                               ),
                             ),
                             const Spacer(),
+                            Text(
+                              'Notification',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: isDarkMode ? Colors.white : Colors.black,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
                             Stack(
                               children: [
                                 IconButton(
@@ -352,10 +360,10 @@ class _DashboardState extends State<Dashboard> {
                             double childAspectRatio = width > 600 ? 1 : 1;
 
                             return GridView.count(
-                              crossAxisCount: crossAxisCount,
+                              crossAxisCount: 3,
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              childAspectRatio: childAspectRatio,
+                              childAspectRatio: 0.8,
                               mainAxisSpacing: 20,
                               crossAxisSpacing: 10,
                               children: [
@@ -382,24 +390,24 @@ class _DashboardState extends State<Dashboard> {
                                     );
                                   }
                                 }),
-                                _buildActionCard(context, 'assets/firstline.png', 'KPI', isDarkMode, () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const KpiPage()),
-                                  );
-                                }),
+                                // _buildActionCard(context, 'assets/firstline.png', 'KPI', isDarkMode, () {
+                                //   Navigator.push(
+                                //     context,
+                                //     MaterialPageRoute(builder: (context) => const KpiPage()),
+                                //   );
+                                // }),
                                 _buildActionCard(context, 'assets/status-up.png', 'Work Tracking', isDarkMode, () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
                                   );
                                 }),
-                                _buildActionCard(context, 'assets/shop-add.png', 'Inventory', isDarkMode, () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const InventoryPage()),
-                                  );
-                                }),
+                                // _buildActionCard(context, 'assets/shop-add.png', 'Inventory', isDarkMode, () {
+                                //   Navigator.push(
+                                //     context,
+                                //     MaterialPageRoute(builder: (context) => const InventoryPage()),
+                                //   );
+                                // }),
                               ],
                             );
                           },

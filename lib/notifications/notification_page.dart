@@ -15,8 +15,6 @@ class NotificationPage extends StatefulWidget {
 class _NotificationPageState extends State<NotificationPage> {
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   List<NotificationModel> _notifications = [];
-  final List<int> _selectedNotifications = [];
-  bool _isDeleting = false;
 
   @override
   void initState() {
@@ -58,33 +56,13 @@ class _NotificationPageState extends State<NotificationPage> {
         }).toList();
       });
     } else {
-      // Handle error response
       print('Failed to load notifications');
     }
   }
 
-  void _toggleSelection(int id) {
+  void _clearAllNotifications() {
     setState(() {
-      if (_selectedNotifications.contains(id)) {
-        _selectedNotifications.remove(id);
-      } else {
-        _selectedNotifications.add(id);
-      }
-    });
-  }
-
-  void _deleteSelectedNotifications() {
-    setState(() {
-      _notifications.removeWhere(
-              (notification) => _selectedNotifications.contains(notification.id));
-      _selectedNotifications.clear();
-      _isDeleting = false;
-    });
-  }
-
-  void _startDeleting() {
-    setState(() {
-      _isDeleting = true;
+      _notifications.clear();
     });
   }
 
@@ -103,68 +81,53 @@ class _NotificationPageState extends State<NotificationPage> {
         ),
         backgroundColor: Colors.transparent, // Transparent to only show the background image
         actions: [
-          if (_isDeleting)
-            IconButton(
-              icon: const Icon(Icons.check),
-              onPressed: _deleteSelectedNotifications,
+          TextButton.icon(
+            onPressed: _clearAllNotifications,
+            label: const Text(
+              'Clear All',
+              style: TextStyle(color: Colors.black38),
             ),
-          if (!_isDeleting)
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: _startDeleting,
-            ),
+            icon: const Icon(Icons.clear_all, color: Colors.black),
+          ),
         ],
       ),
-      body: Container(
-        color: Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-          child: Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _notifications.length,
-                  itemBuilder: (context, index) {
-                    final notification = _notifications[index];
-                    final isSelected =
-                    _selectedNotifications.contains(notification.id);
-                    return Card(
-                      elevation: 3,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundImage: NetworkImage(notification.imageUrl),
-                        ),
-                        title: Text(notification.message),
-                        subtitle: Text('${notification.createdAt.toString().substring(0, 10)} - ${notification.createdAt.toString().substring(11, 16)}'),
-                        trailing: _isDeleting
-                            ? (isSelected
-                            ? const Icon(Icons.check_box)
-                            : const Icon(Icons.check_box_outline_blank))
-                            : null,
-                        onTap: _isDeleting
-                            ? () => _toggleSelection(notification.id)
-                            : null,
-                        onLongPress: () => _toggleSelection(notification.id),
-                      ),
-                    );
-                  },
+      body: RefreshIndicator(
+        onRefresh: _fetchNotificationsFromBackend,
+        child: Container(
+          color: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+            child: _notifications.isEmpty
+                ? Center(
+              child: Text(
+                'No notifications',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.grey.shade600,
                 ),
               ),
-              ElevatedButton(
-                onPressed: _fetchNotificationsFromBackend,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 20),
+            )
+                : ListView.builder(
+              itemCount: _notifications.length,
+              itemBuilder: (context, index) {
+                final notification = _notifications[index];
+                return Card(
+                  elevation: 3,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
+                    borderRadius: BorderRadius.circular(10.0),
                   ),
-                ),
-                child: const Text('Refresh', style: TextStyle(fontSize: 18)),
-              ),
-            ],
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: NetworkImage(notification.imageUrl),
+                    ),
+                    title: Text(notification.message),
+                    subtitle: Text(
+                      '${notification.createdAt.toString().substring(0, 10)} - ${notification.createdAt.toString().substring(11, 16)}',
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),

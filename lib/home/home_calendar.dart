@@ -379,7 +379,13 @@ class _HomeCalendarState extends State<HomeCalendar> {
                         painter: hasPendingApproval ? DottedBorderPainter() : null,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: isSameDay(_singleTapSelectedDay, date) ? Colors.yellow : Colors.transparent,
+                            image: isSameDay(_singleTapSelectedDay, date)
+                                ? const DecorationImage(
+                              image: AssetImage('assets/background.png'),
+                              fit: BoxFit.cover,
+                            )
+                                : null,
+                            color: isSameDay(_singleTapSelectedDay, date) ? null : Colors.transparent,
                           ),
                           child: Center(
                             child: Text(
@@ -475,6 +481,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+
                                     Text(
                                       leaveRequest['name'],
                                       style: TextStyle(
