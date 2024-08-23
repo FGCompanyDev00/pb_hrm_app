@@ -363,7 +363,7 @@ class _DashboardState extends State<Dashboard> {
                               crossAxisCount: 3,
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              childAspectRatio: 0.8,
+                              childAspectRatio: 0.7,
                               mainAxisSpacing: 20,
                               crossAxisSpacing: 10,
                               children: [
