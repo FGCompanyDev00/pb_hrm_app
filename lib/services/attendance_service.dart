@@ -14,7 +14,7 @@ class AttendanceService {
     }
 
     try {
-      // Determine the correct endpoint for Home/Office check-in or check-out
+
       final endpoint = '$baseUrl/api/attendance/checkin-checkout/clock-in-out';
 
       final response = await http.post(

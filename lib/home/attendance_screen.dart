@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import "package:pb_hrsystem/home/monthly_attendance_record.dart";
+import 'package:local_auth/local_auth.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -20,6 +21,7 @@ class AttendanceScreen extends StatefulWidget {
 }
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
+  final LocalAuthentication auth = LocalAuthentication();
   final AttendanceService _attendanceService = AttendanceService();
   int _selectedIndex = 0; // 0 for Home/Office, 1 for Offsite
   bool _isCheckInActive = false;
@@ -183,6 +185,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
+    final bool didAuthenticate = await _authenticateWithBiometrics();
+
+    if (!didAuthenticate) {
+      _showCustomDialog(context, 'Authentication Failed', 'You must authenticate to continue.');
+      return;
+    }
+
     final now = DateTime.now();
     Position? currentPosition = await _getCurrentPosition();
     if (currentPosition != null) {
@@ -206,6 +215,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     setState(() {});
   }
 
+  Future<bool> _authenticateWithBiometrics() async {
+    try {
+      return await auth.authenticate(
+        localizedReason: 'Please authenticate to Check-In or Check-Out',
+        options: const AuthenticationOptions(
+          useErrorDialogs: true,
+          stickyAuth: true,
+        ),
+      );
+    } catch (e) {
+      print('Error using biometrics: $e');
+      return false;
+    }
+  }
+
   Future<Position?> _getCurrentPosition() async {
     try {
       return await Geolocator.getCurrentPosition(
@@ -224,16 +248,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (position != null) {
         final String checkInTime = isCheckIn
             ? DateFormat('HH:mm:ss').format(DateTime.now())
-            : _checkInTime; // Use saved check-in time for checkout
-        final String checkOutTime = isCheckIn ? "00:00:00" : DateFormat(
-            'HH:mm:ss').format(DateTime.now());
+            : _checkInTime;
+        final String checkOutTime = isCheckIn ? "00:00:00" : DateFormat('HH:mm:ss').format(DateTime.now());
         final String workDuration = isCheckIn
             ? "00:00:00"
-            : _workingHours
-            .toString()
-            .split('.')
-            .first
-            .padLeft(8, '0');
+            : _workingHours.toString().split('.').first.padLeft(8, '0');
         final String officeStatus = _currentSection.toLowerCase();
 
         final attendanceData = {
@@ -241,15 +260,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           'latitude': position.latitude.toString(),
           'longitude': position.longitude.toString(),
           'check_in_time': checkInTime,
-          // Ensure these fields are used if needed
           'check_out_time': checkOutTime,
           'workDuration': workDuration,
           'office_status': officeStatus,
         };
 
         if (_currentSection == 'Offsite') {
-          await _attendanceService.checkInOrCheckOutOffsite(
-              isCheckIn, attendanceData);
+          await _attendanceService.checkInOrCheckOutOffsite(isCheckIn, attendanceData);
         } else {
           await _attendanceService.checkInOrCheckOut(isCheckIn, attendanceData);
         }
@@ -260,8 +277,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (kDebugMode) {
         print('Error sending attendance data to API: $e');
       }
-      _showCustomDialog(
-          context, 'Error', 'Failed to send attendance data to the server.');
+      _showCustomDialog(context, 'Error', 'Failed to send attendance data to the server.');
     }
   }
 
@@ -484,7 +500,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     bool isCheckInEnabled = !_isCheckInActive &&
         now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
     bool isCheckOutEnabled = _isCheckInActive &&
-        _workingHours >= const Duration(hours: 8);
+        _workingHours >= const Duration(hours: 0); // changed for awhile for testing A
 
     return Container(
       padding: const EdgeInsets.all(16.0),
