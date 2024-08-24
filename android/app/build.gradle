@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.phongsavanh.pb_hrsystem"
-    
+
     ndkVersion = "21.4.7075529" // Define the NDK version explicitly if needed
     compileSdkVersion 34
     compileOptions {
