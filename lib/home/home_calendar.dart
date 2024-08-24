@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
-import 'package:pb_hrsystem/home/popups/event_details_popups.dart';
+import 'package:pb_hrsystem/home/popups/event_details_popups.dart' as popups;
+import 'package:pb_hrsystem/notifications/notification_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -10,6 +12,9 @@ import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:http/http.dart' as http;
+import 'package:workmanager/workmanager.dart';
+
+import 'backup_home_calendar.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -25,7 +30,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
   List<Map<String, dynamic>> _leaveRequests = [];
-
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
   @override
@@ -39,9 +43,75 @@ class _HomeCalendarState extends State<HomeCalendar> {
     AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
     InitializationSettings(android: initializationSettingsAndroid);
-    flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: onDidReceiveNotificationResponse, // Updated handler name
+    );
+
+    Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
+    Workmanager().registerPeriodicTask(
+      "1",
+      "fetchNotifications",
+      frequency: const Duration(minutes: 15), // Adjust as needed
+    );
 
     _fetchLeaveRequests(); // Fetch approvals and initialize events in the calendar
+  }
+
+  Future<void> onDidReceiveNotificationResponse(NotificationResponse response) async { // Updated method signature
+    if (response.payload != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const NotificationPage()), // Replace with your Notification Page
+      );
+    }
+  }
+
+  static void callbackDispatcher() {
+    Workmanager().executeTask((task, inputData) async {
+      await _fetchAndDisplayNotifications();
+      return Future.value(true);
+    });
+  }
+
+  static Future<void> _fetchAndDisplayNotifications() async {
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    const String endpoint = '$baseUrl/api/work-tracking/proj/notifications';
+
+    try {
+      final response = await http.get(Uri.parse(endpoint));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List notifications = data['results'];
+        for (var notification in notifications) {
+          if (notification['status'] == 0) {
+            await _showNotification(notification);
+          }
+        }
+      } else {
+        if (kDebugMode) {
+          print('Failed to fetch notifications');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching notifications: $e');
+      }
+    }
+  }
+
+  static Future<void> _showNotification(Map<String, dynamic> notification) async {
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+    AndroidNotificationDetails('your_channel_id', 'your_channel_name', channelDescription: 'your_channel_description',
+        importance: Importance.max, priority: Priority.high, showWhen: false);
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+    await FlutterLocalNotificationsPlugin().show(
+      notification['id'],
+      'New Notification',
+      notification['message'],
+      platformChannelSpecifics,
+      payload: notification['id'].toString(),
+    );
   }
 
   DateTime _normalizeDate(DateTime date) {
@@ -371,7 +441,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   calendarBuilders: CalendarBuilders(
                     defaultBuilder: (context, date, _) {
                       final hasPendingApproval = _hasPendingApprovals(date);
@@ -416,7 +485,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
                   daysOfWeekHeight: 0,
                 ),
               ),
-
               // Updated section: Display leave events below the calendar in the list
               Expanded(
                 child: Container(
@@ -439,93 +507,93 @@ class _HomeCalendarState extends State<HomeCalendar> {
                           : Colors.orange[200];
 
                       return GestureDetector(
-                        onDoubleTap: () {
-                          if (leaveRequest['is_approve'] == 'Waiting') {
-                            _showEventDetails(
-                              context,
-                              Event(
-                                leaveRequest['name'],
-                                DateTime.parse(leaveRequest['take_leave_from']),
-                                DateTime.parse(leaveRequest['take_leave_to']),
-                                leaveRequest['take_leave_reason'] ?? 'Approval Pending',
-                                leaveRequest['is_approve'] ?? 'Waiting',
-                                false,
-                              ),
-                            );
-                          }
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: eventColor,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.white54,
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                backgroundImage: NetworkImage(
-                                  leaveRequest['img_path'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
+                          onDoubleTap: () {
+                            if (leaveRequest['is_approve'] == 'Waiting') {
+                              _showEventDetails(
+                                context,
+                                Event(
+                                  leaveRequest['name'],
+                                  DateTime.parse(leaveRequest['take_leave_from']),
+                                  DateTime.parse(leaveRequest['take_leave_to']),
+                                  leaveRequest['take_leave_reason'] ?? 'Approval Pending',
+                                  leaveRequest['is_approve'] ?? 'Waiting',
+                                  false,
                                 ),
-                                radius: 28,
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
+                              );
+                            }
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: eventColor,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.white54,
+                                  blurRadius: 10,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundImage: NetworkImage(
+                                    leaveRequest['img_path'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
+                                  ),
+                                  radius: 28,
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
 
-                                    Text(
-                                      leaveRequest['name'],
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: isDarkMode ? Colors.white : Colors.black,
+                                      Text(
+                                        leaveRequest['name'],
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDarkMode ? Colors.white : Colors.black,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'From: ${DateFormat('dd MMM yyyy').format(DateTime.parse(leaveRequest['take_leave_from']))}',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'From: ${DateFormat('dd MMM yyyy').format(DateTime.parse(leaveRequest['take_leave_from']))}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      'To: ${DateFormat('dd MMM yyyy').format(DateTime.parse(leaveRequest['take_leave_to']))}',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                      Text(
+                                        'To: ${DateFormat('dd MMM yyyy').format(DateTime.parse(leaveRequest['take_leave_to']))}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      '${leaveRequest['days']} days',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                      Text(
+                                        '${leaveRequest['days']} days',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              Icon(
-                                Icons.circle,
-                                color: eventStatus == 'Approved'
-                                    ? Colors.green
-                                    : eventStatus == 'Rejected'
-                                    ? Colors.red
-                                    : Colors.orange,
-                              ),
-                            ],
-                          ),
-                        )
+                                Icon(
+                                  Icons.circle,
+                                  color: eventStatus == 'Approved'
+                                      ? Colors.green
+                                      : eventStatus == 'Rejected'
+                                      ? Colors.red
+                                      : Colors.orange,
+                                ),
+                              ],
+                            ),
+                          )
                       );
                     },
                   ),
@@ -552,338 +620,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return EventDetailsPopup(event: event);
+        return popups.EventDetailsPopup(event: event);
       },
-    );
-  }
-}
-
-class DottedBorderPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    const double dashWidth = 4.0;
-    const double dashSpace = 4.0;
-    final Paint paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
-
-    double startX = 0;
-    final Path path = Path();
-
-    while (startX < size.width) {
-      path.moveTo(startX, 0);
-      path.lineTo(startX + dashWidth, 0);
-      startX += dashWidth + dashSpace;
-    }
-
-    double startY = 0;
-    while (startY < size.height) {
-      path.moveTo(0, startY);
-      path.lineTo(0, startY + dashWidth);
-      startY += dashWidth + dashSpace;
-    }
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
-  }
-}
-
-class DayViewScreen extends StatelessWidget {
-  final DateTime date;
-  final List<Event> events;
-
-  const DayViewScreen({required this.date, required this.events, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(DateFormat('EEEE, MMM d, yyyy').format(date)),
-        backgroundColor: isDarkMode ? Colors.black : Colors.yellow,
-      ),
-      body: events.isEmpty
-          ? Center(
-        child: Text(
-          'No events for this day',
-          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-        ),
-      )
-          : ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: events.length,
-        itemBuilder: (context, index) {
-          final event = events[index];
-          Color statusColor;
-
-          switch (event.status) {
-            case 'Approved':
-              statusColor = Colors.green;
-              break;
-            case 'Rejected':
-              statusColor = Colors.red;
-              break;
-            default:
-              statusColor = Colors.orange;
-          }
-
-          return Card(
-            color: isDarkMode ? Colors.black54 : Colors.white,
-            elevation: 4,
-            margin: const EdgeInsets.only(bottom: 16.0),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: statusColor,
-                child: const Icon(
-                  Icons.event,
-                  color: Colors.white,
-                ),
-              ),
-              title: Text(
-                event.title,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: isDarkMode ? Colors.white : Colors.black,
-                ),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${DateFormat('hh:mm a').format(event.startDateTime)} - ${DateFormat('hh:mm a').format(event.endDateTime)}',
-                    style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    event.description,
-                    style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    event.status,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class Event {
-  final String title;
-  final DateTime startDateTime;
-  final DateTime endDateTime;
-  final String description;
-  final String status;
-  final bool isMeeting;
-
-  Event(this.title, this.startDateTime, this.endDateTime, this.description, this.status, this.isMeeting);
-
-  String get formattedTime => DateFormat.jm().format(startDateTime);
-
-  @override
-  String toString() => '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
-}
-
-class CustomEventBox extends StatelessWidget {
-  final Event event;
-  final bool isDarkMode;
-
-  const CustomEventBox({required this.event, required this.isDarkMode, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(
-        horizontal: 12.0,
-        vertical: 4.0,
-      ),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.black54 : Colors.white,
-        border: Border.all(
-          color: event.status == 'Rejected' ? Colors.red :
-          event.status == 'Approved' ? Colors.green :
-          Colors.orange,
-        ),
-        borderRadius: BorderRadius.circular(12.0),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ListTile(
-        onTap: () {
-          showDialog(
-            context: context,
-            builder: (context) => EventDetailsPopup(event: event),
-          );
-        },
-        title: Text(
-          event.title,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : Colors.black,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.location_on, size: 16, color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
-                const SizedBox(width: 4),
-                Text(event.description, style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700])),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.access_time, size: 16, color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
-                const SizedBox(width: 4),
-                Text(
-                  '${DateFormat('hh:mm a').format(event.startDateTime)} - ${DateFormat('hh:mm a').format(event.endDateTime)}',
-                  style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: List.generate(
-                event.status == 'Approved' ? 10 : event.status == 'Rejected' ? 5 : 0,
-                    (index) {
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2.0),
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: event.status == 'Approved' ? Colors.green : Colors.red,
-                        width: 2,
-                      ),
-                      image: const DecorationImage(
-                        image: AssetImage('assets/profile_picture.png'),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            if (event.status == 'Approved' || event.status == 'Rejected')
-              Padding(
-                padding: const EdgeInsets.only(left: 4.0),
-                child: Text(
-                  event.status,
-                  style: TextStyle(color: event.status == 'Approved' ? Colors.green : Colors.red),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class EventDetailsPopup extends StatelessWidget {
-  final Event event;
-
-  const EventDetailsPopup({required this.event, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20.0),
-      ),
-      backgroundColor: Colors.grey[50],
-      title: Text(
-        event.title,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: Colors.black87,
-        ),
-      ),
-      content: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.access_time, color: Colors.blueAccent),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Time: ${event.formattedTime}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.black54,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.stairs, color: Colors.greenAccent),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Status: ${event.status}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.black54,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Description: ${event.description}',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: const Text(
-            'Close',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.blueAccent,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
@@ -16,10 +18,12 @@ import 'splash/splashscreen.dart';
 import 'theme/theme.dart';
 import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:http/http.dart' as http;  // Add this import
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
   runApp(
     DevicePreview(
       enabled: !kReleaseMode,
@@ -166,4 +170,51 @@ class _MainScreenState extends State<MainScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
+}
+
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    await _fetchAndDisplayNotifications();
+    return Future.value(true);
+  });
+}
+
+Future<void> _fetchAndDisplayNotifications() async {
+  const String baseUrl = 'https://demo-application-api.flexiflows.co';
+  const String endpoint = '$baseUrl/api/work-tracking/proj/notifications';
+
+  try {
+    final response = await http.get(Uri.parse(endpoint));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final List notifications = data['results'];
+      for (var notification in notifications) {
+        if (notification['status'] == 0) {
+          await _showNotification(notification);
+        }
+      }
+    } else {
+      if (kDebugMode) {
+        print('Failed to fetch notifications');
+      }
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error fetching notifications: $e');
+    }
+  }
+}
+
+Future<void> _showNotification(Map<String, dynamic> notification) async {
+  const AndroidNotificationDetails androidPlatformChannelSpecifics =
+  AndroidNotificationDetails('your_channel_id', 'your_channel_name', channelDescription: 'your_channel_description',
+      importance: Importance.max, priority: Priority.high, showWhen: false);
+  const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+  await FlutterLocalNotificationsPlugin().show(
+    notification['id'],
+    'New Notification',
+    notification['message'],
+    platformChannelSpecifics,
+    payload: notification['id'].toString(),
+  );
 }
