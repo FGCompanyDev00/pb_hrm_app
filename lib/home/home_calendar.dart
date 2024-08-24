@@ -25,7 +25,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
   List<Map<String, dynamic>> _leaveRequests = [];
-
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
   @override
@@ -36,16 +35,15 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
-    InitializationSettings(android: initializationSettingsAndroid);
+        InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     _fetchLeaveRequests(); // Fetch approvals and initialize events in the calendar
   }
 
   DateTime _normalizeDate(DateTime date) {
-    // Normalizes the date to remove time information (hour, minute, second, etc.)
     return DateTime(date.year, date.month, date.day);
   }
 
@@ -78,12 +76,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
             endDate,
             item['take_leave_reason'] ?? 'Approval Pending',
             item['is_approve'] ?? 'Waiting',
-            false, // isMeeting set to false for leave requests
+            false,
           );
 
           for (var day = startDate;
-          day.isBefore(endDate.add(const Duration(days: 1)));
-          day = day.add(const Duration(days: 1))) {
+              day.isBefore(endDate.add(const Duration(days: 1)));
+              day = day.add(const Duration(days: 1))) {
             final normalizedDay = _normalizeDate(day);
             if (approvalEvents.containsKey(normalizedDay)) {
               approvalEvents[normalizedDay]!.add(event);
@@ -392,9 +390,9 @@ class _HomeCalendarState extends State<HomeCalendar> {
                           decoration: BoxDecoration(
                             image: isSameDay(_singleTapSelectedDay, date)
                                 ? const DecorationImage(
-                              image: AssetImage('assets/background.png'),
-                              fit: BoxFit.cover,
-                            )
+                                    image: AssetImage('assets/background.png'),
+                                    fit: BoxFit.cover,
+                                  )
                                 : null,
                             color: isSameDay(_singleTapSelectedDay, date) ? null : Colors.transparent,
                           ),
@@ -428,7 +426,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
                 ),
               ),
 
-              // Updated section: Display leave events filtered by the current month
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.only(top: 10),
@@ -606,74 +603,74 @@ class DayViewScreen extends StatelessWidget {
       ),
       body: events.isEmpty
           ? Center(
-        child: Text(
-          'No events for this day',
-          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-        ),
-      )
+              child: Text(
+                'No events for this day',
+                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              ),
+            )
           : ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: events.length,
-        itemBuilder: (context, index) {
-          final event = events[index];
-          Color statusColor;
+              padding: const EdgeInsets.all(16.0),
+              itemCount: events.length,
+              itemBuilder: (context, index) {
+                final event = events[index];
+                Color statusColor;
 
-          switch (event.status) {
-            case 'Approved':
-              statusColor = Colors.green;
-              break;
-            case 'Rejected':
-              statusColor = Colors.red;
-              break;
-            default:
-              statusColor = Colors.orange;
-          }
+                switch (event.status) {
+                  case 'Approved':
+                    statusColor = Colors.green;
+                    break;
+                  case 'Rejected':
+                    statusColor = Colors.red;
+                    break;
+                  default:
+                    statusColor = Colors.orange;
+                }
 
-          return Card(
-            color: isDarkMode ? Colors.black54 : Colors.white,
-            elevation: 4,
-            margin: const EdgeInsets.only(bottom: 16.0),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: statusColor,
-                child: const Icon(
-                  Icons.event,
-                  color: Colors.white,
-                ),
-              ),
-              title: Text(
-                event.title,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: isDarkMode ? Colors.white : Colors.black,
-                ),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${DateFormat('hh:mm a').format(event.startDateTime)} - ${DateFormat('hh:mm a').format(event.endDateTime)}',
-                    style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    event.description,
-                    style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    event.status,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.bold,
+                return Card(
+                  color: isDarkMode ? Colors.black54 : Colors.white,
+                  elevation: 4,
+                  margin: const EdgeInsets.only(bottom: 16.0),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: statusColor,
+                      child: const Icon(
+                        Icons.event,
+                        color: Colors.white,
+                      ),
+                    ),
+                    title: Text(
+                      event.title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${DateFormat('hh:mm a').format(event.startDateTime)} - ${DateFormat('hh:mm a').format(event.endDateTime)}',
+                          style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          event.description,
+                          style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          event.status,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 }
