@@ -38,25 +38,26 @@ class _NotificationPageState extends State<NotificationPage> {
   Future<void> _fetchNotificationsFromBackend() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token') ?? '';
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'https://demo-application-api.flexiflows.co/api/work-tracking/proj/notifications'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
 
-    final response = await http.get(
-      Uri.parse(
-          'https://demo-application-api.flexiflows.co/api/work-tracking/proj/notifications'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body)['results'];
-      setState(() {
-        _notifications = data.map((item) {
-          return NotificationModel.fromJson(item);
-        }).toList();
-      });
-    } else {
-      print('Failed to load notifications');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body)['results'];
+        setState(() {
+          _notifications = data.map((item) => NotificationModel.fromJson(item)).toList();
+        });
+      } else {
+        print('Failed to load notifications');
+      }
+    } catch (e) {
+      print('Error fetching notifications: $e');
     }
   }
 

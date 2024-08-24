@@ -21,36 +21,34 @@ class NotificationWidget extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            'Message: ${notification.message}',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16.0,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'New Leave',
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18.0,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text('Requestor: ${notification.createdBy}'),
+                Text(
+                  'Date: ${notification.createdAt.toString().substring(0, 10)} - ${notification.createdAt.toString().substring(0, 10)}',
+                ),
+                Text(
+                  'Time: ${notification.createdAt.toString().substring(11, 16)} Am - 12:00 Pm', // Adjust the time display logic as needed
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 8.0),
-          Text('Requestor: ${notification.createdBy}'),
-          Text('Date: ${notification.createdAt.toString().substring(0, 10)}'),
-          Text('Time: ${notification.createdAt.toString().substring(11, 16)}'),
-          Text('Employee ID: ${notification.employeeId}'),
-          Text('Project ID: ${notification.projectId}'),
-          const SizedBox(height: 8.0),
-          Row(
-            children: [
-              CircleAvatar(
-                backgroundImage: NetworkImage(notification.imageUrl),
-                radius: 30.0,
-              ),
-              const SizedBox(width: 16.0),
-              Icon(
-                Icons.circle,
-                color: notification.status == 1 ? Colors.green : Colors.red,
-                size: 24.0,
-              ),
-            ],
+          CircleAvatar(
+            backgroundImage: NetworkImage(notification.imageUrl),
+            radius: 30.0,
           ),
         ],
       ),

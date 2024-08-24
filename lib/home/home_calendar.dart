@@ -37,9 +37,10 @@ class _HomeCalendarState extends State<HomeCalendar> {
     _selectedDay = _focusedDay;
     _events = ValueNotifier({});
 
+    // Initialize notifications
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/playstore'); // Updated to use your app's logo
+    AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
     InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(
@@ -47,6 +48,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
       onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
     );
 
+    // Initialize WorkManager for periodic tasks
     Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
     Workmanager().registerPeriodicTask(
       "1",
@@ -54,7 +56,9 @@ class _HomeCalendarState extends State<HomeCalendar> {
       frequency: const Duration(minutes: 15), // Adjust as needed
     );
 
-    _fetchLeaveRequests(); // Fetch approvals and initialize events in the calendar
+    // Fetch initial data
+    _fetchLeaveRequests();
+    _fetchNotifications();
   }
 
   Future<void> onDidReceiveNotificationResponse(
@@ -62,8 +66,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
     if (response.payload != null) {
       Navigator.push(
         context,
-        MaterialPageRoute(
-            builder: (context) => const NotificationPage()), // Replace with your Notification Page
+        MaterialPageRoute(builder: (context) => const NotificationPage()),
       );
     }
   }
@@ -75,6 +78,37 @@ class _HomeCalendarState extends State<HomeCalendar> {
     });
   }
 
+  Future<void> _fetchNotifications() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+            'https://demo-application-api.flexiflows.co/api/work-tracking/proj/notifications'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body)['results'];
+        for (var notification in data) {
+          if (notification['status'] == 0) {
+            await _showNotification(notification);
+          }
+        }
+      } else {
+        print('Failed to load notifications');
+      }
+    } catch (e) {
+      print('Error fetching notifications: $e');
+    }
+  }
+
+
+// Method to fetch notifications
   static Future<void> _fetchAndDisplayNotifications() async {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
     const String endpoint = '$baseUrl/api/work-tracking/proj/notifications';
@@ -104,24 +138,57 @@ class _HomeCalendarState extends State<HomeCalendar> {
   static Future<void> _showNotification(Map<String, dynamic> notification) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
     AndroidNotificationDetails(
-      'psbv_next_channel', // Updated channel ID for app
-      'PSBV Next Notifications', // Updated channel name
-      channelDescription:
-      'Notifications about assignments, project updates, and member changes in PSBV Next app.', // Updated channel description
+      'psbv_next_channel',
+      'PSBV Next Notifications',
+      channelDescription: 'Notifications about assignments, project updates, and member changes in PSBV Next app.',
       importance: Importance.max,
       priority: Priority.high,
       showWhen: true,
       icon: '@mipmap/playstore',
     );
-    const NotificationDetails platformChannelSpecifics =
-    NotificationDetails(android: androidPlatformChannelSpecifics);
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+        android: androidPlatformChannelSpecifics);
     await FlutterLocalNotificationsPlugin().show(
       notification['id'],
-      'New Notification',
-      notification['message'],
+      _formatNotificationTitle(notification), // Customize title based on notification type
+      _formatNotificationMessage(notification), // Customize message based on notification type
       platformChannelSpecifics,
       payload: notification['id'].toString(),
     );
+  }
+
+  static String _formatNotificationMessage(Map<String, dynamic> notification) {
+    String message = notification['message'].toLowerCase();
+    if (message.contains('new member')) {
+      return 'Your project ${notification['project_id']} has a new member.';
+    } else if (message.contains('added new assignment')) {
+      return '${notification['created_by']} added a new assignment to project ${notification['project_id']}.';
+    } else if (message.contains('updated project')) {
+      return '${notification['created_by']} updated project ${notification['project_id']}.';
+    } else if (message.contains('new comment')) {
+      return '${notification['created_by']} added a new comment on project ${notification['project_id']}.';
+    } else if (message.contains('added to the project')) {
+      return 'You have been added to the project ${notification['project_id']}.';
+    } else {
+      return notification['message']; // Default to provided message
+    }
+  }
+
+  static String _formatNotificationTitle(Map<String, dynamic> notification) {
+    String message = notification['message'].toLowerCase();
+    if (message.contains('new member')) {
+      return 'New Project Member';
+    } else if (message.contains('added new assignment')) {
+      return 'New Assignment Added';
+    } else if (message.contains('updated project')) {
+      return 'Project Updated';
+    } else if (message.contains('new comment')) {
+      return 'New Comment';
+    } else if (message.contains('added to the project')) {
+      return 'Added to Project';
+    } else {
+      return 'New Notification';
+    }
   }
 
   DateTime _normalizeDate(DateTime date) {

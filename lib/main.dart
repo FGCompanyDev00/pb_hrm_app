@@ -5,13 +5,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
-import 'package:pb_hrsystem/notifications/notification_widget.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'notifications/notification_page.dart';
 import 'services/notification_polling_service.dart';
 import 'notifications/notification_model.dart';
 import 'splash/splashscreen.dart';
@@ -24,6 +24,23 @@ import 'package:http/http.dart' as http;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
+
+  // Initialize the FlutterLocalNotificationsPlugin
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
+  const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: (NotificationResponse response) async {
+      if (response.payload != null && response.payload!.isNotEmpty) {
+        // Navigate to NotificationPage on click
+        navigatorKey.currentState?.push(MaterialPageRoute(
+          builder: (context) => const NotificationPage(),
+        ));
+      }
+    },
+  );
+
   runApp(
     DevicePreview(
       enabled: !kReleaseMode,
@@ -39,6 +56,8 @@ void main() async {
   );
 }
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -47,6 +66,7 @@ class MyApp extends StatelessWidget {
     return Consumer2<ThemeNotifier, LanguageNotifier>(
       builder: (context, themeNotifier, languageNotifier, child) {
         return MaterialApp(
+          navigatorKey: navigatorKey, // Added navigator key
           builder: (context, child) {
             return EasyLoading.init()(context, child!);
           },
