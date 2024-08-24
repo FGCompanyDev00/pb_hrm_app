@@ -59,14 +59,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _initializeBackgroundService() async {
-    final hasPermissions = await FlutterBackground.hasPermissions;
+    try {
 
-    if (hasPermissions == null || !hasPermissions) {
-      await FlutterBackground.initialize();
-    }
+      final bool initialized = await FlutterBackground.initialize();
 
-    if (!await FlutterBackground.isBackgroundExecutionEnabled) {
-      await FlutterBackground.enableBackgroundExecution();
+      if (!initialized) {
+        if (kDebugMode) {
+          print('FlutterBackground plugin initialization failed');
+        }
+        return;
+      }
+
+
+      if (!await FlutterBackground.isBackgroundExecutionEnabled) {
+        await FlutterBackground.enableBackgroundExecution();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error initializing background service: $e');
+      }
     }
   }
 
