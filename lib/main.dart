@@ -19,7 +19,7 @@ import 'theme/theme.dart';
 import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
 import 'package:workmanager/workmanager.dart';
-import 'package:http/http.dart' as http;  // Add this import
+import 'package:http/http.dart' as http;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,7 +50,7 @@ class MyApp extends StatelessWidget {
           builder: (context, child) {
             return EasyLoading.init()(context, child!);
           },
-          title: 'PSBV',
+          title: 'PSBV Next',
           theme: ThemeData(
             primarySwatch: Colors.green,
             visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -67,7 +67,10 @@ class MyApp extends StatelessWidget {
             primarySwatch: Colors.green,
             scaffoldBackgroundColor: Colors.black,
             textTheme: GoogleFonts.oxaniumTextTheme(
-              Theme.of(context).textTheme.apply(bodyColor: Colors.white, displayColor: Colors.white),
+              Theme.of(context).textTheme.apply(
+                bodyColor: Colors.white,
+                displayColor: Colors.white,
+              ),
             ),
           ),
           themeMode: themeNotifier.currentTheme,
@@ -207,9 +210,18 @@ Future<void> _fetchAndDisplayNotifications() async {
 
 Future<void> _showNotification(Map<String, dynamic> notification) async {
   const AndroidNotificationDetails androidPlatformChannelSpecifics =
-  AndroidNotificationDetails('your_channel_id', 'your_channel_name', channelDescription: 'your_channel_description',
-      importance: Importance.max, priority: Priority.high, showWhen: false);
-  const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+  AndroidNotificationDetails(
+    'psbv_next_channel', // Updated channel ID for app
+    'PSBV Next Notifications', // Updated channel name
+    channelDescription:
+    'Notifications about assignments, project updates, and member changes in PSBV Next app.', // Updated channel description
+    importance: Importance.max,
+    priority: Priority.high,
+    showWhen: true,
+    icon: '@mipmap/playstore', // Ensure the icon path is correct
+  );
+  const NotificationDetails platformChannelSpecifics =
+  NotificationDetails(android: androidPlatformChannelSpecifics);
   await FlutterLocalNotificationsPlugin().show(
     notification['id'],
     'New Notification',

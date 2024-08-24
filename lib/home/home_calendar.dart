@@ -13,7 +13,6 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:workmanager/workmanager.dart';
-
 import 'backup_home_calendar.dart';
 
 class HomeCalendar extends StatefulWidget {
@@ -40,12 +39,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/ic_launcher');
+    AndroidInitializationSettings('@mipmap/playstore'); // Updated to use your app's logo
     const InitializationSettings initializationSettings =
     InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
-      onDidReceiveNotificationResponse: onDidReceiveNotificationResponse, // Updated handler name
+      onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
     );
 
     Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
@@ -58,11 +57,13 @@ class _HomeCalendarState extends State<HomeCalendar> {
     _fetchLeaveRequests(); // Fetch approvals and initialize events in the calendar
   }
 
-  Future<void> onDidReceiveNotificationResponse(NotificationResponse response) async { // Updated method signature
+  Future<void> onDidReceiveNotificationResponse(
+      NotificationResponse response) async {
     if (response.payload != null) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => const NotificationPage()), // Replace with your Notification Page
+        MaterialPageRoute(
+            builder: (context) => const NotificationPage()), // Replace with your Notification Page
       );
     }
   }
@@ -102,9 +103,18 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
   static Future<void> _showNotification(Map<String, dynamic> notification) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics =
-    AndroidNotificationDetails('your_channel_id', 'your_channel_name', channelDescription: 'your_channel_description',
-        importance: Importance.max, priority: Priority.high, showWhen: false);
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+    AndroidNotificationDetails(
+      'psbv_next_channel', // Updated channel ID for app
+      'PSBV Next Notifications', // Updated channel name
+      channelDescription:
+      'Notifications about assignments, project updates, and member changes in PSBV Next app.', // Updated channel description
+      importance: Importance.max,
+      priority: Priority.high,
+      showWhen: true,
+      icon: '@mipmap/playstore',
+    );
+    const NotificationDetails platformChannelSpecifics =
+    NotificationDetails(android: androidPlatformChannelSpecifics);
     await FlutterLocalNotificationsPlugin().show(
       notification['id'],
       'New Notification',
@@ -115,7 +125,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   DateTime _normalizeDate(DateTime date) {
-    // Normalizes the date to remove time information (hour, minute, second, etc.)
     return DateTime(date.year, date.month, date.day);
   }
 
@@ -148,7 +157,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
             endDate,
             item['take_leave_reason'] ?? 'Approval Pending',
             item['is_approve'] ?? 'Waiting',
-            false, // isMeeting set to false for leave requests
+            false,
           );
 
           for (var day = startDate;
@@ -200,7 +209,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
     super.dispose();
   }
 
-  void _addEvent(String title, DateTime startDateTime, DateTime endDateTime, String description, String status, bool isMeeting) {
+  void _addEvent(String title, DateTime startDateTime, DateTime endDateTime,
+      String description, String status, bool isMeeting) {
     final newEvent = Event(title, startDateTime, endDateTime, description, status, isMeeting);
     final eventsForDay = _getEventsForDay(_selectedDay!);
     setState(() {
@@ -309,8 +319,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
           newEvent['startDateTime'],
           newEvent['endDateTime'],
           newEvent['description'] ?? '',
-          'Pending', // Default to pending status for new events
-          true, // isMeeting set to true for office events
+          'Pending',
+          true,
         );
       }
     }
@@ -411,7 +421,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     return isSameDay(_selectedDay, day);
                   },
                   onDaySelected: (selectedDay, focusedDay) {
-                    if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
+                    if (_singleTapSelectedDay != null &&
+                        isSameDay(_singleTapSelectedDay, selectedDay)) {
                       _showDayView(selectedDay);
                       _singleTapSelectedDay = null;
                     } else {
@@ -445,7 +456,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     defaultBuilder: (context, date, _) {
                       final hasPendingApproval = _hasPendingApprovals(date);
                       return CustomPaint(
-                        painter: hasPendingApproval ? DottedBorderPainter() : null,
+                        painter:
+                        hasPendingApproval ? DottedBorderPainter() : null,
                         child: Container(
                           decoration: BoxDecoration(
                             image: isSameDay(_singleTapSelectedDay, date)
@@ -454,12 +466,16 @@ class _HomeCalendarState extends State<HomeCalendar> {
                               fit: BoxFit.cover,
                             )
                                 : null,
-                            color: isSameDay(_singleTapSelectedDay, date) ? null : Colors.transparent,
+                            color: isSameDay(_singleTapSelectedDay, date)
+                                ? null
+                                : Colors.transparent,
                           ),
                           child: Center(
                             child: Text(
                               '${date.day}',
-                              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                              style: TextStyle(
+                                  color:
+                                  isDarkMode ? Colors.white : Colors.black),
                             ),
                           ),
                         ),
@@ -473,7 +489,9 @@ class _HomeCalendarState extends State<HomeCalendar> {
                         return Align(
                           alignment: Alignment.bottomCenter,
                           child: Container(
-                            width: isFirstEvent || isLastEvent ? 20 : double.infinity,
+                            width: isFirstEvent || isLastEvent
+                                ? 20
+                                : double.infinity,
                             height: 4.0,
                             color: Colors.green,
                           ),
@@ -485,7 +503,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
                   daysOfWeekHeight: 0,
                 ),
               ),
-              // Updated section: Display leave events below the calendar in the list
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.only(top: 10),
@@ -513,9 +530,11 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                 context,
                                 Event(
                                   leaveRequest['name'],
-                                  DateTime.parse(leaveRequest['take_leave_from']),
+                                  DateTime.parse(
+                                      leaveRequest['take_leave_from']),
                                   DateTime.parse(leaveRequest['take_leave_to']),
-                                  leaveRequest['take_leave_reason'] ?? 'Approval Pending',
+                                  leaveRequest['take_leave_reason'] ??
+                                      'Approval Pending',
                                   leaveRequest['is_approve'] ?? 'Waiting',
                                   false,
                                 ),
@@ -523,7 +542,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
                             }
                           },
                           child: Container(
-                            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                            margin: const EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 16),
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: eventColor,
@@ -540,22 +560,25 @@ class _HomeCalendarState extends State<HomeCalendar> {
                               children: [
                                 CircleAvatar(
                                   backgroundImage: NetworkImage(
-                                    leaveRequest['img_path'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
+                                    leaveRequest['img_path'] ??
+                                        'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
                                   ),
                                   radius: 28,
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
                                     children: [
-
                                       Text(
                                         leaveRequest['name'],
                                         style: TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold,
-                                          color: isDarkMode ? Colors.white : Colors.black,
+                                          color: isDarkMode
+                                              ? Colors.white
+                                              : Colors.black,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
@@ -563,21 +586,27 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                         'From: ${DateFormat('dd MMM yyyy').format(DateTime.parse(leaveRequest['take_leave_from']))}',
                                         style: TextStyle(
                                           fontSize: 14,
-                                          color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                          color: isDarkMode
+                                              ? Colors.grey[300]
+                                              : Colors.grey[700],
                                         ),
                                       ),
                                       Text(
                                         'To: ${DateFormat('dd MMM yyyy').format(DateTime.parse(leaveRequest['take_leave_to']))}',
                                         style: TextStyle(
                                           fontSize: 14,
-                                          color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                          color: isDarkMode
+                                              ? Colors.grey[300]
+                                              : Colors.grey[700],
                                         ),
                                       ),
                                       Text(
                                         '${leaveRequest['days']} days',
                                         style: TextStyle(
                                           fontSize: 14,
-                                          color: isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                                          color: isDarkMode
+                                              ? Colors.grey[300]
+                                              : Colors.grey[700],
                                         ),
                                       ),
                                     ],
@@ -593,8 +622,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                 ),
                               ],
                             ),
-                          )
-                      );
+                          ));
                     },
                   ),
                 ),
@@ -607,12 +635,16 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   bool _isFirstEvent(List<Event> events, DateTime date) {
-    final event = events.firstWhere((e) => e.startDateTime.isAtSameMomentAs(date), orElse: () => events.first);
+    final event = events.firstWhere(
+            (e) => e.startDateTime.isAtSameMomentAs(date),
+        orElse: () => events.first);
     return event.startDateTime.isAtSameMomentAs(date);
   }
 
   bool _isLastEvent(List<Event> events, DateTime date) {
-    final event = events.firstWhere((e) => e.endDateTime.isAtSameMomentAs(date), orElse: () => events.first);
+    final event = events.firstWhere(
+            (e) => e.endDateTime.isAtSameMomentAs(date),
+        orElse: () => events.first);
     return event.endDateTime.isAtSameMomentAs(date);
   }
 
