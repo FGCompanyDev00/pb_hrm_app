@@ -1,9 +1,7 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
-import 'package:pb_hrsystem/home/popups/event_details_popups.dart' as popups;
-import 'package:pb_hrsystem/notifications/notification_page.dart';
+import 'package:pb_hrsystem/home/popups/event_details_popups.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -12,8 +10,6 @@ import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:http/http.dart' as http;
-import 'package:workmanager/workmanager.dart';
-import 'backup_home_calendar.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -29,6 +25,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
   List<Map<String, dynamic>> _leaveRequests = [];
+
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
   @override
@@ -37,161 +34,18 @@ class _HomeCalendarState extends State<HomeCalendar> {
     _selectedDay = _focusedDay;
     _events = ValueNotifier({});
 
-    // Initialize notifications
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
     AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
     InitializationSettings(android: initializationSettingsAndroid);
-    flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
-    );
+    flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-    // Initialize WorkManager for periodic tasks
-    Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
-    Workmanager().registerPeriodicTask(
-      "1",
-      "fetchNotifications",
-      frequency: const Duration(minutes: 15), // Adjust as needed
-    );
-
-    // Fetch initial data
-    _fetchLeaveRequests();
-    _fetchNotifications();
-  }
-
-  Future<void> onDidReceiveNotificationResponse(
-      NotificationResponse response) async {
-    if (response.payload != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const NotificationPage()),
-      );
-    }
-  }
-
-  static void callbackDispatcher() {
-    Workmanager().executeTask((task, inputData) async {
-      await _fetchAndDisplayNotifications();
-      return Future.value(true);
-    });
-  }
-
-  Future<void> _fetchNotifications() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token') ?? '';
-
-    try {
-      final response = await http.get(
-        Uri.parse(
-            'https://demo-application-api.flexiflows.co/api/work-tracking/proj/notifications'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body)['results'];
-        for (var notification in data) {
-          if (notification['status'] == 0) {
-            await _showNotification(notification);
-          }
-        }
-      } else {
-        print('Failed to load notifications');
-      }
-    } catch (e) {
-      print('Error fetching notifications: $e');
-    }
-  }
-
-
-// Method to fetch notifications
-  static Future<void> _fetchAndDisplayNotifications() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String endpoint = '$baseUrl/api/work-tracking/proj/notifications';
-
-    try {
-      final response = await http.get(Uri.parse(endpoint));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List notifications = data['results'];
-        for (var notification in notifications) {
-          if (notification['status'] == 0) {
-            await _showNotification(notification);
-          }
-        }
-      } else {
-        if (kDebugMode) {
-          print('Failed to fetch notifications');
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error fetching notifications: $e');
-      }
-    }
-  }
-
-  static Future<void> _showNotification(Map<String, dynamic> notification) async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-    AndroidNotificationDetails(
-      'psbv_next_channel',
-      'PSBV Next Notifications',
-      channelDescription: 'Notifications about assignments, project updates, and member changes in PSBV Next app.',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-      icon: '@mipmap/playstore',
-    );
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
-        android: androidPlatformChannelSpecifics);
-    await FlutterLocalNotificationsPlugin().show(
-      notification['id'],
-      _formatNotificationTitle(notification), // Customize title based on notification type
-      _formatNotificationMessage(notification), // Customize message based on notification type
-      platformChannelSpecifics,
-      payload: notification['id'].toString(),
-    );
-  }
-
-  static String _formatNotificationMessage(Map<String, dynamic> notification) {
-    String message = notification['message'].toLowerCase();
-    if (message.contains('new member')) {
-      return 'Your project ${notification['project_id']} has a new member.';
-    } else if (message.contains('added new assignment')) {
-      return '${notification['created_by']} added a new assignment to project ${notification['project_id']}.';
-    } else if (message.contains('updated project')) {
-      return '${notification['created_by']} updated project ${notification['project_id']}.';
-    } else if (message.contains('new comment')) {
-      return '${notification['created_by']} added a new comment on project ${notification['project_id']}.';
-    } else if (message.contains('added to the project')) {
-      return 'You have been added to the project ${notification['project_id']}.';
-    } else {
-      return notification['message']; // Default to provided message
-    }
-  }
-
-  static String _formatNotificationTitle(Map<String, dynamic> notification) {
-    String message = notification['message'].toLowerCase();
-    if (message.contains('new member')) {
-      return 'New Project Member';
-    } else if (message.contains('added new assignment')) {
-      return 'New Assignment Added';
-    } else if (message.contains('updated project')) {
-      return 'Project Updated';
-    } else if (message.contains('new comment')) {
-      return 'New Comment';
-    } else if (message.contains('added to the project')) {
-      return 'Added to Project';
-    } else {
-      return 'New Notification';
-    }
+    _fetchLeaveRequests(); // Fetch approvals and initialize events in the calendar
   }
 
   DateTime _normalizeDate(DateTime date) {
+    // Normalizes the date to remove time information (hour, minute, second, etc.)
     return DateTime(date.year, date.month, date.day);
   }
 
@@ -224,7 +78,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
             endDate,
             item['take_leave_reason'] ?? 'Approval Pending',
             item['is_approve'] ?? 'Waiting',
-            false,
+            false, // isMeeting set to false for leave requests
           );
 
           for (var day = startDate;
@@ -256,6 +110,16 @@ class _HomeCalendarState extends State<HomeCalendar> {
     return _events.value[normalizedDay] ?? [];
   }
 
+  List<Event> _getEventsForMonth(DateTime month) {
+    final startOfMonth = DateTime(month.year, month.month, 1);
+    final endOfMonth = DateTime(month.year, month.month + 1, 0);
+
+    return _events.value.entries
+        .where((entry) => entry.key.isAfter(startOfMonth.subtract(const Duration(days: 1))) && entry.key.isBefore(endOfMonth.add(const Duration(days: 1))))
+        .expand((entry) => entry.value)
+        .toList();
+  }
+
   void _showDayView(DateTime date) {
     final events = _getEventsForDay(date);
     Navigator.push(
@@ -276,8 +140,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
     super.dispose();
   }
 
-  void _addEvent(String title, DateTime startDateTime, DateTime endDateTime,
-      String description, String status, bool isMeeting) {
+  void _addEvent(String title, DateTime startDateTime, DateTime endDateTime, String description, String status, bool isMeeting) {
     final newEvent = Event(title, startDateTime, endDateTime, description, status, isMeeting);
     final eventsForDay = _getEventsForDay(_selectedDay!);
     setState(() {
@@ -386,8 +249,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
           newEvent['startDateTime'],
           newEvent['endDateTime'],
           newEvent['description'] ?? '',
-          'Pending',
-          true,
+          'Pending', // Default to pending status for new events
+          true, // isMeeting set to true for office events
         );
       }
     }
@@ -488,8 +351,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     return isSameDay(_selectedDay, day);
                   },
                   onDaySelected: (selectedDay, focusedDay) {
-                    if (_singleTapSelectedDay != null &&
-                        isSameDay(_singleTapSelectedDay, selectedDay)) {
+                    if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
                       _showDayView(selectedDay);
                       _singleTapSelectedDay = null;
                     } else {
@@ -508,7 +370,9 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     }
                   },
                   onPageChanged: (focusedDay) {
-                    _focusedDay = focusedDay;
+                    setState(() {
+                      _focusedDay = focusedDay;
+                    });
                   },
                   eventLoader: _getEventsForDay,
                   headerStyle: const HeaderStyle(
@@ -523,8 +387,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     defaultBuilder: (context, date, _) {
                       final hasPendingApproval = _hasPendingApprovals(date);
                       return CustomPaint(
-                        painter:
-                        hasPendingApproval ? DottedBorderPainter() : null,
+                        painter: hasPendingApproval ? DottedBorderPainter() : null,
                         child: Container(
                           decoration: BoxDecoration(
                             image: isSameDay(_singleTapSelectedDay, date)
@@ -533,16 +396,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
                               fit: BoxFit.cover,
                             )
                                 : null,
-                            color: isSameDay(_singleTapSelectedDay, date)
-                                ? null
-                                : Colors.transparent,
+                            color: isSameDay(_singleTapSelectedDay, date) ? null : Colors.transparent,
                           ),
                           child: Center(
                             child: Text(
                               '${date.day}',
-                              style: TextStyle(
-                                  color:
-                                  isDarkMode ? Colors.white : Colors.black),
+                              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
                             ),
                           ),
                         ),
@@ -556,9 +415,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                         return Align(
                           alignment: Alignment.bottomCenter,
                           child: Container(
-                            width: isFirstEvent || isLastEvent
-                                ? 20
-                                : double.infinity,
+                            width: isFirstEvent || isLastEvent ? 20 : double.infinity,
                             height: 4.0,
                             color: Colors.green,
                           ),
@@ -570,6 +427,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
                   daysOfWeekHeight: 0,
                 ),
               ),
+
+              // Updated section: Display leave events filtered by the current month
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.only(top: 10),
@@ -579,119 +438,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                       fit: BoxFit.cover,
                     ),
                   ),
-                  child: ListView.builder(
-                    itemCount: _leaveRequests.length,
-                    itemBuilder: (context, index) {
-                      final leaveRequest = _leaveRequests[index];
-                      final eventStatus = leaveRequest['is_approve'];
-                      final eventColor = eventStatus == 'Approved'
-                          ? Colors.green[200]
-                          : eventStatus == 'Rejected'
-                          ? Colors.red[200]
-                          : Colors.orange[200];
-
-                      return GestureDetector(
-                          onDoubleTap: () {
-                            if (leaveRequest['is_approve'] == 'Waiting') {
-                              _showEventDetails(
-                                context,
-                                Event(
-                                  leaveRequest['name'],
-                                  DateTime.parse(
-                                      leaveRequest['take_leave_from']),
-                                  DateTime.parse(leaveRequest['take_leave_to']),
-                                  leaveRequest['take_leave_reason'] ??
-                                      'Approval Pending',
-                                  leaveRequest['is_approve'] ?? 'Waiting',
-                                  false,
-                                ),
-                              );
-                            }
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(
-                                vertical: 8, horizontal: 16),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: eventColor,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.white54,
-                                  blurRadius: 10,
-                                  offset: Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  backgroundImage: NetworkImage(
-                                    leaveRequest['img_path'] ??
-                                        'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
-                                  ),
-                                  radius: 28,
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        leaveRequest['name'],
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: isDarkMode
-                                              ? Colors.white
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'From: ${DateFormat('dd MMM yyyy').format(DateTime.parse(leaveRequest['take_leave_from']))}',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: isDarkMode
-                                              ? Colors.grey[300]
-                                              : Colors.grey[700],
-                                        ),
-                                      ),
-                                      Text(
-                                        'To: ${DateFormat('dd MMM yyyy').format(DateTime.parse(leaveRequest['take_leave_to']))}',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: isDarkMode
-                                              ? Colors.grey[300]
-                                              : Colors.grey[700],
-                                        ),
-                                      ),
-                                      Text(
-                                        '${leaveRequest['days']} days',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: isDarkMode
-                                              ? Colors.grey[300]
-                                              : Colors.grey[700],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.circle,
-                                  color: eventStatus == 'Approved'
-                                      ? Colors.green
-                                      : eventStatus == 'Rejected'
-                                      ? Colors.red
-                                      : Colors.orange,
-                                ),
-                              ],
-                            ),
-                          ));
-                    },
-                  ),
+                  child: _buildTimeTable(_focusedDay), // Filtered timetable by month
                 ),
               ),
             ],
@@ -702,16 +449,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   bool _isFirstEvent(List<Event> events, DateTime date) {
-    final event = events.firstWhere(
-            (e) => e.startDateTime.isAtSameMomentAs(date),
-        orElse: () => events.first);
+    final event = events.firstWhere((e) => e.startDateTime.isAtSameMomentAs(date), orElse: () => events.first);
     return event.startDateTime.isAtSameMomentAs(date);
   }
 
   bool _isLastEvent(List<Event> events, DateTime date) {
-    final event = events.firstWhere(
-            (e) => e.endDateTime.isAtSameMomentAs(date),
-        orElse: () => events.first);
+    final event = events.firstWhere((e) => e.endDateTime.isAtSameMomentAs(date), orElse: () => events.first);
     return event.endDateTime.isAtSameMomentAs(date);
   }
 
@@ -719,8 +462,304 @@ class _HomeCalendarState extends State<HomeCalendar> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return popups.EventDetailsPopup(event: event);
+        return EventDetailsPopup(event: event);
       },
+    );
+  }
+
+  Widget _buildTimeTable(DateTime month) {
+    final eventsForMonth = _getEventsForMonth(month);
+    final groupedByDay = <DateTime, List<Event>>{};
+
+    for (var event in eventsForMonth) {
+      final normalizedDay = _normalizeDate(event.startDateTime);
+      if (groupedByDay.containsKey(normalizedDay)) {
+        groupedByDay[normalizedDay]!.add(event);
+      } else {
+        groupedByDay[normalizedDay] = [event];
+      }
+    }
+
+    return ListView(
+      children: [
+        for (var day in groupedByDay.keys)
+          if (groupedByDay[day]!.isNotEmpty) _buildDayEvents(day, groupedByDay[day]!),
+      ],
+    );
+  }
+
+  Widget _buildDayEvents(DateTime day, List<Event> events) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            DateFormat.yMMMMEEEEd().format(day),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8.0),
+          SizedBox(
+            height: 100,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: events.length,
+              itemBuilder: (context, index) {
+                return _buildEventCard(events[index]);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventCard(Event event) {
+    return Container(
+      width: 200,
+      margin: const EdgeInsets.only(right: 8.0),
+      padding: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        color: event.status == 'Approved' ? Colors.green[200] : event.status == 'Rejected' ? Colors.red[200] : Colors.orange[200],
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(event.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(event.description),
+          const Spacer(),
+          Text('${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}'),
+          Text(event.status, style: TextStyle(color: event.status == 'Approved' ? Colors.green : Colors.red)),
+        ],
+      ),
+    );
+  }
+}
+
+class Event {
+  final String title;
+  final DateTime startDateTime;
+  final DateTime endDateTime;
+  final String description;
+  final String status;
+  final bool isMeeting;
+
+  Event(this.title, this.startDateTime, this.endDateTime, this.description, this.status, this.isMeeting);
+
+  String get formattedTime => DateFormat.jm().format(startDateTime);
+
+  @override
+  String toString() => '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
+}
+
+class DottedBorderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    const double dashWidth = 4.0;
+    const double dashSpace = 4.0;
+    final Paint paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+
+    double startX = 0;
+    final Path path = Path();
+
+    while (startX < size.width) {
+      path.moveTo(startX, 0);
+      path.lineTo(startX + dashWidth, 0);
+      startX += dashWidth + dashSpace;
+    }
+
+    double startY = 0;
+    while (startY < size.height) {
+      path.moveTo(0, startY);
+      path.lineTo(0, startY + dashWidth);
+      startY += dashWidth + dashSpace;
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
+  }
+}
+
+class DayViewScreen extends StatelessWidget {
+  final DateTime date;
+  final List<Event> events;
+
+  const DayViewScreen({required this.date, required this.events, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(DateFormat('EEEE, MMM d, yyyy').format(date)),
+        backgroundColor: isDarkMode ? Colors.black : Colors.yellow,
+      ),
+      body: events.isEmpty
+          ? Center(
+        child: Text(
+          'No events for this day',
+          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+        ),
+      )
+          : ListView.builder(
+        padding: const EdgeInsets.all(16.0),
+        itemCount: events.length,
+        itemBuilder: (context, index) {
+          final event = events[index];
+          Color statusColor;
+
+          switch (event.status) {
+            case 'Approved':
+              statusColor = Colors.green;
+              break;
+            case 'Rejected':
+              statusColor = Colors.red;
+              break;
+            default:
+              statusColor = Colors.orange;
+          }
+
+          return Card(
+            color: isDarkMode ? Colors.black54 : Colors.white,
+            elevation: 4,
+            margin: const EdgeInsets.only(bottom: 16.0),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: statusColor,
+                child: const Icon(
+                  Icons.event,
+                  color: Colors.white,
+                ),
+              ),
+              title: Text(
+                event.title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${DateFormat('hh:mm a').format(event.startDateTime)} - ${DateFormat('hh:mm a').format(event.endDateTime)}',
+                    style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    event.description,
+                    style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    event.status,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class EventDetailsPopup extends StatelessWidget {
+  final Event event;
+
+  const EventDetailsPopup({required this.event, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20.0),
+      ),
+      backgroundColor: Colors.grey[50],
+      title: Text(
+        event.title,
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: Colors.black87,
+        ),
+      ),
+      content: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.access_time, color: Colors.blueAccent),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Time: ${event.formattedTime}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.stairs, color: Colors.greenAccent),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Status: ${event.status}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Description: ${event.description}',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: const Text(
+            'Close',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.blueAccent,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
