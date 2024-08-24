@@ -140,14 +140,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
+        final Map<String, dynamic> data = jsonDecode(response.body);
+
         setState(() {
-          _weeklyRecords = data.map((item) {
+          _weeklyRecords = (data['weekly'] as List).map((item) {
             return {
-              'date': item['date'].toString(),
-              'checkIn': item['checkIn'].toString(),
-              'checkOut': item['checkOut'].toString(),
-              'workingHours': item['workingHours'].toString(),
+              'date': item['check_in_date'].toString(),
+              'checkIn': item['check_in_time'].toString(),
+              'checkOut': item['check_out_time'].toString(),
+              'workingHours': item['workDuration'].toString(),
             };
           }).toList();
         });
@@ -356,10 +357,33 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           'longitude': position.longitude.toString(),
         };
 
-        if (_currentSection == 'Offsite') {
-          await _attendanceService.checkInOrCheckOutOffsite(isCheckIn, attendanceData);
+        const String baseUrl = 'https://demo-application-api.flexiflows.co';
+        final String endpoint = isCheckIn
+            ? '$baseUrl/api/attendance/checkin'
+            : '$baseUrl/api/attendance/checkout';
+
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        String? token = prefs.getString('token');
+
+        if (token == null) {
+          throw Exception('No token found');
+        }
+
+        final response = await http.post(
+          Uri.parse(endpoint),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(attendanceData),
+        );
+
+        if (response.statusCode == 200) {
+          if (kDebugMode) {
+            print('Attendance data sent successfully.');
+          }
         } else {
-          await _attendanceService.checkInOrCheckOut(isCheckIn, attendanceData);
+          throw Exception('Failed to send attendance data. Status code: ${response.statusCode}');
         }
       } else {
         _showCustomDialog(context, 'Error', 'Failed to retrieve location.');
