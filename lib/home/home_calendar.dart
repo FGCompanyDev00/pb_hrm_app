@@ -1232,7 +1232,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     defaultBuilder: (context, date, _) {
                       final hasPendingApproval = _hasPendingApprovals(date);
                       return CustomPaint(
-                        painter: hasPendingApproval ? DottedBorderPainter() : null,
+                        painter: hasPendingApproval ? StraightLineBorderPainter() : null,
                         child: Container(
                           decoration: BoxDecoration(
                             image: isSameDay(_singleTapSelectedDay, date)
@@ -1407,33 +1407,19 @@ class Event {
   String toString() => '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
 }
 
-class DottedBorderPainter extends CustomPainter {
+class StraightLineBorderPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    const double dashWidth = 4.0;
-    const double dashSpace = 4.0;
     final Paint paint = Paint()
       ..color = Colors.white
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 
-    double startX = 0;
-    final Path path = Path();
-
-    while (startX < size.width) {
-      path.moveTo(startX, 0);
-      path.lineTo(startX + dashWidth, 0);
-      startX += dashWidth + dashSpace;
-    }
-
-    double startY = 0;
-    while (startY < size.height) {
-      path.moveTo(0, startY);
-      path.lineTo(0, startY + dashWidth);
-      startY += dashWidth + dashSpace;
-    }
-
-    canvas.drawPath(path, paint);
+    // Drawing the straight border
+    canvas.drawLine(Offset(0, 0), Offset(size.width, 0), paint); // Top border
+    canvas.drawLine(Offset(0, 0), Offset(0, size.height), paint); // Left border
+    canvas.drawLine(Offset(0, size.height), Offset(size.width, size.height), paint); // Bottom border
+    canvas.drawLine(Offset(size.width, 0), Offset(size.width, size.height), paint); // Right border
   }
 
   @override
@@ -1441,6 +1427,7 @@ class DottedBorderPainter extends CustomPainter {
     return false;
   }
 }
+
 
 class DayViewScreen extends StatelessWidget {
   final DateTime date;
