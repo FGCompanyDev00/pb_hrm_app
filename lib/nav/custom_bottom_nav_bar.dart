@@ -14,7 +14,7 @@ class CustomBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final activeColor = isDarkMode ? Colors.green : Colors.yellow;
+    final activeColor = isDarkMode ? Colors.green : Colors.orangeAccent;
 
     return ConvexAppBar(
       style: TabStyle.fixedCircle,

@@ -27,8 +27,21 @@ void main() async {
 
   // Initialize the FlutterLocalNotificationsPlugin
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+  // Android initialization settings
   const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
-  const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+
+  // iOS/macOS initialization settings
+  const DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings();
+
+  // Combine Android and iOS/macOS settings
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+    iOS: initializationSettingsDarwin,
+    macOS: initializationSettingsDarwin,
+  );
+
+  // Initialize the plugin with the settings
   await flutterLocalNotificationsPlugin.initialize(
     initializationSettings,
     onDidReceiveNotificationResponse: (NotificationResponse response) async {
@@ -39,6 +52,15 @@ void main() async {
         ));
       }
     },
+  );
+
+  // Request permissions for iOS
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+      ?.requestPermissions(
+    alert: true,
+    badge: true,
+    sound: true,
   );
 
   runApp(
@@ -66,7 +88,7 @@ class MyApp extends StatelessWidget {
     return Consumer2<ThemeNotifier, LanguageNotifier>(
       builder: (context, themeNotifier, languageNotifier, child) {
         return MaterialApp(
-          navigatorKey: navigatorKey, // Added navigator key
+          navigatorKey: navigatorKey,
           builder: (context, child) {
             return EasyLoading.init()(context, child!);
           },
@@ -238,7 +260,7 @@ Future<void> _showNotification(Map<String, dynamic> notification) async {
     importance: Importance.max,
     priority: Priority.high,
     showWhen: true,
-    icon: '@mipmap/playstore', // Ensure the icon path is correct
+    icon: '@mipmap/playstore',
   );
   const NotificationDetails platformChannelSpecifics =
   NotificationDetails(android: androidPlatformChannelSpecifics);

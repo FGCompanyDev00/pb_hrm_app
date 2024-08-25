@@ -345,6 +345,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                   availableCalendarFormats: const {
                     CalendarFormat.month: 'Month',
                   },
+
                   selectedDayPredicate: (day) {
                     return isSameDay(_selectedDay, day);
                   },
@@ -373,12 +374,35 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     });
                   },
                   eventLoader: _getEventsForDay,
+                  calendarStyle: const CalendarStyle(
+                    todayDecoration: BoxDecoration(
+                      color: Colors.orangeAccent,
+                      shape: BoxShape.circle,
+                    ),
+                    selectedDecoration: BoxDecoration(
+                      color: Colors.deepPurple,
+                      shape: BoxShape.circle,
+                    ),
+                    markerDecoration: BoxDecoration(
+                      color: Colors.orange,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                   headerStyle: const HeaderStyle(
-                    formatButtonVisible: false,
                     titleCentered: true,
+                    formatButtonVisible: false,
                     titleTextStyle: TextStyle(
-                      fontSize: 23.0,
+                      fontSize: 20.0,
                       fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                    leftChevronIcon: Icon(
+                      Icons.chevron_left,
+                      color: Colors.black,
+                    ),
+                    rightChevronIcon: Icon(
+                      Icons.chevron_right,
+                      color: Colors.black,
                     ),
                   ),
                   calendarBuilders: CalendarBuilders(
@@ -426,14 +450,16 @@ class _HomeCalendarState extends State<HomeCalendar> {
                 ),
               ),
 
+              Container(
+                height: 6.0,
+                color: Colors.orange,
+                margin: const EdgeInsets.symmetric(horizontal: 20.0),
+              ),
+
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.only(top: 10),
                   decoration: const BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage('assets/background.png'),
-                      fit: BoxFit.cover,
-                    ),
                   ),
                   child: _buildTimeTable(_focusedDay), // Filtered timetable by month
                 ),
@@ -512,10 +538,18 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   Widget _buildEventCard(Event event) {
-    return Container(
-      width: 200,
-      margin: const EdgeInsets.only(right: 8.0),
-      padding: const EdgeInsets.all(8.0),
+    return InkWell(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) => EventDetailsPopup(event: event),
+          );
+    },
+    child: Container(
+      width: 300,
+      height: 300,
+      margin: const EdgeInsets.only(right: 30.0),
+      padding: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
         color: event.status == 'Approved' ? Colors.green[200] : event.status == 'Rejected' ? Colors.red[200] : Colors.orange[200],
         borderRadius: BorderRadius.circular(12.0),
@@ -523,14 +557,14 @@ class _HomeCalendarState extends State<HomeCalendar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(event.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(event.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           Text(event.description),
           const Spacer(),
           Text('${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}'),
           Text(event.status, style: TextStyle(color: event.status == 'Approved' ? Colors.green : Colors.red)),
         ],
       ),
-    );
+    ));
   }
 }
 

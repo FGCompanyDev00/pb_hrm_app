@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -108,14 +109,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Future<void> _retrieveDeviceId() async {
     try {
       final deviceInfo = DeviceInfoPlugin();
-      final androidInfo = await deviceInfo.androidInfo;
-      setState(() {
-        _deviceId = androidInfo.id;
-      });
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfo.androidInfo;
+        setState(() {
+          _deviceId = androidInfo.id ?? 'Unknown Device ID';
+        });
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        setState(() {
+          _deviceId = iosInfo.identifierForVendor ?? 'Unknown Device ID';
+        });
+      }
     } catch (e) {
       if (kDebugMode) {
         print('Failed to get device ID: $e');
       }
+      setState(() {
+        _deviceId = 'Unknown Device ID';
+      });
     }
   }
 

@@ -1,39 +1,34 @@
-import UIKit
 import Flutter
-import UserNotifications
-import CoreLocation
-import AVFoundation
+import UIKit
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, CLLocationManagerDelegate {
-
-  let locationManager = CLLocationManager()
-
+@objc class AppDelegate: FlutterAppDelegate {
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-
-    // Register Flutter plugins
     GeneratedPluginRegistrant.register(with: self)
-
-    // Request Notification Permission
-    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-        // Handle the granted status
-    }
-
-    // Request Location Permission
-    locationManager.delegate = self
-    locationManager.requestWhenInUseAuthorization()
-
-    // Request Camera Permission
-    AVCaptureDevice.requestAccess(for: .video) { granted in
-        // Handle the granted status
-    }
-
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  // Additional methods to handle location updates or other features can be added here
+  // Example: Handling background fetch
+  override func application(_ application: UIApplication, performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+      // Perform background task
+      completionHandler(.newData)
+  }
 
+  // Example: Handling remote notifications
+  override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+      // Forward the token to your push notification provider
+  }
+
+  override func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+      print("Failed to register for remote notifications: \(error)")
+  }
+
+  // Example: Handling deep links
+  override func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+      // Handle the URL
+      return true
+  }
 }

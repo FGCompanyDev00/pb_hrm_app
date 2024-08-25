@@ -26,7 +26,7 @@
         android:enableOnBackInvokedCallback="true"
         android:requestLegacyExternalStorage="true"
         android:label="PSVB NEXT"
-        android:icon="@mipmap/playstore"> <!-- Ensure this icon path matches your app's resources -->
+        android:icon="@mipmap/playstore">
 
         <activity
             android:name="com.phongsavanhbank.pb_hrsystem.MainActivity"
