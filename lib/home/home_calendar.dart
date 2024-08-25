@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/popups/event_details_popups.dart';
+import 'package:pb_hrsystem/home/timetable_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -349,9 +350,26 @@ class _HomeCalendarState extends State<HomeCalendar> {
                   selectedDayPredicate: (day) {
                     return isSameDay(_selectedDay, day);
                   },
+                  // onDaySelected: (selectedDay, focusedDay) {
+                  //   if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
+                  //     _showDayView(selectedDay);
+                  //     _singleTapSelectedDay = null;
+                  //   } else {
+                  //     setState(() {
+                  //       _singleTapSelectedDay = selectedDay;
+                  //       _selectedDay = selectedDay;
+                  //       _focusedDay = focusedDay;
+                  //     });
+                  //   }
+                  // },
                   onDaySelected: (selectedDay, focusedDay) {
                     if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
-                      _showDayView(selectedDay);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TimetablePage(date: selectedDay, events: _getEventsForDay(selectedDay)),
+                        ),
+                      );
                       _singleTapSelectedDay = null;
                     } else {
                       setState(() {
@@ -361,6 +379,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                       });
                     }
                   },
+
                   onFormatChanged: (format) {
                     if (_calendarFormat != format) {
                       setState(() {
