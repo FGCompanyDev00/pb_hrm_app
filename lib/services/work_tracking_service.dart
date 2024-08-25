@@ -278,25 +278,35 @@ class WorkTrackingService {
     }
   }
 
-  Future<void> addAssignment(String projectId, Map<String, dynamic> taskData) async {
-    final headers = await _getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/ass/insert'),
-      headers: headers,
-      body: jsonEncode({
-        'project_id': projectId,
-        ...taskData,
-      }),
-    );
+Future<void> addAssignment(String projectId, Map<String, dynamic> assignmentData) async {
+  final headers = await _getHeaders();
+  final payload = jsonEncode({
+    'project_id': projectId,
+    ...assignmentData,
+  });
 
-    if (response.statusCode == 201) {
-      if (kDebugMode) {
-        print('Assignment successfully created.');
-      }
-    } else {
-      throw Exception('Failed to add assignment: ${response.reasonPhrase}. Details: ${response.body}');
-    }
+  if (kDebugMode) {
+    print('Headers: $headers');
+    print('Payload: $payload');
   }
+
+  final response = await http.post(
+    Uri.parse('$baseUrl/api/work-tracking/ass/insert'),
+    headers: headers,
+    body: payload,
+  );
+
+  if (response.statusCode == 201) {
+    if (kDebugMode) {
+      print('Assignment successfully created.');
+    }
+  } else if (response.statusCode == 403) {
+    throw Exception('You do not have permission to add this assignment. Please check your access rights.');
+  } else {
+    throw Exception('Failed to add assignment: ${response.reasonPhrase}. Details: ${response.body}');
+  }
+}
+
 
   Future<void> updateAssignment(String assignmentId, Map<String, dynamic> taskData) async {
     final headers = await _getHeaders();

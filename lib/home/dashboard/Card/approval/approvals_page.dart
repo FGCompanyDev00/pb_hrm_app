@@ -113,33 +113,35 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
+ Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     return Scaffold(
+      backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
       body: Column(
         children: [
           Container(
-            width: double.infinity,
-            height: MediaQuery.of(context).size.height * 0.1,
+            height: 150,
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+                image: AssetImage(
+                  isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png',
+                ),
                 fit: BoxFit.cover,
               ),
               borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
               ),
             ),
-            child: Stack(
-              children: [
-                Positioned(
-                  top: 25,
-                  left: 10,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back, size: 30, color: Colors.black),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 40.0, left: 16.0, right: 16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
                     onPressed: () {
                       Navigator.pushReplacement(
                         context,
@@ -147,21 +149,17 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                       );
                     },
                   ),
-                ),
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 20.0),
-                    child: Text(
-                      'Approvals',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  Text(
+                    'Approvals',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 48), // Keeps the text centered
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -180,7 +178,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                       decoration: BoxDecoration(
                         color: _isApprovalSelected ? Colors.amber : Colors.grey[300],
-                        borderRadius: BorderRadius.circular(8.0),
+                        borderRadius: BorderRadius.circular(15.0), // Rounded corner
                       ),
                       child: Center(
                         child: Text(
@@ -188,6 +186,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                           style: TextStyle(
                             color: _isApprovalSelected ? Colors.black : Colors.black,
                             fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
                       ),
@@ -206,7 +205,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                       decoration: BoxDecoration(
                         color: _isApprovalSelected ? Colors.grey[300] : Colors.amber,
-                        borderRadius: BorderRadius.circular(8.0),
+                        borderRadius: BorderRadius.circular(15.0), // Rounded corner
                       ),
                       child: Center(
                         child: Text(
@@ -214,6 +213,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                           style: TextStyle(
                             color: _isApprovalSelected ? Colors.black : Colors.black,
                             fontWeight: FontWeight.bold,
+                            fontSize: 16,
                           ),
                         ),
                       ),
@@ -505,3 +505,4 @@ class _EditApprovalPopupState extends State<EditApprovalPopup> {
     );
   }
 }
+

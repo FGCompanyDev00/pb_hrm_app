@@ -666,35 +666,72 @@ class __TaskModalState extends State<_TaskModal> {
     }
   }
 
-  void _saveTask() async {
-    if (_formKey.currentState!.validate()) {
-      final task = {
-        'title': _titleController.text,
-        'start_date': _startDateController.text,
-        'due_date': _dueDateController.text,
-        'description': _descriptionController.text,
-        'status': _selectedStatus,
-        'images': _images,
-        'members': _selectedPeople,  // Add the selected members to the task data
-      };
+  // void _saveTask() async {
+  //   if (_formKey.currentState!.validate()) {
+  //     final task = {
+  //       'title': _titleController.text,
+  //       'start_date': _startDateController.text,
+  //       'due_date': _dueDateController.text,
+  //       'description': _descriptionController.text,
+  //       'status': _selectedStatus,
+  //       'images': _images,
+  //       'members': _selectedPeople,  // Add the selected members to the task data
+  //     };
 
-      if (widget.isEdit && widget.task != null) {
-        // Ensure all values are correctly formatted as strings
-        try {
-          await _workTrackingService.updateAssignment(
-            widget.task!['id'].toString(), // Convert ID to string if it's an int
-            task,
-          );
-          Navigator.pop(context);
-        } catch (e) {
-          print('Failed to update task: $e');
-        }
-      } else {
-        widget.onSave(task);
+  //     if (widget.isEdit && widget.task != null) {
+  //       // Ensure all values are correctly formatted as strings
+  //       try {
+  //         await _workTrackingService.updateAssignment(
+  //           widget.task!['id'].toString(), // Convert ID to string if it's an int
+  //           task,
+  //         );
+  //         Navigator.pop(context);
+  //       } catch (e) {
+  //         print('Failed to update task: $e');
+  //       }
+  //     } else {
+  //       widget.onSave(task);
+  //       Navigator.pop(context);
+  //     }
+  //   }
+  // }
+
+  void _saveTask() async {
+  if (_formKey.currentState!.validate()) {
+    final task = {
+      'title': _titleController.text,
+      'start_date': _startDateController.text,
+      'due_date': _dueDateController.text,
+      'description': _descriptionController.text,
+      'status': _selectedStatus,
+      'images': _images,
+      'members': _selectedPeople, // Add the selected members to the task data
+    };
+
+    if (widget.isEdit && widget.task != null) {
+      // Ensure all values are correctly formatted as strings
+      try {
+        await _workTrackingService.updateAssignment(
+          widget.task!['id'].toString(), // Convert ID to string if it's an int
+          task,
+        );
         Navigator.pop(context);
+      } catch (e) {
+        print('Failed to update task: $e');
+      }
+    } else {
+      // Use the new addAssignment method to send the task data to the API
+      try {
+        await _workTrackingService.addAssignment(widget.projectId, task); // Pass projectId and task data
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Assignment successfully added')));
+      } catch (e) {
+        print('Failed to add assignment: $e');
       }
     }
   }
+}
+
 
   void _openAddPeoplePage() async {
     final selectedPeople = await Navigator.push(
@@ -953,9 +990,12 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredMembers = _members.where((member) {
-      return member['name'].toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
+  final filteredMembers = _members.where((member) {
+  final memberName = member['name'];
+  if (memberName == null || _searchQuery == null) return false;
+  return memberName.toLowerCase().contains(_searchQuery.toLowerCase());
+}).toList();
+
 
     return Scaffold(
       appBar: AppBar(
