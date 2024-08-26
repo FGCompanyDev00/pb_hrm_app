@@ -96,7 +96,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
         return Colors.amber;
       case 'Approved':
         return Colors.green;
-      case 'Rejected':
+      case 'Reject':
         return Colors.red;
       default:
         return Colors.white;
