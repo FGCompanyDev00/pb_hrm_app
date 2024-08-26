@@ -343,259 +343,228 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     );
   }
 
-  Widget _buildProjectCard(BuildContext context, bool isDarkMode,
-      Map<String, dynamic> project, int index) {
-    final progressColors = {
-      'Pending': Colors.orange,
-      'Processing': Colors.blue,
-      'Completed': Colors.green,
-    };
+ Widget _buildProjectCard(BuildContext context, bool isDarkMode,
+    Map<String, dynamic> project, int index) {
+  final progressColors = {
+    'Pending': Colors.orange,
+    'Processing': Colors.blue,
+    'Completed': Colors.green,
+  };
 
-    double progress = double.tryParse(
-        project['precent']?.toString() ?? '0.0') ?? 0.0;
+  double progress = double.tryParse(
+      project['precent']?.toString() ?? '0.0') ?? 0.0;
 
-    return Slidable(
-      startActionPane: ActionPane(
-        motion: const ScrollMotion(),
-        extentRatio: 0.25,
-        children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // View button
-              GestureDetector(
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (BuildContext context) {
-                      return Container(
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery
-                              .of(context)
-                              .size
-                              .height * 0.8,
-                        ),
-                        child: SingleChildScrollView(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: ViewProjectPage(
-                                project: project), // View button action
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  color: Colors.blue,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Image.asset(
-                        'assets/layer.png',
-                        width: 40,
-                        height: 40,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'View',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ],
+  return Slidable(
+    startActionPane: ActionPane(
+      motion: const ScrollMotion(),
+      extentRatio: 0.25,
+      children: [
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // View button
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ViewProjectPage(project: project),
                   ),
+                );
+              },
+              child: Container(
+                width: 80,
+                height: 80,
+                color: Colors.blue,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/layer.png',
+                      width: 40,
+                      height: 40,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'View',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Edit button
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EditProjectPage(
+                      project: project,
+                      onUpdate: (updatedProject) {
+                        setState(() {
+                          _projects[index] = updatedProject;
+                        });
+                        _refreshProjects(); // Auto-refresh after update
+                      },
+                      onDelete: _refreshProjects, // Pass the refresh callback here
+                    ),
+                  ),
+                );
+              },
+              child: Container(
+                width: 80,
+                height: 80,
+                color: Colors.green,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/element-plus.png',
+                      width: 40,
+                      height: 40,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Edit',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+    child: GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProjectManagementPage(
+              projectId: project['project_id'],
+              baseUrl: WorkTrackingService.baseUrl,
+            ),
+          ),
+        );
+      },
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        elevation: 5,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: progress / 100,
+                      color: progressColors[project['s_name']],
+                      backgroundColor: Colors.grey.shade300,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${project['precent']}%',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.update,
+                    color: progressColors[project['s_name']],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Title: ${project['p_name']}',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18.0,
                 ),
               ),
               const SizedBox(height: 8),
-              // Edit button
-              GestureDetector(
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (BuildContext context) {
-                      return Container(
-                          constraints: BoxConstraints(
-                            maxHeight: MediaQuery
-                                .of(context)
-                                .size
-                                .height * 0.8,
-                          ),
-                          child: SingleChildScrollView(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: EditProjectPage(
-                                project: project,
-                                onUpdate: (updatedProject) {
-                                  setState(() {
-                                    _projects[index] = updatedProject;
-                                  });
-                                  _refreshProjects(); // Auto-refresh after update
-                                },
-                                onDelete: _refreshProjects, // Pass the refresh callback here
-                              ),
-                            ),
-                          ),
-                      );
-                    },
-                  );
-                },
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  color: Colors.green,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Image.asset(
-                        'assets/element-plus.png',
-                        width: 40,
-                        height: 40,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Edit',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ],
-                  ),
+              Text(
+                'Project ID: ${project['project_id']}',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
-      child: GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  ProjectManagementPage(
-                    projectId: project['project_id'],
-                    baseUrl: WorkTrackingService.baseUrl,
-                  ),
-            ),
-          );
-        },
-        child: Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16.0),
-          ),
-          elevation: 5,
-          margin: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: LinearProgressIndicator(
-                        value: progress / 100,
-                        color: progressColors[project['s_name']],
-                        backgroundColor: Colors.grey.shade300,
-                      ),
+              const SizedBox(height: 8),
+              Text(
+                'Deadline: ${project['dl']}',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              Text(
+                'Extended Deadline: ${project['extend']}',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Text(
+                    'Status: ',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      fontSize: 16.0,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${project['precent']}%',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.update,
-                      color: progressColors[project['s_name']],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Title: ${project['p_name']}',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18.0,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Project ID: ${project['project_id']}',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Deadline: ${project['dl']}',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-                Text(
-                  'Extended Deadline: ${project['extend']}',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text(
-                      'Status: ',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
-                        fontSize: 16.0,
-                      ),
+                  Text(
+                    project['s_name'] ?? 'Unknown',
+                    style: TextStyle(
+                      color: progressColors[project['s_name']] ?? Colors.grey,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16.0,
                     ),
-                    Text(
-                      project['s_name'] ?? 'Unknown',
-                      style: TextStyle(
-                        color: progressColors[project['s_name']] ?? Colors.grey,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16.0,
-                      ),
-                    ),
-                  ],
-                ),
-                if (!_isMyProjectsSelected) // Show creator's name only in "All Projects" section
-                  Align(
-                    alignment: Alignment.bottomRight,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: RichText(
-                        text: TextSpan(
-                          text: 'Created by: ',
-                          style: const TextStyle(
-                            color: Colors.blue, // Blue color for "Created by"
-                            fontWeight: FontWeight.bold, // Bold "Created by"
-                          ),
-                          children: [
-                            TextSpan(
-                              text: project['create_project_by'],
-                              style: const TextStyle(
-                                color: Colors.black,
-                                // Black color for the creator's name
-                                fontWeight: FontWeight
-                                    .normal, // Normal weight for creator's name
-                              ),
-                            ),
-                          ],
+                  ),
+                ],
+              ),
+              if (!_isMyProjectsSelected)
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: RichText(
+                      text: TextSpan(
+                        text: 'Created by: ',
+                        style: const TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.bold,
                         ),
+                        children: [
+                          TextSpan(
+                            text: project['create_project_by'],
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 }
