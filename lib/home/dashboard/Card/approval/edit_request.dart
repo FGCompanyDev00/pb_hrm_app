@@ -113,53 +113,37 @@ class _EditRequestPageState extends State<EditRequestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Leave Request'),
-        backgroundColor: const Color(0xFFFFC107),
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background.png'),
-              fit: BoxFit.cover,
-            ),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(20),
-              bottomRight: Radius.circular(20),
-            ),
-          ),
-        ),
-      ),
+      appBar: _buildAppBar(),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(30.10),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildTextField('Type', _typesController, maxLines: 1),
-              const SizedBox(height: 16),
-              _buildTextField('Description', _descriptionController, maxLines: 2),
-              const SizedBox(height: 16),
+              const SizedBox(height: 40),
+              _buildTextField('Description', _descriptionController, maxLines: 3),
+              const SizedBox(height: 30),
               Row(
                 children: [
                   Expanded(
                     child: _buildDateField('Start Date', _startDateController),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 20),
                   Expanded(
                     child: _buildDateField('End Date', _endDateController),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 30),
               _buildDaysField(),
             ],
           ),
         ),
       ),
       bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Row(
           children: [
             Expanded(
@@ -170,10 +154,13 @@ class _EditRequestPageState extends State<EditRequestPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey,
                   padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 20),
             Expanded(
               child: ElevatedButton.icon(
                 onPressed: _updateRequest,
@@ -182,10 +169,38 @@ class _EditRequestPageState extends State<EditRequestPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFFC107),
                   padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  AppBar _buildAppBar() {
+    return AppBar(
+      title: const Text(
+        'Edit Leave Request',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      flexibleSpace: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/background.png'),
+            fit: BoxFit.cover,
+          ),
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(20),
+            bottomRight: Radius.circular(20),
+          ),
         ),
       ),
     );
@@ -202,7 +217,8 @@ class _EditRequestPageState extends State<EditRequestPage> {
         labelText: label,
         filled: true,
         fillColor: Colors.grey.shade100,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.symmetric(vertical: 30, horizontal: 15),
       ),
       style: const TextStyle(fontSize: 16),
       validator: (value) {
@@ -227,7 +243,7 @@ class _EditRequestPageState extends State<EditRequestPage> {
     return Row(
       children: [
         IconButton(
-          icon: const Icon(Icons.remove),
+          icon: const Icon(Icons.remove, color: Colors.redAccent),
           onPressed: _decrementDays,
         ),
         Expanded(
@@ -238,7 +254,8 @@ class _EditRequestPageState extends State<EditRequestPage> {
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.grey.shade100,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.symmetric(vertical: 20),
             ),
             style: const TextStyle(fontSize: 16),
             keyboardType: TextInputType.number,
@@ -251,7 +268,7 @@ class _EditRequestPageState extends State<EditRequestPage> {
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.add),
+          icon: const Icon(Icons.add, color: Colors.greenAccent),
           onPressed: _incrementDays,
         ),
       ],

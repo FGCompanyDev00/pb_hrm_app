@@ -15,7 +15,7 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/myprofile_page.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
-import 'package:pb_hrsystem/management/management_page.dart';
+import 'package:pb_hrsystem/management/admin_approval_main_page.dart';
 
 import '../../notifications/notification_page.dart';
 

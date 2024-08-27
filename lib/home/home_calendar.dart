@@ -2,7 +2,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
-import 'package:pb_hrsystem/home/popups/event_details_popups.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -388,7 +387,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                       shape: BoxShape.circle,
                     ),
                     selectedDecoration: BoxDecoration(
-                      color: Colors.deepPurple,
+                      color: Colors.green,
                       shape: BoxShape.circle,
                     ),
                     markerDecoration: BoxDecoration(
@@ -447,7 +446,16 @@ class _HomeCalendarState extends State<HomeCalendar> {
                           child: Container(
                             width: isFirstEvent || isLastEvent ? 20 : double.infinity,
                             height: 4.0,
-                            color: Colors.green,
+                            decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topRight,
+                                  end: Alignment.bottomLeft,
+                                  colors: [
+                                    Colors.green,
+                                    Colors.lightGreen,
+                                  ],
+                                )
+                            ),
                           ),
                         );
                       }
@@ -460,7 +468,16 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
               Container(
                 height: 6.0,
-                color: Colors.orange,
+                decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                      colors: [
+                        Colors.green,
+                        Colors.orange,
+                      ],
+                    )
+                ),
                 margin: const EdgeInsets.symmetric(horizontal: 20.0),
               ),
 

@@ -6,14 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/services/attendance_service.dart';
-import 'package:uuid/uuid.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import "package:pb_hrsystem/home/monthly_attendance_record.dart";
 import 'package:local_auth/local_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_background/flutter_background.dart';
 
 class AttendanceScreen extends StatefulWidget {
@@ -25,7 +21,6 @@ class AttendanceScreen extends StatefulWidget {
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
   final LocalAuthentication auth = LocalAuthentication();
-  final AttendanceService _attendanceService = AttendanceService();
   int _selectedIndex = 0; // 0 for Home/Office, 1 for Offsite
   bool _isCheckInActive = false;
   String _checkInTime = '--:--:--';
@@ -38,8 +33,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   String _currentSection = 'Home';
   String _deviceId = '';
   List<Map<String, String>> _weeklyRecords = [];
+  bool _isLoading = true;
 
-  Color _fingerprintColor = Colors.orange;
 
   static const double _officeRange = 500;
   static const LatLng _officeLocation = LatLng(
@@ -54,9 +49,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     _fetchWeeklyRecords();
     _startLocationMonitoring();
     _startTimerForLiveTime();
+    _determineAndShowLocationModal();
 
-    _fingerprintColor =
-    _currentSection == 'Office' ? Colors.green : Colors.orange;
+  }
+
+  Future<void> _determineAndShowLocationModal() async {
+    setState(() {
+      _isLoading = true; // Show loading indicator
+    });
+
+    Position? currentPosition = await _getCurrentPosition();
+    if (currentPosition != null) {
+      _determineSectionFromPosition(currentPosition);
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    _showLocationModal(context, _currentSection);
   }
 
   Future<void> _initializeBackgroundService() async {
@@ -72,7 +83,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       }
 
 
-      if (!await FlutterBackground.isBackgroundExecutionEnabled) {
+      if (!FlutterBackground.isBackgroundExecutionEnabled) {
         await FlutterBackground.enableBackgroundExecution();
       }
     } catch (e) {
@@ -83,7 +94,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _retrieveSavedState() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
     String? savedCheckInTime = await _getCheckInTime();
     Duration? savedWorkingHours = await _getWorkingHours();
 
@@ -112,7 +122,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (Platform.isAndroid) {
         final androidInfo = await deviceInfo.androidInfo;
         setState(() {
-          _deviceId = androidInfo.id ?? 'Unknown Device ID';
+          _deviceId = androidInfo.id;
         });
       } else if (Platform.isIOS) {
         final iosInfo = await deviceInfo.iosInfo;
@@ -210,15 +220,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _officeLocation.longitude,
     );
 
+    if (kDebugMode) {
+      print('Current position: (${position.latitude}, ${position.longitude})');
+      print('Distance to office: $distanceToOffice meters');
+    }
+
     setState(() {
       if (distanceToOffice <= _officeRange) {
         _currentSection = 'Office';
         _selectedIndex = 0;
-        _fingerprintColor = Colors.green;
       } else {
         _currentSection = 'Home';
         _selectedIndex = 0;
-        _fingerprintColor = Colors.orange;
       }
     });
   }
@@ -270,10 +283,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
 // Function to retrieve the check-out time
-  Future<String?> _getCheckOutTime() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('checkOutTime');
-  }
 
   Future<Duration?> _getWorkingHours() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -341,7 +350,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         ),
       );
     } catch (e) {
-      print('Error using biometrics: $e');
+      if (kDebugMode) {
+        print('Error using biometrics: $e');
+      }
       return false;
     }
   }
@@ -437,6 +448,99 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     await _storeCheckOutTime(_checkOutTime);
     await _storeWorkingHours(_workingHours);
   }
+
+  void _showLocationModal(BuildContext context, String location) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevent closing by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+          contentPadding: EdgeInsets.zero,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                decoration: const BoxDecoration(
+                  color: Colors.orange,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Icon(
+                      location == 'Home' ? Icons.home : Icons.apartment,
+                      color: Colors.white,
+                      size: 60,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      "Location Detected",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  "You are currently at ${location == 'Home' ? 'Home' : 'the Office'}",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 18, color: Colors.black87),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange, // Button color
+                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: const Text(
+                    "OK",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+
+  Widget _buildPageContent(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: _buildSectionContainer(),
+        ),
+        Expanded(
+          child: _buildTabContent(context),
+        ),
+      ],
+    );
+  }
+
 
   void _showCustomDialog(BuildContext context, String title, String message) {
     showDialog(
@@ -881,67 +985,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildSectionButton(int index, String title, IconData icon,
-      Color activeColor, Color inactiveColor) {
-    final bool isSelected = _selectedIndex == index;
-    final bool isDisabled = (title == 'Home' && _currentSection == 'Office') ||
-        (title == 'Office' && _currentSection == 'Home');
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: () async {
-          if (isDisabled) return;
-
-          Position? currentPosition = await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.high);
-          _determineSectionFromPosition(currentPosition);
-
-          setState(() {
-            if (_selectedIndex != 1) {
-              // Only set if not Offsite
-              _selectedIndex = index;
-            }
-
-            if (_selectedIndex == 1) {
-              // Keep Offsite active unless location dictates otherwise
-              _currentSection = 'Offsite';
-              _fingerprintColor = Colors.red;
-            }
-          });
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          margin: const EdgeInsets.symmetric(horizontal: 4.0),
-          decoration: BoxDecoration(
-            color: isDisabled ? Colors.grey.shade200 : (isSelected
-                ? activeColor
-                : inactiveColor),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected ? activeColor : Colors.grey,
-              width: 2.0,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: isDisabled ? Colors.grey : (isSelected
-                  ? Colors.white
-                  : Colors.black)),
-              const SizedBox(width: 5),
-              Text(
-                title,
-                style: TextStyle(
-                    color: isDisabled ? Colors.grey : (isSelected
-                        ? Colors.white
-                        : Colors.black)),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildSectionContainer() {
     return Row(
@@ -1096,10 +1139,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(MediaQuery
-            .of(context)
-            .size
-            .height * 0.1),
+        preferredSize: Size.fromHeight(MediaQuery.of(context).size.height * 0.1),
         child: Container(
           width: double.infinity,
           decoration: const BoxDecoration(
@@ -1131,46 +1171,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       ),
       body: Stack(
         children: [
-          Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: _buildSectionContainer(),
-              ),
-              Expanded(
-                child: _buildTabContent(context),
-              ),
-            ],
-          ),
-          Positioned(
-            bottom: 30,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const MonthlyAttendanceReport()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 12),
-                ),
-                child: const Text(
-                  'View All',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ),
-            ),
-          ),
+          _buildPageContent(context),
+          if (_isLoading) _buildLoadingIndicator(), // Show loading indicator if loading
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return const Center(
+      child: CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
       ),
     );
   }

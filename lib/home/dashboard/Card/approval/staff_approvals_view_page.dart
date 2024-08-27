@@ -15,25 +15,23 @@ class ApprovalsViewPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(context),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildRequestorSection(),
-              const SizedBox(height: 16),
-              _buildBlueSection(),
-              const SizedBox(height: 16),
-              _buildDetailsSection(),
-              const SizedBox(height: 16),
-              _buildWorkflowSection(),
-              const SizedBox(height: 16),
-              _buildDescriptionSection(),
-              const Spacer(),
-              _buildActionButtons(context), // Only the staff actions
-            ],
-          ),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildRequestorSection(),
+            const SizedBox(height: 24),
+            _buildBlueSection(),
+            const SizedBox(height: 24),
+            _buildDetailsSection(),
+            const SizedBox(height: 24),
+            _buildWorkflowSection(),
+            const SizedBox(height: 24),
+            _buildDescriptionSection(),
+            const Spacer(),
+            _buildActionButtons(context),
+          ],
         ),
       ),
     );
@@ -54,13 +52,20 @@ class ApprovalsViewPage extends StatelessWidget {
         ),
       ),
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back),
+        icon: const Icon(Icons.arrow_back, color: Colors.black),
         onPressed: () => Navigator.of(context).pop(),
       ),
-      title: const Text('Approvals'),
+      title: const Text(
+        'Approvals',
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
       centerTitle: true,
       backgroundColor: Colors.transparent,
       elevation: 0,
+      toolbarHeight: 100, // Increased height for more impact
     );
   }
 
@@ -69,26 +74,32 @@ class ApprovalsViewPage extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         CircleAvatar(
-          backgroundImage: NetworkImage(item['img_name'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-          radius: 30,
+          backgroundImage: NetworkImage(
+            item['img_name'] ??
+                'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
+          ),
+          radius: 35,
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 20),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               item['requestor_name'] ?? 'No Name',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               'Submitted on ${item['created_at']?.split("T")[0] ?? 'N/A'}',
               style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             Text(
               'Status: ${item['is_approve'] ?? 'N/A'}',
-              style: const TextStyle(fontSize: 14, color: Colors.orange),
+              style: const TextStyle(fontSize: 16, color: Colors.orange, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -98,14 +109,14 @@ class ApprovalsViewPage extends StatelessWidget {
 
   Widget _buildBlueSection() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
       decoration: BoxDecoration(
         color: Colors.lightBlueAccent,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        item['types'] ?? 'No Data', // Displaying the "types" value from API
-        style: const TextStyle(color: Colors.white, fontSize: 16),
+        item['types'] ?? 'No Data',
+        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -115,17 +126,17 @@ class ApprovalsViewPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          item['name'] ?? 'No Title', // Displaying the "name" value from API
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          item['name'] ?? 'No Title',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         _buildInfoRow(Icons.calendar_today, 'Date', '${item['take_leave_from']} - ${item['take_leave_to']}'),
-        const SizedBox(height: 8),
-        _buildInfoRow(Icons.access_time, 'Time', '09:00 AM - 12:00 PM'), // You can update these time details based on your requirement
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
+        _buildInfoRow(Icons.access_time, 'Time', '09:00 AM - 12:00 PM'),
+        const SizedBox(height: 12),
         Text(
           'Type of leave: ${item['take_leave_reason'] ?? 'No Reason'}',
-          style: const TextStyle(fontSize: 16, color: Colors.orange),
+          style: const TextStyle(fontSize: 16, color: Colors.orange, fontWeight: FontWeight.bold),
         ),
       ],
     );
@@ -136,9 +147,13 @@ class ApprovalsViewPage extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         _buildUserAvatar(item['img_name']),
-        const Icon(Icons.arrow_forward, color: Colors.green),
+        const SizedBox(width: 16),
+        const Icon(Icons.arrow_forward, color: Colors.green, size: 30),
+        const SizedBox(width: 16),
         _buildUserAvatar('https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'), // Replace with actual image URL for manager
-        const Icon(Icons.arrow_forward, color: Colors.green),
+        const SizedBox(width: 16),
+        const Icon(Icons.arrow_forward, color: Colors.green, size: 30),
+        const SizedBox(width: 16),
         _buildUserAvatar('https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'), // Replace with actual image URL for manager
       ],
     );
@@ -147,7 +162,7 @@ class ApprovalsViewPage extends StatelessWidget {
   Widget _buildUserAvatar(String? imageUrl) {
     return CircleAvatar(
       backgroundImage: NetworkImage(imageUrl ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-      radius: 20,
+      radius: 25,
     );
   }
 
@@ -155,9 +170,16 @@ class ApprovalsViewPage extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, size: 20),
+        Icon(icon, size: 24, color: Colors.black54),
         const SizedBox(width: 8),
-        Text('$title: $content'),
+        Text(
+          '$title: ',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        Text(
+          content,
+          style: const TextStyle(fontSize: 16),
+        ),
       ],
     );
   }
@@ -166,17 +188,21 @@ class ApprovalsViewPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text('Description:'),
-        const SizedBox(height: 8),
+        const Text(
+          'Description:',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey),
             borderRadius: BorderRadius.circular(8),
+            color: Colors.white, // Adding background color for better contrast
           ),
           child: Text(
             item['take_leave_reason'] ?? 'No Description',
-            style: const TextStyle(fontSize: 16),
+            style: const TextStyle(fontSize: 16, color: Colors.black54),
           ),
         ),
       ],
@@ -187,8 +213,8 @@ class ApprovalsViewPage extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _buildButton('Delete', Colors.grey, Colors.white, onPressed: () => _deleteRequest(context)),
-        _buildButton('Edit', Colors.amber, Colors.black, onPressed: () => _editRequest(context)),
+        _buildButton('Delete', Colors.redAccent, Colors.white, onPressed: () => _deleteRequest(context)),
+        _buildButton('Edit', Colors.lightBlueAccent, Colors.white, onPressed: () => _editRequest(context)),
       ],
     );
   }
@@ -198,9 +224,12 @@ class ApprovalsViewPage extends StatelessWidget {
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         foregroundColor: textColor, backgroundColor: color,
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 16)),
+      child: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
     );
   }
 

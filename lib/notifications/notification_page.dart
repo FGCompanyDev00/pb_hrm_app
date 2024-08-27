@@ -28,7 +28,8 @@ class _NotificationPageState extends State<NotificationPage> {
     const AndroidInitializationSettings initializationSettingsAndroid =
     AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    const InitializationSettings initializationSettings = InitializationSettings(
+    const InitializationSettings initializationSettings =
+    InitializationSettings(
       android: initializationSettingsAndroid,
     );
 
@@ -51,7 +52,8 @@ class _NotificationPageState extends State<NotificationPage> {
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body)['results'];
         setState(() {
-          _notifications = data.map((item) => NotificationModel.fromJson(item)).toList();
+          _notifications =
+              data.map((item) => NotificationModel.fromJson(item)).toList();
         });
       } else {
         print('Failed to load notifications');
@@ -71,7 +73,13 @@ class _NotificationPageState extends State<NotificationPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: const Text(
+          'Notifications',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(
@@ -80,31 +88,29 @@ class _NotificationPageState extends State<NotificationPage> {
             ),
           ),
         ),
-        backgroundColor: Colors.transparent, // Transparent to only show the background image
+        backgroundColor: Colors.transparent, // Transparent to show the background image
         actions: [
-          TextButton.icon(
+          IconButton(
+            icon: const Icon(Icons.clear_all, color: Colors.white),
             onPressed: _clearAllNotifications,
-            label: const Text(
-              'Clear All',
-              style: TextStyle(color: Colors.black38),
-            ),
-            icon: const Icon(Icons.clear_all, color: Colors.black),
+            tooltip: 'Clear All',
           ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: _fetchNotificationsFromBackend,
         child: Container(
-          color: Colors.white,
+          color: Colors.orange.shade50, // Light orange background
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
             child: _notifications.isEmpty
                 ? Center(
               child: Text(
-                'No notifications',
+                'No notifications available',
                 style: TextStyle(
                   fontSize: 18,
                   color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             )
@@ -113,17 +119,35 @@ class _NotificationPageState extends State<NotificationPage> {
               itemBuilder: (context, index) {
                 final notification = _notifications[index];
                 return Card(
-                  elevation: 3,
+                  elevation: 5,
+                  margin: const EdgeInsets.only(bottom: 16.0), // Space between cards
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
+                    borderRadius: BorderRadius.circular(15.0),
                   ),
                   child: ListTile(
+                    contentPadding: const EdgeInsets.all(16.0), // Increased padding
                     leading: CircleAvatar(
-                      backgroundImage: NetworkImage(notification.imageUrl),
+                      backgroundImage:
+                      NetworkImage(notification.imageUrl),
+                      radius: 28,
                     ),
-                    title: Text(notification.message),
+                    title: Text(
+                      notification.message,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                        fontSize: 16,
+                      ),
+                    ),
                     subtitle: Text(
                       '${notification.createdAt.toString().substring(0, 10)} - ${notification.createdAt.toString().substring(11, 16)}',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.notifications_active,
+                      color: Colors.orange,
                     ),
                   ),
                 );

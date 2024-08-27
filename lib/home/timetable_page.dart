@@ -175,9 +175,9 @@ class _TimetablePageState extends State<TimetablePage> {
       endHour: 18,
     );
 
-    // Map the leave request events to Timetable items with validation
+
     timetableItems = widget.events.map((event) {
-      // Ensure start is before end, otherwise skip or correct the event time
+
       if (event.startDateTime.isBefore(event.endDateTime)) {
         return TimetableItem<String>(
           event.startDateTime,
