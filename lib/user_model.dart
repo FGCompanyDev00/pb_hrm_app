@@ -28,7 +28,20 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pb_hrsystem/roles.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+// class User {
+//   String id;
+//   String name;
+//   List<String> roles;
+
+//   User({required this.id, required this.name, required this.roles});
+
+//   bool hasRole(String role) {
+//     return roles.contains(role);
+//   }
+// }
 
 class User {
   String id;
@@ -41,6 +54,8 @@ class User {
     return roles.contains(role);
   }
 }
+
+
 
 class UserProvider extends ChangeNotifier {
   User _currentUser = User(id: '1', name: 'Default User', roles: ['User']);

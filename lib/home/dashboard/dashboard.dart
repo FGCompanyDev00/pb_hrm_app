@@ -374,26 +374,56 @@ class _DashboardState extends State<Dashboard> {
                                     MaterialPageRoute(builder: (context) => const HistoryPage()),
                                   );
                                 }),
-                              _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
-                                  final currentUser = Provider.of<UserProvider>(context, listen: false).currentUser;
+                              // _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
+                              //     final currentUser = Provider.of<UserProvider>(context, listen: false).currentUser;
 
-                                  // Log the current user role
-                                  print('Current user: ${currentUser.name}, Roles: ${currentUser.roles}');
+                              //     // Log the current user role
+                              //     print('Current user: ${currentUser.name}, Roles: ${currentUser.roles}');
 
-                                  if (currentUser.hasRole(UserRole.managersbh) || currentUser.hasRole(UserRole.managerkt)) {
-                                    print('Navigating to Management Approvals Page');
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const ManagementApprovalsPage()),
-                                    );
-                                  } else {
-                                    print('Navigating to Staff Approvals Page');
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const StaffApprovalsPage()),
-                                    );
-                                  }
-                                }),
+                              //     if (currentUser.hasRole(UserRole.managersbh) || currentUser.hasRole(UserRole.managerkt)) {
+                              //       print('Navigating to Management Approvals Page');
+                              //       Navigator.push(
+                              //         context,
+                              //         MaterialPageRoute(builder: (context) => const ManagementApprovalsPage()),
+                              //       );
+                              //     } else {
+                              //       print('Navigating to Staff Approvals Page');
+                              //       Navigator.push(
+                              //         context,
+                              //         MaterialPageRoute(builder: (context) => const StaffApprovalsPage()),
+                              //       );
+                              //     }
+                              //   }),
+_buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
+  final currentUser = Provider.of<UserProvider>(context, listen: false).currentUser;
+
+  // Log the current user roles
+  print('Current user: ${currentUser.name}, Roles: ${currentUser.roles}');
+
+  // Define the mapped roles that should grant access to the management approvals page
+  const List<String> managementMappedRoles = [
+    UserRole.managersbh,
+    UserRole.john, // Add more roles if needed
+    UserRole.adminhq1, // Example
+  ];
+
+  // Check if the user has any of these mapped roles
+  final hasManagementRole = currentUser.roles.any((role) => managementMappedRoles.contains(UserRole.mapApiRole(role)));
+
+  if (hasManagementRole) {
+    print('Navigating to Management Approvals Page');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ManagementApprovalsPage()),
+    );
+  } else {
+    print('Navigating to Staff Approvals Page');
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const StaffApprovalsPage()),
+    );
+  }
+}),
                                 // _buildActionCard(context, 'assets/firstline.png', 'KPI', isDarkMode, () {
                                 //   Navigator.push(
                                 //     context,
