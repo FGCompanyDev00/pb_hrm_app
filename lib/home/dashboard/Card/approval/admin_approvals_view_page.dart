@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_request.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
-class ApprovalsViewPage extends StatelessWidget {
+class AdminApprovalsViewPage extends StatelessWidget {
   final Map<String, dynamic> item;
 
-  const ApprovalsViewPage({
+  const AdminApprovalsViewPage({
     super.key,
     required this.item,
   });
@@ -17,21 +16,21 @@ class ApprovalsViewPage extends StatelessWidget {
       appBar: _buildAppBar(context),
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(24.0), // Increased padding for better spacing
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _buildRequestorSection(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24), // Increased margin top
               _buildBlueSection(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24), // Increased spacing between sections
               _buildDetailsSection(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24), // Increased spacing between sections
               _buildWorkflowSection(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24), // Increased spacing between sections
               _buildDescriptionSection(),
               const Spacer(),
-              _buildActionButtons(context), // Only the staff actions
+              _buildActionButtons(context), // Admin action buttons with context passed
             ],
           ),
         ),
@@ -65,32 +64,21 @@ class ApprovalsViewPage extends StatelessWidget {
   }
 
   Widget _buildRequestorSection() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
       children: [
         CircleAvatar(
           backgroundImage: NetworkImage(item['img_name'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-          radius: 30,
+          radius: 40,
         ),
-        const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              item['requestor_name'] ?? 'No Name',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Submitted on ${item['created_at']?.split("T")[0] ?? 'N/A'}',
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Status: ${item['is_approve'] ?? 'N/A'}',
-              style: const TextStyle(fontSize: 14, color: Colors.orange),
-            ),
-          ],
+        const SizedBox(height: 12), // Slightly increased spacing
+        Text(
+          item['requestor_name'] ?? 'No Name',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Submitted on ${item['created_at']?.split("T")[0] ?? 'N/A'} - ${item['created_at']?.split("T")[1] ?? ''}',
+          style: const TextStyle(fontSize: 14, color: Colors.grey),
         ),
       ],
     );
@@ -98,31 +86,28 @@ class ApprovalsViewPage extends StatelessWidget {
 
   Widget _buildBlueSection() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24), // Increased padding for more emphasis
       decoration: BoxDecoration(
         color: Colors.lightBlueAccent,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text(
-        item['types'] ?? 'No Data', // Displaying the "types" value from API
-        style: const TextStyle(color: Colors.white, fontSize: 16),
+      child: const Text(
+        'Leave',
+        style: TextStyle(color: Colors.white, fontSize: 16),
       ),
     );
   }
 
   Widget _buildDetailsSection() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center, // Center alignment for details
       children: [
-        Text(
-          item['name'] ?? 'No Title', // Displaying the "name" value from API
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        const SizedBox(height: 8),
+        _buildInfoRow(Icons.bookmark, 'Title', item['name'] ?? 'No Title'),
+        const SizedBox(height: 12), // Slightly increased spacing
         _buildInfoRow(Icons.calendar_today, 'Date', '${item['take_leave_from']} - ${item['take_leave_to']}'),
-        const SizedBox(height: 8),
-        _buildInfoRow(Icons.access_time, 'Time', '09:00 AM - 12:00 PM'), // You can update these time details based on your requirement
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
+        _buildInfoRow(Icons.access_time, 'Time', '09:00 AM - 12:00 PM'), // Update time details based on requirement
+        const SizedBox(height: 12),
         Text(
           'Type of leave: ${item['take_leave_reason'] ?? 'No Reason'}',
           style: const TextStyle(fontSize: 16, color: Colors.orange),
@@ -153,7 +138,7 @@ class ApprovalsViewPage extends StatelessWidget {
 
   Widget _buildInfoRow(IconData icon, String title, String content) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.center, // Centering the rows
       children: [
         Icon(icon, size: 20),
         const SizedBox(width: 8),
@@ -164,12 +149,12 @@ class ApprovalsViewPage extends StatelessWidget {
 
   Widget _buildDescriptionSection() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center, // Center alignment for the description section
       children: [
         const Text('Description:'),
         const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(12), // Increased padding for more emphasis
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey),
             borderRadius: BorderRadius.circular(8),
@@ -187,8 +172,8 @@ class ApprovalsViewPage extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _buildButton('Delete', Colors.grey, Colors.white, onPressed: () => _deleteRequest(context)),
-        _buildButton('Edit', Colors.amber, Colors.black, onPressed: () => _editRequest(context)),
+        _buildButton('Reject', Colors.red, Colors.white, onPressed: () => _rejectRequest(context)),
+        _buildButton('Approve', Colors.green, Colors.white, onPressed: () => _approveRequest(context)),
       ],
     );
   }
@@ -204,7 +189,7 @@ class ApprovalsViewPage extends StatelessWidget {
     );
   }
 
-  Future<void> _deleteRequest(BuildContext context) async {
+  Future<void> _approveRequest(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
@@ -216,7 +201,7 @@ class ApprovalsViewPage extends StatelessWidget {
     }
 
     final response = await http.put(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/leave_cancel/${item['take_leave_request_id']}'),
+      Uri.parse('https://demo-application-api.flexiflows.co/api/leave_approve/${item['take_leave_request_id']}'),
       headers: {
         'Authorization': 'Bearer $token',
       },
@@ -224,22 +209,43 @@ class ApprovalsViewPage extends StatelessWidget {
 
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request cancelled successfully')),
+        const SnackBar(content: Text('Request approved successfully')),
       );
       Navigator.pop(context, true); // Returning to the previous page with success
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to cancel request: ${response.reasonPhrase}')),
+        SnackBar(content: Text('Failed to approve request: ${response.reasonPhrase}')),
       );
     }
   }
 
-  void _editRequest(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditRequestPage(item: item),
-      ),
+  Future<void> _rejectRequest(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is null. Please log in again.')),
+      );
+      return;
+    }
+
+    final response = await http.put(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/leave_reject/${item['take_leave_request_id']}'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
     );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request rejected successfully')),
+      );
+      Navigator.pop(context, true); // Returning to the previous page with success
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to reject request: ${response.reasonPhrase}')),
+      );
+    }
   }
 }

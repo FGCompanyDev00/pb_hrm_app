@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/history_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_approvals_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/inventory_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/kpi_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/qr_profile_page.dart';
 import 'package:pb_hrsystem/roles.dart';
@@ -116,7 +115,6 @@ class _DashboardState extends State<Dashboard> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
-    final currentUser = Provider.of<UserProvider>(context).currentUser;
 
     return WillPopScope(
       onWillPop: () async => false,
@@ -158,7 +156,6 @@ class _DashboardState extends State<Dashboard> {
                           } else if (snapshot.hasError) {
                             return Center(child: Text('Error: ${snapshot.error}'));
                           } else if (snapshot.hasData) {
-                            String title = snapshot.data!.name;
                             return Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -356,9 +353,6 @@ class _DashboardState extends State<Dashboard> {
                         const SizedBox(height: 15),
                         LayoutBuilder(
                           builder: (context, constraints) {
-                            double width = constraints.maxWidth;
-                            int crossAxisCount = width > 600 ? 3 : 2;
-                            double childAspectRatio = width > 600 ? 1 : 1;
 
                             return GridView.count(
                               crossAxisCount: 3,
@@ -374,85 +368,73 @@ class _DashboardState extends State<Dashboard> {
                                     MaterialPageRoute(builder: (context) => const HistoryPage()),
                                   );
                                 }),
-                              // _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
-                              //     final currentUser = Provider.of<UserProvider>(context, listen: false).currentUser;
 
-                              //     // Log the current user role
-                              //     print('Current user: ${currentUser.name}, Roles: ${currentUser.roles}');
+                              _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
 
-                              //     if (currentUser.hasRole(UserRole.managersbh) || currentUser.hasRole(UserRole.managerkt)) {
-                              //       print('Navigating to Management Approvals Page');
-                              //       Navigator.push(
-                              //         context,
-                              //         MaterialPageRoute(builder: (context) => const ManagementApprovalsPage()),
-                              //       );
-                              //     } else {
-                              //       print('Navigating to Staff Approvals Page');
-                              //       Navigator.push(
-                              //         context,
-                              //         MaterialPageRoute(builder: (context) => const StaffApprovalsPage()),
-                              //       );
-                              //     }
-                              //   }),
-                      _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
-  final currentUser = Provider.of<UserProvider>(context, listen: false).currentUser;
+                                final currentUser = Provider.of<UserProvider>(context, listen: false).currentUser;
 
-  // Log the current user roles
-  print('Current user: ${currentUser.name}, Roles: ${currentUser.roles}');
+// Log the current user roles
+                                if (kDebugMode) {
+                                  print('Current user: ${currentUser.name}, Roles: ${currentUser.roles}');
+                                }
 
-  const List<String> managementMappedRoles = [
-    UserRole.managersbh,
-    UserRole.john, 
-    UserRole.adminhq1, 
-  ];
+                                const List<String> managementMappedRoles = [
+                                  UserRole.managersbh,
+                                  UserRole.john,
+                                  UserRole.adminhq1,
+                                ];
 
-  // Log the role mapping for each role the user has
-  for (var role in currentUser.roles) {
-    String mappedRole = UserRole.mapApiRole(role);
-    print('API Role: $role => Mapped Role: $mappedRole');
-  }
+// Additional roles to check
+                                const List<String> additionalManagementRoles = [
+                                  'HeadOfHR',
+                                  'HR',
+                                  'AdminHQ',
+                                ];
 
-  // Check if the user has any of these mapped roles
-  final hasManagementRole = currentUser.roles.any((role) {
-    String mappedRole = UserRole.mapApiRole(role);
-    bool isManagementRole = managementMappedRoles.contains(mappedRole);
-    print('Checking role: $role (mapped to: $mappedRole) - Is Management Role: $isManagementRole');
-    return isManagementRole;
-  });
+// Log the role mapping for each role the user has
+                                for (var role in currentUser.roles) {
+                                  String mappedRole = UserRole.mapApiRole(role);
+                                  if (kDebugMode) {
+                                    print('API Role: $role => Mapped Role: $mappedRole');
+                                  }
+                                }
 
-  if (hasManagementRole) {
-    print('Navigating to Management Approvals Page');
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const ManagementApprovalsPage()),
-    );
-  } else {
-    print('Navigating to Staff Approvals Page');
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const StaffApprovalsPage()),
-    );
-  }
-}),
+// Check if the user has any of these mapped roles
+                                final hasManagementRole = currentUser.roles.any((role) {
+                                  String mappedRole = UserRole.mapApiRole(role);
+                                  bool isManagementRole = managementMappedRoles.contains(mappedRole) || additionalManagementRoles.contains(role);
+                                  if (kDebugMode) {
+                                    print('Checking role: $role (mapped to: $mappedRole) - Is Management Role: $isManagementRole');
+                                  }
+                                  return isManagementRole;
+                                });
 
-                                // _buildActionCard(context, 'assets/firstline.png', 'KPI', isDarkMode, () {
-                                //   Navigator.push(
-                                //     context,
-                                //     MaterialPageRoute(builder: (context) => const KpiPage()),
-                                //   );
-                                // }),
+                                if (hasManagementRole) {
+                                  if (kDebugMode) {
+                                    print('Navigating to Management Approvals Page');
+                                  }
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const ManagementApprovalsPage()),
+                                  );
+                                } else {
+                                  if (kDebugMode) {
+                                    print('Navigating to Staff Approvals Page');
+                                  }
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const StaffApprovalsPage()),
+                                  );
+                                }
+                              }),
+
                                 _buildActionCard(context, 'assets/status-up.png', 'Work Tracking', isDarkMode, () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
                                   );
                                 }),
-                                // _buildActionCard(context, 'assets/shop-add.png', 'Inventory', isDarkMode, () {
-                                //   Navigator.push(
-                                //     context,
-                                //     MaterialPageRoute(builder: (context) => const InventoryPage()),
-                                //   );
-                                // }),
+
                               ],
                             );
                           },
