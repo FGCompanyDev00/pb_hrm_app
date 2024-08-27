@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/history_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/approvals_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_approvals_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/inventory_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/kpi_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
@@ -16,7 +16,7 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/myprofile_page.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
-import 'package:pb_hrsystem/management/management_pages.dart';
+import 'package:pb_hrsystem/management/management_page.dart';
 
 import '../../notifications/notification_page.dart';
 
@@ -400,7 +400,6 @@ class _DashboardState extends State<Dashboard> {
   // Log the current user roles
   print('Current user: ${currentUser.name}, Roles: ${currentUser.roles}');
 
-  // Define the mapped roles that should grant access to the management approvals page
   const List<String> managementMappedRoles = [
     UserRole.managersbh,
     UserRole.john, 

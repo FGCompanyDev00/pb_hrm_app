@@ -1,665 +1,7 @@
-// import 'package:flutter/material.dart';
-// import 'package:pb_hrsystem/theme/theme.dart';
-// import 'package:provider/provider.dart';
-
-// class ApprovalsViewPage extends StatelessWidget {
-//   final Map<String, dynamic> item;
-
-//   const ApprovalsViewPage({
-//     super.key,
-//     required this.item,
-//   });
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final themeNotifier = Provider.of<ThemeNotifier>(context);
-//     final bool isDarkMode = themeNotifier.isDarkMode;
-
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('Approval Details'),
-//         backgroundColor: isDarkMode ? Colors.black : Colors.amber,
-//       ),
-//       body: Padding(
-//         padding: const EdgeInsets.all(16.0),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             Text(
-//               'Requestor',
-//               style: TextStyle(
-//                 fontWeight: FontWeight.bold,
-//                 fontSize: 20,
-//                 color: isDarkMode ? Colors.white : Colors.black,
-//               ),
-//             ),
-//             const SizedBox(height: 16),
-//             Row(
-//               children: [
-//                 CircleAvatar(
-//                   backgroundImage: NetworkImage(item['img_path'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-//                   radius: 30,
-//                 ),
-//                 const SizedBox(width: 16),
-//                 Column(
-//                   crossAxisAlignment: CrossAxisAlignment.start,
-//                   children: [
-//                     Text(
-//                       item['requestor_name'] ?? 'No Name',
-//                       style: TextStyle(
-//                         fontSize: 16,
-//                         color: isDarkMode ? Colors.white : Colors.black,
-//                       ),
-//                     ),
-//                     const SizedBox(height: 4),
-//                     Text(
-//                       'Submitted on ${item['created_at']}',
-//                       style: TextStyle(
-//                         fontSize: 14,
-//                         color: isDarkMode ? Colors.white70 : Colors.black54,
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               ],
-//             ),
-//             const SizedBox(height: 16),
-//             Text(
-//               item['name'] ?? 'No Title',
-//               style: TextStyle(
-//                 fontWeight: FontWeight.bold,
-//                 fontSize: 18,
-//                 color: isDarkMode ? Colors.white : Colors.black,
-//               ),
-//             ),
-//             const SizedBox(height: 16),
-//             Row(
-//               children: [
-//                 const Icon(Icons.calendar_today, size: 20),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   'From: ${item['take_leave_from']} To: ${item['take_leave_to']}',
-//                   style: TextStyle(
-//                     fontSize: 16,
-//                     color: isDarkMode ? Colors.white70 : Colors.black54,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             Row(
-//               children: [
-//                 const Icon(Icons.access_time, size: 20),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   'Days: ${item['days']}',
-//                   style: TextStyle(
-//                     fontSize: 16,
-//                     color: isDarkMode ? Colors.white70 : Colors.black54,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             const SizedBox(height: 16),
-//             Row(
-//               children: [
-//                 const Icon(Icons.book, size: 20),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   item['take_leave_reason'] ?? 'No Reason',
-//                   style: TextStyle(
-//                     fontSize: 16,
-//                     color: isDarkMode ? Colors.white70 : Colors.black54,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             const SizedBox(height: 16),
-//             Text(
-//               'Status: ${item['is_approve']}',
-//               style: TextStyle(
-//                 fontSize: 16,
-//                 color: isDarkMode ? Colors.white : Colors.black,
-//               ),
-//             ),
-//             const SizedBox(height: 24),
-//             if (item['is_approve'] == 'Waiting')
-//               Row(
-//                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-//                 children: [
-//                   ElevatedButton(
-//                     onPressed: () {
-//                       // Implement the approve functionality
-//                     },
-//                     style: ElevatedButton.styleFrom(
-//                       foregroundColor: Colors.white, backgroundColor: Colors.green,
-//                     ),
-//                     child: const Text('Approve'),
-//                   ),
-//                   ElevatedButton(
-//                     onPressed: () {
-//                       // Implement the reject functionality
-//                     },
-//                     style: ElevatedButton.styleFrom(
-//                       foregroundColor: Colors.white, backgroundColor: Colors.red,
-//                     ),
-//                     child: const Text('Reject'),
-//                   ),
-//                 ],
-//               ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// import 'dart:convert';
-// import 'package:flutter/material.dart';
-// import 'package:pb_hrsystem/theme/theme.dart';
-// import 'package:provider/provider.dart';
-// import 'package:http/http.dart' as http;
-// import 'package:shared_preferences/shared_preferences.dart';
-
-// class ApprovalsViewPage extends StatelessWidget {
-//   final Map<String, dynamic> item;
-
-//   const ApprovalsViewPage({
-//     super.key,
-//     required this.item,
-//   });
-
-//   Future<void> _approveRequest(BuildContext context) async {
-//     final prefs = await SharedPreferences.getInstance();
-//     final token = prefs.getString('token');
-
-//     if (token == null) {
-//       _showErrorDialog(context, 'Authorization Error', 'Token is null. Please log in again.');
-//       return;
-//     }
-
-//     try {
-//       final response = await http.put(
-//         Uri.parse('https://demo-application-api.flexiflows.co/api/leave_approve/${item['id']}'),
-//         headers: {'Authorization': 'Bearer $token'},
-//       );
-
-//       if (response.statusCode == 200) {
-//         _showSuccessDialog(context, 'Approved Successfully');
-//       } else {
-//         _showErrorDialog(context, 'Failed to Approve', response.reasonPhrase ?? 'Unknown error occurred');
-//       }
-//     } catch (e) {
-//       _showErrorDialog(context, 'Error', 'An unexpected error occurred: $e');
-//     }
-//   }
-
-//   Future<void> _rejectRequest(BuildContext context) async {
-//     final prefs = await SharedPreferences.getInstance();
-//     final token = prefs.getString('token');
-
-//     if (token == null) {
-//       _showErrorDialog(context, 'Authorization Error', 'Token is null. Please log in again.');
-//       return;
-//     }
-
-//     try {
-//       final response = await http.put(
-//         Uri.parse('https://demo-application-api.flexiflows.co/api/leave_reject/${item['id']}'),
-//         headers: {'Authorization': 'Bearer $token'},
-//       );
-
-//       if (response.statusCode == 200) {
-//         _showSuccessDialog(context, 'Rejected Successfully');
-//       } else {
-//         _showErrorDialog(context, 'Failed to Reject', response.reasonPhrase ?? 'Unknown error occurred');
-//       }
-//     } catch (e) {
-//       _showErrorDialog(context, 'Error', 'An unexpected error occurred: $e');
-//     }
-//   }
-
-//   void _showErrorDialog(BuildContext context, String title, String message) {
-//     showDialog(
-//       context: context,
-//       builder: (context) => AlertDialog(
-//         title: Text(title),
-//         content: Text(message),
-//         actions: [
-//           TextButton(
-//             onPressed: () => Navigator.of(context).pop(),
-//             child: const Text('OK'),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   void _showSuccessDialog(BuildContext context, String message) {
-//     showDialog(
-//       context: context,
-//       builder: (context) => AlertDialog(
-//         title: const Text('Success'),
-//         content: Text(message),
-//         actions: [
-//           TextButton(
-//             onPressed: () => Navigator.of(context).pop(), // Close dialog and navigate back
-//             child: const Text('OK'),
-//           ),
-//         ],
-//       ),
-//     ).then((_) => Navigator.of(context).pop()); // Go back to the previous page
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final themeNotifier = Provider.of<ThemeNotifier>(context);
-//     final bool isDarkMode = themeNotifier.isDarkMode;
-
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('Approval Details'),
-//         backgroundColor: isDarkMode ? Colors.black : Colors.amber,
-//       ),
-//       body: Padding(
-//         padding: const EdgeInsets.all(16.0),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             Text(
-//               'Requestor',
-//               style: TextStyle(
-//                 fontWeight: FontWeight.bold,
-//                 fontSize: 20,
-//                 color: isDarkMode ? Colors.white : Colors.black,
-//               ),
-//             ),
-//             const SizedBox(height: 16),
-//             Row(
-//               children: [
-//                 CircleAvatar(
-//                   backgroundImage: NetworkImage(item['img_path'] ??
-//                       'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-//                   radius: 30,
-//                 ),
-//                 const SizedBox(width: 16),
-//                 Column(
-//                   crossAxisAlignment: CrossAxisAlignment.start,
-//                   children: [
-//                     Text(
-//                       item['requestor_name'] ?? 'No Name',
-//                       style: TextStyle(
-//                         fontSize: 16,
-//                         color: isDarkMode ? Colors.white : Colors.black,
-//                       ),
-//                     ),
-//                     const SizedBox(height: 4),
-//                     Text(
-//                       'Submitted on ${item['created_at']}',
-//                       style: TextStyle(
-//                         fontSize: 14,
-//                         color: isDarkMode ? Colors.white70 : Colors.black54,
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               ],
-//             ),
-//             const SizedBox(height: 16),
-//             Text(
-//               item['name'] ?? 'No Title',
-//               style: TextStyle(
-//                 fontWeight: FontWeight.bold,
-//                 fontSize: 18,
-//                 color: isDarkMode ? Colors.white : Colors.black,
-//               ),
-//             ),
-//             const SizedBox(height: 16),
-//             Row(
-//               children: [
-//                 const Icon(Icons.calendar_today, size: 20),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   'From: ${item['take_leave_from']} To: ${item['take_leave_to']}',
-//                   style: TextStyle(
-//                     fontSize: 16,
-//                     color: isDarkMode ? Colors.white70 : Colors.black54,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             Row(
-//               children: [
-//                 const Icon(Icons.access_time, size: 20),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   'Days: ${item['days']}',
-//                   style: TextStyle(
-//                     fontSize: 16,
-//                     color: isDarkMode ? Colors.white70 : Colors.black54,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             const SizedBox(height: 16),
-//             Row(
-//               children: [
-//                 const Icon(Icons.book, size: 20),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   item['take_leave_reason'] ?? 'No Reason',
-//                   style: TextStyle(
-//                     fontSize: 16,
-//                     color: isDarkMode ? Colors.white70 : Colors.black54,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             const SizedBox(height: 16),
-//             Text(
-//               'Status: ${item['is_approve']}',
-//               style: TextStyle(
-//                 fontSize: 16,
-//                 color: isDarkMode ? Colors.white : Colors.black,
-//               ),
-//             ),
-//             const SizedBox(height: 24),
-//             if (item['is_approve'] == 'Waiting')
-//               Row(
-//                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-//                 children: [
-//                   ElevatedButton(
-//                     onPressed: () => _approveRequest(context),
-//                     style: ElevatedButton.styleFrom(
-//                       foregroundColor: Colors.white,
-//                       backgroundColor: Colors.green,
-//                     ),
-//                     child: const Text('Approve'),
-//                   ),
-//                   ElevatedButton(
-//                     onPressed: () => _rejectRequest(context),
-//                     style: ElevatedButton.styleFrom(
-//                       foregroundColor: Colors.white,
-//                       backgroundColor: Colors.red,
-//                     ),
-//                     child: const Text('Reject'),
-//                   ),
-//                 ],
-//               ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-// import 'dart:convert';
-// import 'package:flutter/material.dart';
-// import 'package:pb_hrsystem/theme/theme.dart';
-// import 'package:provider/provider.dart';
-// import 'package:http/http.dart' as http;
-// import 'package:shared_preferences/shared_preferences.dart';
-
-// class ApprovalsViewPage extends StatelessWidget {
-//   final Map<String, dynamic> item;
-
-//   const ApprovalsViewPage({
-//     super.key,
-//     required this.item,
-//   });
-
-//   Future<String?> _getCurrentUserId() async {
-//     final prefs = await SharedPreferences.getInstance();
-//     return prefs.getString('user_id'); // Assuming user_id is stored in SharedPreferences
-//   }
-
-//   Future<void> _approveRequest(BuildContext context) async {
-//     final prefs = await SharedPreferences.getInstance();
-//     final token = prefs.getString('token');
-
-//     if (token == null) {
-//       _showErrorDialog(context, 'Authorization Error', 'Token is null. Please log in again.');
-//       return;
-//     }
-
-//     try {
-//       final response = await http.put(
-//         Uri.parse('https://demo-application-api.flexiflows.co/api/leave_approve/${item['id']}'),
-//         headers: {'Authorization': 'Bearer $token'},
-//       );
-
-//       if (response.statusCode == 200) {
-//         _showSuccessDialog(context, 'Approved Successfully');
-//       } else {
-//         _showErrorDialog(context, 'Failed to Approve', response.reasonPhrase ?? 'Unknown error occurred');
-//       }
-//     } catch (e) {
-//       _showErrorDialog(context, 'Error', 'An unexpected error occurred: $e');
-//     }
-//   }
-
-//   Future<void> _rejectRequest(BuildContext context) async {
-//     final prefs = await SharedPreferences.getInstance();
-//     final token = prefs.getString('token');
-
-//     if (token == null) {
-//       _showErrorDialog(context, 'Authorization Error', 'Token is null. Please log in again.');
-//       return;
-//     }
-
-//     try {
-//       final response = await http.put(
-//         Uri.parse('https://demo-application-api.flexiflows.co/api/leave_reject/${item['id']}'),
-//         headers: {'Authorization': 'Bearer $token'},
-//       );
-
-//       if (response.statusCode == 200) {
-//         _showSuccessDialog(context, 'Rejected Successfully');
-//       } else {
-//         _showErrorDialog(context, 'Failed to Reject', response.reasonPhrase ?? 'Unknown error occurred');
-//       }
-//     } catch (e) {
-//       _showErrorDialog(context, 'Error', 'An unexpected error occurred: $e');
-//     }
-//   }
-
-//   void _showErrorDialog(BuildContext context, String title, String message) {
-//     showDialog(
-//       context: context,
-//       builder: (context) => AlertDialog(
-//         title: Text(title),
-//         content: Text(message),
-//         actions: [
-//           TextButton(
-//             onPressed: () => Navigator.of(context).pop(),
-//             child: const Text('OK'),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   void _showSuccessDialog(BuildContext context, String message) {
-//     showDialog(
-//       context: context,
-//       builder: (context) => AlertDialog(
-//         title: const Text('Success'),
-//         content: Text(message),
-//         actions: [
-//           TextButton(
-//             onPressed: () => Navigator.of(context).pop(), // Close dialog and navigate back
-//             child: const Text('OK'),
-//           ),
-//         ],
-//       ),
-//     ).then((_) => Navigator.of(context).pop()); // Go back to the previous page
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final themeNotifier = Provider.of<ThemeNotifier>(context);
-//     final bool isDarkMode = themeNotifier.isDarkMode;
-
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('Approval Details'),
-//         backgroundColor: isDarkMode ? Colors.black : Colors.amber,
-//       ),
-//       body: Padding(
-//         padding: const EdgeInsets.all(16.0),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             Text(
-//               'Requestor',
-//               style: TextStyle(
-//                 fontWeight: FontWeight.bold,
-//                 fontSize: 20,
-//                 color: isDarkMode ? Colors.white : Colors.black,
-//               ),
-//             ),
-//             const SizedBox(height: 16),
-//             Row(
-//               children: [
-//                 CircleAvatar(
-//                   backgroundImage: NetworkImage(item['img_path'] ??
-//                       'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-//                   radius: 30,
-//                 ),
-//                 const SizedBox(width: 16),
-//                 Column(
-//                   crossAxisAlignment: CrossAxisAlignment.start,
-//                   children: [
-//                     Text(
-//                       item['requestor_name'] ?? 'No Name',
-//                       style: TextStyle(
-//                         fontSize: 16,
-//                         color: isDarkMode ? Colors.white : Colors.black,
-//                       ),
-//                     ),
-//                     const SizedBox(height: 4),
-//                     Text(
-//                       'Submitted on ${item['created_at']}',
-//                       style: TextStyle(
-//                         fontSize: 14,
-//                         color: isDarkMode ? Colors.white70 : Colors.black54,
-//                       ),
-//                     ),
-//                   ],
-//                 ),
-//               ],
-//             ),
-//             const SizedBox(height: 16),
-//             Text(
-//               item['name'] ?? 'No Title',
-//               style: TextStyle(
-//                 fontWeight: FontWeight.bold,
-//                 fontSize: 18,
-//                 color: isDarkMode ? Colors.white : Colors.black,
-//               ),
-//             ),
-//             const SizedBox(height: 16),
-//             Row(
-//               children: [
-//                 const Icon(Icons.calendar_today, size: 20),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   'From: ${item['take_leave_from']} To: ${item['take_leave_to']}',
-//                   style: TextStyle(
-//                     fontSize: 16,
-//                     color: isDarkMode ? Colors.white70 : Colors.black54,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             Row(
-//               children: [
-//                 const Icon(Icons.access_time, size: 20),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   'Days: ${item['days']}',
-//                   style: TextStyle(
-//                     fontSize: 16,
-//                     color: isDarkMode ? Colors.white70 : Colors.black54,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             const SizedBox(height: 16),
-//             Row(
-//               children: [
-//                 const Icon(Icons.book, size: 20),
-//                 const SizedBox(width: 8),
-//                 Text(
-//                   item['take_leave_reason'] ?? 'No Reason',
-//                   style: TextStyle(
-//                     fontSize: 16,
-//                     color: isDarkMode ? Colors.white70 : Colors.black54,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//             const SizedBox(height: 16),
-//             Text(
-//               'Status: ${item['is_approve']}',
-//               style: TextStyle(
-//                 fontSize: 16,
-//                 color: isDarkMode ? Colors.white : Colors.black,
-//               ),
-//             ),
-//             const SizedBox(height: 24),
-//             if (item['is_approve'] == 'Waiting')
-//               FutureBuilder<String?>(
-//                 future: _getCurrentUserId(),
-//                 builder: (context, snapshot) {
-//                   if (snapshot.connectionState == ConnectionState.waiting) {
-//                     return const SizedBox(); // Show nothing while loading
-//                   }
-
-//                   final currentUserId = snapshot.data;
-//                   final isAdmin = currentUserId == 'PSV-00-000001'; // Check if the current user is adminsst1
-
-//                   if (isAdmin) {
-//                     return Row(
-//                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-//                       children: [
-//                         ElevatedButton(
-//                           onPressed: () => _approveRequest(context),
-//                           style: ElevatedButton.styleFrom(
-//                             foregroundColor: Colors.white,
-//                             backgroundColor: Colors.green,
-//                           ),
-//                           child: const Text('Approve'),
-//                         ),
-//                         ElevatedButton(
-//                           onPressed: () => _rejectRequest(context),
-//                           style: ElevatedButton.styleFrom(
-//                             foregroundColor: Colors.white,
-//                             backgroundColor: Colors.red,
-//                           ),
-//                           child: const Text('Reject'),
-//                         ),
-//                       ],
-//                     );
-//                   }
-
-//                   return const SizedBox(); // If not admin, show nothing
-//                 },
-//               ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
-import 'dart:convert';
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
-import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
+import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_request.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http; // Missing import for http
 
 class ApprovalsViewPage extends StatelessWidget {
   final Map<String, dynamic> item;
@@ -669,285 +11,253 @@ class ApprovalsViewPage extends StatelessWidget {
     required this.item,
   });
 
-  Future<String?> _getCurrentUserId() async {
+  Future<bool> _isAdmin() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('user_id');
-  }
-
-  Future<void> _approveRequest(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    if (token == null) {
-      _showErrorDialog(context, 'Authorization Error', 'Token is null. Please log in again.');
-      return;
-    }
-
-    try {
-      final response = await http.put(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_approve/${item['id']}'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        _showSuccessDialog(context, 'Approved Successfully');
-      } else if (response.statusCode == 403) {
-        _showErrorDialog(context, 'Access Denied', 'You do not have permission to perform this action.');
-      } else {
-        _showErrorDialog(context, 'Failed to Approve', response.reasonPhrase ?? 'Unknown error occurred');
-      }
-    } catch (e) {
-      _showErrorDialog(context, 'Error', 'An unexpected error occurred: $e');
-    }
-  }
-
-  Future<void> _rejectRequest(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    if (token == null) {
-      _showErrorDialog(context, 'Authorization Error', 'Token is null. Please log in again.');
-      return;
-    }
-
-    try {
-      final response = await http.put(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_reject/${item['id']}'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        _showSuccessDialog(context, 'Rejected Successfully');
-      } else if (response.statusCode == 403) {
-        _showErrorDialog(context, 'Access Denied', 'You do not have permission to perform this action.');
-      } else {
-        _showErrorDialog(context, 'Failed to Reject', response.reasonPhrase ?? 'Unknown error occurred');
-      }
-    } catch (e) {
-      _showErrorDialog(context, 'Error', 'An unexpected error occurred: $e');
-    }
-  }
-
-  void _showErrorDialog(BuildContext context, String title, String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSuccessDialog(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Success'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(), // Close dialog and navigate back
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    ).then((_) => Navigator.of(context).pop()); // Go back to the previous page
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchLeaveRequests() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
     final userId = prefs.getString('user_id');
-
-    if (token == null) {
-      throw Exception('Authorization Error: Token is null.');
-    }
-
-    // Use the admin API for adminsst1
-    final url = userId == 'PSV-00-959222'
-        ? 'https://demo-application-api.flexiflows.co/api/leave_requests/all'
-        : 'https://demo-application-api.flexiflows.co/api/leave_requests';
-
-    try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return List<Map<String, dynamic>>.from(data);
-      } else if (response.statusCode == 403) {
-        throw Exception('Access Denied: You do not have permission to access this data.');
-      } else {
-        throw Exception('Failed to load leave requests: ${response.reasonPhrase}');
-      }
-    } catch (e) {
-      throw Exception('Error fetching leave requests: $e');
-    }
+    return userId == 'PSV-00-000002';
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
+    return FutureBuilder<bool>(
+      future: _isAdmin(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final isAdmin = snapshot.data!;
+        return Scaffold(
+          appBar: _buildAppBar(context),
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildRequestorSection(),
+                  const SizedBox(height: 16),
+                  _buildBlueSection(),
+                  const SizedBox(height: 16),
+                  _buildDetailsSection(),
+                  const SizedBox(height: 16),
+                  _buildWorkflowSection(),
+                  const SizedBox(height: 16),
+                  _buildDescriptionSection(),
+                  const Spacer(),
+                  _buildActionButtons(isAdmin, context), // Pass context to _buildActionButtons
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Approval Details'),
-        backgroundColor: isDarkMode ? Colors.black : Colors.amber,
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return AppBar(
+      flexibleSpace: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/background.png'),
+            fit: BoxFit.cover,
+          ),
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(20),
+            bottomRight: Radius.circular(20),
+          ),
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      title: const Text('Leave'),
+      centerTitle: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+    );
+  }
+
+  Widget _buildRequestorSection() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        CircleAvatar(
+          backgroundImage: NetworkImage(item['img_name'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
+          radius: 30,
+        ),
+        const SizedBox(width: 16),
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Requestor',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
+              item['requestor_name'] ?? 'No Name',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundImage: NetworkImage(item['img_path'] ??
-                      'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-                  radius: 30,
-                ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item['requestor_name'] ?? 'No Name',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Submitted on ${item['created_at']}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 4),
             Text(
-              item['name'] ?? 'No Title',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
+              'Submitted on ${item['created_at'] ?? 'N/A'}',
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'From: ${item['take_leave_from']} To: ${item['take_leave_to']}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                const Icon(Icons.access_time, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Days: ${item['days']}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Icon(Icons.book, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  item['take_leave_reason'] ?? 'No Reason',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 4),
             Text(
-              'Status: ${item['is_approve']}',
-              style: TextStyle(
-                fontSize: 16,
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
+              'Status: ${item['is_approve'] ?? 'N/A'}',
+              style: const TextStyle(fontSize: 14, color: Colors.orange),
             ),
-            const SizedBox(height: 24),
-            if (item['is_approve'] == 'Waiting')
-              FutureBuilder<String?>(
-                future: _getCurrentUserId(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const SizedBox(); // Show nothing while loading
-                  }
-
-                  final currentUserId = snapshot.data;
-                  final isAdmin = currentUserId == 'PSV-00-959222'; // Check if the current user is adminsst1
-
-                  if (isAdmin) {
-                    return Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () => _approveRequest(context),
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            backgroundColor: Colors.green,
-                          ),
-                          child: const Text('Approve'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => _rejectRequest(context),
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            backgroundColor: Colors.red,
-                          ),
-                          child: const Text('Reject'),
-                        ),
-                      ],
-                    );
-                  }
-
-                  return const SizedBox(); // If not admin, show nothing
-                },
-              ),
           ],
         ),
+      ],
+    );
+  }
+
+  Widget _buildBlueSection() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.lightBlueAccent,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        item['types'] ?? 'No Data', // Displaying the "types" value from API
+        style: const TextStyle(color: Colors.white, fontSize: 16),
+      ),
+    );
+  }
+
+  Widget _buildDetailsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          item['name'] ?? 'No Title', // Displaying the "name" value from API
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        _buildInfoRow(Icons.calendar_today, 'Date', '${item['take_leave_from']} - ${item['take_leave_to']}'),
+        const SizedBox(height: 8),
+        Text(
+          'Type of leave: ${item['take_leave_reason'] ?? 'No Reason'}',
+          style: const TextStyle(fontSize: 16, color: Colors.orange),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWorkflowSection() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildUserAvatar(item['img_name']),
+        const Icon(Icons.arrow_forward, color: Colors.green),
+        _buildUserAvatar('manager_image_url1'), // Replace with the actual image URLs of the managers
+        const Icon(Icons.arrow_forward, color: Colors.green),
+        _buildUserAvatar('manager_image_url2'),
+      ],
+    );
+  }
+
+  Widget _buildUserAvatar(String? imageUrl) {
+    return CircleAvatar(
+      backgroundImage: NetworkImage(imageUrl ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
+      radius: 20,
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String title, String content) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 20),
+        const SizedBox(width: 8),
+        Text('$title: $content'),
+      ],
+    );
+  }
+
+  Widget _buildDescriptionSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const Text('Description:'),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            item['take_leave_reason'] ?? 'No Description',
+            style: const TextStyle(fontSize: 16),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons(bool isAdmin, BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: isAdmin
+          ? [
+        _buildButton('Reject', Colors.grey, Colors.white, onPressed: () {}), // Implement Reject action
+        _buildButton('Approve', Colors.green, Colors.white, onPressed: () {}), // Implement Approve action
+      ]
+          : [
+        _buildButton('Delete', Colors.grey, Colors.white, onPressed: () => _deleteRequest(context)),
+        _buildButton('Edit', Colors.amber, Colors.black, onPressed: () => _editRequest(context)),
+      ],
+    );
+  }
+
+  Widget _buildButton(String label, Color color, Color textColor, {required VoidCallback onPressed}) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        foregroundColor: textColor, backgroundColor: color,
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+      ),
+      child: Text(label, style: const TextStyle(fontSize: 16)),
+    );
+  }
+
+  Future<void> _deleteRequest(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is null. Please log in again.')),
+      );
+      return;
+    }
+
+    final response = await http.put(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/leave_cancel/${item['take_leave_request_id']}'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request cancelled successfully')),
+      );
+      Navigator.pop(context, true); // Returning to the previous page with success
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to cancel request: ${response.reasonPhrase}')),
+      );
+    }
+  }
+
+  void _editRequest(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditRequestPage(item: item),
       ),
     );
   }
 }
-

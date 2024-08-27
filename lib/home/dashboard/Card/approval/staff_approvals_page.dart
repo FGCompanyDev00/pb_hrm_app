@@ -26,109 +26,46 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
     _fetchApprovalsData();
   }
 
-Future<void> _fetchApprovalsData() async {
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('token');
+  Future<void> _fetchApprovalsData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
 
-  if (token == null) {
-    print('Token is null');
-    return;
-  } else {
-    print('Token is available: $token');
-  }
-
-  try {
-    final response = await http.get(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200) {
-      final List<dynamic> results = json.decode(response.body)['results'];
-      final List<Map<String, dynamic>> approvalItems = results
-          .where((item) => item['is_approve'] == 'Waiting')
-          .map((item) => Map<String, dynamic>.from(item))
-          .toList();
-      final List<Map<String, dynamic>> historyItems = results
-          .where((item) => item['is_approve'] != 'Waiting')
-          .map((item) => Map<String, dynamic>.from(item))
-          .toList();
-
-      setState(() {
-        _approvalItems = approvalItems;
-        _historyItems = historyItems;
-      });
+    if (token == null) {
+      print('Token is null');
+      return;
     } else {
-      print('Failed to load data: ${response.statusCode}');
+      print('Token is available: $token');
     }
-  } catch (e) {
-    print('Error: $e');
-  }
-}
 
-  // Future<void> _fetchApprovalsData() async {
-  //   final prefs = await SharedPreferences.getInstance();
-  //   final token = prefs.getString('token');
+    try {
+      // Fetch approval data
+      final approvalResponse = await http.get(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/app/tasks/approvals/pending'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
 
-  //   if (token == null) {
-  //     print('Token is null');
-  //     return;
-  //   }
+      // Fetch history data
+      final historyResponse = await http.get(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/app/tasks/approvals/history'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
 
-  //   try {
-  //     final response = await http.get(
-  //       Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests'),
-  //       headers: {'Authorization': 'Bearer $token'},
-  //     );
+      if (approvalResponse.statusCode == 200 && historyResponse.statusCode == 200) {
+        final List<dynamic> approvalResults = json.decode(approvalResponse.body)['results']; // assuming the key is 'results'
+        final List<dynamic> historyResults = json.decode(historyResponse.body)['results']; // assuming the key is 'results'
 
-  //     if (response.statusCode == 200) {
-  //       final List<dynamic> results = json.decode(response.body)['results'];
-  //       final List<Map<String, dynamic>> approvalItems = results
-  //           .where((item) => item['is_approve'] == 'Waiting')
-  //           .map((item) => Map<String, dynamic>.from(item))
-  //           .toList();
-  //       final List<Map<String, dynamic>> historyItems = results
-  //           .where((item) => item['is_approve'] != 'Waiting')
-  //           .map((item) => Map<String, dynamic>.from(item))
-  //           .toList();
-
-  //       setState(() {
-  //         _approvalItems = approvalItems;
-  //         _historyItems = historyItems;
-  //       });
-
-  //       // Move expired approvals to history after the list is fetched
-  //       _moveExpiredApprovalsToHistory();
-  //     } else {
-  //       print('Failed to load data: ${response.statusCode}');
-  //     }
-  //   } catch (e) {
-  //     print('Error: $e');
-  //   }
-  // }
-
-  void _moveExpiredApprovalsToHistory() {
-    final now = DateTime.now();
-    final List<Map<String, dynamic>> newApprovalItems = [];
-    final List<Map<String, dynamic>> newHistoryItems = List.from(_historyItems);
-
-    for (var item in _approvalItems) {
-      final timestamp = item['timestamp'] != null ? DateTime.tryParse(item['timestamp']) : null;
-      if (timestamp != null && now.difference(timestamp).inHours >= 24) {
-        if (item['is_approve'] == 'Waiting') {
-          item['is_approve'] = 'Waiting';
-        }
-        newHistoryItems.add(item);
+        setState(() {
+          _approvalItems = List<Map<String, dynamic>>.from(approvalResults);
+          _historyItems = List<Map<String, dynamic>>.from(historyResults);
+        });
       } else {
-        newApprovalItems.add(item);
+        print('Failed to load data: Approvals - ${approvalResponse.statusCode}, History - ${historyResponse.statusCode}');
       }
+    } catch (e) {
+      print('Error: $e');
     }
-
-    setState(() {
-      _approvalItems = newApprovalItems;
-      _historyItems = newHistoryItems;
-    });
   }
+
 
   Color _getStatusColor(String status) {
     switch (status) {
@@ -139,7 +76,7 @@ Future<void> _fetchApprovalsData() async {
       case 'Reject':
         return Colors.red;
       default:
-        return Colors.white;
+        return Colors.orange;
     }
   }
 
@@ -153,7 +90,7 @@ Future<void> _fetchApprovalsData() async {
   }
 
   @override
- Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
@@ -266,12 +203,12 @@ Future<void> _fetchApprovalsData() async {
           const SizedBox(height: 8),
           Expanded(
             child: Container(
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
+              // decoration: BoxDecoration(
+              //   image: DecorationImage(
+              //     image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+              //     fit: BoxFit.cover,
+              //   ),
+              // ),
               child: ListView.builder(
                 padding: const EdgeInsets.all(16.0),
                 itemCount: _isApprovalSelected ? _approvalItems.length : _historyItems.length,
@@ -287,166 +224,164 @@ Future<void> _fetchApprovalsData() async {
     );
   }
 
-Widget _buildApprovalCard(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
-  return Slidable(
-    key: Key(item['id'].toString()),
-    // Define the start action pane for edit only
-    startActionPane: ActionPane(
-      motion: const ScrollMotion(),
-      children: [
-        SlidableAction(
-          onPressed: (context) => _showEditApproval(context, item, isDarkMode),
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
-          icon: Icons.edit,
-          label: 'Edit',
-        ),
-      ],
-    ),
-    // No endActionPane, so no sliding to the left for additional actions
-    endActionPane: null,
-    child: GestureDetector(
-      onTap: () => _showApprovalDetail(context, item, isDarkMode),
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
-          side: BorderSide(color: _getStatusColor(item['is_approve'])),
-        ),
-        elevation: 5,
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.event_note,
-                color: _getStatusColor(item['is_approve']),
-                size: 40,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item['name'] ?? 'No Title',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'From: ${item['take_leave_from'] ?? 'N/A'} To: ${item['take_leave_to'] ?? 'N/A'}',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Days: ${item['days'] ?? 'N/A'}',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      item['take_leave_reason'] ?? 'No Reason',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Text(
-                          'Status: ',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black,
-                          ),
+  Widget _buildApprovalCard(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
+    return Slidable(
+      key: Key(item['take_leave_request_id'].toString() ?? 'unknown_key'), // Provide a default key
+      startActionPane: ActionPane(
+        motion: const ScrollMotion(),
+        children: [
+          SlidableAction(
+            onPressed: (context) => _showEditApproval(context, item, isDarkMode),
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            icon: Icons.edit,
+            label: 'Edit',
+          ),
+        ],
+      ),
+      endActionPane: null,
+      child: GestureDetector(
+        onTap: () => _showApprovalDetail(context, item, isDarkMode),
+        child: Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            side: BorderSide(color: _getStatusColor(item['status'] ?? 'Unknown')), // Provide a default status
+          ),
+          elevation: 5,
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.event_note,
+                  color: _getStatusColor(item['status'] ?? 'Unknown'), // Provide a default status
+                  size: 40,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['name'] ?? 'No Title', // Provide a default title
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(item['is_approve']),
-                            borderRadius: BorderRadius.circular(4.0),
-                          ),
-                          child: Text(
-                            item['is_approve'],
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'From: ${item['take_leave_from'] ?? 'N/A'} To: ${item['take_leave_to'] ?? 'N/A'}', // Provide default date values
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Days: ${item['days']?.toString() ?? 'N/A'}', // Safely access days and convert to string
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        item['take_leave_reason'] ?? 'No Reason', // Provide a default reason
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Text(
+                            'Status: ',
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(item['status'] ?? 'Unknown'), // Provide a default status
+                              borderRadius: BorderRadius.circular(4.0),
+                            ),
+                            child: Text(
+                              item['is_approve'] ?? 'Unknown',
+                              style: const TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              CircleAvatar(
-                backgroundImage: NetworkImage(item['img_path'] ??
-                    'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-                radius: 30,
-              ),
-            ],
+                const SizedBox(width: 16),
+                CircleAvatar(
+                  backgroundImage: NetworkImage(item['img_name'] ??
+                      'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'), // Provide a default image
+                  radius: 30,
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-void _showEditApproval(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    builder: (context) {
-      return SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: EditApprovalPopup(
-            item: item,
-            isDarkMode: isDarkMode,
-            onSave: (editedItem) {
-              setState(() {
-                final index = _approvalItems.indexWhere((i) => i['id'] == editedItem['id']);
-                if (index != -1) {
-                  _approvalItems[index] = editedItem;
-                }
-              });
-              Navigator.pop(context);
-              _showConfirmationDialog(context);
-            },
+  void _showEditApproval(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: EditApprovalPopup(
+              item: item,
+              isDarkMode: isDarkMode,
+              onSave: (editedItem) {
+                setState(() {
+                  final index = _approvalItems.indexWhere((i) => i['take_leave_request_id'] == editedItem['take_leave_request_id']);
+                  if (index != -1) {
+                    _approvalItems[index] = editedItem;
+                  }
+                });
+                Navigator.pop(context);
+                _showConfirmationDialog(context);
+              },
+            ),
           ),
-        ),
-      );
-    },
-  );
+        );
+      },
+    );
+  }
+
+  void _showConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Confirmation'),
+          content: const Text('The changes have been saved successfully.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
-void _showConfirmationDialog(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text('Confirmation'),
-        content: const Text('The changes have been saved successfully.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      );
-    },
-  );
-}
-
-}
 class EditApprovalPopup extends StatefulWidget {
   final Map<String, dynamic> item;
   final bool isDarkMode;
@@ -525,8 +460,8 @@ class _EditApprovalPopupState extends State<EditApprovalPopup> {
             onPressed: () {
               if (_formKey.currentState!.validate()) {
                 final editedItem = {
-                  'id': widget.item['id'],
-                  'name': widget.item['name'],
+                  'take_leave_request_id': widget.item['take_leave_request_id'],
+                  'leave_type_name': widget.item['leave_type_name'],
                   'take_leave_reason': _reasonController.text,
                   'take_leave_from': widget.item['take_leave_from'],
                   'take_leave_to': widget.item['take_leave_to'],
@@ -545,4 +480,3 @@ class _EditApprovalPopupState extends State<EditApprovalPopup> {
     );
   }
 }
-

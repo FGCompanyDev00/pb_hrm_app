@@ -996,49 +996,6 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     }
   }
 
-  // Future<void> fetchData() async {
-  //   const String baseUrl = 'https://demo-application-api.flexiflows.co';
-
-  //   try {
-  //     // Fetch Approvals data
-  //     final approvalResponse = await http.get(
-  //       Uri.parse('$baseUrl/api/app/tasks/approvals/pending'),
-  //       headers: {
-  //         'Authorization': 'Bearer $token', // Add the token in the request header
-  //         'Content-Type': 'application/json',
-  //       },
-  //     );
-
-  //     if (approvalResponse.statusCode == 200) {
-  //       final List<dynamic> approvalData = json.decode(approvalResponse.body);
-  //       approvalItems = approvalData.map((item) => Map<String, dynamic>.from(item)).toList();
-  //     } else {
-  //       print('Failed to load approvals: ${approvalResponse.statusCode}');
-  //     }
-
-  //     // Fetch History data
-  //     final historyResponse = await http.get(
-  //       Uri.parse('$baseUrl/api/app/tasks/approvals/history'),
-  //       headers: {
-  //         'Authorization': 'Bearer $token', // Add the token in the request header
-  //         'Content-Type': 'application/json',
-  //       },
-  //     );
-
-  //     if (historyResponse.statusCode == 200) {
-  //       final List<dynamic> historyData = json.decode(historyResponse.body);
-  //       historyItems = historyData.map((item) => Map<String, dynamic>.from(item)).toList();
-  //     } else {
-  //       print('Failed to load history: ${historyResponse.statusCode}');
-  //     }
-  //   } catch (e) {
-  //     print('Error fetching data: $e');
-  //   } finally {
-  //     setState(() {
-  //       isLoading = false;
-  //     });
-  //   }
-  // }
 Future<void> fetchData() async {
   const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
@@ -1047,7 +1004,7 @@ Future<void> fetchData() async {
     final approvalResponse = await http.get(
       Uri.parse('$baseUrl/api/app/tasks/approvals/pending'),
       headers: {
-        'Authorization': 'Bearer $token', // Add the token in the request header
+        'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
     );
