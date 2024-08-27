@@ -1313,82 +1313,118 @@ class _HomeCalendarState extends State<HomeCalendar> {
     );
   }
 
-  Widget _buildTimeTable(DateTime month) {
-    final eventsForMonth = _getEventsForMonth(month);
-    final groupedByDay = <DateTime, List<Event>>{};
+Widget _buildTimeTable(DateTime month) {
+  final eventsForMonth = _getEventsForMonth(month);
+  final groupedByDay = <DateTime, List<Event>>{};
 
-    for (var event in eventsForMonth) {
-      final normalizedDay = _normalizeDate(event.startDateTime);
-      if (groupedByDay.containsKey(normalizedDay)) {
-        groupedByDay[normalizedDay]!.add(event);
-      } else {
-        groupedByDay[normalizedDay] = [event];
-      }
+  for (var event in eventsForMonth) {
+    final normalizedDay = _normalizeDate(event.startDateTime);
+    if (groupedByDay.containsKey(normalizedDay)) {
+      groupedByDay[normalizedDay]!.add(event);
+    } else {
+      groupedByDay[normalizedDay] = [event];
     }
+  }
 
-    return ListView(
+  return Expanded(
+    child: ListView(
       children: [
         for (var day in groupedByDay.keys)
           if (groupedByDay[day]!.isNotEmpty) _buildDayEvents(day, groupedByDay[day]!),
       ],
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildDayEvents(DateTime day, List<Event> events) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            DateFormat.yMMMMEEEEd().format(day),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  return Container(
+    margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          DateFormat.yMMMMEEEEd().format(day),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8.0),
+        SizedBox(
+          height: 100, // Remove this fixed height or reduce it as needed
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: events.length,
+            itemBuilder: (context, index) {
+              return _buildEventCard(events[index]);
+            },
           ),
-          const SizedBox(height: 8.0),
-          SizedBox(
-            height: 100,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: events.length,
-              itemBuilder: (context, index) {
-                return _buildEventCard(events[index]);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildEventCard(Event event) {
-    return InkWell(
-        onTap: () {
-          showDialog(
-            context: context,
-            builder: (context) => EventDetailsPopup(event: event),
-          );
+  return InkWell(
+    onTap: () {
+      showDialog(
+        context: context,
+        builder: (context) => EventDetailsPopup(event: event),
+      );
     },
     child: Container(
       width: 300,
-      height: 300,
-      margin: const EdgeInsets.only(right: 30.0),
+      height:300,
       padding: const EdgeInsets.all(12.0),
+      margin: const EdgeInsets.only(right: 20.0),
       decoration: BoxDecoration(
-        color: event.status == 'Approved' ? Colors.green[200] : event.status == 'Rejected' ? Colors.red[200] : Colors.orange[200],
+        color: event.status == 'Approved'
+            ? Colors.green[200]
+            : event.status == 'Rejected'
+                ? Colors.red[200]
+                : Colors.orange[200],
         borderRadius: BorderRadius.circular(12.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(event.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-          Text(event.description),
-          const Spacer(),
-          Text('${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}'),
-          Text(event.status, style: TextStyle(color: event.status == 'Approved' ? Colors.green : Colors.red)),
+          Flexible(
+            child: Text(
+              event.title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Flexible(
+            child: Text(
+              event.description,
+              style: const TextStyle(fontSize: 13),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
+          ),
+          Text(
+            '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
+            style: const TextStyle(fontSize: 13),
+          ),
+          Text(
+            event.status,
+            style: TextStyle(
+              color: event.status == 'Approved' ? Colors.green : Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
-    ));
-  }
+    ),
+  );
+}
+
 }
 
 class Event {
