@@ -26,46 +26,86 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
     _fetchApprovalsData();
   }
 
-  Future<void> _fetchApprovalsData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+Future<void> _fetchApprovalsData() async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('token');
 
-    if (token == null) {
-      print('Token is null');
-      return;
-    }
-
-    try {
-      final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests/all'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> results = json.decode(response.body)['results'];
-        final List<Map<String, dynamic>> approvalItems = results
-            .where((item) => item['is_approve'] == 'Waiting')
-            .map((item) => Map<String, dynamic>.from(item))
-            .toList();
-        final List<Map<String, dynamic>> historyItems = results
-            .where((item) => item['is_approve'] != 'Waiting')
-            .map((item) => Map<String, dynamic>.from(item))
-            .toList();
-
-        setState(() {
-          _approvalItems = approvalItems;
-          _historyItems = historyItems;
-        });
-
-        // Move expired approvals to history after the list is fetched
-        _moveExpiredApprovalsToHistory();
-      } else {
-        print('Failed to load data: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error: $e');
-    }
+  if (token == null) {
+    print('Token is null');
+    return;
+  } else {
+    print('Token is available: $token');
   }
+
+  try {
+    final response = await http.get(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> results = json.decode(response.body)['results'];
+      final List<Map<String, dynamic>> approvalItems = results
+          .where((item) => item['is_approve'] == 'Waiting')
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+      final List<Map<String, dynamic>> historyItems = results
+          .where((item) => item['is_approve'] != 'Waiting')
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+
+      setState(() {
+        _approvalItems = approvalItems;
+        _historyItems = historyItems;
+      });
+    } else {
+      print('Failed to load data: ${response.statusCode}');
+    }
+  } catch (e) {
+    print('Error: $e');
+  }
+}
+
+  // Future<void> _fetchApprovalsData() async {
+  //   final prefs = await SharedPreferences.getInstance();
+  //   final token = prefs.getString('token');
+
+  //   if (token == null) {
+  //     print('Token is null');
+  //     return;
+  //   }
+
+  //   try {
+  //     final response = await http.get(
+  //       Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests'),
+  //       headers: {'Authorization': 'Bearer $token'},
+  //     );
+
+  //     if (response.statusCode == 200) {
+  //       final List<dynamic> results = json.decode(response.body)['results'];
+  //       final List<Map<String, dynamic>> approvalItems = results
+  //           .where((item) => item['is_approve'] == 'Waiting')
+  //           .map((item) => Map<String, dynamic>.from(item))
+  //           .toList();
+  //       final List<Map<String, dynamic>> historyItems = results
+  //           .where((item) => item['is_approve'] != 'Waiting')
+  //           .map((item) => Map<String, dynamic>.from(item))
+  //           .toList();
+
+  //       setState(() {
+  //         _approvalItems = approvalItems;
+  //         _historyItems = historyItems;
+  //       });
+
+  //       // Move expired approvals to history after the list is fetched
+  //       _moveExpiredApprovalsToHistory();
+  //     } else {
+  //       print('Failed to load data: ${response.statusCode}');
+  //     }
+  //   } catch (e) {
+  //     print('Error: $e');
+  //   }
+  // }
 
   void _moveExpiredApprovalsToHistory() {
     final now = DateTime.now();

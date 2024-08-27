@@ -394,7 +394,7 @@ class _DashboardState extends State<Dashboard> {
                               //       );
                               //     }
                               //   }),
-_buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
+                      _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
   final currentUser = Provider.of<UserProvider>(context, listen: false).currentUser;
 
   // Log the current user roles
@@ -403,12 +403,23 @@ _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
   // Define the mapped roles that should grant access to the management approvals page
   const List<String> managementMappedRoles = [
     UserRole.managersbh,
-    UserRole.john, // Add more roles if needed
-    UserRole.adminhq1, // Example
+    UserRole.john, 
+    UserRole.adminhq1, 
   ];
 
+  // Log the role mapping for each role the user has
+  for (var role in currentUser.roles) {
+    String mappedRole = UserRole.mapApiRole(role);
+    print('API Role: $role => Mapped Role: $mappedRole');
+  }
+
   // Check if the user has any of these mapped roles
-  final hasManagementRole = currentUser.roles.any((role) => managementMappedRoles.contains(UserRole.mapApiRole(role)));
+  final hasManagementRole = currentUser.roles.any((role) {
+    String mappedRole = UserRole.mapApiRole(role);
+    bool isManagementRole = managementMappedRoles.contains(mappedRole);
+    print('Checking role: $role (mapped to: $mappedRole) - Is Management Role: $isManagementRole');
+    return isManagementRole;
+  });
 
   if (hasManagementRole) {
     print('Navigating to Management Approvals Page');
@@ -424,6 +435,7 @@ _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
     );
   }
 }),
+
                                 // _buildActionCard(context, 'assets/firstline.png', 'KPI', isDarkMode, () {
                                 //   Navigator.push(
                                 //     context,

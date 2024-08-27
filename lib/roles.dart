@@ -160,11 +160,11 @@ class UserRole {
     'AdminHQ': john,
     'Committee': committeehq1,
     'HeadOfHR': adminhq1,
-    'Procurement': 'procurementRole', // Add the correct internal role here
-    'OfficeAdmin': 'officeAdminRole', // Add the correct internal role here
-    'Checker': 'checkerRole', // Add the correct internal role here
-    'SuperAdmin': 'superAdminRole', // Add the correct internal role here
-    'MobileAdmin': 'mobileAdminRole', // Add the correct internal role here
+    'Procurement': 'procurementRole', 
+    'OfficeAdmin': 'officeAdminRole', 
+    'Checker': 'checkerRole', 
+    'SuperAdmin': 'superAdminRole', 
+    'MobileAdmin': 'mobileAdminRole', 
     'user':usersst1,
     // Add more mappings as needed
   };
