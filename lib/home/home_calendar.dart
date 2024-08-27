@@ -328,11 +328,11 @@ class _HomeCalendarState extends State<HomeCalendar> {
               Container(
                 margin: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.black54 : Colors.white,
+                  color: isDarkMode ? Colors.black : Colors.white,
                   boxShadow: const [
                     BoxShadow(
                       color: Colors.black26,
-                      blurRadius: 10,
+                      blurRadius: 20,
                       offset: Offset(0, 4),
                     ),
                   ],
@@ -515,55 +515,51 @@ class _HomeCalendarState extends State<HomeCalendar> {
     );
   }
 
-Widget _buildTimeTable(DateTime month) {
-  final eventsForMonth = _getEventsForMonth(month);
-  final groupedByDay = <DateTime, List<Event>>{};
+  Widget _buildTimeTable(DateTime month) {
+    final eventsForMonth = _getEventsForMonth(month);
+    final groupedByDay = <DateTime, List<Event>>{};
 
-  for (var event in eventsForMonth) {
-    final normalizedDay = _normalizeDate(event.startDateTime);
-    if (groupedByDay.containsKey(normalizedDay)) {
-      groupedByDay[normalizedDay]!.add(event);
-    } else {
-      groupedByDay[normalizedDay] = [event];
+    for (var event in eventsForMonth) {
+      final normalizedDay = _normalizeDate(event.startDateTime);
+      if (groupedByDay.containsKey(normalizedDay)) {
+        groupedByDay[normalizedDay]!.add(event);
+      } else {
+        groupedByDay[normalizedDay] = [event];
+      }
     }
-  }
 
-  return Expanded(
-    child: ListView(
+    return ListView(
       children: [
         for (var day in groupedByDay.keys)
           if (groupedByDay[day]!.isNotEmpty) _buildDayEvents(day, groupedByDay[day]!),
       ],
-    ),
-  );
-}
+    );
+  }
 
 
   Widget _buildDayEvents(DateTime day, List<Event> events) {
-  return Container(
-    margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          DateFormat.yMMMMEEEEd().format(day),
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8.0),
-        SizedBox(
-          height: 100, // Remove this fixed height or reduce it as needed
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            DateFormat.yMMMMEEEEd().format(day),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 15.0),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             itemCount: events.length,
             itemBuilder: (context, index) {
               return _buildEventCard(events[index]);
             },
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
 
   Widget _buildEventCard(Event event) {
@@ -601,8 +597,8 @@ Widget _buildTimeTable(DateTime month) {
       },
       child: Container(
         width: 280,
-        padding: const EdgeInsets.all(8.0),
-        margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+        padding: const EdgeInsets.all(16.0),
+        margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(16.0),
@@ -620,25 +616,25 @@ Widget _buildTimeTable(DateTime month) {
             Text(
               event.title,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 6),
             Text(
               event.description,
-              style: const TextStyle(fontSize: 12),
+              style: const TextStyle(fontSize: 14),
               overflow: TextOverflow.ellipsis,
               maxLines: 2,
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 6),
             Text(
               '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
               style: const TextStyle(fontSize: 12),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 6),
             Text(
               event.status,
               style: TextStyle(

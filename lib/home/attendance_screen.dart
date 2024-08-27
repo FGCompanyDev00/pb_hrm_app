@@ -450,13 +450,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   void _showLocationModal(BuildContext context, String location) {
+    final isHome = location == 'Home';
+    final primaryColor = isHome ? Colors.orange : Colors.green;
+
     showDialog(
       context: context,
       barrierDismissible: false, // Prevent closing by tapping outside
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20)),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 10, // Adds depth (shadow) to the modal
           contentPadding: EdgeInsets.zero,
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -464,15 +469,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(16.0),
-                decoration: const BoxDecoration(
-                  color: Colors.orange,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                decoration: BoxDecoration(
+                  color: primaryColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Icon(
-                      location == 'Home' ? Icons.home : Icons.apartment,
+                      isHome ? Icons.home : Icons.apartment,
                       color: Colors.white,
                       size: 60,
                     ),
@@ -491,9 +496,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  "You are currently at ${location == 'Home' ? 'Home' : 'the Office'}",
+                  "You are currently at ${isHome ? 'Home' : 'the Office'}.",
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 18, color: Colors.black87),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold, // Bold the location text
+                    color: Colors.black87,
+                  ),
                 ),
               ),
               Padding(
@@ -503,11 +512,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     Navigator.of(context).pop();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange, // Button color
+                    backgroundColor: primaryColor, // Button color follows location
                     padding: const EdgeInsets.symmetric(vertical: 12.0),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
+                    shadowColor: Colors.black.withOpacity(0.25), // Add deep shadow effect
+                    elevation: 8, // Elevate button for a deeper 3D effect
                   ),
                   child: const Text(
                     "OK",
