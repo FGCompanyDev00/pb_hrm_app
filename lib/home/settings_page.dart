@@ -60,12 +60,21 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  // Future<void> _loadBiometricSetting() async {
+  //   bool? isEnabled = await _storage.read(key: 'biometricEnabled') == 'true';
+  //   setState(() {
+  //     _biometricEnabled = isEnabled;
+  //   });
+  // }
+
   Future<void> _loadBiometricSetting() async {
-    bool? isEnabled = await _storage.read(key: 'biometricEnabled') == 'true';
+    String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
     setState(() {
-      _biometricEnabled = isEnabled;
+        _biometricEnabled = biometricEnabled == 'true';
     });
-  }
+}
+
+
 
   Future<void> _loadNotificationSetting() async {
     bool? isEnabled = await _storage.read(key: 'notificationEnabled') == 'true';
@@ -82,6 +91,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await _storage.write(key: 'biometricEnabled', value: enabled.toString());
   }
 
+
   Future<bool> _onWillPop() async {
     Navigator.pushReplacement(
       context,
@@ -90,44 +100,83 @@ class _SettingsPageState extends State<SettingsPage> {
     return false;
   }
 
+  // Future<void> _enableBiometrics(bool enable) async {
+  //   if (enable) {
+  //     bool canCheckBiometrics = await auth.canCheckBiometrics;
+  //     if (!canCheckBiometrics) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(
+  //           content: Text('Biometric authentication is not available.'),
+  //         ),
+  //       );
+  //       return;
+  //     }
+  //     try {
+  //       bool authenticated = await auth.authenticate(
+  //         localizedReason: 'Please authenticate to enable biometric login',
+  //         options: const AuthenticationOptions(
+  //           stickyAuth: true,
+  //           useErrorDialogs: true,
+  //         ),
+  //       );
+  //       if (authenticated) {
+  //         setState(() {
+  //           _biometricEnabled = true;
+  //         });
+  //         await _saveBiometricSetting(true);  // Save the setting after successful authentication
+  //       }
+  //     } catch (e) {
+  //       if (kDebugMode) {
+  //         print('Error enabling biometrics: $e');
+  //       }
+  //     }
+  //   } else {
+  //     setState(() {
+  //       _biometricEnabled = false;
+  //     });
+  //     await _storage.deleteAll(); // Clear stored biometric credentials
+  //     await _saveBiometricSetting(false); // Save the setting
+  //   }
+  // }
+
   Future<void> _enableBiometrics(bool enable) async {
     if (enable) {
-      bool canCheckBiometrics = await auth.canCheckBiometrics;
-      if (!canCheckBiometrics) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Biometric authentication is not available.'),
-          ),
-        );
-        return;
-      }
-      try {
-        bool authenticated = await auth.authenticate(
-          localizedReason: 'Please authenticate to enable biometric login',
-          options: const AuthenticationOptions(
-            stickyAuth: true,
-            useErrorDialogs: true,
-          ),
-        );
-        if (authenticated) {
-          setState(() {
-            _biometricEnabled = true;
-          });
-          await _saveBiometricSetting(true);  // Save the setting after successful authentication
+        bool canCheckBiometrics = await auth.canCheckBiometrics;
+        if (!canCheckBiometrics) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Biometric authentication is not available.'),
+                ),
+            );
+            return;
         }
-      } catch (e) {
-        if (kDebugMode) {
-          print('Error enabling biometrics: $e');
+        try {
+            bool authenticated = await auth.authenticate(
+                localizedReason: 'Please authenticate to enable biometric login',
+                options: const AuthenticationOptions(
+                    stickyAuth: true,
+                    useErrorDialogs: true,
+                ),
+            );
+            if (authenticated) {
+                setState(() {
+                    _biometricEnabled = true;
+                });
+                await _saveBiometricSetting(true);
+            }
+        } catch (e) {
+            if (kDebugMode) {
+                print('Error enabling biometrics: $e');
+            }
         }
-      }
     } else {
-      setState(() {
-        _biometricEnabled = false;
-      });
-      await _storage.deleteAll(); // Clear stored biometric credentials
-      await _saveBiometricSetting(false); // Save the setting
+        setState(() {
+            _biometricEnabled = false;
+        });
+        await _saveBiometricSetting(false);
     }
-  }
+}
+
 
   Future<void> _toggleNotification(bool enable) async {
     if (enable) {

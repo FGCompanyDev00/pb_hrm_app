@@ -129,39 +129,74 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  // Future<void> _authenticate({bool useBiometric = true}) async {
+  //   if (!_biometricEnabled) {
+  //     _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled, AppLocalizations.of(context)!.enableBiometric);
+  //     return;
+  //   }
+
+  //   bool authenticated = false;
+  //   try {
+  //     authenticated = await auth.authenticate(
+  //       localizedReason: AppLocalizations.of(context)!.authenticateToLogin,
+  //       options: AuthenticationOptions(
+  //         biometricOnly: useBiometric,
+  //         stickyAuth: true,
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //       print(e);
+  //     }
+  //   }
+
+  //   if (authenticated) {
+  //     String? username = await _storage.read(key: 'username');
+  //     String? password = await _storage.read(key: 'password');
+  //     if (username != null && password != null) {
+  //       _usernameController.text = username;
+  //       _passwordController.text = password;
+  //       _login(); // Login automatically using stored credentials
+  //     }
+  //   } else {
+  //     _showCustomDialog(context, AppLocalizations.of(context)!.authFailed, AppLocalizations.of(context)!.tryAgain);
+  //   }
+  // }
+
   Future<void> _authenticate({bool useBiometric = true}) async {
     if (!_biometricEnabled) {
-      _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled, AppLocalizations.of(context)!.enableBiometric);
-      return;
+        _showCustomDialog(context, 'Biometric Disabled', 'Please enable biometric authentication.');
+        return;
     }
 
     bool authenticated = false;
     try {
-      authenticated = await auth.authenticate(
-        localizedReason: AppLocalizations.of(context)!.authenticateToLogin,
-        options: AuthenticationOptions(
-          biometricOnly: useBiometric,
-          stickyAuth: true,
-        ),
-      );
+        authenticated = await auth.authenticate(
+            localizedReason: 'Authenticate to login',
+            options: AuthenticationOptions(
+                biometricOnly: useBiometric,
+                stickyAuth: true,
+            ),
+        );
     } catch (e) {
-      if (kDebugMode) {
-        print(e);
-      }
+        if (kDebugMode) {
+            print('Authentication error: $e');
+        }
     }
 
     if (authenticated) {
-      String? username = await _storage.read(key: 'username');
-      String? password = await _storage.read(key: 'password');
-      if (username != null && password != null) {
-        _usernameController.text = username;
-        _passwordController.text = password;
-        _login(); // Login automatically using stored credentials
-      }
+        String? username = await _storage.read(key: 'username');
+        String? password = await _storage.read(key: 'password');
+        if (username != null && password != null) {
+            _usernameController.text = username;
+            _passwordController.text = password;
+            _login();
+        }
     } else {
-      _showCustomDialog(context, AppLocalizations.of(context)!.authFailed, AppLocalizations.of(context)!.tryAgain);
+        _showCustomDialog(context, 'Authentication Failed', 'Please try again.');
     }
-  }
+}
+
 
   Future<void> _saveCredentials() async {
     final prefs = await SharedPreferences.getInstance();
