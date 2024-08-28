@@ -300,7 +300,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
-    // First, check if biometric is enabled in the settings
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool biometricEnabled = prefs.getBool('biometricEnabled') ?? false;
 
@@ -309,35 +308,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       return;
     }
 
-    // If biometric is enabled, proceed with authentication
-    final bool didAuthenticate = await _authenticateWithBiometrics();
+    bool didAuthenticate = await _authenticateWithBiometrics();
 
     if (!didAuthenticate) {
       _showCustomDialog(context, 'Authentication Failed', 'You must authenticate to continue.');
       return;
     }
 
-    // Existing check-in or check-out logic
-    final now = DateTime.now();
-    Position? currentPosition = await _getCurrentPosition();
-    if (currentPosition != null) {
-      _determineSectionFromPosition(currentPosition);
-    }
-
+    // Proceed with check-in or check-out after successful authentication
     if (isCheckIn) {
-      await _sendAttendanceDataToAPI(isCheckIn);
-      _performCheckIn(now);
-      _showCustomDialog(context, 'Check-In Successful', 'You have checked in successfully.');
-
-      if (_currentSection == 'Offsite') {
-        _showOffsiteModal(context);
-      }
+      _performCheckIn(DateTime.now());
     } else {
-      await _sendAttendanceDataToAPI(isCheckIn);
-      _performCheckOut(now);
+      _performCheckOut(DateTime.now());
     }
-
-    setState(() {});
   }
 
   Future<bool> _authenticateWithBiometrics() async {

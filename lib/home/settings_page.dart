@@ -113,7 +113,7 @@ class _SettingsPageState extends State<SettingsPage> {
           setState(() {
             _biometricEnabled = true;
           });
-          _saveBiometricSetting(true);
+          await _saveBiometricSetting(true);  // Save the setting after successful authentication
         }
       } catch (e) {
         if (kDebugMode) {
@@ -124,8 +124,8 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _biometricEnabled = false;
       });
-      await _storage.deleteAll(); // Remove all stored credentials
-      _saveBiometricSetting(false);
+      await _storage.deleteAll(); // Clear stored biometric credentials
+      await _saveBiometricSetting(false); // Save the setting
     }
   }
 
