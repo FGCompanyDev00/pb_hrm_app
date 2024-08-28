@@ -32,10 +32,20 @@ void main() async {
   const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
 
   // iOS/macOS initialization settings
-  const DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings();
+  DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings(
+    requestAlertPermission: true,
+    requestBadgePermission: true,
+    requestSoundPermission: true,
+    onDidReceiveLocalNotification: (int id, String? title, String? body, String? payload) async {
+      // Handle notification received in foreground
+      if (kDebugMode) {
+        print("iOS Local Notification received: $title $body $payload");
+      }
+    },
+  );
 
   // Combine Android and iOS/macOS settings
-  const InitializationSettings initializationSettings = InitializationSettings(
+  final InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
     iOS: initializationSettingsDarwin,
     macOS: initializationSettingsDarwin,
@@ -54,7 +64,7 @@ void main() async {
     },
   );
 
-  // Request permissions for iOS
+  // Request permissions for iOS (if not done during initialization)
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
       ?.requestPermissions(

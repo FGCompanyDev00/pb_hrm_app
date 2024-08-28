@@ -1,6 +1,7 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_timetable/flutter_timetable.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -119,13 +120,30 @@ class _HomeCalendarState extends State<HomeCalendar> {
         .toList();
   }
 
-  void _showDayView(DateTime date) {
-    final events = _getEventsForDay(date);
+  void _showDayView(DateTime selectedDay) {
+    final List<Event> dayEvents = _getEventsForDay(selectedDay);
+
+    // Convert Event objects to TimetableItem<String>
+    final List<TimetableItem<String>> timetableItems = dayEvents.map((event) {
+      return convertEventToTimetableItem(event);
+    }).toList();
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TimetablePage(date: date, events: events),
+        builder: (context) => TimetablePage(
+          date: selectedDay,
+          events: timetableItems,
+        ),
       ),
+    );
+  }
+
+  TimetableItem<String> convertEventToTimetableItem(Event event) {
+    return TimetableItem<String>(
+      event.startDateTime,
+      event.endDateTime,
+      data: event.title,
     );
   }
 
@@ -355,9 +373,19 @@ class _HomeCalendarState extends State<HomeCalendar> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => TimetablePage(date: selectedDay, events: _getEventsForDay(selectedDay)),
+                          builder: (context) => TimetablePage(
+                            date: selectedDay,
+                            events: _getEventsForDay(selectedDay).map((event) {
+                              return TimetableItem<String>(
+                                event.startDateTime,
+                                event.endDateTime,
+                                data: "Title: ${event.title}\nStatus: ${event.status}",
+                              );
+                            }).toList(),
+                          ),
                         ),
                       );
+
                       _singleTapSelectedDay = null;
                     } else {
                       setState(() {

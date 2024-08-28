@@ -1,158 +1,10 @@
-// import 'package:flutter/material.dart';
-// import 'package:flutter_timetable/flutter_timetable.dart';
-// import 'package:intl/intl.dart';
-// import 'package:pb_hrsystem/home/home_calendar.dart';
-
-// class TimetablePage extends StatefulWidget {
-//   final DateTime date;
-//   final List<Event> events;
-
-//   const TimetablePage({required this.date, required this.events, Key? key}) : super(key: key);
-
-//   @override
-//   _TimetablePageState createState() => _TimetablePageState();
-// }
-
-// class _TimetablePageState extends State<TimetablePage> {
-//   late TimetableController controller;
-//   late List<TimetableItem<String>> timetableItems;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     controller = TimetableController(
-//       start: DateUtils.dateOnly(widget.date).subtract(const Duration(days: 7)),
-//       initialColumns: 3,
-//       cellHeight: 100.0,
-//       startHour: 9,
-//       endHour: 18,
-//     );
-
-//     timetableItems = widget.events.map((event) {
-//       return TimetableItem<String>(
-//         event.startDateTime,
-//         event.endDateTime,
-//         data: event.title,
-//       );
-//     }).toList();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         backgroundColor: Colors.grey,
-//         actions: [
-//           IconButton(
-//             icon: const Icon(Icons.calendar_view_day),
-//             onPressed: () => controller.setColumns(1),
-//           ),
-//           IconButton(
-//             icon: const Icon(Icons.calendar_view_month_outlined),
-//             onPressed: () => controller.setColumns(3),
-//           ),
-//           IconButton(
-//             icon: const Icon(Icons.calendar_view_week),
-//             onPressed: () => controller.setColumns(5),
-//           ),
-//           IconButton(
-//             icon: const Icon(Icons.zoom_in),
-//             onPressed: () => controller.setCellHeight(controller.cellHeight + 10),
-//           ),
-//           IconButton(
-//             icon: const Icon(Icons.zoom_out),
-//             onPressed: () => controller.setCellHeight(controller.cellHeight - 10),
-//           ),
-//         ],
-//       ),
-//       body: Timetable<String>(
-//         controller: controller,
-//         items: timetableItems,
-//         cellBuilder: (dateTime) => Container(
-//           decoration: BoxDecoration(
-//             border: Border.all(color: Colors.blueGrey, width: 0.2),
-//           ),
-//           child: Center(
-//             child: Text(
-//               DateFormat("MM/d/yyyy\nha").format(dateTime),
-//               style: TextStyle(
-//                 color: Color(0xff000000 + (0x002222 * dateTime.hour) + (0x110000 * dateTime.day)).withOpacity(0.5),
-//               ),
-//               textAlign: TextAlign.center,
-//             ),
-//           ),
-//         ),
-//         cornerBuilder: (datetime) => Container(
-//           color: Colors.accents[datetime.day % Colors.accents.length],
-//           child: Center(child: Text("${datetime.year}")),
-//         ),
-//         headerCellBuilder: (datetime) {
-//           final color = Colors.primaries[datetime.day % Colors.accents.length];
-//           return Container(
-//             decoration: BoxDecoration(
-//               border: Border(bottom: BorderSide(color: color, width: 2)),
-//             ),
-//             child: Center(
-//               child: Text(
-//                 DateFormat("E\nMMM d").format(datetime),
-//                 style: TextStyle(
-//                   color: color,
-//                 ),
-//                 textAlign: TextAlign.center,
-//               ),
-//             ),
-//           );
-//         },
-//         hourLabelBuilder: (time) {
-//           final hour = time.hour == 12 ? 12 : time.hour % 12;
-//           final period = time.hour < 12 ? "am" : "pm";
-//           final isCurrentHour = time.hour == DateTime.now().hour;
-//           return Text(
-//             "$hour$period",
-//             style: TextStyle(
-//               fontSize: 14,
-//               fontWeight: isCurrentHour ? FontWeight.bold : FontWeight.normal,
-//             ),
-//           );
-//         },
-//         itemBuilder: (item) => Container(
-//           decoration: BoxDecoration(
-//             color: Colors.white.withAlpha(220),
-//             borderRadius: BorderRadius.circular(16),
-//             boxShadow: [
-//               BoxShadow(
-//                 color: Colors.black.withOpacity(0.2),
-//                 blurRadius: 4,
-//                 offset: const Offset(0, 2),
-//               ),
-//             ],
-//           ),
-//           child: Center(
-//             child: Text(
-//               item.data ?? "No Title",
-//               style: const TextStyle(fontSize: 14),
-//             ),
-//           ),
-//         ),
-//         nowIndicatorColor: Colors.red,
-//         snapToDay: true,
-//       ),
-//       floatingActionButton: FloatingActionButton(
-//         child: const Text("Now"),
-//         onPressed: () => controller.jumpTo(DateTime.now()),
-//       ),
-//     );
-//   }
-// }
-
 import 'package:flutter/material.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/home/home_calendar.dart';
 
 class TimetablePage extends StatefulWidget {
   final DateTime date;
-  final List<Event> events;
+  final List<TimetableItem<String>> events;
 
   const TimetablePage({required this.date, required this.events, Key? key}) : super(key: key);
 
@@ -161,146 +13,207 @@ class TimetablePage extends StatefulWidget {
 }
 
 class _TimetablePageState extends State<TimetablePage> {
-  late TimetableController controller;
-  late List<TimetableItem<String>> timetableItems;
-
-  @override
-  void initState() {
-    super.initState();
-    controller = TimetableController(
-      start: DateUtils.dateOnly(widget.date).subtract(const Duration(days: 7)),
-      initialColumns: 3,
-      cellHeight: 100.0,
-      startHour: 9,
-      endHour: 18,
-    );
-
-
-    timetableItems = widget.events.map((event) {
-
-      if (event.startDateTime.isBefore(event.endDateTime)) {
-        return TimetableItem<String>(
-          event.startDateTime,
-          event.endDateTime,
-          data: event.title,
-        );
-      } else {
-        // Handle edge cases where the start is not before the end
-        // Log the error, show a placeholder, or set a default end time (e.g., start + 1 hour)
-        final adjustedEndTime = event.startDateTime.add(const Duration(hours: 1));
-        return TimetableItem<String>(
-          event.startDateTime,
-          adjustedEndTime,
-          data: "[Invalid Event] ${event.title}",
-        );
-      }
-    }).toList();
-  }
+  late DateTime selectedDate = widget.date;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.grey,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_view_day),
-            onPressed: () => controller.setColumns(1),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          "Details Calendar Event",
+          style: TextStyle(color: Colors.black, fontSize: 18),
+        ),
+        centerTitle: true,
+        flexibleSpace: Image.asset(
+          "assets/background.png",
+          fit: BoxFit.cover,
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          // Date and month selection
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.chevron_left, size: 30),
+                  onPressed: () {
+                    setState(() {
+                      selectedDate = DateTime(selectedDate.year, selectedDate.month - 1, selectedDate.day);
+                    });
+                  },
+                ),
+                Text(
+                  DateFormat.yMMMM().format(selectedDate),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.chevron_right, size: 30),
+                  onPressed: () {
+                    setState(() {
+                      selectedDate = DateTime(selectedDate.year, selectedDate.month + 1, selectedDate.day);
+                    });
+                  },
+                ),
+              ],
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.calendar_view_month_outlined),
-            onPressed: () => controller.setColumns(3),
+
+          // Calendar row with selected date highlighted
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(7, (index) {
+                final day = selectedDate.add(Duration(days: index - 3));
+                final hasEvent = widget.events.any((event) =>
+                event.start.day == day.day &&
+                    event.start.month == day.month &&
+                    event.start.year == day.year);
+                return _buildDateItem(
+                  DateFormat.E().format(day),
+                  day.day,
+                  isSelected: day.day == selectedDate.day,
+                  hasEvent: hasEvent,
+                  onTap: () {
+                    setState(() {
+                      selectedDate = day;
+                    });
+                  },
+                );
+              }),
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.calendar_view_week),
-            onPressed: () => controller.setColumns(5),
-          ),
-          IconButton(
-            icon: const Icon(Icons.zoom_in),
-            onPressed: () => controller.setCellHeight(controller.cellHeight + 10),
-          ),
-          IconButton(
-            icon: const Icon(Icons.zoom_out),
-            onPressed: () => controller.setCellHeight(controller.cellHeight - 10),
+
+          // Time slots and event blocks
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: _buildEventSlotsForDay(selectedDate),
+            ),
           ),
         ],
       ),
-      body: Timetable<String>(
-        controller: controller,
-        items: timetableItems,
-        cellBuilder: (dateTime) => Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.blueGrey, width: 0.2),
-          ),
-          child: Center(
-            child: Text(
-              DateFormat("MM/d/yyyy\nha").format(dateTime),
-              style: TextStyle(
-                color: Color(0xff000000 + (0x002222 * dateTime.hour) + (0x110000 * dateTime.day)).withOpacity(0.5),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-        cornerBuilder: (datetime) => Container(
-          color: Colors.accents[datetime.day % Colors.accents.length],
-          child: Center(child: Text("${datetime.year}")),
-        ),
-        headerCellBuilder: (datetime) {
-          final color = Colors.primaries[datetime.day % Colors.accents.length];
-          return Container(
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: color, width: 2)),
-            ),
-            child: Center(
-              child: Text(
-                DateFormat("E\nMMM d").format(datetime),
-                style: TextStyle(
-                  color: color,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          );
-        },
-        hourLabelBuilder: (time) {
-          final hour = time.hour == 12 ? 12 : time.hour % 12;
-          final period = time.hour < 12 ? "am" : "pm";
-          final isCurrentHour = time.hour == DateTime.now().hour;
-          return Text(
-            "$hour$period",
+    );
+  }
+
+  Widget _buildDateItem(String day, int date,
+      {bool isSelected = false, bool hasEvent = false, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Text(
+            day,
             style: TextStyle(
               fontSize: 14,
-              fontWeight: isCurrentHour ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? Colors.black : Colors.grey,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
-          );
-        },
-        itemBuilder: (item) => Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withAlpha(220),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
-          child: Center(
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? const Color(0xFFD4A017)
+                  : hasEvent
+                  ? Colors.green.withOpacity(0.5)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: Text(
-              item.data ?? "No Title",
-              style: const TextStyle(fontSize: 14),
+              "$date",
+              style: TextStyle(
+                fontSize: 16,
+                color: isSelected || hasEvent ? Colors.white : Colors.black,
+              ),
             ),
           ),
-        ),
-        nowIndicatorColor: Colors.red,
-        snapToDay: true,
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: const Text("Now"),
-        onPressed: () => controller.jumpTo(DateTime.now()),
+        ],
       ),
     );
+  }
+
+  Widget _buildTimeSlot(String time, {String? event}) {
+    return Container(
+      height: 60,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 50,
+            child: Text(
+              time,
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+          ),
+          Expanded(
+            child: event != null && event.isNotEmpty
+                ? Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                event,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              ),
+            )
+                : Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildEventSlotsForDay(DateTime date) {
+    final List<Widget> slots = [];
+    final eventsForDay = widget.events.where((event) =>
+    event.start.day == date.day &&
+        event.start.month == date.month &&
+        event.start.year == date.year).toList();
+
+    for (var i = 0; i < 24; i++) {
+      final String timeLabel = i.toString().padLeft(2, '0') + ":00";
+      final matchingEvent = eventsForDay.firstWhere(
+            (event) => event.start.hour == i,
+        orElse: () => TimetableItem<String>(
+          DateTime(date.year, date.month, date.day, i),
+          DateTime(date.year, date.month, date.day, i + 1),
+          data: "",
+        ),
+      );
+
+      String eventTitle = matchingEvent.data ?? "";
+
+      if (eventTitle.isNotEmpty) {
+        slots.add(_buildTimeSlot(timeLabel, event: eventTitle));
+      } else {
+        slots.add(_buildTimeSlot(timeLabel));
+      }
+    }
+
+    return slots;
   }
 }
