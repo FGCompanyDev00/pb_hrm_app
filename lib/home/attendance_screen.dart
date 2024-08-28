@@ -1531,7 +1531,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       if (parts.length == 3) {
         int hours = int.parse(parts[0]);
         int minutes = int.parse(parts[1]);
-        int seconds = int.parse(parts[2]);
+        // int seconds = int.parse(parts[2]);
+
+        // Parse seconds as a double to handle any fractional part
+    double secondsDouble = double.parse(parts[2]);
+    int seconds = secondsDouble.round();  // or you can use .floor() to truncate
+    
         return Duration(hours: hours, minutes: minutes, seconds: seconds);
       }
     }
