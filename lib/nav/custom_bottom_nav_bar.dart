@@ -30,7 +30,10 @@ class CustomBottomNavBar extends StatelessWidget {
       backgroundColor: Colors.white,
       activeColor: activeColor,
       color: Colors.grey,
-      height: 70,
+      height: 50,
+      curveSize: 100,
+      top:-20,
     );
   }
 }
+
