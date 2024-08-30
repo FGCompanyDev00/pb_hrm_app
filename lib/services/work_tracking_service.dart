@@ -444,6 +444,31 @@ Future<void> addAssignment(String projectId, Map<String, dynamic> assignmentData
     }
   }
 
+  Future<List<Map<String, dynamic>>> fetchAssignmentMembers(String assignmentId) async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/work-tracking/assignment-members/assignment-members?assignment_id=$assignmentId'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      var body = json.decode(response.body);
+      if (body['results'] != null && body['results'] is List) {
+        return (body['results'] as List).map((item) => {
+          'id': item['member_id'],
+          'name': item['name'],
+          'surname': item['surname'],
+          'email': item['email'],
+          'isSelected': false,
+        }).toList();
+      } else {
+        throw Exception('Unexpected response format');
+      }
+    } else {
+      throw Exception('Failed to load assignment members: ${response.reasonPhrase}');
+    }
+  }
+
   // Add members to the created project
   Future<void> addMembersToProject(String projectId, List<Map<String, dynamic>> members) async {
     final headers = await _getHeaders();
