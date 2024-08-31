@@ -43,7 +43,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _initializeNotifications() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/playstore'); // Use your app's logo here
+    AndroidInitializationSettings('@mipmap/playstore');
     const InitializationSettings initializationSettings =
     InitializationSettings(android: initializationSettingsAndroid);
 
