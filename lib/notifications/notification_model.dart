@@ -8,7 +8,7 @@ class NotificationModel {
   final int status;
   final String createdBy;
   final DateTime createdAt;
-  final String imageUrl; // Add this field to the model
+  final String imageUrl;
 
   NotificationModel({
     required this.id,
@@ -30,7 +30,7 @@ class NotificationModel {
       employeeId: json['employee_id'] ?? '',
       projectId: json['project_id'] ?? '',
       meetingId: json['meeting_id'] ?? '',
-      assignmentId: json['assignment_id'] ?? '',
+      assignmentId: json['as_id'] ?? '',
       message: json['message'] ?? '',
       status: json['status'] ?? 0,
       createdBy: json['created_by'] ?? '',

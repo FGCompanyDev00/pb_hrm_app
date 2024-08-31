@@ -29,7 +29,7 @@ class NotificationWidget extends StatelessWidget {
               children: [
                 const Text(
                   'New Leave',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.green,
                     fontWeight: FontWeight.bold,
                     fontSize: 18.0,

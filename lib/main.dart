@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/history_page.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
 import 'package:pb_hrsystem/user_model.dart';
@@ -184,6 +185,7 @@ class _MainScreenState extends State<MainScreen> {
     const AttendanceScreen(),
     const HomeCalendar(),
     const Dashboard(),
+    const HistoryPage(),
   ];
 
   @override

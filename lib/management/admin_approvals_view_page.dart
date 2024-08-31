@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -131,8 +132,14 @@ class AdminApprovalsViewPage extends StatelessWidget {
 
   Widget _buildUserAvatar(String? imageUrl) {
     return CircleAvatar(
-      backgroundImage: NetworkImage(imageUrl ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
+      backgroundImage: NetworkImage(imageUrl ?? 'https://fallback-image-url.com/default_avatar.jpg'),
       radius: 20,
+      onBackgroundImageError: (_, __) {
+        if (kDebugMode) {
+          print('Failed to load image. Displaying fallback avatar.');
+        }
+      },
+      backgroundColor: Colors.grey[200],
     );
   }
 
@@ -200,21 +207,26 @@ class AdminApprovalsViewPage extends StatelessWidget {
       return;
     }
 
-    final response = await http.put(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/leave_approve/${item['take_leave_request_id']}'),
+    final responseManager = await http.put(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/leave_processing/${item['take_leave_request_id']}'),
       headers: {
         'Authorization': 'Bearer $token',
       },
     );
 
-    if (response.statusCode == 200) {
+    if (responseManager.statusCode == 202) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request approved successfully')),
+        const SnackBar(content: Text('Request accepted. Processing...')),
       );
-      Navigator.pop(context, true); // Returning to the previous page with success
+      // Optionally implement polling or wait for a webhook notification.
+    } else if (responseManager.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request updated successfully')),
+      );
+      Navigator.pop(context, true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to approve request: ${response.reasonPhrase}')),
+        SnackBar(content: Text('Failed to approve request: ${responseManager.reasonPhrase}')),
       );
     }
   }
@@ -237,15 +249,63 @@ class AdminApprovalsViewPage extends StatelessWidget {
       },
     );
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 202) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request to reject accepted. Processing...')),
+      );
+
+      // Optionally: Implement a polling mechanism to check the status of the rejection
+      await _pollForRejectionCompletion(context);
+
+    } else if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Request rejected successfully')),
       );
-      Navigator.pop(context, true); // Returning to the previous page with success
+      Navigator.pop(context, true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to reject request: ${response.reasonPhrase}')),
       );
     }
   }
+
+  Future<void> _pollForRejectionCompletion(BuildContext context) async {
+    // Polling to check the status every few seconds
+    // This is a simple example, adjust according to your API capabilities
+    bool isRejected = false;
+
+    for (int i = 0; i < 5; i++) { // Poll 5 times, adjust the number of retries
+      await Future.delayed(const Duration(seconds: 2)); // Wait for 2 seconds before each poll
+
+      final response = await _checkRejectionStatus();
+
+      if (response.statusCode == 200 && response.body.contains('rejected')) {
+        isRejected = true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request rejected successfully')),
+        );
+        Navigator.pop(context, true);
+        break;
+      }
+    }
+
+    if (!isRejected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request rejection is still processing. Please check back later.')),
+      );
+    }
+  }
+
+  Future<http.Response> _checkRejectionStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    return await http.get(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/check_rejection_status/${item['take_leave_request_id']}'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+  }
+
 }

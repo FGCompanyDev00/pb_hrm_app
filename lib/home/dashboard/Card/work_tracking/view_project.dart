@@ -272,7 +272,7 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
       appBar: AppBar(
         title: const Text('View Project'),
         flexibleSpace: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             image: DecorationImage(
               image: AssetImage('assets/ready_bg.png'), // Add your image path here
               fit: BoxFit.cover,

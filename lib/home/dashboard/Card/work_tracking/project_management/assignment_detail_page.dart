@@ -9,18 +9,18 @@ class AssignmentDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(assignmentDetail['title']),
+        title: Text(assignmentDetail['title'] ?? 'No Title'),  // Handle null case
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Status: ${assignmentDetail['s_name']}'),
-            Text('Description: ${assignmentDetail['description']}'),
-            Text('Created By: ${assignmentDetail['create_by']}'),
-            Text('Updated By: ${assignmentDetail['update_by']}'),
-            // Add more fields based on what you want to display
+            Text('Status: ${assignmentDetail['s_name'] ?? 'No Status'}'),  // Handle null case
+            Text('Description: ${assignmentDetail['description'] ?? 'No Description'}'),  // Handle null case
+            Text('Created By: ${assignmentDetail['create_by'] ?? 'Unknown'}'),  // Handle null case
+            Text('Updated By: ${assignmentDetail['update_by'] ?? 'Unknown'}'),  // Handle null case
+
           ],
         ),
       ),

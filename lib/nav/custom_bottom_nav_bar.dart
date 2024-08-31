@@ -20,6 +20,7 @@ class CustomBottomNavBar extends StatelessWidget {
       style: TabStyle.fixedCircle,
       items: const [
         TabItem(icon: Icons.fingerprint),
+
         TabItem(
           icon: Icon(Icons.home),
         ),

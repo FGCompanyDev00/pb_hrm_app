@@ -278,34 +278,33 @@ class WorkTrackingService {
     }
   }
 
-Future<void> addAssignment(String projectId, Map<String, dynamic> assignmentData) async {
-  final headers = await _getHeaders();
-  final payload = jsonEncode({
-    'project_id': projectId,
-    ...assignmentData,
-  });
+  Future<String?> addAssignment(String projectId, Map<String, dynamic> assignmentData) async {
+    final headers = await _getHeaders();
+    final payload = jsonEncode({
+      'project_id': projectId,
+      ...assignmentData,
+    });
 
-  if (kDebugMode) {
-    print('Headers: $headers');
-    print('Payload: $payload');
-  }
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/work-tracking/ass/insert'),
+      headers: headers,
+      body: payload,
+    );
 
-  final response = await http.post(
-    Uri.parse('$baseUrl/api/work-tracking/ass/insert'),
-    headers: headers,
-    body: payload,
-  );
-
-  if (response.statusCode == 201) {
-    if (kDebugMode) {
-      print('Assignment successfully created.');
+    if (response.statusCode == 201) {
+      final responseBody = jsonDecode(response.body);
+      if (responseBody != null && responseBody['assignment_id'] != null) {
+        return responseBody['assignment_id'];  // Return assignment_id
+      } else {
+        throw Exception('Assignment created but no assignment ID returned.');
+      }
+    } else if (response.statusCode == 403) {
+      throw Exception('You do not have permission to add this assignment. Please check your access rights.');
+    } else {
+      throw Exception('Failed to add assignment: ${response.reasonPhrase}. Details: ${response.body}');
     }
-  } else if (response.statusCode == 403) {
-    throw Exception('You do not have permission to add this assignment. Please check your access rights.');
-  } else {
-    throw Exception('Failed to add assignment: ${response.reasonPhrase}. Details: ${response.body}');
   }
-}
+
 
 
   Future<void> updateAssignment(String assignmentId, Map<String, dynamic> taskData) async {
@@ -327,8 +326,10 @@ Future<void> addAssignment(String projectId, Map<String, dynamic> assignmentData
 
   Future<void> deleteAssignment(String assignmentId) async {
     final headers = await _getHeaders();
+    final url = Uri.parse('$baseUrl/api/work-tracking/ass/delete/${assignmentId.toString()}');
+
     final response = await http.delete(
-      Uri.parse('$baseUrl/api/work-tracking/ass/delete/$assignmentId'),
+      url,
       headers: headers,
     );
 
@@ -340,6 +341,7 @@ Future<void> addAssignment(String projectId, Map<String, dynamic> assignmentData
       throw Exception('Failed to delete assignment: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
+
 
   Future<void> addFilesToAssignment(String assignmentId, List<String> fileNames) async {
     final headers = await _getHeaders();
@@ -447,7 +449,7 @@ Future<void> addAssignment(String projectId, Map<String, dynamic> assignmentData
   Future<List<Map<String, dynamic>>> fetchAssignmentMembers(String assignmentId) async {
     final headers = await _getHeaders();
     final response = await http.get(
-      Uri.parse('$baseUrl/api/work-tracking/assignment-members/assignment-members?assignment_id=$assignmentId'),
+      Uri.parse('$baseUrl/api/work-tracking/assignment-members/assignment-members?as_id=$assignmentId'),
       headers: headers,
     );
 
@@ -466,6 +468,28 @@ Future<void> addAssignment(String projectId, Map<String, dynamic> assignmentData
       }
     } else {
       throw Exception('Failed to load assignment members: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> addMembersToAssignment(String assignmentId, List<Map<String, dynamic>> members) async {
+    final headers = await _getHeaders();
+    final memberData = {
+      "assignment_id": assignmentId,
+      "members": members.map((member) => {"employee_id": member['employee_id']}).toList(),
+    };
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/work-tracking/ass/add-members/$assignmentId'),
+      headers: headers,
+      body: jsonEncode(memberData),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      if (kDebugMode) {
+        print('Members successfully added to the assignment.');
+      }
+    } else {
+      throw Exception('Failed to add members to the assignment: ${response.reasonPhrase}');
     }
   }
 

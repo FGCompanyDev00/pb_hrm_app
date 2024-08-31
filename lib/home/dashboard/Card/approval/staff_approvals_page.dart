@@ -19,7 +19,7 @@ class StaffApprovalsPage extends StatefulWidget {
 class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
   bool _isApprovalSelected = true;
   List<Map<String, dynamic>> _approvalItems = [];
-  List<Map<String, dynamic>> _historyItems = [];
+  final List<Map<String, dynamic>> _historyItems = [];
 
   @override
   void initState() {

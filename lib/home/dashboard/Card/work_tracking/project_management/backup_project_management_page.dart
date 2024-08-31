@@ -1,15 +1,11 @@
-import 'dart:convert';
-import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
+import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 
 class ProjectManagementPage extends StatefulWidget {
@@ -30,25 +26,16 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   late TabController _tabController;
   final TextEditingController _messageController = TextEditingController();
   String _shortenedProjectId = '';
-  String _currentUserId = '';
+
   final WorkTrackingService _workTrackingService = WorkTrackingService();
-  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _shortenedProjectId = '${widget.projectId.substring(0, 8)}...';
-    _loadUserData();
     _fetchProjectData();
     _loadChatMessages();
-  }
-
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _currentUserId = prefs.getString('userId') ?? '';
-    });
   }
 
   Future<void> _fetchProjectData() async {
@@ -58,19 +45,18 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
         _tasks = tasks.where((task) => task['proj_id'] == widget.projectId).map((task) {
           return {
             'id': task['id'],
-            'title': task['title'] ?? 'No Title',
-            'status': task['s_name'] ?? 'Unknown',
-            'start_date': task['created_at']?.substring(0, 10) ?? 'N/A',
-            'due_date': task['updated_at']?.substring(0, 10) ?? 'N/A',
-            'description': task['description'] ?? 'No Description',
+            'title': task['title'],
+            'status': task['s_name'],
+            'start_date': task['created_at'].substring(0, 10),
+            'due_date': task['updated_at'].substring(0, 10),
+            'description': task['description'],
+            'images': task['file_name'] != null ? task['file_name'].split(',') : [],
             'files': task['file_name'] != null ? task['file_name'].split(',') : [],
           };
         }).toList();
       });
     } catch (e) {
-      if (kDebugMode) {
-        print('Failed to load project data: $e');
-      }
+      print('Failed to load project data: $e');
     }
   }
 
@@ -78,22 +64,11 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     try {
       final messages = await _workTrackingService.fetchChatMessages(widget.projectId);
       setState(() {
-        _messages = messages.reversed.toList(); // Reverse messages for newest at bottom
+        _messages = messages;
       });
-      _scrollToBottom();
     } catch (e) {
-      if (kDebugMode) {
-        print('Failed to load chat messages: $e');
-      }
+      print('Failed to load chat messages: $e');
     }
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-      }
-    });
   }
 
   Widget _buildChatInput(bool isDarkMode) {
@@ -138,20 +113,9 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     );
   }
 
-  Widget _buildChatMessage(Map<String, dynamic> message, bool isDarkMode) {
-    final bool isSentByMe = message['created_by'] == _currentUserId;
+  Widget _buildChatMessage(String message, String time, String senderName, bool isSentByMe, bool isDarkMode) {
     final Color textColor = isDarkMode ? Colors.white : Colors.black;
     final Color backgroundColor = isSentByMe ? Colors.green.shade100 : Colors.blue.shade100;
-    final DateTime messageTime = DateTime.parse(message['created_at'] ?? DateTime.now().toIso8601String());
-
-    String formattedTime = DateFormat('hh:mm a').format(messageTime);
-    String formattedDate;
-
-    if (messageTime.day == DateTime.now().day) {
-      formattedDate = 'Today';
-    } else {
-      formattedDate = DateFormat('dd MMM yyyy').format(messageTime);
-    }
 
     return Align(
       alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -166,17 +130,17 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              isSentByMe ? 'You' : message['createBy_name'] ?? 'Unknown',
+              senderName,
               style: TextStyle(color: textColor.withOpacity(0.8), fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
-              message['comments'] ?? '',
+              message,
               style: TextStyle(color: textColor, fontSize: 16),
             ),
             const SizedBox(height: 4),
             Text(
-              '$formattedDate, $formattedTime',
+              time,
               style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
             ),
           ],
@@ -198,11 +162,17 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
           children: [
             Expanded(
               child: ListView.builder(
-                controller: _scrollController,
                 padding: const EdgeInsets.all(16.0),
                 itemCount: _messages.length,
                 itemBuilder: (context, index) {
-                  return _buildChatMessage(_messages[index], isDarkMode);
+                  final message = _messages[index];
+                  return _buildChatMessage(
+                    message['comments'],
+                    DateFormat('hh:mm a').format(DateTime.parse(message['created_at'])),
+                    message['createBy_name'],
+                    message['created_by'] == "PSV-00-000002", // Assuming "PSV-00-000002" is the ID of the current user
+                    isDarkMode,
+                  );
                 },
               ),
             ),
@@ -218,30 +188,25 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
       await _workTrackingService.sendChatMessage(widget.projectId, message);
       _addMessage(message);
     } catch (e) {
-      if (kDebugMode) {
-        print('Failed to send message: $e');
-      }
+      print('Failed to send message: $e');
     }
   }
 
   void _addMessage(String message) {
-    final DateTime now = DateTime.now();
     setState(() {
-      _messages.insert(0, {
+      _messages.add({
         'comments': message,
-        'created_at': now.toIso8601String(),
+        'created_at': DateTime.now().toIso8601String(),
         'createBy_name': 'You',
-        'created_by': _currentUserId,
+        'created_by': "PSV-00-000002", // Assuming "PSV-00-000002" is the ID of the current user
       });
     });
     _messageController.clear();
-    _scrollToBottom();
   }
 
   @override
   void dispose() {
     _messageController.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -329,6 +294,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   Widget _buildProcessingOrDetailTab(List<Map<String, dynamic>> filteredTasks) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
+    final Color textColor = isDarkMode ? Colors.white : Colors.black;
 
     return Column(
       children: [
@@ -345,11 +311,11 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                   child: DropdownButton<String>(
-                    value: _statusOptions.contains(_selectedStatus) ? _selectedStatus : null,
+                    value: _selectedStatus,
                     icon: const Icon(Icons.arrow_downward),
                     iconSize: 24,
                     elevation: 16,
-                    style: const TextStyle(color: Colors.black),
+                    style: TextStyle(color: textColor),
                     underline: Container(
                       height: 2,
                       color: Colors.transparent,
@@ -366,7 +332,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
                           children: [
                             Icon(Icons.circle, color: _getStatusColor(value), size: 12),
                             const SizedBox(width: 8),
-                            Text(value),
+                            Text(value, style: TextStyle(color: textColor)),
                           ],
                         ),
                       );
@@ -389,12 +355,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
               padding: const EdgeInsets.all(16.0),
               itemCount: filteredTasks.length,
               itemBuilder: (context, index) {
-                return GestureDetector(
-                  onTap: () {
-                    _showTaskViewModal(filteredTasks[index], index);
-                  },
-                  child: _buildTaskCard(filteredTasks[index], index),
-                );
+                return _buildTaskCard(filteredTasks[index], index);
               },
             ),
           ),
@@ -410,158 +371,80 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
       'Completed': Colors.green,
     };
 
-    final startDate = DateTime.parse(task['start_date'] ?? DateTime.now().toIso8601String());
-    final dueDate = DateTime.parse(task['due_date'] ?? DateTime.now().toIso8601String());
+    final startDate = DateTime.parse(task['start_date']);
+    final dueDate = DateTime.parse(task['due_date']);
     final days = dueDate.difference(startDate).inDays;
 
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.0),
-        side: BorderSide(color: progressColors[task['status']] ?? Colors.black),
-      ),
-      elevation: 5,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  'Status: ',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  task['status'] ?? 'Unknown',
-                  style: TextStyle(color: progressColors[task['status']] ?? Colors.black, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Title: ${task['title'] ?? 'No Title'}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Start Date: ${task['start_date'] ?? 'N/A'}',
-              style: const TextStyle(color: Colors.black54),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Due Date: ${task['due_date'] ?? 'N/A'}',
-              style: const TextStyle(color: Colors.black54),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Days: $days',
-              style: const TextStyle(color: Colors.black54),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Description: ${task['description'] ?? 'No Description'}',
-              style: const TextStyle(color: Colors.black54),
-            ),
-          ],
+    return GestureDetector(
+      onTap: () {
+        _showTaskViewModal(task, index);
+      },
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+          side: BorderSide(color: progressColors[task['status']]!),
+        ),
+        elevation: 5,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text(
+                    'Status: ',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    task['status'],
+                    style: TextStyle(color: progressColors[task['status']], fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Title: ${task['title']}',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Start Date: ${task['start_date']}',
+                style: const TextStyle(color: Colors.black54),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Due Date: ${task['due_date']}',
+                style: const TextStyle(color: Colors.black54),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Days: $days',
+                style: const TextStyle(color: Colors.black54),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Description: ${task['description']}',
+                style: const TextStyle(color: Colors.black54),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _showTaskViewModal(Map<String, dynamic> task, int index) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-          title: const Text('View Task'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Title: ${task['title'] ?? 'No Title'}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 10),
-                Text('Status: ${task['status'] ?? 'Unknown'}', style: TextStyle(color: _getStatusColor(task['status'] ?? 'Unknown'))),
-                const SizedBox(height: 10),
-                Text('Start Date: ${task['start_date'] ?? 'N/A'}', style: const TextStyle(color: Colors.grey)),
-                const SizedBox(height: 10),
-                Text('Due Date: ${task['due_date'] ?? 'N/A'}', style: const TextStyle(color: Colors.grey)),
-                const SizedBox(height: 10),
-                Text('Description: ${task['description'] ?? 'No Description'}', style: const TextStyle(color: Colors.black87)),
-                const SizedBox(height: 10),
-                const Text('Attachments:'),
-                const SizedBox(height: 10),
-                Column(
-                  children: [
-                    ...task['files'].map<Widget>((filePath) {
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PdfViewer(
-                                filePath: '${widget.baseUrl}/$filePath',
-                              ),
-                            ),
-                          );
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.picture_as_pdf),
-                              const SizedBox(width: 8),
-                              Text(filePath.split('/').last),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _deleteTask(task['id']);
-                Navigator.pop(context);  // Close the modal after deleting
-              },
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Colors.red,
-              ),
-              child: const Text('Delete'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _showTaskModal(task: task, index: index, isEdit: true);
-              },
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.black,
-                backgroundColor: Colors.amber,
-              ),
-              child: const Text('Edit'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _deleteTask(String taskId) async {
-    try {
-      await _workTrackingService.deleteAssignment(taskId);
-      _fetchProjectData();
-    } catch (e) {
-      print('Failed to delete task: $e');
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Pending':
+        return Colors.orange;
+      case 'Processing':
+        return Colors.blue;
+      case 'Completed':
+        return Colors.green;
+      default:
+        return Colors.black;
     }
   }
 
@@ -580,7 +463,6 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
           },
           isEdit: isEdit,
           projectId: widget.projectId,
-          baseUrl: widget.baseUrl,
         );
       },
     );
@@ -594,35 +476,103 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
 
   Future<void> _addTask(Map<String, dynamic> task) async {
     try {
-      final assignmentId = await _workTrackingService.addAssignment(widget.projectId, task);
-      if (assignmentId != null) {
-        await _addMembersToAssignment(assignmentId, task['members']);
-      }
-      _fetchProjectData();
+      await _workTrackingService.addAssignment(widget.projectId, task); // Pass projectId and task data
+      _fetchProjectData();  // Refresh task list after adding a new task
     } catch (e) {
       print('Failed to add task: $e');
     }
   }
 
-  Future<void> _addMembersToAssignment(String assignmentId, List<Map<String, dynamic>> members) async {
-    try {
-      await _workTrackingService.addMembersToAssignment(assignmentId, members);
-    } catch (e) {
-      print('Failed to add members to assignment: $e');
-    }
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Pending':
-        return Colors.orange;
-      case 'Processing':
-        return Colors.blue;
-      case 'Completed':
-        return Colors.green;
-      default:
-        return Colors.black;
-    }
+  void _showTaskViewModal(Map<String, dynamic> task, int index) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: const Text('View Task'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Title: ${task['title']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                Text('Status: ${task['status']}', style: TextStyle(color: _getStatusColor(task['status']))),
+                const SizedBox(height: 10),
+                Text('Start Date: ${task['start_date']}', style: const TextStyle(color: Colors.grey)),
+                const SizedBox(height: 10),
+                Text('Due Date: ${task['due_date']}', style: const TextStyle(color: Colors.grey)),
+                const SizedBox(height: 10),
+                Text('Description: ${task['description']}', style: const TextStyle(color: Colors.black87)),
+                const SizedBox(height: 10),
+                const Text('Attachments:'),
+                const SizedBox(height: 10),
+                Column(
+                  children: [
+                    ...task['images'].map<Widget>((imagePath) {
+                      return GestureDetector(
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => Dialog(
+                              child: Image.network('${widget.baseUrl}/$imagePath'),  // Use the passed baseUrl
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Image.network('${widget.baseUrl}/$imagePath', width: 100, height: 100, fit: BoxFit.cover),
+                        ),
+                      );
+                    }).toList(),
+                    ...task['files'].map<Widget>((filePath) {
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => PdfViewer(
+                                filePath: '${WorkTrackingService.baseUrl}/$filePath',  // Use the correct baseUrl
+                              ),
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.picture_as_pdf),
+                              const SizedBox(width: 8),
+                              Text(filePath.split('/').last),  // Display the file name
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showTaskModal(task: task, index: index, isEdit: true);
+              },
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.black,
+                backgroundColor: Colors.amber,
+              ),
+              child: const Text('Edit'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -631,26 +581,12 @@ class _TaskModal extends StatefulWidget {
   final Function(Map<String, dynamic>) onSave;
   final bool isEdit;
   final String projectId;
-  final String baseUrl;
 
-  static const List<Map<String, dynamic>> statusOptions = [
-    {'id': '40d2ba5e-a978-47ce-bc48-caceca8668e9', 'name': 'Pending'},
-    {'id': '0a8d93f0-1c05-42b2-8e56-984a578ef077', 'name': 'Processing'},
-    {'id': 'e35569eb-75e1-4005-9232-bfb57303b8b3', 'name': 'Completed'},
-  ];
-
-  const _TaskModal({
-    this.task,
-    required this.onSave,
-    this.isEdit = false,
-    required this.projectId,
-    required this.baseUrl,
-  });
+  const _TaskModal({this.task, required this.onSave, this.isEdit = false, required this.projectId});
 
   @override
   __TaskModalState createState() => __TaskModalState();
 }
-
 class __TaskModalState extends State<_TaskModal> {
   late TextEditingController _titleController;
   late TextEditingController _startDateController;
@@ -658,7 +594,7 @@ class __TaskModalState extends State<_TaskModal> {
   late TextEditingController _descriptionController;
   String _selectedStatus = 'Pending';
   final ImagePicker _picker = ImagePicker();
-  final List<File> _files = [];
+  List<String> _images = [];
   List<Map<String, dynamic>> _selectedPeople = [];
   final _formKey = GlobalKey<FormState>();
 
@@ -671,10 +607,14 @@ class __TaskModalState extends State<_TaskModal> {
     _startDateController = TextEditingController(text: widget.task?['start_date'] ?? '');
     _dueDateController = TextEditingController(text: widget.task?['due_date'] ?? '');
     _descriptionController = TextEditingController(text: widget.task?['description'] ?? '');
-    _selectedStatus = widget.task?['status'] ?? _TaskModal.statusOptions.first['id'];
+    _selectedStatus = widget.task?['status'] ?? 'Pending';
+    if (widget.task != null && widget.task!['images'] != null) {
+      _images = List<String>.from(widget.task!['images']);
+    }
 
-    if (widget.isEdit) {
-      _fetchAssignmentMembers(); // Ensure members are fetched only for editing.
+    // Fetch members for the assignment when creating a new task
+    if (!widget.isEdit) {
+      _fetchAssignmentMembers();
     }
   }
 
@@ -719,102 +659,64 @@ class __TaskModalState extends State<_TaskModal> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
-    if (picked != null && picked.isAfter(DateTime.parse(_startDateController.text))) {
+    if (picked != null) {
       setState(() {
         _dueDateController.text = DateFormat('yyyy-MM-dd').format(picked);
       });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Due date must be after start date')),
-      );
     }
   }
 
-  Future<void> _pickFile() async {
-    if (_files.length >= 2) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You can only upload up to 2 files')));
+  Future<void> _pickImage() async {
+    if (_images.length >= 2) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You can only upload up to 2 images')));
       return;
     }
 
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
+      final base64Image = base64Encode(bytes);
       setState(() {
-        _files.add(File(pickedFile.path));
+        _images.add(base64Image);
       });
     }
   }
 
   void _saveTask() async {
     if (_formKey.currentState!.validate()) {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-
-      if (token == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Token is null. Please log in again.')),
-        );
-        return;
-      }
-
-      // Remove duplicate members
-      final uniqueMembers = _selectedPeople.toSet().toList();
-
       final task = {
         'title': _titleController.text,
         'start_date': _startDateController.text,
         'due_date': _dueDateController.text,
         'description': _descriptionController.text,
-        'status_id': _selectedStatus,
-        'members': uniqueMembers.map((member) => {'employee_id': member['employee_id']}).toList(),
+        'status': _selectedStatus,
+        'images': _images,
+        'members': _selectedPeople, // Add the selected members to the task data
       };
 
-      try {
-        if (widget.isEdit && widget.task != null) {
+      if (widget.isEdit && widget.task != null) {
+        // Ensure all values are correctly formatted as strings
+        try {
           await _workTrackingService.updateAssignment(
-            widget.task!['id'].toString(),
+            widget.task!['id'].toString(), // Convert ID to string if it's an int
             task,
           );
-        } else {
-          final request = http.MultipartRequest(
-            'POST',
-            Uri.parse('${widget.baseUrl}/api/work-tracking/ass/insert'),
-          );
-
-          request.headers['Authorization'] = 'Bearer $token';
-          request.fields['project_id'] = widget.projectId;
-          request.fields['status_id'] = _selectedStatus;
-          request.fields['title'] = _titleController.text;
-          request.fields['descriptions'] = _descriptionController.text;
-          request.fields['start_date'] = _startDateController.text;
-          request.fields['due_date'] = _dueDateController.text;
-          request.fields['memberDetails'] = jsonEncode(task['members']);
-
-          for (var file in _files) {
-            request.files.add(await http.MultipartFile.fromPath('file_name', file.path));
-          }
-
-          final response = await request.send();
-
-          if (response.statusCode == 201) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Assignment added successfully')),
-            );
-            Navigator.pop(context, true);
-          } else {
-            final errorResponse = await response.stream.bytesToString();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to add assignment: $errorResponse')),
-            );
-          }
+          Navigator.pop(context);
+        } catch (e) {
+          print('Failed to update task: $e');
         }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add assignment: $e')),
-        );
+      } else {
+        // Use the new addAssignment method to send the task data to the API
+        try {
+          await _workTrackingService.addAssignment(widget.projectId, task); // Pass projectId and task data
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Assignment successfully added')));
+        } catch (e) {
+          print('Failed to add assignment: $e');
+        }
       }
     }
   }
-
 
   void _openAddPeoplePage() async {
     final selectedPeople = await Navigator.push(
@@ -840,6 +742,11 @@ class __TaskModalState extends State<_TaskModal> {
 
   @override
   Widget build(BuildContext context) {
+    final progressColors = {
+      'Pending': Colors.orange,
+      'Processing': Colors.blue,
+      'Completed': Colors.green,
+    };
 
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
@@ -864,7 +771,7 @@ class __TaskModalState extends State<_TaskModal> {
               ),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
-                value: _TaskModal.statusOptions.any((status) => status['id'] == _selectedStatus) ? _selectedStatus : null,
+                value: _selectedStatus,
                 decoration: const InputDecoration(labelText: 'Status'),
                 icon: const Icon(Icons.arrow_downward),
                 iconSize: 24,
@@ -875,15 +782,15 @@ class __TaskModalState extends State<_TaskModal> {
                     _selectedStatus = newValue!;
                   });
                 },
-                items: _TaskModal.statusOptions
-                    .map<DropdownMenuItem<String>>((status) {
+                items: ['Pending', 'Processing', 'Completed']
+                    .map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
-                    value: status['id'],
+                    value: value,
                     child: Row(
                       children: [
-                        Icon(Icons.circle, color: _getStatusColor(status['name']), size: 12),
+                        Icon(Icons.circle, color: progressColors[value], size: 12),
                         const SizedBox(width: 8),
-                        Text(status['name']),
+                        Text(value),
                       ],
                     ),
                   );
@@ -935,9 +842,9 @@ class __TaskModalState extends State<_TaskModal> {
               ),
               const SizedBox(height: 10),
               ElevatedButton.icon(
-                onPressed: _pickFile,
-                icon: const Icon(Icons.attach_file),
-                label: const Text('Upload File'),
+                onPressed: _pickImage,
+                icon: const Icon(Icons.image),
+                label: const Text('Upload Image'),
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
                   backgroundColor: Colors.green,
@@ -946,16 +853,16 @@ class __TaskModalState extends State<_TaskModal> {
               const SizedBox(height: 10),
               Wrap(
                 spacing: 8.0,
-                children: _files.map((file) {
+                children: _images.map((image) {
                   return Stack(
                     children: [
-                      Image.file(file, width: 100, height: 100, fit: BoxFit.cover),
+                      Image.memory(base64Decode(image), width: 100, height: 100, fit: BoxFit.cover),
                       Positioned(
                         right: 0,
                         child: GestureDetector(
                           onTap: () {
                             setState(() {
-                              _files.remove(file);
+                              _images.remove(image);
                             });
                           },
                           child: const Icon(Icons.remove_circle, color: Colors.red),
@@ -980,7 +887,7 @@ class __TaskModalState extends State<_TaskModal> {
                 spacing: 8.0,
                 children: _selectedPeople.map((person) {
                   return Chip(
-                    label: Text(person['name'] ?? 'No Name'),
+                    label: Text(person['name']),
                     onDeleted: () {
                       setState(() {
                         _selectedPeople.remove(person);
@@ -1011,23 +918,10 @@ class __TaskModalState extends State<_TaskModal> {
       ],
     );
   }
-
-  Color _getStatusColor(String statusName) {
-    switch (statusName) {
-      case 'Pending':
-        return Colors.orange;
-      case 'Processing':
-        return Colors.blue;
-      case 'Completed':
-        return Colors.green;
-      default:
-        return Colors.black;
-    }
-  }
 }
 
 class AddPeoplePageWorkTracking extends StatefulWidget {
-  final String assignmentId;
+  final String assignmentId; // Change to assignmentId
   final Function(List<Map<String, dynamic>>) onSelectedPeople;
 
   const AddPeoplePageWorkTracking({super.key, required this.assignmentId, required this.onSelectedPeople});
@@ -1050,18 +944,9 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
 
   Future<void> _fetchMembers() async {
     try {
-      final members = await WorkTrackingService().fetchAssignmentMembers(widget.assignmentId);
+      final members = await WorkTrackingService().fetchAssignmentMembers(widget.assignmentId); // Updated API call
       setState(() {
-        _members = members.map((member) {
-          return {
-            'name': member['name'] ?? 'Unknown Name',
-            'surname': member['surname'] ?? '',
-            'email': member['email'] ?? 'Unknown Email',
-            'image': member['image'] ?? '',
-            'isSelected': member['isSelected'] ?? false,
-            'employee_id': member['employee_id'] ?? '',
-          };
-        }).toList();
+        _members = members;
         _isLoading = false;
       });
     } catch (e) {
@@ -1074,20 +959,14 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
 
   void _toggleSelection(int index) {
     setState(() {
-      final selectedMember = _members[index];
-      final isAlreadySelected = _selectedPeople.any((member) => member['employee_id'] == selectedMember['employee_id']);
-
-      if (!isAlreadySelected) {
-        selectedMember['isSelected'] = true;
-        _selectedPeople.add(selectedMember);
+      _members[index]['isSelected'] = !_members[index]['isSelected'];
+      if (_members[index]['isSelected']) {
+        _selectedPeople.add(_members[index]);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${selectedMember['name']} is already selected')),
-        );
+        _selectedPeople.removeWhere((person) => person['id'] == _members[index]['id']);
       }
     });
   }
-
 
   void _confirmSelection() {
     widget.onSelectedPeople(_selectedPeople);
@@ -1097,7 +976,8 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
   @override
   Widget build(BuildContext context) {
     final filteredMembers = _members.where((member) {
-      final memberName = member['name'] ?? '';
+      final memberName = member['name'];
+      if (memberName == null || _searchQuery == null) return false;
       return memberName.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
 
@@ -1136,15 +1016,12 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
                   ),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundImage: NetworkImage(filteredMembers[index]['image'] ?? ''),
-                      child: filteredMembers[index]['image'] == null
-                          ? const Icon(Icons.person)
-                          : null,
+                      backgroundImage: NetworkImage(filteredMembers[index]['image']),
                     ),
-                    title: Text(filteredMembers[index]['name'] ?? 'No Name'),
-                    subtitle: Text('${filteredMembers[index]['surname'] ?? ''} - ${filteredMembers[index]['email'] ?? ''}'),
+                    title: Text(filteredMembers[index]['name']),
+                    subtitle: Text('${filteredMembers[index]['surname']} - ${filteredMembers[index]['email']}'),
                     trailing: Checkbox(
-                      value: filteredMembers[index]['isSelected'] ?? false,
+                      value: filteredMembers[index]['isSelected'],
                       onChanged: (bool? value) {
                         _toggleSelection(index);
                       },
@@ -1168,6 +1045,7 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
   }
 }
 
+// PdfViewer Widget to display PDF files
 class PdfViewer extends StatelessWidget {
   final String filePath;
 

@@ -209,7 +209,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             right: 0,
                             child: Container(
                               padding: const EdgeInsets.all(8.0),
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 color: Colors.orange,
                                 shape: BoxShape.circle,
                               ),

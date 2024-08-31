@@ -46,7 +46,7 @@ class AdminHistoryViewPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusColor = _getStatusColor(item['status']);
-    final textColor = Colors.white; // Text color inside the status box
+    const textColor = Colors.white; // Text color inside the status box
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -76,7 +76,7 @@ class AdminHistoryViewPage extends StatelessWidget {
                 child: Center(
                   child: Text(
                     item['status']?.toUpperCase() ?? 'UNKNOWN',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 20,
                       color: textColor,

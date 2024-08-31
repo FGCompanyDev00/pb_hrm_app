@@ -497,7 +497,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
       appBar: AppBar(
         title: const Text('Edit Project'),
         flexibleSpace: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             image: DecorationImage(
               image: AssetImage('assets/ready_bg.png'), // Add your image path here
               fit: BoxFit.cover,
