@@ -723,7 +723,7 @@ class __TaskModalState extends State<_TaskModal> {
       context,
       MaterialPageRoute(
         builder: (context) => AddPeoplePageWorkTracking(
-          assignmentId: widget.projectId,
+          asId: widget.projectId,
           onSelectedPeople: (people) {
             setState(() {
               _selectedPeople = people;
@@ -921,10 +921,10 @@ class __TaskModalState extends State<_TaskModal> {
 }
 
 class AddPeoplePageWorkTracking extends StatefulWidget {
-  final String assignmentId; // Change to assignmentId
+  final String asId;
   final Function(List<Map<String, dynamic>>) onSelectedPeople;
 
-  const AddPeoplePageWorkTracking({super.key, required this.assignmentId, required this.onSelectedPeople});
+  const AddPeoplePageWorkTracking({super.key, required this.asId, required this.onSelectedPeople});
 
   @override
   _AddPeoplePageWorkTrackingState createState() => _AddPeoplePageWorkTrackingState();
@@ -944,7 +944,7 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
 
   Future<void> _fetchMembers() async {
     try {
-      final members = await WorkTrackingService().fetchAssignmentMembers(widget.assignmentId); // Updated API call
+      final members = await WorkTrackingService().fetchAssignmentMembers(widget.asId);
       setState(() {
         _members = members;
         _isLoading = false;

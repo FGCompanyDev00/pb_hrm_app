@@ -3,7 +3,7 @@ class NotificationModel {
   final String employeeId;
   final String projectId;
   final String meetingId;
-  final String assignmentId;
+  final String asId;
   final String message;
   final int status;
   final String createdBy;
@@ -15,7 +15,7 @@ class NotificationModel {
     required this.employeeId,
     required this.projectId,
     required this.meetingId,
-    required this.assignmentId,
+    required this.asId,
     required this.message,
     required this.status,
     required this.createdBy,
@@ -30,7 +30,7 @@ class NotificationModel {
       employeeId: json['employee_id'] ?? '',
       projectId: json['project_id'] ?? '',
       meetingId: json['meeting_id'] ?? '',
-      assignmentId: json['as_id'] ?? '',
+      asId: json['as_id'] ?? '',
       message: json['message'] ?? '',
       status: json['status'] ?? 0,
       createdBy: json['created_by'] ?? '',

@@ -9,6 +9,8 @@ class WorkTrackingService {
   Future<Map<String, String>> _getHeaders() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token') ?? '';
+    print('Retrieved Token: $token'); // Debug line
+
     return {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer $token',
@@ -293,8 +295,8 @@ class WorkTrackingService {
 
     if (response.statusCode == 201) {
       final responseBody = jsonDecode(response.body);
-      if (responseBody != null && responseBody['assignment_id'] != null) {
-        return responseBody['assignment_id'];  // Return assignment_id
+      if (responseBody != null && responseBody['as_id'] != null) {
+        return responseBody['as_id'];  // Return as_id
       } else {
         throw Exception('Assignment created but no assignment ID returned.');
       }
@@ -305,48 +307,43 @@ class WorkTrackingService {
     }
   }
 
-
-
-  Future<void> updateAssignment(String assignmentId, Map<String, dynamic> taskData) async {
+  Future<void> updateAssignment(String asId, Map<String, dynamic> taskData) async {
     final headers = await _getHeaders();
     final response = await http.put(
-      Uri.parse('$baseUrl/api/work-tracking/ass/update/$assignmentId'),
+      Uri.parse('$baseUrl/api/work-tracking/ass/update/$asId'),
       headers: headers,
       body: jsonEncode(taskData),
     );
 
     if (response.statusCode == 200) {
-      if (kDebugMode) {
-        print('Assignment successfully updated.');
-      }
+      print('Assignment successfully updated.');
     } else {
+      print('Failed to update assignment: ${response.statusCode} ${response.reasonPhrase}. Details: ${response.body}');
       throw Exception('Failed to update assignment: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
 
-  Future<void> deleteAssignment(String assignmentId) async {
+  Future<void> deleteAssignment(String asId) async {
     final headers = await _getHeaders();
-    final url = Uri.parse('$baseUrl/api/work-tracking/ass/delete/${assignmentId.toString()}');
-
-    final response = await http.delete(
-      url,
+    final response = await http.put(
+      Uri.parse('$baseUrl/api/work-tracking/ass/delete/$asId'),
       headers: headers,
     );
 
     if (response.statusCode == 200) {
-      if (kDebugMode) {
-        print('Assignment successfully deleted.');
-      }
+      print('Assignment successfully deleted.');
+    } else if (response.statusCode == 404) {
+      print('Assignment not found: $asId');
+      throw Exception('Assignment not found.');
     } else {
       throw Exception('Failed to delete assignment: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
 
-
-  Future<void> addFilesToAssignment(String assignmentId, List<String> fileNames) async {
+  Future<void> addFilesToAssignment(String asId, List<String> fileNames) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/ass/add-files/$assignmentId'),
+      Uri.parse('$baseUrl/api/work-tracking/ass/add-files/$asId'),
       headers: headers,
       body: jsonEncode({
         "file_name": fileNames,
@@ -362,10 +359,10 @@ class WorkTrackingService {
     }
   }
 
-  Future<void> deleteFileFromAssignment(String assignmentId, String fileName) async {
+  Future<void> deleteFileFromAssignment(String asId, String fileName) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/ass/delete-file/$assignmentId'),
+      Uri.parse('$baseUrl/api/work-tracking/ass/delete-file/$asId'),
       headers: headers,
       body: jsonEncode({
         "file_name": fileName,
@@ -446,10 +443,10 @@ class WorkTrackingService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchAssignmentMembers(String assignmentId) async {
+  Future<List<Map<String, dynamic>>> fetchAssignmentMembers(String asId) async {
     final headers = await _getHeaders();
     final response = await http.get(
-      Uri.parse('$baseUrl/api/work-tracking/assignment-members/assignment-members?as_id=$assignmentId'),
+      Uri.parse('$baseUrl/api/work-tracking/assignment-members/assignment-members?as_id=$asId'),
       headers: headers,
     );
 
@@ -471,15 +468,15 @@ class WorkTrackingService {
     }
   }
 
-  Future<void> addMembersToAssignment(String assignmentId, List<Map<String, dynamic>> members) async {
+  Future<void> addMembersToAssignment(String asId, List<Map<String, dynamic>> members) async {
     final headers = await _getHeaders();
     final memberData = {
-      "assignment_id": assignmentId,
+      "as_id": asId,
       "members": members.map((member) => {"employee_id": member['employee_id']}).toList(),
     };
 
     final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/ass/add-members/$assignmentId'),
+      Uri.parse('$baseUrl/api/work-tracking/ass/add-members/$asId'),
       headers: headers,
       body: jsonEncode(memberData),
     );

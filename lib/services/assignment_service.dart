@@ -54,10 +54,10 @@ class AssignmentService {
 
 
   // Delete an assignment
-  Future<void> deleteAssignment(String assignmentId) async {
+  Future<void> deleteAssignment(String asId) async {
     final headers = await _getHeaders();
     final response = await http.delete(
-      Uri.parse('$baseUrl/api/work-tracking/ass/delete/$assignmentId'),
+      Uri.parse('$baseUrl/api/work-tracking/ass/delete/$asId'),
       headers: headers,
     );
 
@@ -67,10 +67,10 @@ class AssignmentService {
   }
 
   // Add files to an assignment
-  Future<void> addFilesToAssignment(String assignmentId, List<String> fileNames) async {
+  Future<void> addFilesToAssignment(String asId, List<String> fileNames) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/ass/add-files/$assignmentId'),
+      Uri.parse('$baseUrl/api/work-tracking/ass/add-files/$asId'),
       headers: headers,
       body: jsonEncode({
         "file_name": fileNames,
@@ -83,10 +83,10 @@ class AssignmentService {
   }
 
   // Delete a file from an assignment
-  Future<void> deleteFileFromAssignment(String assignmentId, String fileName) async {
+  Future<void> deleteFileFromAssignment(String asId, String fileName) async {
     final headers = await _getHeaders();
     final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/ass/delete-file/$assignmentId'),
+      Uri.parse('$baseUrl/api/work-tracking/ass/delete-file/$asId'),
       headers: headers,
       body: jsonEncode({
         "file_name": fileName,

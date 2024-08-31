@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'package:pb_hrsystem/services/image_viewer.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
@@ -78,7 +79,12 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     try {
       final messages = await _workTrackingService.fetchChatMessages(widget.projectId);
       setState(() {
-        _messages = messages.reversed.toList(); // Reverse messages for newest at bottom
+        _messages = messages.reversed.map((message) {
+          return {
+            ...message,
+            'createBy_name': message['created_by'] == _currentUserId ? 'You' : message['createBy_name']
+          };
+        }).toList(); // Reverse messages for newest at bottom
       });
       _scrollToBottom();
     } catch (e) {
@@ -166,7 +172,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              isSentByMe ? 'You' : message['createBy_name'] ?? 'Unknown',
+              message['createBy_name'] ?? 'Unknown',
               style: TextStyle(color: textColor.withOpacity(0.8), fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
@@ -495,22 +501,34 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
                 Column(
                   children: [
                     ...task['files'].map<Widget>((filePath) {
+                      final fileExtension = filePath.split('.').last.toLowerCase(); // Define the fileExtension here
                       return GestureDetector(
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PdfViewer(
-                                filePath: '${widget.baseUrl}/$filePath',
+                          if (fileExtension == 'pdf') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PdfViewer(filePath: '${widget.baseUrl}/$filePath'),
                               ),
-                            ),
-                          );
+                            );
+                          } else if (['jpg', 'jpeg', 'png'].contains(fileExtension)) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ImageViewer(imagePath: '${widget.baseUrl}/$filePath'),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Unsupported file format')),
+                            );
+                          }
                         },
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8.0),
                           child: Row(
                             children: [
-                              const Icon(Icons.picture_as_pdf),
+                              Icon(fileExtension == 'pdf' ? Icons.picture_as_pdf : Icons.image),
                               const SizedBox(width: 8),
                               Text(filePath.split('/').last),
                             ],
@@ -594,9 +612,9 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
 
   Future<void> _addTask(Map<String, dynamic> task) async {
     try {
-      final assignmentId = await _workTrackingService.addAssignment(widget.projectId, task);
-      if (assignmentId != null) {
-        await _addMembersToAssignment(assignmentId, task['members']);
+      final asId = await _workTrackingService.addAssignment(widget.projectId, task);
+      if (asId != null) {
+        await _addMembersToAssignment(asId, task['members']);
       }
       _fetchProjectData();
     } catch (e) {
@@ -604,9 +622,9 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     }
   }
 
-  Future<void> _addMembersToAssignment(String assignmentId, List<Map<String, dynamic>> members) async {
+  Future<void> _addMembersToAssignment(String asId, List<Map<String, dynamic>> members) async {
     try {
-      await _workTrackingService.addMembersToAssignment(assignmentId, members);
+      await _workTrackingService.addMembersToAssignment(asId, members);
     } catch (e) {
       print('Failed to add members to assignment: $e');
     }
@@ -821,7 +839,7 @@ class __TaskModalState extends State<_TaskModal> {
       context,
       MaterialPageRoute(
         builder: (context) => AddPeoplePageWorkTracking(
-          assignmentId: widget.projectId,
+          asId: widget.projectId,
           onSelectedPeople: (people) {
             setState(() {
               _selectedPeople = people;
@@ -1027,10 +1045,10 @@ class __TaskModalState extends State<_TaskModal> {
 }
 
 class AddPeoplePageWorkTracking extends StatefulWidget {
-  final String assignmentId;
+  final String asId;
   final Function(List<Map<String, dynamic>>) onSelectedPeople;
 
-  const AddPeoplePageWorkTracking({super.key, required this.assignmentId, required this.onSelectedPeople});
+  const AddPeoplePageWorkTracking({super.key, required this.asId, required this.onSelectedPeople});
 
   @override
   _AddPeoplePageWorkTrackingState createState() => _AddPeoplePageWorkTrackingState();
@@ -1050,7 +1068,7 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
 
   Future<void> _fetchMembers() async {
     try {
-      final members = await WorkTrackingService().fetchAssignmentMembers(widget.assignmentId);
+      final members = await WorkTrackingService().fetchAssignmentMembers(widget.asId);
       setState(() {
         _members = members.map((member) {
           return {
