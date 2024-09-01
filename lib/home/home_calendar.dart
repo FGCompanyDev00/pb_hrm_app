@@ -305,7 +305,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
             children: [
               Container(
                 width: double.infinity,
-                height: 100,
+                height: 110,
                 decoration: BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
@@ -319,17 +319,23 @@ class _HomeCalendarState extends State<HomeCalendar> {
                 child: Stack( 
                   children: [
                     Center(
-                      child: Text(
-                        'Calendar',
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 40),
+                          Text(
+                            'Calendar',
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     Positioned(
-                      top: 25,
+                      top: 47,
                       right: 20,
                       child: IconButton(
                         icon: const Icon(

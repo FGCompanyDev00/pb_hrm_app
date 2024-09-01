@@ -134,7 +134,7 @@ class _DashboardState extends State<Dashboard> {
               children: [
                 Container(
                   width: double.infinity,
-                  height: MediaQuery.of(context).size.height * 0.1,
+                  height: MediaQuery.of(context).size.height * 0.1+30,
                   padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
                   decoration: BoxDecoration(
                     image: DecorationImage(
@@ -282,85 +282,91 @@ class _DashboardState extends State<Dashboard> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Container(
-                              width: 4,
-                              height: 24,
-                              color: Colors.green,
-                              margin: const EdgeInsets.only(right: 8),
-                            ),
-                            Text(
-                              'Action Menu',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: isDarkMode ? Colors.white : Colors.black,
+                        Container(
+                          height: 60,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 24,
+                                color: Colors.green,
+                                margin: const EdgeInsets.only(right: 8),
                               ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              'Notification',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: isDarkMode ? Colors.white : Colors.black,
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            Stack(
-                              children: [
-                                IconButton(
-                                  icon: Icon(Icons.notifications, color: isDarkMode ? Colors.white : Colors.black),
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const NotificationPage()),
-                                    ).then((_) {
-                                      setState(() {
-                                        _hasUnreadNotifications = false;
-                                      });
-                                    });
-                                  },
+                              Text(
+                                'Action Menu',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDarkMode ? Colors.white : Colors.black,
                                 ),
-                                if (_hasUnreadNotifications)
-                                  Positioned(
-                                    right: 11,
-                                    top: 11,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green,
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      constraints: const BoxConstraints(
-                                        minWidth: 12,
-                                        minHeight: 12,
-                                      ),
-                                      child: const Text(
-                                        '',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 8,
+                              ),
+                              const Spacer(),
+                              Text(
+                                'Notification',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: isDarkMode ? Colors.white : Colors.black,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Stack(
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.notifications, color: isDarkMode ? Colors.white : Colors.black),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const NotificationPage()),
+                                      ).then((_) {
+                                        setState(() {
+                                          _hasUnreadNotifications = false;
+                                        });
+                                      });
+                                    },
+                                  ),
+                                  if (_hasUnreadNotifications)
+                                    Positioned(
+                                      right: 11,
+                                      top: 11,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green,
+                                          borderRadius: BorderRadius.circular(6),
                                         ),
-                                        textAlign: TextAlign.center,
+                                        constraints: const BoxConstraints(
+                                          minWidth: 12,
+                                          minHeight: 5,
+                                        ),
+                                        child: const Text(
+                                          '',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 8,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 15),
+
+                        const SizedBox(height: 0),
+
                         LayoutBuilder(
                           builder: (context, constraints) {
-
-                            return GridView.count(
-                              crossAxisCount: 3,
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              childAspectRatio: 0.7,
-                              mainAxisSpacing: 20,
-                              crossAxisSpacing: 10,
+                            return Transform.translate(
+                                offset: const Offset(0, -40),
+                                child: GridView.count(
+                                  crossAxisCount: 3,
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  childAspectRatio: 0.7,
+                                  mainAxisSpacing: 10,
+                                  crossAxisSpacing: 10,
                               children: [
                                 _buildActionCard(context, 'assets/data-2.png', 'History', isDarkMode, () {
                                   Navigator.push(
@@ -373,7 +379,6 @@ class _DashboardState extends State<Dashboard> {
 
                                 final currentUser = Provider.of<UserProvider>(context, listen: false).currentUser;
 
-// Log the current user roles
                                 if (kDebugMode) {
                                   print('Current user: ${currentUser.name}, Roles: ${currentUser.roles}');
                                 }
@@ -384,14 +389,12 @@ class _DashboardState extends State<Dashboard> {
                                   UserRole.adminhq1,
                                 ];
 
-// Additional roles to check
                                 const List<String> additionalManagementRoles = [
                                   'HeadOfHR',
                                   'HR',
                                   'AdminHQ',
                                 ];
 
-// Log the role mapping for each role the user has
                                 for (var role in currentUser.roles) {
                                   String mappedRole = UserRole.mapApiRole(role);
                                   if (kDebugMode) {
@@ -399,7 +402,6 @@ class _DashboardState extends State<Dashboard> {
                                   }
                                 }
 
-// Check if the user has any of these mapped roles
                                 final hasManagementRole = currentUser.roles.any((role) {
                                   String mappedRole = UserRole.mapApiRole(role);
                                   bool isManagementRole = managementMappedRoles.contains(mappedRole) || additionalManagementRoles.contains(role);
@@ -436,7 +438,7 @@ class _DashboardState extends State<Dashboard> {
                                 }),
 
                               ],
-                            );
+                            ));
                           },
                         ),
                       ],
@@ -453,7 +455,7 @@ class _DashboardState extends State<Dashboard> {
 
   Widget _buildActionCard(BuildContext context, String imagePath, String title, bool isDarkMode, VoidCallback onTap) {
     return Card(
-      elevation: 8,
+      elevation: 10,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: isDarkMode ? Colors.white : Colors.black, width: 1),
@@ -461,11 +463,10 @@ class _DashboardState extends State<Dashboard> {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(8.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(imagePath, height: 60, width: 60),
+            children: [Image.asset(imagePath, height: 60, width: 60),
               const SizedBox(height: 10),
               Flexible(
                 child: Text(

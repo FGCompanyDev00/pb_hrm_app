@@ -628,6 +628,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 0) && _isCheckOutAvailable;
 
     return Container(
+      margin: const EdgeInsets.only(top: 16.0),
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -996,7 +997,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: Size.fromHeight(MediaQuery.of(context).size.height * 0.1),
+        preferredSize: const Size.fromHeight(50.0),
         child: Container(
           width: double.infinity,
           decoration: const BoxDecoration(
@@ -1012,7 +1013,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           child: const Center(
             child: Column(
               children: [
-                SizedBox(height: 50),
+                SizedBox(height: 60),
                 Text(
                   'Attendance',
                   style: TextStyle(
