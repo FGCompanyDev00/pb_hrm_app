@@ -13,6 +13,7 @@ class CustomBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final activeColor = isDarkMode ? Colors.green : Colors.orangeAccent;
 
@@ -31,9 +32,10 @@ class CustomBottomNavBar extends StatelessWidget {
       backgroundColor: Colors.white,
       activeColor: activeColor,
       color: Colors.grey,
-      height: 50,
+      height: 30,
       curveSize: 100,
-      top:-20,
+    
+     
     );
   }
 }

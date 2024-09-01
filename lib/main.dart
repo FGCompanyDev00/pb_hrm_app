@@ -178,56 +178,78 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 1;
-  final List<NotificationModel> _notifications = [];
-  late NotificationPollingService _notificationPollingService;
 
-  static final List<Widget> _widgetOptions = <Widget>[
-    const AttendanceScreen(),
-    const HomeCalendar(),
-    const Dashboard(),
-    const HistoryPage(),
+  final List<GlobalKey<NavigatorState>> _navigatorKeys = [
+    GlobalKey<NavigatorState>(),
+    GlobalKey<NavigatorState>(),
+    GlobalKey<NavigatorState>(),
+    GlobalKey<NavigatorState>(),
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _notificationPollingService = NotificationPollingService(
-      apiUrl: 'https://demo-application-api.flexiflows.co/api/work-tracking/proj/notifications',
-      onNewNotifications: (notifications) {
-        setState(() {
-          _notifications.addAll(notifications.map((n) => NotificationModel.fromJson(n as Map<String, dynamic>)));
-        });
-      },
-    );
-    _notificationPollingService.startPolling();
-  }
-
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    if (index != _selectedIndex) {
+      setState(() {
+        _selectedIndex = index;
+      });
+    } else {
+      _navigatorKeys[index].currentState?.popUntil((route) => route.isFirst);
+    }
   }
 
-  @override
-  void dispose() {
-    _notificationPollingService.stopPolling();
-    super.dispose();
+  Future<bool> _onWillPop() async {
+    final isFirstRouteInCurrentTab =
+        !await _navigatorKeys[_selectedIndex].currentState!.maybePop();
+    if (isFirstRouteInCurrentTab) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: _widgetOptions.elementAt(_selectedIndex),
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            Navigator(
+              key: _navigatorKeys[0],
+              onGenerateRoute: (routeSettings) {
+                return MaterialPageRoute(builder: (context) => const AttendanceScreen());
+              },
+            ),
+            Navigator(
+              key: _navigatorKeys[1],
+              onGenerateRoute: (routeSettings) {
+                return MaterialPageRoute(builder: (context) => const HomeCalendar());
+              },
+            ),
+            Navigator(
+              key: _navigatorKeys[2],
+              onGenerateRoute: (routeSettings) {
+                return MaterialPageRoute(builder: (context) => const Dashboard());
+              },
+            ),
+            // Navigator(
+            //   key: _navigatorKeys[3],
+            //   onGenerateRoute: (routeSettings) {
+            //     return MaterialPageRoute(builder: (context) => const HistoryPage());
+            //   },
+            // ),
+          ],
+        ),
+        bottomNavigationBar: CustomBottomNavBar(
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       ),
-      bottomNavigationBar: CustomBottomNavBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 }
+
 
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {

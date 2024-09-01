@@ -305,7 +305,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
             children: [
               Container(
                 width: double.infinity,
-                height: MediaQuery.of(context).size.height * 0.1,
+                height: 100,
                 decoration: BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
