@@ -1,7 +1,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -9,7 +8,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:device_info_plus/device_info_plus.dart';
+import 'package:my_device_info_plus/my_device_info_plus.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter_background/flutter_background.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -24,7 +23,7 @@ class AttendanceScreen extends StatefulWidget {
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
   final LocalAuthentication auth = LocalAuthentication();
-  final _storage = FlutterSecureStorage();
+  final _storage = const FlutterSecureStorage();
   int _selectedIndex = 0; // 0 for Home/Office, 1 for Offsite
   bool _isCheckInActive = false;
   String _checkInTime = '--:--:--';
@@ -125,25 +124,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _retrieveDeviceId() async {
     try {
-      final deviceInfo = DeviceInfoPlugin();
-      if (Platform.isAndroid) {
-        final androidInfo = await deviceInfo.androidInfo;
-        setState(() {
-          _deviceId = androidInfo.id;
-        });
-      } else if (Platform.isIOS) {
-        final iosInfo = await deviceInfo.iosInfo;
-        setState(() {
-          _deviceId = iosInfo.identifierForVendor ?? 'Unknown Device ID';
-        });
-      }
+      var result = await MyDeviceInfoPlus.getDeviceInfo();
+      setState(() {
+        _deviceId = result['deviceId']; // Adjust based on available keys like 'uniqueId' or others
+      });
     } catch (e) {
       if (kDebugMode) {
-        print('Failed to get device ID: $e');
+        print('Failed to get device info: $e');
       }
-      setState(() {
-        _deviceId = 'Unknown Device ID';
-      });
     }
   }
 
@@ -362,54 +350,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  Future<void> _sendAttendanceDataToAPI(bool isCheckIn) async {
-    try {
-      Position? position = await _getCurrentPosition();
-      if (position != null) {
-        final attendanceData = {
-          'device_id': _deviceId,
-          'latitude': position.latitude.toString(),
-          'longitude': position.longitude.toString(),
-        };
-
-        const String baseUrl = 'https://demo-application-api.flexiflows.co';
-        final String endpoint = isCheckIn
-            ? '$baseUrl/api/attendance/checkin'
-            : '$baseUrl/api/attendance/checkout';
-
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        String? token = prefs.getString('token');
-
-        if (token == null) {
-          throw Exception('No token found');
-        }
-
-        final response = await http.post(
-          Uri.parse(endpoint),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode(attendanceData),
-        );
-
-        if (response.statusCode == 200) {
-          if (kDebugMode) {
-            print('Attendance data sent successfully.');
-          }
-        } else {
-          throw Exception('Failed to send attendance data. Status code: ${response.statusCode}');
-        }
-      } else {
-        _showCustomDialog(context, 'Error', 'Failed to retrieve location.');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error sending attendance data to API: $e');
-      }
-      _showCustomDialog(context, 'Error', 'Failed to send attendance data to the server.');
-    }
-  }
 
   void _performCheckIn(DateTime now) async {
     setState(() {
