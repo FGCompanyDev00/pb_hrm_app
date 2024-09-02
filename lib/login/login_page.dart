@@ -1342,10 +1342,8 @@ class _LoginPageState extends State<LoginPage> {
                   children: [
                     _buildLanguageDropdown(languageNotifier, isDarkMode),
                     const SizedBox(height: 20),
-                    _buildLogoAndText(context),
-                    const SizedBox(height: 20),
                     _buildDateRow(currentDate),
-                    const SizedBox(height: 40),
+                    _buildLogoAndText(context),
                     _buildTextFields(context),
                     const SizedBox(height: 20),
                     _buildRememberMeCheckbox(context),
@@ -1411,16 +1409,26 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildLogoAndText(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Image.asset(
+Widget _buildLogoAndText(BuildContext context) {
+  return Row(
+    
+    children: [
+      // Logo on the left
+      Padding(
+        padding: const EdgeInsets.only(bottom:250.0,right: 10.0),
+        child: Image.asset(
           'assets/playstore.png',
-          width: 150,
+          width: 100,
           height: 100,
         ),
-        const SizedBox(height: 40),
+      ),
+      // Align text vertically with the logo and apply padding
+      Expanded(
+  child: Padding(
+    padding: const EdgeInsets.only(bottom: 100.0, left: 20.0), 
+    child: Column(
+      children: [
+        // "Welcome to PSBV" text
         Text(
           AppLocalizations.of(context)!.welcomeToPSBV,
           style: const TextStyle(
@@ -1429,21 +1437,30 @@ class _LoginPageState extends State<LoginPage> {
             color: Colors.black,
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          AppLocalizations.of(context)!.notJustAnotherCustomer,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 16,
-            color: Colors.black,
+        // Adding padding only to the "not just another customer" text
+        Padding(
+          padding: const EdgeInsets.only(top: 10.0, left: 20.0), // Adjust padding as needed
+          child: Text(
+            AppLocalizations.of(context)!.notJustAnotherCustomer,
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black,
+            ),
           ),
         ),
       ],
-    );
-  }
+    ),
+  ),
+),
 
-  Widget _buildDateRow(String currentDate) {
-    return Row(
+    ],
+  );
+}
+
+Widget _buildDateRow(String currentDate) {
+  return Padding(
+    padding: const EdgeInsets.only(top: 10.0,left: 70.0), // Increase top padding to move the date down
+    child: Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const Icon(Icons.calendar_today, color: Colors.black),
@@ -1453,8 +1470,11 @@ class _LoginPageState extends State<LoginPage> {
           style: const TextStyle(fontSize: 16, color: Colors.black),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
+
+
 
   Widget _buildTextFields(BuildContext context) {
     return Column(
@@ -1549,7 +1569,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
         ),
-        const SizedBox(width: 20),
+        const SizedBox(width: 10),
         GestureDetector(
           onTap: _login,
           child: AnimatedContainer(
