@@ -1340,6 +1340,7 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    const SizedBox(height: 50),
                     _buildLanguageDropdown(languageNotifier, isDarkMode),
                     const SizedBox(height: 20),
                     _buildDateRow(currentDate),
