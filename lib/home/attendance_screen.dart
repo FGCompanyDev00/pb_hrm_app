@@ -997,7 +997,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(50.0),
+        preferredSize: const Size.fromHeight(70.0),
         child: Container(
           width: double.infinity,
           decoration: const BoxDecoration(
@@ -1013,7 +1013,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           child: const Center(
             child: Column(
               children: [
-                SizedBox(height: 60),
+                SizedBox(height: 75),
                 Text(
                   'Attendance',
                   style: TextStyle(
@@ -1034,7 +1034,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: MediaQuery.of(context).padding.bottom + 30,
+            bottom: MediaQuery.of(context).padding.bottom + 40,
             child: Center(
               child: ElevatedButton(
                 onPressed: () {
@@ -1044,10 +1044,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
+                  backgroundColor: Colors.green.withOpacity(0.5),
+                  elevation: 0,
                 ),
                 child: const Text(
                   'View All',

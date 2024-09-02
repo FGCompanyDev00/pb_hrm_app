@@ -55,7 +55,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadAppVersion() async {
     setState(() {
-      _appVersion = 'PSBV Next demo version v1.0';
+      _appVersion = 'PSBV Next Demo v1.0';
       // _appVersion = 'PSBV Next v${packageInfo.version}';
     });
   }
@@ -93,12 +93,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
 
   Future<bool> _onWillPop() async {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const MainScreen()),
-    );
+    Navigator.pop(context);
     return false;
   }
+
 
   // Future<void> _enableBiometrics(bool enable) async {
   //   if (enable) {
@@ -265,10 +263,7 @@ class _SettingsPageState extends State<SettingsPage> {
           leading: IconButton(
             icon: Icon(Icons.arrow_back, color: themeNotifier.textStyle.color),
             onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const MainScreen()),
-              );
+              Navigator.pop(context);
             },
           ),
         ),

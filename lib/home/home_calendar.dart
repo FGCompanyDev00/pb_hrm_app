@@ -193,7 +193,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
   Widget _buildCalendarHeader(bool isDarkMode) {
     return Container(
       width: double.infinity,
-      height: 100,  // Reduced the height to make it smaller
+      height: 120,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
@@ -223,12 +223,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
             ),
           ),
           Positioned(
-            top: 47,
+            top: 55,
             right: 20,
             child: IconButton(
               icon: const Icon(
                 Icons.add_circle,
-                size: 35,  // Slightly smaller icon size
+                size: 40,
                 color: Colors.green,
               ),
               onPressed: _showAddEventOptionsPopup,
@@ -241,19 +241,21 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
   Widget _buildCalendar(bool isDarkMode) {
     return Container(
-      margin: const EdgeInsets.all(12.0),  // Reduced margin
+      height: 300,
+      margin: const EdgeInsets.all(18.0),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.black : Colors.white,
         boxShadow: const [
           BoxShadow(
             color: Colors.black26,
-            blurRadius: 20,
-            offset: Offset(0, 4),
+            blurRadius: 4,
+            offset: Offset(0, 2),
           ),
         ],
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: TableCalendar<Event>(
+        rowHeight: 44,
         firstDay: DateTime.utc(2010, 10, 16),
         lastDay: DateTime.utc(2030, 3, 14),
         focusedDay: _focusedDay,
@@ -302,16 +304,18 @@ class _HomeCalendarState extends State<HomeCalendar> {
           titleCentered: true,
           formatButtonVisible: false,
           titleTextStyle: TextStyle(
-            fontSize: 18.0,  // Slightly smaller header text
+            fontSize: 20.0,
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
           leftChevronIcon: Icon(
             Icons.chevron_left,
+            size: 16,
             color: Colors.black,
           ),
           rightChevronIcon: Icon(
             Icons.chevron_right,
+            size: 16,
             color: Colors.black,
           ),
         ),
@@ -320,20 +324,21 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   Widget _buildSectionSeparator() {
-    return Container(
-      height: 6.0,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [
-            Colors.green,
-            Colors.orange,
-          ],
-        ),
-      ),
-      margin: const EdgeInsets.symmetric(horizontal: 20.0),
-    );
+    // return Container(
+    //   height: 8.0,
+    //   decoration: const BoxDecoration(
+    //     gradient: LinearGradient(
+    //       begin: Alignment.topRight,
+    //       end: Alignment.bottomLeft,
+    //       colors: [
+    //         Colors.green,
+    //         Colors.orange,
+    //       ],
+    //     ),
+    //   ),
+    //   margin: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 2.0),
+    // );
+    return GradientAnimationLine();
   }
 
   Widget _buildSyncfusionCalendarView() {
@@ -341,8 +346,16 @@ class _HomeCalendarState extends State<HomeCalendar> {
       view: CalendarView.day,
       dataSource: MeetingDataSource(_eventsForDay),
       initialSelectedDate: _selectedDay,
+      headerHeight: 50,
+      headerStyle: const CalendarHeaderStyle(
+        textAlign: TextAlign.center,
+        textStyle: TextStyle(
+          fontSize: 17,
+          color: Colors.black,
+        ),
+      ),
       timeSlotViewSettings: const TimeSlotViewSettings(
-        timeIntervalHeight: 60,
+        timeIntervalHeight: 40,
         startHour: 0,
         endHour: 24,
       ),
@@ -364,7 +377,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Text(
                 '${DateFormat.jm().format(meeting.startDateTime)} - ${DateFormat.jm().format(meeting.endDateTime)}',
                 style: const TextStyle(
@@ -498,6 +511,131 @@ class _HomeCalendarState extends State<HomeCalendar> {
     });
   }
 }
+
+class AnimatedSectionSeparator extends StatefulWidget {
+  const AnimatedSectionSeparator({super.key});
+
+  @override
+  _AnimatedSectionSeparatorState createState() => _AnimatedSectionSeparatorState();
+}
+
+class _AnimatedSectionSeparatorState extends State<AnimatedSectionSeparator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<LinearGradient> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 3), // Duration of the full animation cycle
+      vsync: this,
+    )..repeat(reverse: true); // Repeats the animation in reverse after each cycle
+
+    _animation = Tween<LinearGradient>(
+      begin: const LinearGradient(
+        colors: [Colors.green, Colors.yellow],
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+      ),
+      end: const LinearGradient(
+        colors: [Colors.yellow, Colors.orange],
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+      ),
+    ).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Container(
+          height: 8.0,
+          decoration: BoxDecoration(
+            gradient: _animation.value,
+          ),
+          margin: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 2.0),
+        );
+      },
+    );
+  }
+}
+
+class GradientAnimationLine extends StatefulWidget {
+  const GradientAnimationLine({super.key});
+
+  @override
+  _GradientAnimationLineState createState() {
+    return _GradientAnimationLineState();
+  }
+}
+
+class _GradientAnimationLineState extends State<GradientAnimationLine> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Color?> _colorAnimation1;
+  late Animation<Color?> _colorAnimation2;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _colorAnimation1 = ColorTween(
+      begin: Colors.yellow,
+      end: Colors.orange,
+    ).animate(_controller);
+
+    _colorAnimation2 = ColorTween(
+      begin: Colors.orange,
+      end: Colors.yellow,
+    ).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget _buildSectionSeparator() {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          height: 8.0,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: [
+                _colorAnimation1.value!,
+                _colorAnimation2.value!,
+              ],
+            ),
+          ),
+          margin: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 2.0),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _buildSectionSeparator();
+  }
+}
+
 
 class Event {
   final String title;

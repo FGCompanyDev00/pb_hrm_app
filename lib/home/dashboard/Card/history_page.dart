@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -198,9 +199,10 @@ class _HistoryPageState extends State<HistoryPage> {
             IconButton(
               icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
               onPressed: () {
-                Navigator.pushReplacement(
+                Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) => const MainScreen()),
+                  MaterialPageRoute(builder: (context) => const Dashboard()),
+                      (Route<dynamic> route) => false,
                 );
               },
             ),

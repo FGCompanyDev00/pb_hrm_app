@@ -81,10 +81,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
-            );
+            Navigator.pop(context);
           },
         ),
         shape: const RoundedRectangleBorder(

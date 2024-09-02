@@ -119,6 +119,98 @@ class _DashboardState extends State<Dashboard> {
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(110.0),
+          child: FutureBuilder<UserProfile>(
+            future: futureUserProfile,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return AppBar();
+              } else if (snapshot.hasError) {
+                return AppBar(title: Text('Error: ${snapshot.error}'));
+              } else if (snapshot.hasData) {
+                return AppBar(
+                  automaticallyImplyLeading: false,
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  flexibleSpace: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(20),
+                      bottomRight: Radius.circular(20),
+                    ),
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        image: DecorationImage(
+                          image: AssetImage('assets/background.png'),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      child: SafeArea(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 30.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(builder: (context) => const SettingsPage()),
+                                  );
+                                },
+                                child: const Icon(Icons.settings, color: Colors.black, size: 30),
+                              ),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                                    );
+                                  },
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 20,
+                                        backgroundImage: snapshot.data!.imgName != 'default_avatar.jpg'
+                                            ? NetworkImage(snapshot.data!.imgName)
+                                            : const AssetImage('assets/default_avatar.jpg'),
+                                        backgroundColor: Colors.white,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        'Hi, ${snapshot.data!.name}!',
+                                        style: const TextStyle(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 22,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  _showLogoutDialog(context);
+                                },
+                                child: const Icon(Icons.power_settings_new, color: Colors.black, size: 30),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              } else {
+                return AppBar(title: const Text('No data available')); // Fallback if no data
+              }
+            },
+          ),
+        ),
         body: Stack(
           children: [
             if (isDarkMode)
@@ -132,105 +224,7 @@ class _DashboardState extends State<Dashboard> {
               ),
             Column(
               children: [
-                Container(
-                  width: double.infinity,
-                  height: MediaQuery.of(context).size.height * 0.1+30,
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-                      fit: BoxFit.cover,
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
-                    ),
-                  ),
-                  child: SafeArea(
-                    child: Center(
-                      child: FutureBuilder<UserProfile>(
-                        future: futureUserProfile,
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
-                          } else if (snapshot.hasError) {
-                            return Center(child: Text('Error: ${snapshot.error}'));
-                          } else if (snapshot.hasData) {
-                            return Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const MyProfilePage()),
-                                    );
-                                  },
-                                  child: CircleAvatar(
-                                    radius: 20,
-                                    backgroundImage: snapshot.data!.imgName != 'default_avatar.jpg'
-                                        ? NetworkImage(snapshot.data!.imgName)
-                                        : null,
-                                    backgroundColor: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => const MyProfilePage()),
-                                      );
-                                    },
-                                    child: Text(
-                                      'Hi, ${snapshot.data!.name}!',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color: isDarkMode ? Colors.white : Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(Icons.person, color: isDarkMode ? Colors.white : Colors.black),
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                                        ).then((_) => _refreshUserProfile());
-                                      },
-                                    ),
-                                    IconButton(
-                                      icon: Icon(Icons.settings, color: isDarkMode ? Colors.white : Colors.black),
-                                      onPressed: () {
-                                        Navigator.pushReplacement(
-                                          context,
-                                          MaterialPageRoute(builder: (context) => const SettingsPage()),
-                                        );
-                                      },
-                                    ),
-                                    IconButton(
-                                      icon: Icon(Icons.power_settings_new, color: isDarkMode ? Colors.white : Colors.black),
-                                      onPressed: () {
-                                        _showLogoutDialog(context);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            );
-                          } else {
-                            return const Center(child: Text('No data available'));
-                          }
-                        },
-                      ),
-                    ),
-                  ),
-                ),
+
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16.0),
@@ -266,7 +260,7 @@ class _DashboardState extends State<Dashboard> {
                                         ),
                                         boxShadow: const [
                                           BoxShadow(
-                                            color: Colors.black26,
+                                            color: Colors.orange,
                                             blurRadius: 10,
                                             offset: Offset(0, 4),
                                           ),
@@ -353,13 +347,11 @@ class _DashboardState extends State<Dashboard> {
                             ],
                           ),
                         ),
-
                         const SizedBox(height: 0),
-
                         LayoutBuilder(
                           builder: (context, constraints) {
                             return Transform.translate(
-                                offset: const Offset(0, -40),
+                                offset: const Offset(0, 10),
                                 child: GridView.count(
                                   crossAxisCount: 3,
                                   shrinkWrap: true,
@@ -367,78 +359,75 @@ class _DashboardState extends State<Dashboard> {
                                   childAspectRatio: 0.7,
                                   mainAxisSpacing: 10,
                                   crossAxisSpacing: 10,
-                              children: [
-                                _buildActionCard(context, 'assets/data-2.png', 'History', isDarkMode, () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const HistoryPage()),
-                                  );
-                                }),
+                                  children: [
+                                    _buildActionCard(context, 'assets/data-2.png', 'History', isDarkMode, () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const HistoryPage()),
+                                      );
+                                    }),
+                                    _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
+                                      final currentUser = Provider.of<UserProvider>(context, listen: false).currentUser;
 
-                              _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
+                                      if (kDebugMode) {
+                                        print('Current user: ${currentUser.name}, Roles: ${currentUser.roles}');
+                                      }
 
-                                final currentUser = Provider.of<UserProvider>(context, listen: false).currentUser;
+                                      const List<String> managementMappedRoles = [
+                                        UserRole.managersbh,
+                                        UserRole.john,
+                                        UserRole.adminhq1,
+                                      ];
 
-                                if (kDebugMode) {
-                                  print('Current user: ${currentUser.name}, Roles: ${currentUser.roles}');
-                                }
+                                      const List<String> additionalManagementRoles = [
+                                        'HeadOfHR',
+                                        'HR',
+                                        'AdminHQ',
+                                      ];
 
-                                const List<String> managementMappedRoles = [
-                                  UserRole.managersbh,
-                                  UserRole.john,
-                                  UserRole.adminhq1,
-                                ];
+                                      for (var role in currentUser.roles) {
+                                        String mappedRole = UserRole.mapApiRole(role);
+                                        if (kDebugMode) {
+                                          print('API Role: $role => Mapped Role: $mappedRole');
+                                        }
+                                      }
 
-                                const List<String> additionalManagementRoles = [
-                                  'HeadOfHR',
-                                  'HR',
-                                  'AdminHQ',
-                                ];
+                                      final hasManagementRole = currentUser.roles.any((role) {
+                                        String mappedRole = UserRole.mapApiRole(role);
+                                        bool isManagementRole = managementMappedRoles.contains(mappedRole) ||
+                                            additionalManagementRoles.contains(role);
+                                        if (kDebugMode) {
+                                          print('Checking role: $role (mapped to: $mappedRole) - Is Management Role: $isManagementRole');
+                                        }
+                                        return isManagementRole;
+                                      });
 
-                                for (var role in currentUser.roles) {
-                                  String mappedRole = UserRole.mapApiRole(role);
-                                  if (kDebugMode) {
-                                    print('API Role: $role => Mapped Role: $mappedRole');
-                                  }
-                                }
-
-                                final hasManagementRole = currentUser.roles.any((role) {
-                                  String mappedRole = UserRole.mapApiRole(role);
-                                  bool isManagementRole = managementMappedRoles.contains(mappedRole) || additionalManagementRoles.contains(role);
-                                  if (kDebugMode) {
-                                    print('Checking role: $role (mapped to: $mappedRole) - Is Management Role: $isManagementRole');
-                                  }
-                                  return isManagementRole;
-                                });
-
-                                if (hasManagementRole) {
-                                  if (kDebugMode) {
-                                    print('Navigating to Management Approvals Page');
-                                  }
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const ManagementApprovalsPage()),
-                                  );
-                                } else {
-                                  if (kDebugMode) {
-                                    print('Navigating to Staff Approvals Page');
-                                  }
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const StaffApprovalsPage()),
-                                  );
-                                }
-                              }),
-
-                                _buildActionCard(context, 'assets/status-up.png', 'Work Tracking', isDarkMode, () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
-                                  );
-                                }),
-
-                              ],
-                            ));
+                                      if (hasManagementRole) {
+                                        if (kDebugMode) {
+                                          print('Navigating to Management Approvals Page');
+                                        }
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => const ManagementApprovalsPage()),
+                                        );
+                                      } else {
+                                        if (kDebugMode) {
+                                          print('Navigating to Staff Approvals Page');
+                                        }
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => const StaffApprovalsPage()),
+                                        );
+                                      }
+                                    }),
+                                    _buildActionCard(context, 'assets/status-up.png', 'Work Tracking', isDarkMode, () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
+                                      );
+                                    }),
+                                  ],
+                                ));
                           },
                         ),
                       ],
@@ -453,12 +442,13 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
+
   Widget _buildActionCard(BuildContext context, String imagePath, String title, bool isDarkMode, VoidCallback onTap) {
     return Card(
       elevation: 10,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: isDarkMode ? Colors.white : Colors.black, width: 1),
+        side: const BorderSide(color: Colors.yellow, width: 3),
       ),
       child: InkWell(
         onTap: onTap,
@@ -466,7 +456,8 @@ class _DashboardState extends State<Dashboard> {
           padding: const EdgeInsets.all(8.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [Image.asset(imagePath, height: 60, width: 60),
+            children: [
+              Image.asset(imagePath, height: 60, width: 60),
               const SizedBox(height: 10),
               Flexible(
                 child: Text(
@@ -499,14 +490,14 @@ class _DashboardState extends State<Dashboard> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.lock, size: 60, color: Colors.green),
+                const Icon(Icons.lock, size: 60, color: Colors.orange),
                 const SizedBox(height: 16),
                 const Text(
                   'LOGOUT',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.green,
+                    color: Colors.orange,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -536,7 +527,7 @@ class _DashboardState extends State<Dashboard> {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                        backgroundColor: Colors.orange,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),

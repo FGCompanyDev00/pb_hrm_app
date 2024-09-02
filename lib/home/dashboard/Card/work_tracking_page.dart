@@ -4,6 +4,7 @@ import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_project.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/edit_project.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/view_project.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/project_management_page.dart';
+import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:provider/provider.dart';
@@ -115,7 +116,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       onWillPop: () async {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const MainScreen()),
+          MaterialPageRoute(builder: (context) => const Dashboard()),
         );
         return false;
       },
@@ -168,7 +169,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
               onPressed: () {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const MainScreen()),
+                  MaterialPageRoute(builder: (context) => const Dashboard()),
                 );
               },
             ),

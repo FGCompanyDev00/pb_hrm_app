@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:share_plus/share_plus.dart';
@@ -186,52 +187,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
         decoration: const BoxDecoration(
         image: DecorationImage(
         image: AssetImage('assets/ready_bg.png'),
-    fit: BoxFit.cover,
-    ),
-    ),
-    ),
-    centerTitle: true,
-    title: const Text(
-    'QR My Profile',
-    style: TextStyle(
-    color: Colors.black,
-    fontSize: 24,
-    fontWeight: FontWeight.bold,
-    ),
-    ),
-    leading: IconButton(
-    icon: const Icon(
-    Icons.arrow_back,
-    color: Colors.black,
-    ),
-    onPressed: () {
-    Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(builder: (context) => const MainScreen()),
-    );
-    },
-    ),
-    ),
-    body: Padding(
-    padding: const EdgeInsets.only(top: kToolbarHeight + 30.0),
-    child: FutureBuilder<Map<String, dynamic>>(
-    future: Future.wait([_profileData, _displayData])
-        .then((results) => {...results[0], ...results[1]}),
-    builder: (context, snapshot) {
-    if (snapshot.connectionState == ConnectionState.waiting) {
-    return const Center(child: CircularProgressIndicator());
-    } else if (snapshot.hasError) {
-    return Center(child: Text('Error: ${snapshot.error}'));
-    } else if (snapshot.hasData) {
-    final data = snapshot.data!;
-    final String vCardData = '''
-BEGIN:VCARD
-VERSION:3.0
-FN:${data['employee_name']} ${data['employee_surname']}
-TEL:${data['employee_tel']}
-EMAIL:${data['employee_email']}
-END:VCARD
-''';
+                fit: BoxFit.cover,
+                ),
+                ),
+                ),
+                centerTitle: true,
+                title: const Text(
+                'QR My Profile',
+                style: TextStyle(
+                color: Colors.black,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                ),
+                ),
+                leading: IconButton(
+                icon: const Icon(
+                Icons.arrow_back,
+                  color: Colors.black,
+                ),
+                  onPressed: () {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (context) => const Dashboard()),
+                          (Route<dynamic> route) => false,
+                    );
+                  },
+                ),
+                ),
+                body: Padding(
+                padding: const EdgeInsets.only(top: kToolbarHeight + 30.0),
+                child: FutureBuilder<Map<String, dynamic>>(
+                future: Future.wait([_profileData, _displayData])
+                    .then((results) => {...results[0], ...results[1]}),
+                builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+                } else if (snapshot.hasData) {
+                final data = snapshot.data!;
+                final String vCardData = '''
+            BEGIN:VCARD
+            VERSION:3.0
+            FN:${data['employee_name']} ${data['employee_surname']}
+            TEL:${data['employee_tel']}
+            EMAIL:${data['employee_email']}
+            END:VCARD
+            ''';
 
             return Stack(
               children: [
