@@ -146,7 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           uint8List,
           quality: 100,
           name: "qr_code.png",
-          androidExistNotSave: false // Required boolean parameter
+          androidExistNotSave: false
       );
 
       if (result.isSuccess) {
@@ -178,51 +178,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        elevation: 0,
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+        elevation: 3,
         backgroundColor: Colors.transparent,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/ready_bg.png'),
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        centerTitle: true,
-        title: const Text(
-          'QR My Profile',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.black,
-          ),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
-            );
-          },
-        ),
-      ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: Future.wait([_profileData, _displayData])
-            .then((results) => {...results[0], ...results[1]}),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (snapshot.hasData) {
-            final data = snapshot.data!;
-            final String vCardData = '''
+        decoration: const BoxDecoration(
+        image: DecorationImage(
+        image: AssetImage('assets/ready_bg.png'),
+    fit: BoxFit.cover,
+    ),
+    ),
+    ),
+    centerTitle: true,
+    title: const Text(
+    'QR My Profile',
+    style: TextStyle(
+    color: Colors.black,
+    fontSize: 24,
+    fontWeight: FontWeight.bold,
+    ),
+    ),
+    leading: IconButton(
+    icon: const Icon(
+    Icons.arrow_back,
+    color: Colors.black,
+    ),
+    onPressed: () {
+    Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(builder: (context) => const MainScreen()),
+    );
+    },
+    ),
+    ),
+    body: Padding(
+    padding: const EdgeInsets.only(top: kToolbarHeight + 30.0),
+    child: FutureBuilder<Map<String, dynamic>>(
+    future: Future.wait([_profileData, _displayData])
+        .then((results) => {...results[0], ...results[1]}),
+    builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+    return const Center(child: CircularProgressIndicator());
+    } else if (snapshot.hasError) {
+    return Center(child: Text('Error: ${snapshot.error}'));
+    } else if (snapshot.hasData) {
+    final data = snapshot.data!;
+    final String vCardData = '''
 BEGIN:VCARD
 VERSION:3.0
 FN:${data['employee_name']} ${data['employee_surname']}
@@ -242,7 +244,7 @@ END:VCARD
                 Center(
                   child: SingleChildScrollView(
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(25.0),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -251,7 +253,7 @@ END:VCARD
                             children: [
                               Center(
                                 child: CircleAvatar(
-                                  radius: 60,
+                                  radius: 40,
                                   backgroundImage:
                                   NetworkImage(data['images']),
                                 ),
@@ -409,6 +411,6 @@ END:VCARD
           }
         },
       ),
-    );
+    ));
   }
 }

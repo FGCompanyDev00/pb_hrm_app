@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
@@ -12,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:http/http.dart' as http;
+import 'package:syncfusion_flutter_calendar/calendar.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -25,8 +25,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
-  DateTime? _singleTapSelectedDay;
-  List<Map<String, dynamic>> _leaveRequests = [];
+  List<Event> _eventsForDay = []; // Initialize as an empty list
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
   @override
@@ -34,12 +33,13 @@ class _HomeCalendarState extends State<HomeCalendar> {
     super.initState();
     _selectedDay = _focusedDay;
     _events = ValueNotifier({});
+    _eventsForDay = [];
 
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid);
+    InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     _fetchLeaveRequests();
@@ -54,24 +54,28 @@ class _HomeCalendarState extends State<HomeCalendar> {
     final token = prefs.getString('token');
 
     if (token == null) {
-      _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');
+      _showErrorDialog(
+          'Authentication Error', 'Token is null. Please log in again.');
       return;
     }
 
     try {
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests'),
+        Uri.parse(
+            'https://demo-application-api.flexiflows.co/api/leave_requests'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
         final List<dynamic> results = json.decode(response.body)['results'];
-        _leaveRequests = List<Map<String, dynamic>>.from(results);
+        final leaveRequests = List<Map<String, dynamic>>.from(results);
 
         final Map<DateTime, List<Event>> approvalEvents = {};
-        for (var item in _leaveRequests) {
-          final DateTime startDate = _normalizeDate(DateTime.parse(item['take_leave_from']));
-          final DateTime endDate = _normalizeDate(DateTime.parse(item['take_leave_to']));
+        for (var item in leaveRequests) {
+          final DateTime startDate =
+          _normalizeDate(DateTime.parse(item['take_leave_from']));
+          final DateTime endDate =
+          _normalizeDate(DateTime.parse(item['take_leave_to']));
           final event = Event(
             item['name'],
             startDate,
@@ -82,8 +86,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
           );
 
           for (var day = startDate;
-              day.isBefore(endDate.add(const Duration(days: 1)));
-              day = day.add(const Duration(days: 1))) {
+          day.isBefore(endDate.add(const Duration(days: 1)));
+          day = day.add(const Duration(days: 1))) {
             final normalizedDay = _normalizeDate(day);
             if (approvalEvents.containsKey(normalizedDay)) {
               approvalEvents[normalizedDay]!.add(event);
@@ -95,13 +99,15 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
         setState(() {
           _events.value = approvalEvents;
+          _eventsForDay = _getEventsForDay(_focusedDay);
         });
       } else {
-        _showErrorDialog(
-            'Failed to Load Leave Requests', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Leave Requests',
+            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
-      _showErrorDialog('Error Fetching Leave Requests', 'An unexpected error occurred: $e');
+      _showErrorDialog('Error Fetching Leave Requests',
+          'An unexpected error occurred: $e');
     }
   }
 
@@ -110,22 +116,16 @@ class _HomeCalendarState extends State<HomeCalendar> {
     return _events.value[normalizedDay] ?? [];
   }
 
-  List<Event> _getEventsForMonth(DateTime month) {
-    final startOfMonth = DateTime(month.year, month.month, 1);
-    final endOfMonth = DateTime(month.year, month.month + 1, 0);
-
-    return _events.value.entries
-        .where((entry) => entry.key.isAfter(startOfMonth.subtract(const Duration(days: 1))) && entry.key.isBefore(endOfMonth.add(const Duration(days: 1))))
-        .expand((entry) => entry.value)
-        .toList();
-  }
-
   void _showDayView(DateTime selectedDay) {
     final List<Event> dayEvents = _getEventsForDay(selectedDay);
 
     // Convert Event objects to TimetableItem<String>
     final List<TimetableItem<String>> timetableItems = dayEvents.map((event) {
-      return convertEventToTimetableItem(event);
+      return TimetableItem<String>(
+        event.startDateTime,
+        event.endDateTime,
+        data: event.title,
+      );
     }).toList();
 
     Navigator.push(
@@ -147,25 +147,236 @@ class _HomeCalendarState extends State<HomeCalendar> {
     );
   }
 
-  bool _hasPendingApprovals(DateTime day) {
-    return _getEventsForDay(day).any((event) => event.status == 'Waiting');
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
-  void dispose() {
-    _events.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              _buildCalendarHeader(isDarkMode),
+              _buildCalendar(isDarkMode),
+              _buildSectionSeparator(), // The separator line
+              Expanded(
+                child: _buildSyncfusionCalendarView(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
-  void _addEvent(String title, DateTime startDateTime, DateTime endDateTime, String description, String status, bool isMeeting) {
-    final newEvent = Event(title, startDateTime, endDateTime, description, status, isMeeting);
-    final eventsForDay = _getEventsForDay(_selectedDay!);
-    setState(() {
-      _events.value = {
-        ..._events.value,
-        _selectedDay!: [...eventsForDay, newEvent],
-      };
-    });
+  Widget _buildCalendarHeader(bool isDarkMode) {
+    return Container(
+      width: double.infinity,
+      height: 100,  // Reduced the height to make it smaller
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+          fit: BoxFit.cover,
+        ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 50),
+                Text(
+                  'Calendar',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black,
+                    fontSize: 20,  // Smaller font size
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 47,
+            right: 20,
+            child: IconButton(
+              icon: const Icon(
+                Icons.add_circle,
+                size: 35,  // Slightly smaller icon size
+                color: Colors.green,
+              ),
+              onPressed: _showAddEventOptionsPopup,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalendar(bool isDarkMode) {
+    return Container(
+      margin: const EdgeInsets.all(12.0),  // Reduced margin
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.black : Colors.white,
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TableCalendar<Event>(
+        firstDay: DateTime.utc(2010, 10, 16),
+        lastDay: DateTime.utc(2030, 3, 14),
+        focusedDay: _focusedDay,
+        calendarFormat: CalendarFormat.month,
+        availableCalendarFormats: const {
+          CalendarFormat.month: 'Month',
+        },
+        selectedDayPredicate: (day) {
+          return isSameDay(_selectedDay, day);
+        },
+        onDaySelected: (selectedDay, focusedDay) {
+          setState(() {
+            _selectedDay = selectedDay;
+            _focusedDay = focusedDay;
+            _eventsForDay = _getEventsForDay(selectedDay);
+          });
+        },
+        onFormatChanged: (format) {
+          if (_calendarFormat != format) {
+            setState(() {
+              _calendarFormat = format;
+            });
+          }
+        },
+        onPageChanged: (focusedDay) {
+          setState(() {
+            _focusedDay = focusedDay;
+          });
+        },
+        eventLoader: _getEventsForDay,
+        calendarStyle: const CalendarStyle(
+          todayDecoration: BoxDecoration(
+            color: Colors.orangeAccent,
+            shape: BoxShape.circle,
+          ),
+          selectedDecoration: BoxDecoration(
+            color: Colors.green,
+            shape: BoxShape.circle,
+          ),
+          markerDecoration: BoxDecoration(
+            color: Colors.orange,
+            shape: BoxShape.circle,
+          ),
+        ),
+        headerStyle: const HeaderStyle(
+          titleCentered: true,
+          formatButtonVisible: false,
+          titleTextStyle: TextStyle(
+            fontSize: 18.0,  // Slightly smaller header text
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+          leftChevronIcon: Icon(
+            Icons.chevron_left,
+            color: Colors.black,
+          ),
+          rightChevronIcon: Icon(
+            Icons.chevron_right,
+            color: Colors.black,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionSeparator() {
+    return Container(
+      height: 6.0,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [
+            Colors.green,
+            Colors.orange,
+          ],
+        ),
+      ),
+      margin: const EdgeInsets.symmetric(horizontal: 20.0),
+    );
+  }
+
+  Widget _buildSyncfusionCalendarView() {
+    return SfCalendar(
+      view: CalendarView.day,
+      dataSource: MeetingDataSource(_eventsForDay),
+      initialSelectedDate: _selectedDay,
+      timeSlotViewSettings: const TimeSlotViewSettings(
+        timeIntervalHeight: 60,
+        startHour: 0,
+        endHour: 24,
+      ),
+      appointmentBuilder: (context, details) {
+        final Event meeting = details.appointments.first;
+        return Container(
+          padding: const EdgeInsets.all(8.0),
+          decoration: BoxDecoration(
+            color: meeting.isMeeting ? Colors.blue : Colors.orange,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                meeting.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${DateFormat.jm().format(meeting.startDateTime)} - ${DateFormat.jm().format(meeting.endDateTime)}',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _showAddEventOptionsPopup() {
@@ -273,415 +484,19 @@ class _HomeCalendarState extends State<HomeCalendar> {
     }
   }
 
-  void _showErrorDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
+  void _addEvent(String title, DateTime startDateTime, DateTime endDateTime,
+      String description, String status, bool isMeeting) {
+    final newEvent = Event(title, startDateTime, endDateTime, description,
+        status, isMeeting);
+    final eventsForDay = _getEventsForDay(_selectedDay!);
+    setState(() {
+      _events.value = {
+        ..._events.value,
+        _selectedDay!: [...eventsForDay, newEvent],
+      };
+      _eventsForDay = _getEventsForDay(_selectedDay!);
+    });
   }
-
-  @override
-  Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
-
-    return Scaffold(
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Container(
-                width: double.infinity,
-                height: 110,
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-                    fit: BoxFit.cover,
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
-                ),
-                child: Stack( 
-                  children: [
-                    Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const SizedBox(height: 40),
-                          Text(
-                            'Calendar',
-                            style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Positioned(
-                      top: 47,
-                      right: 20,
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.add_circle,
-                          size: 40,
-                          color: Colors.green,
-                        ),
-                        onPressed: _showAddEventOptionsPopup,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                margin: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.black : Colors.white,
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 20,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: TableCalendar<Event>(
-                  firstDay: DateTime.utc(2010, 10, 16),
-                  lastDay: DateTime.utc(2030, 3, 14),
-                  focusedDay: _focusedDay,
-                  calendarFormat: CalendarFormat.month,
-                  availableCalendarFormats: const {
-                    CalendarFormat.month: 'Month',
-                  },
-
-                  selectedDayPredicate: (day) {
-                    return isSameDay(_selectedDay, day);
-                  },
-                  onDaySelected: (selectedDay, focusedDay) {
-                    if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => TimetablePage(
-                            date: selectedDay,
-                            events: _getEventsForDay(selectedDay).map((event) {
-                              return TimetableItem<String>(
-                                event.startDateTime,
-                                event.endDateTime,
-                                data: "Title: ${event.title}\nStatus: ${event.status}",
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      );
-
-                      _singleTapSelectedDay = null;
-                    } else {
-                      setState(() {
-                        _singleTapSelectedDay = selectedDay;
-                        _selectedDay = selectedDay;
-                        _focusedDay = focusedDay;
-                      });
-                    }
-                  },
-
-                  onFormatChanged: (format) {
-                    if (_calendarFormat != format) {
-                      setState(() {
-                        _calendarFormat = format;
-                      });
-                    }
-                  },
-                  onPageChanged: (focusedDay) {
-                    setState(() {
-                      _focusedDay = focusedDay;
-                    });
-                  },
-                  eventLoader: _getEventsForDay,
-                  calendarStyle: const CalendarStyle(
-                    todayDecoration: BoxDecoration(
-                      color: Colors.orangeAccent,
-                      shape: BoxShape.circle,
-                    ),
-                    selectedDecoration: BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                    ),
-                    markerDecoration: BoxDecoration(
-                      color: Colors.orange,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  headerStyle: const HeaderStyle(
-                    titleCentered: true,
-                    formatButtonVisible: false,
-                    titleTextStyle: TextStyle(
-                      fontSize: 20.0,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                    leftChevronIcon: Icon(
-                      Icons.chevron_left,
-                      color: Colors.black,
-                    ),
-                    rightChevronIcon: Icon(
-                      Icons.chevron_right,
-                      color: Colors.black,
-                    ),
-                  ),
-                  calendarBuilders: CalendarBuilders(
-                    defaultBuilder: (context, date, _) {
-                      final hasPendingApproval = _hasPendingApprovals(date);
-                      return CustomPaint(
-                        painter: hasPendingApproval ? StraightLineBorderPainter() : null,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            image: isSameDay(_singleTapSelectedDay, date)
-                                ? const DecorationImage(
-                                    image: AssetImage('assets/background.png'),
-                                    fit: BoxFit.cover,
-                                  )
-                                : null,
-                            color: isSameDay(_singleTapSelectedDay, date) ? null : Colors.transparent,
-                          ),
-                          child: Center(
-                            child: Text(
-                              '${date.day}',
-                              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    markerBuilder: (context, date, events) {
-                      if (events.isNotEmpty) {
-                        final isFirstEvent = _isFirstEvent(events, date);
-                        final isLastEvent = _isLastEvent(events, date);
-
-                        return Align(
-                          alignment: Alignment.bottomCenter,
-                          child: Container(
-                            width: isFirstEvent || isLastEvent ? 20 : double.infinity,
-                            height: 4.0,
-                            decoration: const BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topRight,
-                                  end: Alignment.bottomLeft,
-                                  colors: [
-                                    Colors.green,
-                                    Colors.lightGreen,
-                                  ],
-                                )
-                            ),
-                          ),
-                        );
-                      }
-                      return const SizedBox();
-                    },
-                  ),
-                  daysOfWeekHeight: 0,
-                ),
-              ),
-
-              Container(
-                height: 6.0,
-                decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
-                      colors: [
-                        Colors.green,
-                        Colors.orange,
-                      ],
-                    )
-                ),
-                margin: const EdgeInsets.symmetric(horizontal: 20.0),
-              ),
-
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.only(top: 10),
-                  decoration: const BoxDecoration(
-                  ),
-                  child: _buildTimeTable(_focusedDay), // Filtered timetable by month
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  bool _isFirstEvent(List<Event> events, DateTime date) {
-    final event = events.firstWhere((e) => e.startDateTime.isAtSameMomentAs(date), orElse: () => events.first);
-    return event.startDateTime.isAtSameMomentAs(date);
-  }
-
-  bool _isLastEvent(List<Event> events, DateTime date) {
-    final event = events.firstWhere((e) => e.endDateTime.isAtSameMomentAs(date), orElse: () => events.first);
-    return event.endDateTime.isAtSameMomentAs(date);
-  }
-
-  void _showEventDetails(BuildContext context, Event event) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return EventDetailsPopup(event: event);
-      },
-    );
-  }
-
-  Widget _buildTimeTable(DateTime month) {
-    final eventsForMonth = _getEventsForMonth(month);
-    final groupedByDay = <DateTime, List<Event>>{};
-
-    for (var event in eventsForMonth) {
-      final normalizedDay = _normalizeDate(event.startDateTime);
-      if (groupedByDay.containsKey(normalizedDay)) {
-        groupedByDay[normalizedDay]!.add(event);
-      } else {
-        groupedByDay[normalizedDay] = [event];
-      }
-    }
-
-    return ListView(
-      children: [
-        for (var day in groupedByDay.keys)
-          if (groupedByDay[day]!.isNotEmpty) _buildDayEvents(day, groupedByDay[day]!),
-      ],
-    );
-  }
-
-
-  Widget _buildDayEvents(DateTime day, List<Event> events) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            DateFormat.yMMMMEEEEd().format(day),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 15.0),
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: events.length,
-            itemBuilder: (context, index) {
-              return _buildEventCard(events[index]);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-
-  Widget _buildEventCard(Event event) {
-    Color statusColor;
-    Color backgroundColor;
-
-    switch (event.status) {
-      case 'Approved':
-        statusColor = Colors.green;
-        backgroundColor = Colors.green[200]!;
-        break;
-      case 'Rejected':
-        statusColor = Colors.red;
-        backgroundColor = Colors.red[200]!;
-        break;
-      case 'Waiting':
-        statusColor = Colors.orange;
-        backgroundColor = Colors.orange[200]!;
-        break;
-      case 'Cancelled':
-        statusColor = Colors.red;
-        backgroundColor = Colors.red[200]!;
-        break;
-      default:
-        statusColor = Colors.grey;
-        backgroundColor = Colors.grey[300]!;
-    }
-
-    return InkWell(
-      onTap: () {
-        showDialog(
-          context: context,
-          builder: (context) => EventDetailsPopup(event: event),
-        );
-      },
-      child: Container(
-        width: 280,
-        padding: const EdgeInsets.all(16.0),
-        margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(16.0),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 8,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              event.title,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              event.description,
-              style: const TextStyle(fontSize: 14),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
-              style: const TextStyle(fontSize: 12),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              event.status,
-              style: TextStyle(
-                color: statusColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
 }
 
 class Event {
@@ -692,208 +507,38 @@ class Event {
   final String status;
   final bool isMeeting;
 
-  Event(this.title, this.startDateTime, this.endDateTime, this.description, this.status, this.isMeeting);
+  Event(this.title, this.startDateTime, this.endDateTime, this.description,
+      this.status, this.isMeeting);
 
   String get formattedTime => DateFormat.jm().format(startDateTime);
 
   @override
-  String toString() => '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
+  String toString() =>
+      '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
 }
 
-class StraightLineBorderPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
-
-    // Drawing the straight border
-    canvas.drawLine(const Offset(0, 0), Offset(size.width, 0), paint); // Top border
-    canvas.drawLine(const Offset(0, 0), Offset(0, size.height), paint); // Left border
-    canvas.drawLine(Offset(0, size.height), Offset(size.width, size.height), paint); // Bottom border
-    canvas.drawLine(Offset(size.width, 0), Offset(size.width, size.height), paint); // Right border
+class MeetingDataSource extends CalendarDataSource {
+  MeetingDataSource(List<Event> source) {
+    appointments = source;
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+  DateTime getStartTime(int index) {
+    return appointments![index].startDateTime;
+  }
+
+  @override
+  DateTime getEndTime(int index) {
+    return appointments![index].endDateTime;
+  }
+
+  @override
+  String getSubject(int index) {
+    return appointments![index].title;
+  }
+
+  @override
+  bool isAllDay(int index) {
     return false;
-  }
-}
-
-
-class DayViewScreen extends StatelessWidget {
-  final DateTime date;
-  final List<Event> events;
-
-  const DayViewScreen({required this.date, required this.events, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(DateFormat('EEEE, MMM d, yyyy').format(date)),
-        backgroundColor: isDarkMode ? Colors.black : Colors.yellow,
-      ),
-      body: events.isEmpty
-          ? Center(
-              child: Text(
-                'No events for this day',
-                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: events.length,
-              itemBuilder: (context, index) {
-                final event = events[index];
-                Color statusColor;
-
-                switch (event.status) {
-                  case 'Approved':
-                    statusColor = Colors.green;
-                    break;
-                  case 'Rejected':
-                    statusColor = Colors.red;
-                    break;
-                  default:
-                    statusColor = Colors.orange;
-                }
-
-                return Card(
-                  color: isDarkMode ? Colors.black54 : Colors.white,
-                  elevation: 4,
-                  margin: const EdgeInsets.only(bottom: 16.0),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: statusColor,
-                      child: const Icon(
-                        Icons.event,
-                        color: Colors.white,
-                      ),
-                    ),
-                    title: Text(
-                      event.title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${DateFormat('hh:mm a').format(event.startDateTime)} - ${DateFormat('hh:mm a').format(event.endDateTime)}',
-                          style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          event.description,
-                          style: TextStyle(color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          event.status,
-                          style: TextStyle(
-                            color: statusColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-    );
-  }
-}
-
-class EventDetailsPopup extends StatelessWidget {
-  final Event event;
-
-  const EventDetailsPopup({required this.event, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20.0),
-      ),
-      backgroundColor: Colors.grey[50],
-      title: Text(
-        event.title,
-        style: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: Colors.black87,
-        ),
-      ),
-      content: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.access_time, color: Colors.blueAccent),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Time: ${event.formattedTime}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.black54,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.stairs, color: Colors.greenAccent),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Status: ${event.status}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.black54,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Description: ${event.description}',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: const Text(
-            'Close',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.blueAccent,
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }
