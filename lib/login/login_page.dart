@@ -1105,7 +1105,7 @@ class _LoginPageState extends State<LoginPage> {
     _startGradientAnimation();
     _loadSavedCredentials();
     _loadBiometricSetting();
-    // Make the app full-screen (optional, depending on your needs)
+
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   }
 
@@ -1331,7 +1331,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 30.0),
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 minHeight: MediaQuery.of(context).size.height,
@@ -1367,10 +1367,10 @@ class _LoginPageState extends State<LoginPage> {
     return Align(
       alignment: Alignment.centerRight,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 1.0),
         decoration: BoxDecoration(
           color: isDarkMode ? Colors.black54 : Colors.white,
-          borderRadius: BorderRadius.circular(8.0),
+          borderRadius: BorderRadius.circular(12.0),
           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
         ),
         child: DropdownButton<String>(
@@ -1397,10 +1397,10 @@ class _LoginPageState extends State<LoginPage> {
                 children: [
                   Image.asset(
                     'assets/flags/${value.toLowerCase()}.png',
-                    width: 24,
-                    height: 24,
+                    width: 28,
+                    height: 26,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Text(value),
                 ],
               ),
@@ -1416,11 +1416,11 @@ class _LoginPageState extends State<LoginPage> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Image.asset(
-          'assets/logo.png',
+          'assets/playstore.png',
           width: 150,
           height: 100,
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 40),
         Text(
           AppLocalizations.of(context)!.welcomeToPSBV,
           style: const TextStyle(
