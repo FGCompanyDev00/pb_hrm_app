@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -30,7 +30,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   void _navigateToHome() {
-    Future.delayed(const Duration(seconds: 3)).then((_) {
+    Future.delayed(const Duration(seconds: 6)).then((_) {
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -70,10 +70,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         children: [
           Container(
             decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.green, Colors.yellow],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+              image: DecorationImage(
+                image: AssetImage('assets/background.png'),
+                fit: BoxFit.cover,
               ),
             ),
           ),
@@ -84,29 +83,50 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Image.asset(
-                    'assets/playstore.png',
-                    width: 150,
-                    height: 150,
+                    'assets/logo.png',
+                    width: 170,
+                    height: 170,
+                  ),
+                  const SizedBox(height: 40),
+                  const Text(
+                    "Welcome to PSVB",
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF333333),
+                    ),
                   ),
                   const SizedBox(height: 20),
-                   Text(
-                     AppLocalizations.of(context)!.welcomeToPSBV,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  const Text(
+                    "You're not just another customer.\nWe're not just another Bank...",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Color(0xFF666666),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 60),
                   TweenAnimationBuilder(
-                    tween: ColorTween(
-                      begin: Colors.white,
-                      end: Colors.redAccent,
-                    ),
-                    duration: const Duration(seconds: 1),
-                    builder: (context, Color? color, _) {
-                      return CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(color!),
+                    tween: Tween<double>(begin: 0.0, end: 1.0),
+                    duration: const Duration(seconds: 2),
+                    builder: (context, value, child) {
+                      return ShaderMask(
+                        shaderCallback: (rect) {
+                          return LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: const [
+                              Colors.green,
+                              Colors.yellow,
+                              Colors.orange,
+                            ],
+                            stops: [value, value + 0.4, value + 0.4],
+                          ).createShader(rect);
+                        },
+                        child: const CircularProgressIndicator(
+                          strokeWidth: 5.0,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.orangeAccent),
+                        ),
                       );
                     },
                     onEnd: () {
