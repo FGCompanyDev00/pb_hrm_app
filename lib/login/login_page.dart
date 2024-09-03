@@ -1343,7 +1343,7 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 50),
                     _buildLanguageDropdown(languageNotifier, isDarkMode),
                     const SizedBox(height: 20),
-                    _buildDateRow(currentDate),
+                    _buildCustomDateRow(currentDate),
                     _buildLogoAndText(context),
                     _buildTextFields(context),
                     const SizedBox(height: 20),
@@ -1362,53 +1362,152 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  // Widget _buildLanguageDropdown(LanguageNotifier languageNotifier, bool isDarkMode) {
+  //   return Align(
+  //     alignment: Alignment.centerRight,
+  //     child: Container(
+  //       padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 1.0),
+  //       decoration: BoxDecoration(
+  //         color: isDarkMode ? Colors.black54 : Colors.white,
+  //         borderRadius: BorderRadius.circular(12.0),
+  //         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+  //       ),
+  //       child: DropdownButton<String>(
+  //         value: _selectedLanguage,
+  //         dropdownColor: isDarkMode ? Colors.black54 : Colors.white,
+  //         icon: Icon(Icons.arrow_downward, color: isDarkMode ? Colors.white : Colors.black),
+  //         iconSize: 24,
+  //         elevation: 16,
+  //         style: TextStyle(color: isDarkMode ? Colors.white : Colors.black, fontSize: 18),
+  //         underline: Container(
+  //           height: 2,
+  //           color: Colors.transparent,
+  //         ),
+  //         onChanged: (String? newValue) {
+  //           setState(() {
+  //             _selectedLanguage = newValue!;
+  //           });
+  //           languageNotifier.changeLanguage(newValue!);
+  //         },
+  //         items: _languages.map<DropdownMenuItem<String>>((String value) {
+  //           return DropdownMenuItem<String>(
+  //             value: value,
+  //             child: Row(
+  //               children: [
+  //                 Image.asset(
+  //                   'assets/flags/${value.toLowerCase()}.png',
+  //                   width: 28,
+  //                   height: 26,
+  //                 ),
+  //                 const SizedBox(width: 12),
+  //                 Text(value),
+  //               ],
+  //             ),
+  //           );
+  //         }).toList(),
+  //       ),
+  //     ),
+  //   );
+  // }
+
   Widget _buildLanguageDropdown(LanguageNotifier languageNotifier, bool isDarkMode) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 1.0),
-        decoration: BoxDecoration(
-          color: isDarkMode ? Colors.black54 : Colors.white,
-          borderRadius: BorderRadius.circular(12.0),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
-        ),
-        child: DropdownButton<String>(
-          value: _selectedLanguage,
-          dropdownColor: isDarkMode ? Colors.black54 : Colors.white,
-          icon: Icon(Icons.arrow_downward, color: isDarkMode ? Colors.white : Colors.black),
-          iconSize: 24,
-          elevation: 16,
-          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black, fontSize: 18),
-          underline: Container(
-            height: 2,
-            color: Colors.transparent,
+  return Align(
+    alignment: Alignment.centerRight,
+    child: GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(25.0)),
           ),
-          onChanged: (String? newValue) {
-            setState(() {
-              _selectedLanguage = newValue!;
-            });
-            languageNotifier.changeLanguage(newValue!);
-          },
-          items: _languages.map<DropdownMenuItem<String>>((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Row(
+          builder: (BuildContext context) {
+            return Container(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset(
-                    'assets/flags/${value.toLowerCase()}.png',
-                    width: 28,
-                    height: 26,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Choose Language From",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, color: isDarkMode ? Colors.white : Colors.black),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Text(value),
+                  const Divider(),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _languages.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      String language = _languages[index];
+                      return ListTile(
+                        leading: Image.asset(
+                          'assets/flags/${language.toLowerCase()}.png',
+                          width: 28,
+                          height: 26,
+                        ),
+                        title: Text(language),
+                        onTap: () {
+                          setState(() {
+                            _selectedLanguage = language;
+                          });
+                          languageNotifier.changeLanguage(language);
+                          Navigator.pop(context); // Close the modal
+                        },
+                      );
+                    },
+                  ),
                 ],
               ),
             );
-          }).toList(),
+          },
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 10.0),
+        decoration: BoxDecoration(
+          color: isDarkMode ? Colors.black54 : Colors.white,
+          borderRadius: BorderRadius.circular(10.0),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/flags/${_selectedLanguage.toLowerCase()}.png',
+              width: 28,
+              height: 26,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _selectedLanguage,
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+                fontSize: 18,
+              ),
+            ),
+            Icon(
+              Icons.arrow_drop_down,
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
 Widget _buildLogoAndText(BuildContext context) {
   return Row(
@@ -1418,7 +1517,7 @@ Widget _buildLogoAndText(BuildContext context) {
       Padding(
         padding: const EdgeInsets.only(bottom:250.0,right: 10.0),
         child: Image.asset(
-          'assets/playstore.png',
+          'assets/logo.png',
           width: 100,
           height: 100,
         ),
@@ -1426,7 +1525,7 @@ Widget _buildLogoAndText(BuildContext context) {
       // Align text vertically with the logo and apply padding
       Expanded(
   child: Padding(
-    padding: const EdgeInsets.only(bottom: 100.0, left: 20.0), 
+    padding: const EdgeInsets.only(bottom: 150.0, left: 20.0), 
     child: Column(
       children: [
         // "Welcome to PSBV" text
@@ -1458,22 +1557,49 @@ Widget _buildLogoAndText(BuildContext context) {
   );
 }
 
-Widget _buildDateRow(String currentDate) {
-  return Padding(
-    padding: const EdgeInsets.only(top: 10.0,left: 70.0), // Increase top padding to move the date down
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(Icons.calendar_today, color: Colors.black),
-        const SizedBox(width: 8),
-        Text(
-          currentDate,
-          style: const TextStyle(fontSize: 16, color: Colors.black),
-        ),
-      ],
-    ),
-  );
-}
+Widget _buildCustomDateRow(String currentDate) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 30.0, left: 70.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 244, 244, 241), // Light yellow background
+              borderRadius: BorderRadius.circular(10.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  offset: const Offset(2, 2),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.calendar_today,
+                  color: Colors.black54,
+                  size: 20.0,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  currentDate,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
 
 
@@ -1537,8 +1663,8 @@ Widget _buildDateRow(String currentDate) {
               _rememberMe = value!;
             });
           },
-          activeColor: Colors.white,
-          checkColor: Colors.black,
+          activeColor: Colors.transparent,
+          checkColor: Colors.white,
         ),
         Text(AppLocalizations.of(context)!.rememberMe, style: const TextStyle(color: Colors.black)),
       ],
