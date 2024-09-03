@@ -429,10 +429,10 @@ class _LoginPageState extends State<LoginPage> {
             // Logo
             Image.asset(
               'assets/logo.png',
-              width: 170,
+              width: 160,
               height: 150,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 2),
             // Current Date
             _buildCustomDateRow(),
           ],
