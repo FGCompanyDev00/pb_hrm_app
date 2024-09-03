@@ -198,20 +198,13 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<bool> _onWillPop() async {
     final isFirstRouteInCurrentTab =
-    !await _navigatorKeys[_selectedIndex].currentState!.maybePop();
+        !await _navigatorKeys[_selectedIndex].currentState!.maybePop();
     if (isFirstRouteInCurrentTab) {
-      if (_selectedIndex != 1) {
-        setState(() {
-          _selectedIndex = 1; // Navigate back to the main/home tab
-        });
-        return false;
-      }
-      return true; // Allow the app to close
+      return true;
     } else {
-      return false; // Prevent default back behavior
+      return false;
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
