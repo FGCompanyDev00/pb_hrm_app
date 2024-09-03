@@ -305,7 +305,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildLanguageDropdown(LanguageNotifier languageNotifier,
       bool isDarkMode) {
     return Padding(
-      padding: const EdgeInsets.only(left: 250.0, top: 60.0),
+      padding: const EdgeInsets.only(left: 270.0, top: 30.0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -413,6 +413,7 @@ class _LoginPageState extends State<LoginPage> {
               fontSize: 16,
             ),
           ),
+          const SizedBox(height: 8),
         ],
       ),
     );
@@ -483,7 +484,7 @@ class _LoginPageState extends State<LoginPage> {
     String currentDate = DateFormat('dd MMM yyyy').format(DateTime.now());
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10.0),
       decoration: BoxDecoration(
         color: const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(10.0),
@@ -501,7 +502,7 @@ class _LoginPageState extends State<LoginPage> {
           const Icon(
             Icons.calendar_today,
             color: Colors.black54,
-            size: 20.0,
+            size: 30.0,
           ),
           const SizedBox(width: 8),
           Text(
