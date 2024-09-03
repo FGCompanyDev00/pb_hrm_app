@@ -305,7 +305,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildLanguageDropdown(LanguageNotifier languageNotifier,
       bool isDarkMode) {
     return Padding(
-      padding: const EdgeInsets.only(left: 270.0, top: 30.0),
+      padding: const EdgeInsets.only(left: 250.0, top: 90.0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -315,11 +315,11 @@ class _LoginPageState extends State<LoginPage> {
                 context: context,
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(25.0)),
+                      top: Radius.circular(30.0)),
                 ),
                 builder: (BuildContext context) {
                   return Container(
-                    padding: const EdgeInsets.all(20.0),
+                    padding: const EdgeInsets.all(30.0),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -378,7 +378,7 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 Container(
                   width: 70,
-                  height: 70,
+                  height: 65,
                   decoration: BoxDecoration(
                     color: isDarkMode ? Colors.black54 : Colors.white,
                     shape: BoxShape.circle,
@@ -389,8 +389,8 @@ class _LoginPageState extends State<LoginPage> {
                   child: Center(
                     child: Image.asset(
                       'assets/flags/${_selectedLanguage.toLowerCase()}.png',
-                      width: 28,
-                      height: 26,
+                      width: 30,
+                      height: 29,
                     ),
                   ),
                 ),
@@ -399,18 +399,18 @@ class _LoginPageState extends State<LoginPage> {
                   child: Icon(
                     Icons.arrow_drop_down,
                     color: isDarkMode ? Colors.white : Colors.black,
-                    size: 24,
+                    size: 23,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 7),
           Text(
             _selectedLanguage,
             style: TextStyle(
               color: isDarkMode ? Colors.white : Colors.black,
-              fontSize: 16,
+              fontSize: 18,
             ),
           ),
           const SizedBox(height: 8),
@@ -429,10 +429,10 @@ class _LoginPageState extends State<LoginPage> {
             // Logo
             Image.asset(
               'assets/logo.png',
-              width: 150,
+              width: 170,
               height: 150,
             ),
-            const SizedBox(width: 20),
+            const SizedBox(width: 10),
             // Current Date
             _buildCustomDateRow(),
           ],
@@ -471,7 +471,6 @@ class _LoginPageState extends State<LoginPage> {
                   color: Colors.black,
                 ),
               ),
-
             ],
           ),
         ),
@@ -484,7 +483,7 @@ class _LoginPageState extends State<LoginPage> {
     String currentDate = DateFormat('dd MMM yyyy').format(DateTime.now());
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 10.0),
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
       decoration: BoxDecoration(
         color: const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(10.0),
@@ -502,13 +501,13 @@ class _LoginPageState extends State<LoginPage> {
           const Icon(
             Icons.calendar_today,
             color: Colors.black54,
-            size: 30.0,
+            size: 28.0,
           ),
           const SizedBox(width: 8),
           Text(
             currentDate,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 20,
               color: Colors.black87,
               fontWeight: FontWeight.bold,
             ),
@@ -614,7 +613,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Widget _buildLoginAndBiometricButton(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 30.0),
+      padding: const EdgeInsets.symmetric(horizontal: 45.0),
       // Adjust the padding as needed
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -657,7 +656,7 @@ class _LoginPageState extends State<LoginPage> {
                   .of(context)
                   .size
                   .width * 0.35,
-              // Adjust width as needed
+
               height: 50,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12.0),
