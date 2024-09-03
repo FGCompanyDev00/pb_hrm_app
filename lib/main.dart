@@ -12,13 +12,13 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'notifications/notification_page.dart';
 import 'services/notification_polling_service.dart';
 import 'notifications/notification_model.dart';
 import 'splash/splashscreen.dart';
 import 'theme/theme.dart';
 import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
+import 'package:pb_hrsystem/login/notification_permission_page.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:http/http.dart' as http;
 
@@ -34,9 +34,9 @@ void main() async {
 
   // iOS/macOS initialization settings
   DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings(
-    requestAlertPermission: true,
-    requestBadgePermission: true,
-    requestSoundPermission: true,
+    requestAlertPermission: false, // Do not request permissions here
+    requestBadgePermission: false,
+    requestSoundPermission: false,
     onDidReceiveLocalNotification: (int id, String? title, String? body, String? payload) async {
       // Handle notification received in foreground
       if (kDebugMode) {
@@ -59,19 +59,10 @@ void main() async {
       if (response.payload != null && response.payload!.isNotEmpty) {
         // Navigate to NotificationPage on click
         navigatorKey.currentState?.push(MaterialPageRoute(
-          builder: (context) => const NotificationPage(),
+          builder: (context) => const NotificationPermissionPage(),
         ));
       }
     },
-  );
-
-  // Request permissions for iOS (if not done during initialization)
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-      ?.requestPermissions(
-    alert: true,
-    badge: true,
-    sound: true,
   );
 
   runApp(
@@ -198,7 +189,7 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<bool> _onWillPop() async {
     final isFirstRouteInCurrentTab =
-        !await _navigatorKeys[_selectedIndex].currentState!.maybePop();
+    !await _navigatorKeys[_selectedIndex].currentState!.maybePop();
     if (isFirstRouteInCurrentTab) {
       return true;
     } else {

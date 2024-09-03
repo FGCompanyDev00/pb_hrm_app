@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/login/forgot_password_page.dart';
-import 'package:pb_hrsystem/login/notification_page.dart';
+import 'package:pb_hrsystem/login/notification_permission_page.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
@@ -113,7 +113,7 @@ class _LoginPageState extends State<LoginPage> {
       if (isFirstLogin) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const NotificationPage()),
+          MaterialPageRoute(builder: (context) => const NotificationPermissionPage()),
         );
         await prefs.setBool('isFirstLogin', false);
       } else {
@@ -244,7 +244,7 @@ class _LoginPageState extends State<LoginPage> {
       },
       child: Text(
         AppLocalizations.of(context)!.forgotPassword,
-        style: const TextStyle(color: Colors.black),
+        style: const TextStyle(color: Colors.green),
       ),
     );
   }
@@ -283,13 +283,13 @@ class _LoginPageState extends State<LoginPage> {
                       _buildLanguageDropdown(languageNotifier, isDarkMode),
                       const SizedBox(height: 10),
                       _buildLogoAndText(context),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 55),
                       _buildTextFields(context),
                       const SizedBox(height: 20),
                       _buildRememberMeCheckbox(context),
                       const SizedBox(height: 20),
                       _buildLoginAndBiometricButton(context),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 10),
                       _buildForgotPasswordButton(context),
                     ],
                   ),
@@ -436,20 +436,32 @@ class _LoginPageState extends State<LoginPage> {
             _buildCustomDateRow(),
           ],
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 10),
         // Welcome Text
-        const Center(
-          child: Column(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 53.0),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Welcome to PSVB',
+                textAlign: TextAlign.left,
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
               ),
-              SizedBox(height: 8),
+              SizedBox(height: 15),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 65.0),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
               Text(
                 "You're not just another customer.\nWe're not just another Bank...",
                 textAlign: TextAlign.center,
@@ -458,12 +470,14 @@ class _LoginPageState extends State<LoginPage> {
                   color: Colors.black,
                 ),
               ),
+
             ],
           ),
         ),
       ],
     );
   }
+
 
   Widget _buildCustomDateRow() {
     String currentDate = DateFormat('dd MMM yyyy').format(DateTime.now());
@@ -627,9 +641,9 @@ class _LoginPageState extends State<LoginPage> {
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.face, size: 24, color: Colors.orange),
+                  Icon(Icons.face, size: 35, color: Colors.orange),
                   SizedBox(width: 10),
-                  Icon(Icons.fingerprint, size: 24, color: Colors.orange),
+                  Icon(Icons.fingerprint, size: 38, color: Colors.orange),
                 ],
               ),
             ),

@@ -5,14 +5,14 @@ import 'package:permission_handler/permission_handler.dart';
 import 'location_information_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-class NotificationPage extends StatefulWidget {
-  const NotificationPage({super.key});
+class NotificationPermissionPage extends StatefulWidget {
+  const NotificationPermissionPage({super.key});
 
   @override
-  _NotificationPageState createState() => _NotificationPageState();
+  _NotificationPermissionPageState createState() => _NotificationPermissionPageState();
 }
 
-class _NotificationPageState extends State<NotificationPage> {
+class _NotificationPermissionPageState extends State<NotificationPermissionPage> {
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
   @override
@@ -20,7 +20,6 @@ class _NotificationPageState extends State<NotificationPage> {
     super.initState();
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     _initializeNotifications();
-    _checkPermissionAndNavigate();
   }
 
   Future<void> _initializeNotifications() async {
@@ -34,13 +33,13 @@ class _NotificationPageState extends State<NotificationPage> {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
-  Future<void> _checkPermissionAndNavigate() async {
+  Future<void> _requestNotificationPermission() async {
     final status = await Permission.notification.status;
 
     if (status.isGranted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const MainScreen()),
+        MaterialPageRoute(builder: (context) => const LocationInformationPage()),
       );
     } else {
       final newStatus = await Permission.notification.request();
@@ -126,7 +125,7 @@ class _NotificationPageState extends State<NotificationPage> {
               const Spacer(),
               Center(
                 child: ElevatedButton(
-                  onPressed: () => _checkPermissionAndNavigate(),
+                  onPressed: () => _requestNotificationPermission(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 20),
