@@ -305,7 +305,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget _buildLanguageDropdown(LanguageNotifier languageNotifier,
       bool isDarkMode) {
     return Padding(
-      padding: const EdgeInsets.only(left: 250.0, top: 90.0),
+      padding: const EdgeInsets.only(left: 250.0, top: 100.0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
