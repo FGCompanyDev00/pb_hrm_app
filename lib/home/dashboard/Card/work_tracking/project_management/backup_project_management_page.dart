@@ -977,7 +977,7 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
   Widget build(BuildContext context) {
     final filteredMembers = _members.where((member) {
       final memberName = member['name'];
-      if (memberName == null || _searchQuery == null) return false;
+      if (memberName == null) return false;
       return memberName.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
 

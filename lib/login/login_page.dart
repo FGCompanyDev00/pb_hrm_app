@@ -269,16 +269,14 @@ class _LoginPageState extends State<LoginPage> {
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: constraints.maxHeight,
-                    maxWidth: constraints.maxWidth,
-                  ),
+            return SingleChildScrollView( // Wrap content with SingleChildScrollView
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: IntrinsicHeight(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildLanguageDropdown(languageNotifier, isDarkMode),
                       const SizedBox(height: 10),
@@ -291,6 +289,7 @@ class _LoginPageState extends State<LoginPage> {
                       _buildLoginAndBiometricButton(context),
                       const SizedBox(height: 10),
                       _buildForgotPasswordButton(context),
+                      const Spacer(),
                     ],
                   ),
                 ),

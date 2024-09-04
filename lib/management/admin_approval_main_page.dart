@@ -5,6 +5,8 @@ import 'package:pb_hrsystem/management/admin_history_view_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
+import '../home/dashboard/dashboard.dart';
+
 class ManagementApprovalsPage extends StatefulWidget {
   const ManagementApprovalsPage({super.key});
 
@@ -162,7 +164,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
         onRefresh: fetchData, // Pull to refresh functionality
         child: Column(
           children: [
-            // AppBar section with custom background and title
+
             Container(
               width: double.infinity,
               height: MediaQuery.of(context).size.height * 0.18,
@@ -185,7 +187,10 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back, size: 30, color: Colors.black),
                       onPressed: () {
-                        Navigator.pop(context);
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const Dashboard()),
+                        );
                       },
                     ),
                   ),

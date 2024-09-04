@@ -12,7 +12,6 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
-import 'package:pb_hrsystem/home/myprofile_page.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
 import 'package:pb_hrsystem/management/admin_approval_main_page.dart';
@@ -276,7 +275,7 @@ class _DashboardState extends State<Dashboard> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Container(
+                        SizedBox(
                           height: 60,
                           child: Row(
                             children: [

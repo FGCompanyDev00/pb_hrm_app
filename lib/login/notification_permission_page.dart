@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:pb_hrsystem/main.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'location_information_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';

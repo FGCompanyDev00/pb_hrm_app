@@ -373,8 +373,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                           SizedBox(width: 4),
                           CircleAvatar(
                             backgroundColor: Colors.grey,
-                            child: Text('+3'),
                             radius: 20.0,
+                            child: Text('+3'),
                           ),
                         ],
                       ),

@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/notifications/test_notification_widget.dart';
 import 'package:pb_hrsystem/settings/change_password.dart';
 import 'package:pb_hrsystem/settings/edit_profile.dart';

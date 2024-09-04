@@ -338,7 +338,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
     //   ),
     //   margin: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 2.0),
     // );
-    return GradientAnimationLine();
+    return const GradientAnimationLine();
   }
 
   Widget _buildSyncfusionCalendarView() {
