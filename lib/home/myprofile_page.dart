@@ -22,12 +22,13 @@ class _MyProfilePageState extends State<MyProfilePage> {
 
   Future<UserProfile> fetchUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('token'); // Retrieve token from SharedPreferences
+    final String? token = prefs.getString('token');
 
     if (token == null) {
       throw Exception('No token found');
     }
 
+    // Fetch user profile details (without roles)
     final response = await http.get(
       Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
       headers: {
@@ -41,8 +42,26 @@ class _MyProfilePageState extends State<MyProfilePage> {
       if (responseBody['results'] == null || responseBody['results'].isEmpty) {
         throw Exception('No user profile data found');
       }
-      final List<dynamic> results = responseBody['results'];
-      final userProfile = UserProfile.fromJson(results[0]);
+      final userProfile = UserProfile.fromJson(responseBody['results'][0]);
+
+      // Fetch roles from the separate API
+      final rolesResponse = await http.get(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (rolesResponse.statusCode == 200) {
+        final rolesBody = jsonDecode(rolesResponse.body);
+        if (rolesBody['results'] != null && rolesBody['results'].isNotEmpty) {
+          userProfile.roles = rolesBody['results'][0]['roles']; // Set the roles from the second API
+        }
+      } else {
+        throw Exception('Failed to load roles');
+      }
+
       return userProfile;
     } else {
       throw Exception('Failed to load user profile: ${response.reasonPhrase}');
@@ -51,7 +70,35 @@ class _MyProfilePageState extends State<MyProfilePage> {
 
   String formatDate(String dateStr) {
     DateTime dateTime = DateTime.parse(dateStr);
-    return DateFormat('MMM dd, yyyy').format(dateTime);  // Format as 'Nov 23, 2022'
+    return DateFormat('MMM dd, yyyy').format(dateTime);
+  }
+
+  Widget buildRolesSection(String roles) {
+    List<String> roleList = roles.split(',');
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Roles:',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 8.0,
+            runSpacing: 4.0,
+            children: roleList.map((role) {
+              return Chip(
+                label: Text(role),
+                backgroundColor: Colors.green[100],
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -98,27 +145,55 @@ class _MyProfilePageState extends State<MyProfilePage> {
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else if (snapshot.hasData) {
-            return Column(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ProfileInfoRow(icon: Icons.person, label: 'Gender', value: snapshot.data!.gender),
-                        ProfileInfoRow(icon: Icons.badge, label: 'Name & Surname', value: '${snapshot.data!.name} ${snapshot.data!.surname}'),
-                        ProfileInfoRow(icon: Icons.date_range, label: 'Date Start Work', value: formatDate(snapshot.data!.createAt)),
-                        ProfileInfoRow(icon: Icons.date_range, label: 'Passes Probation Date', value: formatDate(snapshot.data!.updateAt)),
-                        ProfileInfoRow(icon: Icons.account_balance, label: 'Department', value: snapshot.data!.departmentName),
-                        ProfileInfoRow(icon: Icons.location_on, label: 'Branch', value: snapshot.data!.branchName),
-                        ProfileInfoRow(icon: Icons.phone, label: 'Tel.', value: snapshot.data!.tel),
-                        ProfileInfoRow(icon: Icons.email, label: 'Emails', value: snapshot.data!.email),
-                      ],
+            return SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Card(
+                      elevation: 2.0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.0),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ProfileInfoRow(icon: Icons.person, label: 'Gender', value: snapshot.data!.gender),
+                            const SizedBox(height: 10.0),
+                            ProfileInfoRow(icon: Icons.badge, label: 'Name & Surname', value: '${snapshot.data!.name} ${snapshot.data!.surname}'),
+                            const SizedBox(height: 10.0),
+                            ProfileInfoRow(icon: Icons.date_range, label: 'Date Start Work', value: formatDate(snapshot.data!.createAt)),
+                            const SizedBox(height: 10.0),
+                            ProfileInfoRow(icon: Icons.date_range, label: 'Passes Probation Date', value: formatDate(snapshot.data!.updateAt)),
+                            const SizedBox(height: 10.0),
+                            ProfileInfoRow(icon: Icons.account_balance, label: 'Department', value: snapshot.data!.departmentName),
+                            const SizedBox(height: 10.0),
+                            ProfileInfoRow(icon: Icons.location_on, label: 'Branch', value: snapshot.data!.branchName),
+                            const SizedBox(height: 10.0),
+                            ProfileInfoRow(icon: Icons.phone, label: 'Tel.', value: snapshot.data!.tel),
+                            const SizedBox(height: 10.0),
+                            ProfileInfoRow(icon: Icons.email, label: 'Emails', value: snapshot.data!.email),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 20.0),
+                    Card(
+                      elevation: 2.0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.0),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: buildRolesSection(snapshot.data!.roles),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             );
           } else {
             return const Center(child: Text('No data available'));
@@ -127,6 +202,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
       ),
     );
   }
+
 }
 
 class UserProfile {
@@ -145,6 +221,7 @@ class UserProfile {
   final String createAt;
   final String updateAt;
   final String imgName;
+  String roles;
 
   UserProfile({
     required this.id,
@@ -162,25 +239,26 @@ class UserProfile {
     required this.createAt,
     required this.updateAt,
     required this.imgName,
+    this.roles = 'No roles available',
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
-      id: json['id'],
-      employeeId: json['employee_id'],
-      name: json['name'],
-      surname: json['surname'],
-      branchId: json['branch_id'],
-      branchName: json['b_name'],
-      departmentId: json['department_id'],
-      departmentName: json['d_name'],
-      tel: json['tel'],
-      email: json['email'],
-      employeeStatus: json['employee_status'],
-      gender: json['gender'],
-      createAt: json['create_at'],
-      updateAt: json['update_at'],
-      imgName: json['img_name'],
+      id: json['id'] ?? 0,
+      employeeId: json['employee_id'] ?? 'N/A',
+      name: json['name'] ?? 'N/A',
+      surname: json['surname'] ?? 'N/A',
+      branchId: json['branch_id'] ?? 0,
+      branchName: json['b_name'] ?? 'N/A',
+      departmentId: json['department_id'] ?? 0,
+      departmentName: json['d_name'] ?? 'N/A',
+      tel: json['tel'] ?? 'N/A',
+      email: json['email'] ?? 'N/A',
+      employeeStatus: json['employee_status'] ?? 'N/A',
+      gender: json['gender'] ?? 'N/A',
+      createAt: json['create_at'] ?? 'N/A',
+      updateAt: json['update_at'] ?? 'N/A',
+      imgName: json['img_name'] ?? 'default_avatar.jpg',
     );
   }
 }

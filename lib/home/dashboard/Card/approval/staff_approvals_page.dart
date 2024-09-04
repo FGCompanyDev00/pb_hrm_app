@@ -170,7 +170,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 48), // Keeps the text centered
+                  const SizedBox(width: 48),
                 ],
               ),
             ),

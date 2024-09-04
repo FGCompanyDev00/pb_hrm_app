@@ -285,16 +285,11 @@ class _SettingsPageState extends State<SettingsPage> {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       } else if (snapshot.hasError) {
-                        return Center(
-                            child: Text('Error: ${snapshot.error}'));
+                        return Center(child: Text('Error: ${snapshot.error}'));
                       } else if (snapshot.hasData) {
                         return _buildProfileHeader(
                           isDarkMode,
-                          profileImage: snapshot.data!.imgName !=
-                              'default_avatar.jpg'
-                              ? NetworkImage(
-                              'https://demo-application-api.flexiflows.co/images/${snapshot.data!.imgName}')
-                              : null,
+                          profileImageUrl: snapshot.data!.imgName,
                           name: '${snapshot.data!.name} ${snapshot.data!.surname}',
                           email: snapshot.data!.email,
                         );
@@ -378,7 +373,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildProfileHeader(bool isDarkMode,
-      {ImageProvider<Object>? profileImage,
+      {required String profileImageUrl,
         required String name,
         required String email}) {
     return Container(
@@ -401,9 +396,9 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           CircleAvatar(
             radius: 35,
-            backgroundImage: profileImage,
+            backgroundImage: NetworkImage(profileImageUrl),
             backgroundColor: Colors.white,
-            child: profileImage == null
+            child: profileImageUrl.isEmpty
                 ? const Icon(Icons.person, size: 35)
                 : null,
           ),
@@ -446,6 +441,7 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
+
 
   Widget _buildSettingsSection(String title, ThemeNotifier themeNotifier) {
     return Padding(
