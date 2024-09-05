@@ -119,7 +119,7 @@ class _DashboardState extends State<Dashboard> {
       onWillPop: () async => false,
       child: Scaffold(
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(110.0),
+          preferredSize: const Size.fromHeight(115.0),
           child: FutureBuilder<UserProfile>(
             future: futureUserProfile,
             builder: (context, snapshot) {
@@ -167,30 +167,31 @@ class _DashboardState extends State<Dashboard> {
                                       MaterialPageRoute(builder: (context) => const ProfileScreen()),
                                     );
                                   },
-                                  child: Row(
+                                  child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       CircleAvatar(
-                                        radius: 20,
+                                        radius: 22,
                                         backgroundImage: snapshot.data!.imgName != 'default_avatar.jpg'
                                             ? NetworkImage(snapshot.data!.imgName)
-                                            : const AssetImage('assets/default_avatar.jpg'),
+                                            : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
                                         backgroundColor: Colors.white,
                                       ),
-                                      const SizedBox(width: 10),
+                                      const SizedBox(height: 8),
                                       Text(
                                         'Hi, ${snapshot.data!.name}!',
                                         style: const TextStyle(
                                           color: Colors.black,
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 22,
+                                          fontSize: 18,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
                               ),
+
                               GestureDetector(
                                 onTap: () {
                                   _showLogoutDialog(context);

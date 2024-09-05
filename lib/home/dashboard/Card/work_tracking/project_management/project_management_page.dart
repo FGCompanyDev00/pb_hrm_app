@@ -30,7 +30,6 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   final List<String> _statusOptions = ['All Status', 'Pending', 'Processing', 'Completed'];
   late TabController _tabController;
   final TextEditingController _messageController = TextEditingController();
-  String _shortenedProjectId = '';
   String _currentUserId = '';
   final WorkTrackingService _workTrackingService = WorkTrackingService();
   final ScrollController _scrollController = ScrollController();
@@ -39,10 +38,10 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _shortenedProjectId = '${widget.projectId.substring(0, 8)}...';
     _loadUserData();
     _fetchProjectData();
     _loadChatMessages();
+    _loadCurrentUser();
   }
 
   Future<void> _loadUserData() async {
@@ -75,18 +74,26 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     }
   }
 
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.minScrollExtent); // Jump to the bottom
+      }
+    });
+  }
+
   Future<void> _loadChatMessages() async {
     try {
       final messages = await _workTrackingService.fetchChatMessages(widget.projectId);
       setState(() {
-        _messages = messages.reversed.map((message) {
+        _messages = messages.map((message) {
           return {
             ...message,
-            'createBy_name': message['created_by'] == _currentUserId ? 'You' : message['createBy_name']
+            'createBy_name': message['created_by'] == _currentUserId ? 'You' : message['createBy_name'],
           };
-        }).toList(); // Reverse messages for newest at bottom
+        }).toList();
       });
-      _scrollToBottom();
+      _scrollToBottom(); // Ensure scrolling to the bottom after messages are loaded
     } catch (e) {
       if (kDebugMode) {
         print('Failed to load chat messages: $e');
@@ -94,129 +101,218 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     }
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-      }
-    });
+
+  Widget _buildChatAndConversationTab(bool isDarkMode) {
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.builder(
+            reverse: true, // Reverse the order of the list to show the latest message at the bottom
+            controller: _scrollController,
+            padding: const EdgeInsets.all(16.0),
+            itemCount: _messages.length,
+            itemBuilder: (context, index) {
+              final message = _messages[index];
+              final nextMessage = index + 1 < _messages.length ? _messages[index + 1] : null;
+
+              // Check if the date of the current message is different from the next one (since list is reversed)
+              final bool isNewDate = nextMessage == null ||
+                  _formatDate(message['created_at']) != _formatDate(nextMessage['created_at']);
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (isNewDate) // Display date header
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Text(
+                          _formatDate(message['created_at']),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                  _buildChatMessage(message, nextMessage, isDarkMode), // Message bubble
+                ],
+              );
+            },
+          ),
+        ),
+        _buildChatInput(isDarkMode), // Chat input at the bottom
+      ],
+    );
+  }
+
+
+  String _formatDate(String timestamp) {
+    final DateTime messageDate = DateTime.parse(timestamp);
+    final DateTime now = DateTime.now();
+
+    if (messageDate.year == now.year && messageDate.month == now.month && messageDate.day == now.day) {
+      return 'Today';
+    } else if (messageDate.year == now.year && messageDate.month == now.month && messageDate.day == now.day - 1) {
+      return 'Yesterday';
+    } else {
+      return DateFormat('dd MMM yyyy').format(messageDate);
+    }
+  }
+
+  String _formatTimestamp(String timestamp) {
+    final DateTime messageTime = DateTime.parse(timestamp);
+    return DateFormat('hh:mm a').format(messageTime); // Time in hh:mm AM/PM format
+  }
+
+
+  Widget _buildChatMessage(Map<String, dynamic> message, Map<String, dynamic>? nextMessage, bool isDarkMode) {
+    final bool isSentByMe = message['created_by'] == _currentUserId;
+    final String senderName = isSentByMe ? 'You' : message['createBy_name'] ?? 'Unknown'; // Replace current user name with 'You'
+
+    final Color messageColor = isSentByMe
+        ? Colors.blue.shade200 // Your own messages (light blue)
+        : _assignChatBubbleColor(message['created_by']); // Different color for others
+
+    final Color textColor = isDarkMode ? Colors.white : Colors.black;
+    final Alignment messageAlignment = isSentByMe ? Alignment.centerRight : Alignment.centerLeft;
+
+    return GestureDetector(
+      onTap: () {
+        if (isSentByMe) {
+          _showDeleteConfirmation(message['comment_id']); // Only allow deletion of own messages
+        }
+      },
+      child: Align(
+        alignment: messageAlignment,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          padding: const EdgeInsets.all(12.0),
+          decoration: BoxDecoration(
+            color: messageColor,
+            borderRadius: BorderRadius.only(
+              topLeft: isSentByMe ? const Radius.circular(12.0) : const Radius.circular(0),
+              topRight: isSentByMe ? const Radius.circular(0) : const Radius.circular(12.0),
+              bottomLeft: const Radius.circular(12.0),
+              bottomRight: const Radius.circular(12.0),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: isSentByMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              if (!isSentByMe) // Only show name for others' messages
+                Text(
+                  senderName,
+                  style: TextStyle(color: textColor.withOpacity(0.8), fontWeight: FontWeight.bold),
+                ),
+              const SizedBox(height: 4),
+              Text(
+                message['comments'] ?? '',
+                style: TextStyle(color: textColor, fontSize: 16),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _formatTimestamp(message['created_at']),
+                style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _assignChatBubbleColor(String userId) {
+    final List<Color> colors = [
+      Colors.green.shade100,
+      Colors.orange.shade100,
+      Colors.purple.shade100,
+      Colors.red.shade100,
+      Colors.yellow.shade100,
+    ];
+
+    final int hashValue = userId.hashCode % colors.length;
+    return colors[hashValue];
   }
 
   Widget _buildChatInput(bool isDarkMode) {
-    final Color backgroundColor = isDarkMode ? Colors.black : Colors.white;
+    final Color backgroundColor = isDarkMode ? Colors.grey[850]! : Colors.white;
     final Color textColor = isDarkMode ? Colors.white : Colors.black;
+    final Color sendButtonColor = isDarkMode ? Colors.green[300]! : Colors.green;
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                hintText: 'Type a message',
-                filled: true,
-                fillColor: backgroundColor,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: const BorderSide(color: Colors.yellow, width: 2),
-                ),
-                hintStyle: TextStyle(color: textColor.withOpacity(0.6)),
-              ),
-              style: TextStyle(color: textColor),
-            ),
-          ),
-          const SizedBox(width: 8),
-          CircleAvatar(
-            radius: 25,
-            backgroundColor: Colors.green,
-            child: IconButton(
-              icon: const Icon(Icons.send, color: Colors.white),
-              onPressed: () {
-                if (_messageController.text.isNotEmpty) {
-                  _sendMessage(_messageController.text);
-                }
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChatMessage(Map<String, dynamic> message, bool isDarkMode) {
-    final bool isSentByMe = message['created_by'] == _currentUserId;
-    final Color textColor = isDarkMode ? Colors.white : Colors.black;
-    final Color backgroundColor = isSentByMe ? Colors.green.shade100 : Colors.blue.shade100;
-    final DateTime messageTime = DateTime.parse(message['created_at'] ?? DateTime.now().toIso8601String());
-
-    String formattedTime = DateFormat('hh:mm a').format(messageTime);
-    String formattedDate;
-
-    if (messageTime.day == DateTime.now().day) {
-      formattedDate = 'Today';
-    } else {
-      formattedDate = DateFormat('dd MMM yyyy').format(messageTime);
-    }
-
-    return Align(
-      alignment: isSentByMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 10.0),
         decoration: BoxDecoration(
           color: backgroundColor,
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              message['createBy_name'] ?? 'Unknown',
-              style: TextStyle(color: textColor.withOpacity(0.8), fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              message['comments'] ?? '',
-              style: TextStyle(color: textColor, fontSize: 16),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '$formattedDate, $formattedTime',
-              style: TextStyle(color: textColor.withOpacity(0.6), fontSize: 12),
+          borderRadius: BorderRadius.circular(30.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 8,
+              offset: const Offset(2, 4),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildChatAndConversationTab(bool isDarkMode) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Image.asset(
-            'assets/background.png',
-            fit: BoxFit.cover,
-          ),
-        ),
-        Column(
+        child: Row(
           children: [
             Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(16.0),
-                itemCount: _messages.length,
-                itemBuilder: (context, index) {
-                  return _buildChatMessage(_messages[index], isDarkMode);
+              child: TextField(
+                controller: _messageController,
+                decoration: InputDecoration(
+                  hintText: 'Type a message...',
+                  hintStyle: TextStyle(color: textColor.withOpacity(0.6)),
+                  border: InputBorder.none,
+                ),
+                style: TextStyle(color: textColor),
+                maxLines: null,
+              ),
+            ),
+            const SizedBox(width: 8),
+            CircleAvatar(
+              radius: 25,
+              backgroundColor: sendButtonColor,
+              child: IconButton(
+                icon: const Icon(Icons.send, color: Colors.white),
+                onPressed: () {
+                  if (_messageController.text.isNotEmpty) {
+                    _sendMessage(_messageController.text);
+                  }
                 },
               ),
             ),
-            _buildChatInput(isDarkMode),
           ],
         ),
-      ],
+      ),
     );
+  }
+
+  String _currentUserName = '';
+
+  Future<void> _loadCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      // Handle token missing case
+      return;
+    }
+
+    final response = await http.get(
+      Uri.parse('${widget.baseUrl}/api/display/me'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['results'] != null && data['results'].isNotEmpty) {
+        setState(() {
+          _currentUserId = data['results'][0]['id'];  // Set current user ID
+          _currentUserName = data['results'][0]['employee_name']; // Set current user name
+        });
+      }
+    }
   }
 
   Future<void> _sendMessage(String message) async {
@@ -228,6 +324,38 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
         print('Failed to send message: $e');
       }
     }
+  }
+
+  void _showDeleteConfirmation(String commentId) {
+    print('Comment ID to delete: $commentId');  // For debugging
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Message'),
+          content: const Text('Would you like to delete this message?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the modal
+              },
+              child: const Text('No'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the modal
+                _deleteMessage(commentId); // Delete the message
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _addMessage(String message) {
@@ -259,74 +387,91 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     List<Map<String, dynamic>> filteredTasks = _tasks.where((task) => _selectedStatus == 'All Status' || task['status'] == _selectedStatus).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        flexibleSpace: Image.asset(
-          'assets/background.png',
-          fit: BoxFit.cover,
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const Center(
-              child: Text(
-                'Work Tracking',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 24,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(85.0),
+        child: AppBar(
+          automaticallyImplyLeading: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          flexibleSpace: ClipRRect(
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(20),
+              bottomRight: Radius.circular(20),
+            ),
+            child: Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/background.png'),
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
-            GestureDetector(
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: const Text('Project ID'),
-                      content: Text(widget.projectId),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Close'),
-                        ),
-                      ],
-                    );
-                  },
-                );
+          ),
+
+          leading: Padding(
+            padding: const EdgeInsets.only(top: 25.0),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: () {
+                Navigator.pop(context);
               },
-              child: Text(
-                _shortenedProjectId,
-                style: const TextStyle(
-                  color: Colors.black54,
-                  fontSize: 14,
-                ),
-              ),
             ),
-          ],
-        ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.amber,
-          tabs: const [
-            Tab(text: 'Processing or Detail'),
-            Tab(text: 'Chat and Conversation'),
-          ],
+          ),
+
+          title: const Padding(
+            padding: EdgeInsets.only(top: 34.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Spacer(flex: 2),
+                Text(
+                  'Work Tracking',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                  ),
+                ),
+                Spacer(flex: 4),
+              ],
+            ),
+          ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+
+
+      body: Column(
         children: [
-          _buildProcessingOrDetailTab(filteredTasks),
-          _buildChatAndConversationTab(isDarkMode),
+
+          TabBar(
+            controller: _tabController,
+            labelColor: Colors.amber,
+            unselectedLabelColor: Colors.grey,
+            indicatorColor: Colors.amber,
+            labelStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.normal,
+            ),
+            tabs: const [
+              Tab(text: 'Assignment / Task'),
+              Tab(text: 'Comment / Chat'),
+            ],
+          ),
+
+          // TabBarView
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildProcessingOrDetailTab(filteredTasks),
+                _buildChatAndConversationTab(isDarkMode),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -347,44 +492,91 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOut,
                   decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                  child: DropdownButton<String>(
-                    value: _statusOptions.contains(_selectedStatus) ? _selectedStatus : null,
-                    icon: const Icon(Icons.arrow_downward),
-                    iconSize: 24,
-                    elevation: 16,
-                    style: const TextStyle(color: Colors.black),
-                    underline: Container(
-                      height: 2,
-                      color: Colors.transparent,
+                    gradient: isDarkMode
+                        ? const LinearGradient(
+                      colors: [Color(0xFF424242), Color(0xFF303030)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                        : const LinearGradient(
+                      colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        _selectedStatus = newValue!;
-                      });
-                    },
-                    items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Row(
-                          children: [
-                            Icon(Icons.circle, color: _getStatusColor(value), size: 12),
-                            const SizedBox(width: 8),
-                            Text(value),
-                          ],
-                        ),
-                      );
-                    }).toList(),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                        offset: const Offset(1, 1),
+                      ),
+                    ],
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _statusOptions.contains(_selectedStatus) ? _selectedStatus : null,
+                      icon: const Icon(Icons.arrow_downward, color: Colors.amber),
+                      iconSize: 28,
+                      elevation: 16,
+                      dropdownColor: isDarkMode ? const Color(0xFF424242) : Colors.white,
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedStatus = newValue!;
+                        });
+                      },
+                      items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Row(
+                            children: [
+                              Icon(Icons.circle, color: _getStatusColor(value), size: 14),
+                              const SizedBox(width: 10),
+                              Text(value),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               IconButton(
-                icon: const Icon(Icons.add, color: Colors.green),
+                icon: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Colors.greenAccent, Colors.teal],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                        offset: const Offset(2, 4),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(10.0),
+                  child: const Icon(
+                    Icons.add,
+                    color: Colors.white,
+                    size: 20.0,
+                  ),
+                ),
                 onPressed: () => _showTaskModal(),
               ),
+
             ],
           ),
         ),
@@ -392,7 +584,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
           child: RefreshIndicator(
             onRefresh: _fetchProjectData,
             child: ListView.builder(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(12.0),
               itemCount: filteredTasks.length,
               itemBuilder: (context, index) {
                 return GestureDetector(
@@ -418,62 +610,133 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
 
     final startDate = DateTime.parse(task['start_date'] ?? DateTime.now().toIso8601String());
     final dueDate = DateTime.parse(task['due_date'] ?? DateTime.now().toIso8601String());
-    final days = dueDate.difference(startDate).inDays;
+    final daysRemaining = dueDate.difference(startDate).inDays;
 
-    return Card(
-      shape: RoundedRectangleBorder(
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 10.0),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFFE0E0F0),
+            Color(0xFFF7F7FF),
+            Color(0xFFFFFFFF),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            spreadRadius: 1,
+            offset: const Offset(4, 4),
+          ),
+        ],
         borderRadius: BorderRadius.circular(16.0),
-        side: BorderSide(color: progressColors[task['status']] ?? Colors.black),
       ),
-      elevation: 5,
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Status Row with Icon
             Row(
               children: [
-                const Text(
-                  'Status: ',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                Icon(
+                  Icons.circle,
+                  color: progressColors[task['status']] ?? Colors.black,
+                  size: 14,
                 ),
+                const SizedBox(width: 8),
                 Text(
                   task['status'] ?? 'Unknown',
-                  style: TextStyle(color: progressColors[task['status']] ?? Colors.black, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: progressColors[task['status']] ?? Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.more_vert,
+                  color: Colors.black54,
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+
+            // Title with Bold Style
             Text(
-              'Title: ${task['title'] ?? 'No Title'}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              task['title'] ?? 'No Title',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Start Date: ${task['start_date'] ?? 'N/A'}',
-              style: const TextStyle(color: Colors.black54),
+            const SizedBox(height: 12),
+
+            // Start Date and End Date
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildIconTextRow(
+                  icon: Icons.calendar_today,
+                  label: 'Start Date: ${task['start_date'] ?? 'N/A'}',
+                  iconColor: Colors.orangeAccent,
+                ),
+                const SizedBox(height: 8),
+                _buildIconTextRow(
+                  icon: Icons.calendar_today_outlined,
+                  label: 'Due Date: ${task['due_date'] ?? 'N/A'}',
+                  iconColor: Colors.redAccent,
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Due Date: ${task['due_date'] ?? 'N/A'}',
-              style: const TextStyle(color: Colors.black54),
+            const SizedBox(height: 12),
+
+            // Days Remaining
+            _buildIconTextRow(
+              icon: Icons.timelapse,
+              label: 'Days Remaining: $daysRemaining',
+              iconColor: Colors.greenAccent,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+
+            // Description
             Text(
-              'Days: $days',
-              style: const TextStyle(color: Colors.black54),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Description: ${task['description'] ?? 'No Description'}',
-              style: const TextStyle(color: Colors.black54),
+              task['description'] ?? 'No Description',
+              style: const TextStyle(
+                color: Colors.black54,
+                fontSize: 14,
+                height: 1.5,
+              ),
             ),
           ],
         ),
       ),
     );
   }
+
+// Helper Widget for Icon + Text Row
+  Widget _buildIconTextRow({required IconData icon, required String label, Color? iconColor}) {
+    return Row(
+      children: [
+        Icon(icon, color: iconColor ?? Colors.black54, size: 18), // Icon with color
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
 
   void _showTaskViewModal(Map<String, dynamic> task, int index) {
     showDialog(
@@ -574,12 +837,52 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     );
   }
 
+  Future<void> _deleteMessage(String commentId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Token is null. Please log in again.')),
+      );
+      return;
+    }
+
+    final url = Uri.parse('${widget.baseUrl}/api/work-tracking/project-comments/delete/$commentId');
+
+    final response = await http.put(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      setState(() {
+        // Remove the message from the list of messages
+        _messages.removeWhere((message) => message['comment_id'] == commentId);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Message deleted successfully')),
+      );
+    } else {
+      // Capture error message from the response
+      final responseData = jsonDecode(response.body);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete message: ${responseData['error'] ?? 'Unknown error'}')),
+      );
+    }
+  }
+
   Future<void> _deleteTask(String taskId) async {
     try {
       await _workTrackingService.deleteAssignment(taskId);
       _fetchProjectData();
     } catch (e) {
-      print('Failed to delete task: $e');
+      if (kDebugMode) {
+        print('Failed to delete task: $e');
+      }
     }
   }
 
@@ -618,7 +921,9 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
       }
       _fetchProjectData();
     } catch (e) {
-      print('Failed to add task: $e');
+      if (kDebugMode) {
+        print('Failed to add task: $e');
+      }
     }
   }
 
@@ -626,7 +931,9 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     try {
       await _workTrackingService.addMembersToAssignment(asId, members);
     } catch (e) {
-      print('Failed to add members to assignment: $e');
+      if (kDebugMode) {
+        print('Failed to add members to assignment: $e');
+      }
     }
   }
 
@@ -669,6 +976,25 @@ class _TaskModal extends StatefulWidget {
   __TaskModalState createState() => __TaskModalState();
 }
 
+class CustomAppBarClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    Path path = Path();
+    path.lineTo(0.0, size.height - 30);
+    path.quadraticBezierTo(
+        size.width / 2, size.height, size.width, size.height - 30);
+    path.lineTo(size.width, 0.0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) {
+    return false;
+  }
+}
+
+
 class __TaskModalState extends State<_TaskModal> {
   late TextEditingController _titleController;
   late TextEditingController _startDateController;
@@ -703,7 +1029,9 @@ class __TaskModalState extends State<_TaskModal> {
         _selectedPeople = members;
       });
     } catch (e) {
-      print('Failed to load assignment members: $e');
+      if (kDebugMode) {
+        print('Failed to load assignment members: $e');
+      }
     }
   }
 
@@ -859,8 +1187,7 @@ class __TaskModalState extends State<_TaskModal> {
   @override
   Widget build(BuildContext context) {
 
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
+    Provider.of<ThemeNotifier>(context);
 
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -1083,7 +1410,9 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Error fetching members: $e');
+      if (kDebugMode) {
+        print('Error fetching members: $e');
+      }
       setState(() {
         _isLoading = false;
       });

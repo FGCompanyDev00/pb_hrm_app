@@ -115,7 +115,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
       backgroundColor: Colors.white,
       activeColor: Colors.orangeAccent,
       color: Colors.grey,
-      height: 50,
+      height: 40,
       curveSize: 120,
       top: -40,
       shadowColor: Colors.black.withOpacity(0.1),

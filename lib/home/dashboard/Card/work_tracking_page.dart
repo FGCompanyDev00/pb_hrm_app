@@ -28,7 +28,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     'All Status',
     'Pending',
     'Processing',
-    'Completed'
+    'Finished'
   ];
   List<Map<String, dynamic>> _projects = [];
   bool _isLoading = false;
@@ -348,7 +348,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
   final progressColors = {
     'Pending': Colors.orange,
     'Processing': Colors.blue,
-    'Completed': Colors.green,
+    'Finished': Colors.green,
   };
 
   double progress = double.tryParse(
