@@ -1,12 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:versionCode="1"
-    android:versionName="1.12">
+    package="com.phongsavanhbank.pb_hrsystem"
+    android:versionCode="2"
+    android:versionName="1.0">
 
+    <!-- Features used by the app -->
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <!-- Permissions required by the app -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -20,14 +23,19 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.MICROPHONE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:enableOnBackInvokedCallback="true"
-        android:requestLegacyExternalStorage="true"
+        android:allowBackup="true"
+        android:icon="@mipmap/playstore"
         android:label="PSVB NEXT"
-        android:icon="@mipmap/playstore">
+        android:roundIcon="@mipmap/playstore"
+        android:supportsRtl="true"
+        android:theme="@style/LaunchTheme"
+        android:enableOnBackInvokedCallback="true"
+        android:requestLegacyExternalStorage="true">
 
+        <!-- Flutter MainActivity configuration -->
         <activity
             android:name="com.phongsavanhbank.pb_hrsystem.MainActivity"
             android:exported="true"
@@ -39,25 +47,31 @@
             android:windowSoftInputMode="adjustResize"
             tools:ignore="MissingClass">
 
+            <!-- Metadata for Flutter engine -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
 
+            <!-- Intent filter for app launch -->
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <!-- Flutter metadata -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
     </application>
 
+    <!-- Queries for processing text intents -->
     <queries>
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
         </intent>
     </queries>
+
 </manifest>

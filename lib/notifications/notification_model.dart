@@ -4,6 +4,7 @@ class NotificationModel {
   final String projectId;
   final String meetingId;
   final String asId;
+  final String commentId;
   final String message;
   final int status;
   final String createdBy;
@@ -16,6 +17,7 @@ class NotificationModel {
     required this.projectId,
     required this.meetingId,
     required this.asId,
+    required this.commentId,
     required this.message,
     required this.status,
     required this.createdBy,
@@ -23,7 +25,6 @@ class NotificationModel {
     this.imageUrl = 'https://your-image-url.com',
   });
 
-  // Factory constructor to create an instance of NotificationModel from JSON data
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
       id: json['id'],
@@ -31,6 +32,7 @@ class NotificationModel {
       projectId: json['project_id'] ?? '',
       meetingId: json['meeting_id'] ?? '',
       asId: json['as_id'] ?? '',
+      commentId: json['comment_id'] ?? '',
       message: json['message'] ?? '',
       status: json['status'] ?? 0,
       createdBy: json['created_by'] ?? '',

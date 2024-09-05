@@ -17,6 +17,14 @@ class AddProjectPageState extends State<AddProjectPage> {
   final TextEditingController _deadline1Controller = TextEditingController();
   final TextEditingController _deadline2Controller = TextEditingController();
 
+  // Map for status names and their corresponding IDs
+  final Map<String, String> statusMap = {
+    'Pending': '40d2ba5e-a978-47ce-bc48-caceca8668e9',
+    'Processing': '0a8d93f0-1c05-42b2-8e56-984a578ef077',
+    'Finished': 'e35569eb-75e1-4005-9232-bfb57303b8b3',
+  };
+
+
   String _selectedStatus = 'Processing';
   String _selectedBranch = 'HQ Office';
   String _selectedDepartment = 'Digital Banking Dept';
@@ -45,9 +53,10 @@ class AddProjectPageState extends State<AddProjectPage> {
 
       final newProject = {
         'project_name': _projectNameController.text.trim(),
-        'department_id': '1', // Replace with actual selected department ID
-        'branch_id': '1', // Replace with actual selected branch ID
-        'status_id': '40d2ba5e-a978-47ce-bc48-caceca8668e9', // Example status ID
+        'department_id': '1',
+        'branch_id': '1',
+        // Use the statusMap to get the correct status_id
+        'status_id': statusMap[_selectedStatus]!,
         'precent_of_project': (_progress * 100).toStringAsFixed(0),
         'deadline': _deadline1Controller.text.trim(),
         'extended': _deadline2Controller.text.trim(),

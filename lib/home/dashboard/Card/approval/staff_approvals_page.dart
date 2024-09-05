@@ -6,7 +6,6 @@ import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'finish_staff_approvals_page.dart';
 

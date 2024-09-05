@@ -396,7 +396,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          elevation: 10, // Adds depth (shadow) to the modal
+          elevation: 10,
           contentPadding: EdgeInsets.zero,
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -435,7 +435,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold, // Bold the location text
+                    fontWeight: FontWeight.bold,
                     color: Colors.black87,
                   ),
                 ),
@@ -447,13 +447,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     Navigator.of(context).pop();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor, // Button color follows location
+                    backgroundColor: primaryColor,
                     padding: const EdgeInsets.symmetric(vertical: 12.0),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    shadowColor: Colors.black.withOpacity(0.25), // Add deep shadow effect
-                    elevation: 8, // Elevate button for a deeper 3D effect
+                    shadowColor: Colors.black.withOpacity(0.25),
+                    elevation: 8,
                   ),
                   child: const Text(
                     "OK",
@@ -997,7 +997,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70.0),
+        preferredSize: const Size.fromHeight(100.0),
         child: Container(
           width: double.infinity,
           decoration: const BoxDecoration(
