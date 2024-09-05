@@ -57,6 +57,7 @@ dependencies:
   timetable: ^1.0.0-alpha.14
   photo_view: ^0.15.0
   syncfusion_flutter_calendar: ^26.2.11+1
+  flutter_spinkit: ^5.2.1
 
 dev_dependencies:
   flutter_test:

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -27,7 +28,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   List<Map<String, dynamic>> _tasks = [];
   List<Map<String, dynamic>> _messages = [];
   String _selectedStatus = 'All Status';
-  final List<String> _statusOptions = ['All Status', 'Pending', 'Processing', 'Completed'];
+  final List<String> _statusOptions = ['All Status', 'Pending', 'Processing', 'Finished'];
   late TabController _tabController;
   final TextEditingController _messageController = TextEditingController();
   String _currentUserId = '';
@@ -605,7 +606,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     final progressColors = {
       'Pending': Colors.orange,
       'Processing': Colors.blue,
-      'Completed': Colors.green,
+      'Finished': Colors.green,
     };
 
     final startDate = DateTime.parse(task['start_date'] ?? DateTime.now().toIso8601String());
@@ -943,7 +944,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
         return Colors.orange;
       case 'Processing':
         return Colors.blue;
-      case 'Completed':
+      case 'Finishedr':
         return Colors.green;
       default:
         return Colors.black;
@@ -1082,11 +1083,18 @@ class __TaskModalState extends State<_TaskModal> {
       return;
     }
 
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+    );
+
+    if (result != null) {
       setState(() {
-        _files.add(File(pickedFile.path));
+        _files.add(File(result.files.single.path!));
       });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No file selected')));
     }
   }
 
@@ -1289,24 +1297,17 @@ class __TaskModalState extends State<_TaskModal> {
                 ),
               ),
               const SizedBox(height: 10),
+// Display the uploaded file names
               Wrap(
                 spacing: 8.0,
                 children: _files.map((file) {
-                  return Stack(
-                    children: [
-                      Image.file(file, width: 100, height: 100, fit: BoxFit.cover),
-                      Positioned(
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _files.remove(file);
-                            });
-                          },
-                          child: const Icon(Icons.remove_circle, color: Colors.red),
-                        ),
-                      ),
-                    ],
+                  return Chip(
+                    label: Text(file.path.split('/').last), // Display only the file name
+                    onDeleted: () {
+                      setState(() {
+                        _files.remove(file);
+                      });
+                    },
                   );
                 }).toList(),
               ),
@@ -1363,7 +1364,7 @@ class __TaskModalState extends State<_TaskModal> {
         return Colors.orange;
       case 'Processing':
         return Colors.blue;
-      case 'Completed':
+      case 'Finished':
         return Colors.green;
       default:
         return Colors.black;
