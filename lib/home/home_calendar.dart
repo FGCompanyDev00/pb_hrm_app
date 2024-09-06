@@ -398,54 +398,210 @@ class _HomeCalendarState extends State<HomeCalendar> {
       return '${hour.toString().padLeft(2, '0')} AM';
     });
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: timeSlots.length,
-      itemBuilder: (context, index) {
-        final timeSlot = timeSlots[index];
+    final List<Map<String, dynamic>> dummyEvents = [
+      {
+        'title': 'Sale Presentation : HI App production',
+        'time': '07:00 AM - 08:00 AM',
+        'location': 'Meeting Onsite',
+        'attendees': [
+          'assets/avatar1.png',
+          'assets/avatar2.png',
+          'assets/avatar3.png',
+          'assets/avatar4.png',
+          'assets/avatar5.png'
+        ],
+        'color': Colors.green.shade100,
+        'isMinutesOfMeeting': true,
+        'startHour': 7,
+        'duration': 1, // 1 hour duration
+      },
+      {
+        'title': 'Pick up from Hotel to Bank',
+        'time': '08:00 AM - 10:00 AM',
+        'location': '',
+        'attendees': [
+          'assets/avatar1.png',
+          'assets/avatar2.png',
+        ],
+        'color': Colors.blue.shade100,
+        'isMinutesOfMeeting': false,
+        'startHour': 8,
+        'duration': 2, // 2 hours duration
+      },
+      {
+        'title': 'Japan Vendor',
+        'time': '08:00 AM - 09:00 AM',
+        'location': 'Tokyo, Japan',
+        'attendees': [
+          'assets/avatar1.png',
+          'assets/avatar2.png',
+          'assets/avatar3.png',
+          'assets/avatar4.png',
+        ],
+        'color': Colors.orange.shade100,
+        'isMinutesOfMeeting': false,
+        'startHour': 8,
+        'duration': 1, // 1 hour duration
+      },
+      {
+        'title': 'Deadline for HIAPP product',
+        'time': '09:00 AM - 10:00 AM',
+        'location': 'Meeting Onsite',
+        'attendees': [
+          'assets/avatar1.png',
+          'assets/avatar2.png',
+          'assets/avatar3.png',
+          'assets/avatar4.png',
+        ],
+        'color': Colors.red.shade100,
+        'isMinutesOfMeeting': false,
+        'startHour': 9,
+        'duration': 1, // 1 hour duration
+      },
+    ];
 
-        return Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 10.0),
-                  child: SizedBox(
-                    width: 60,
-                    child: Text(
-                      timeSlot,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 60,
-                  color: Colors.black,
-                ),
-                Expanded(
-                  child: Container(
-                    height: 60,
-                    decoration: BoxDecoration(
-                      border: Border(
-                        top: BorderSide(
-                          color: Colors.black.withOpacity(0.5),
-                          width: 1,
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: Column(
+        children: timeSlots.map((timeSlot) {
+          int timeSlotHour = int.parse(timeSlot.split(" ")[0]);
+
+          // Filter events that fit within this hour
+          final List<Map<String, dynamic>> eventsForThisHour = dummyEvents.where((event) {
+            int eventEndHour = event['startHour'] + event['duration'];
+            return event['startHour'] <= timeSlotHour && eventEndHour > timeSlotHour;
+          }).toList();
+
+          return Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 10.0),
+                    child: SizedBox(
+                      width: 60,
+                      child: Text(
+                        timeSlot,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
+                  Expanded(
+                    child: Container(
+                      height: 60.0, // Standard height for one hour
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: Colors.black.withOpacity(0.5),
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: eventsForThisHour.map((event) {
+                            int eventStart = event['startHour'];
+                            int eventEnd = eventStart + (event['duration'] as num).toInt();
+
+                            // If the event spans multiple hours, adjust its height accordingly
+                            double eventHeight = (eventEnd - eventStart) * 60.0;
+
+                            return Container(
+                              width: MediaQuery.of(context).size.width / eventsForThisHour.length,
+                              padding: const EdgeInsets.all(12.0),
+                              height: eventHeight,
+                              decoration: BoxDecoration(
+                                color: event['color'],
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Colors.black12,
+                                    blurRadius: 6,
+                                    offset: Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            event['title'],
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          if (event['location'] != '')
+                                            Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.location_on,
+                                                  size: 16,
+                                                  color: Colors.grey,
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  event['location'],
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.black54,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            event['time'],
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.black54,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: (event['attendees'] as List<String>).map((avatar) {
+                                      return Padding(
+                                        padding: const EdgeInsets.only(right: 8.0),
+                                        child: CircleAvatar(
+                                          radius: 16,
+                                          backgroundImage: AssetImage(avatar),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        }).toList(),
+      ),
     );
   }
 
