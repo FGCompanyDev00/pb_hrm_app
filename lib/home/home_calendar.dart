@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
@@ -40,12 +39,13 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid);
+    InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     _fetchLeaveRequests();
+    _fetchMeetingData();
   }
 
   DateTime _normalizeDate(DateTime date) {
@@ -85,8 +85,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
           );
 
           for (var day = startDate;
-              day.isBefore(endDate.add(const Duration(days: 1)));
-              day = day.add(const Duration(days: 1))) {
+          day.isBefore(endDate.add(const Duration(days: 1)));
+          day = day.add(const Duration(days: 1))) {
             final normalizedDay = _normalizeDate(day);
             if (approvalEvents.containsKey(normalizedDay)) {
               approvalEvents[normalizedDay]!.add(event);
@@ -106,6 +106,63 @@ class _HomeCalendarState extends State<HomeCalendar> {
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Leave Requests', 'An unexpected error occurred: $e');
+    }
+  }
+
+  Future<void> _fetchMeetingData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/out-meeting/outmeeting/my-members'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> results = json.decode(response.body)['results'];
+        final meetingData = List<Map<String, dynamic>>.from(results);
+
+        final Map<DateTime, List<Event>> meetingEvents = {};
+        for (var item in meetingData) {
+          final DateTime startDate = DateTime.parse(item['fromdate']);
+          final DateTime endDate = DateTime.parse(item['todate']);
+          final event = Event(
+            item['title'],
+            startDate,
+            endDate,
+            item['description'] ?? '',
+            'Meeting',
+            true,
+          );
+
+          for (var day = startDate;
+          day.isBefore(endDate.add(const Duration(days: 1)));
+          day = day.add(const Duration(days: 1))) {
+            final normalizedDay = _normalizeDate(day);
+            if (meetingEvents.containsKey(normalizedDay)) {
+              meetingEvents[normalizedDay]!.add(event);
+            } else {
+              meetingEvents[normalizedDay] = [event];
+            }
+          }
+        }
+
+        setState(() {
+          _events.value.addAll(meetingEvents);
+          _eventsForDay = _getEventsForDay(_focusedDay);
+        });
+      } else {
+        _showErrorDialog(
+            'Failed to Load Meetings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      _showErrorDialog('Error Fetching Meetings', 'An unexpected error occurred: $e');
     }
   }
 
@@ -176,9 +233,9 @@ class _HomeCalendarState extends State<HomeCalendar> {
             children: [
               _buildCalendarHeader(isDarkMode),
               _buildCalendar(isDarkMode),
-              _buildSectionSeparator(), // The separator line
+              _buildSectionSeparator(),
               Expanded(
-                child: _buildSyncfusionCalendarView(),
+                child: _buildCalendarView(),
               ),
             ],
           ),
@@ -291,22 +348,22 @@ class _HomeCalendarState extends State<HomeCalendar> {
           });
         },
         eventLoader: _getEventsForDay,
-        calendarStyle: CalendarStyle(
-          todayDecoration: const BoxDecoration(
+        calendarStyle: const CalendarStyle(
+          todayDecoration: BoxDecoration(
             color: Colors.orangeAccent,
             shape: BoxShape.circle,
           ),
-          selectedDecoration: const BoxDecoration(
+          selectedDecoration: BoxDecoration(
             color: Colors.green,
             shape: BoxShape.circle,
           ),
-          markerDecoration: const BoxDecoration(
+          markerDecoration: BoxDecoration(
             color: Colors.orange,
             shape: BoxShape.circle,
           ),
           outsideDaysVisible: false, // Hides the days from the previous or next month
-          weekendTextStyle: const TextStyle(color: Colors.black), // Weekend text in black
-          defaultTextStyle: const TextStyle(color: Colors.black), // Default day text in black
+          weekendTextStyle: TextStyle(color: Colors.black), // Weekend text in black
+          defaultTextStyle: TextStyle(color: Colors.black), // Default day text in black
         ),
         headerStyle: const HeaderStyle(
           titleCentered: true,
@@ -331,64 +388,66 @@ class _HomeCalendarState extends State<HomeCalendar> {
     );
   }
 
-
   Widget _buildSectionSeparator() {
     return const GradientAnimationLine();
   }
 
- Widget _buildSyncfusionCalendarView() {
-  return SfCalendar(
-    view: CalendarView.day,  // Ensure it's in Day View
-    dataSource: MeetingDataSource(_eventsForDay),
-    initialSelectedDate: _selectedDay,  // Syncfusion date syncs here
-    initialDisplayDate: _selectedDay,   // Make sure the view starts on the correct date
-    headerHeight: 50,
-    headerStyle: const CalendarHeaderStyle(
-      textAlign: TextAlign.center,
-      textStyle: TextStyle(
-        fontSize: 17,
-        color: Colors.black,
-      ),
-    ),
-    timeSlotViewSettings: const TimeSlotViewSettings(
-      timeInterval: Duration(minutes: 60),  // Adjust the interval as needed
-      timeIntervalHeight: 60,               // Height of each time slot
-      startHour: 0,                         // Start hour of the calendar
-      endHour: 24,                          // End hour of the calendar
-      timeFormat: 'h:mm a',                 // Display time format
-    ),
-    appointmentBuilder: (context, details) {
-      final Event event = details.appointments.first;
-      return Container(
-        padding: const EdgeInsets.all(8.0),
-        decoration: BoxDecoration(
-          color: event.isMeeting ? Colors.blue : Colors.orange,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildCalendarView() {
+    final List<String> timeSlots = List.generate(12, (index) {
+      final hour = index + 7;
+      return '${hour.toString().padLeft(2, '0')} AM';
+    });
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16.0),
+      itemCount: timeSlots.length,
+      itemBuilder: (context, index) {
+        final timeSlot = timeSlots[index];
+
+        return Column(
           children: [
-            Text(
-              event.title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 10.0),
+                  child: SizedBox(
+                    width: 60,
+                    child: Text(
+                      timeSlot,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 60,
+                  color: Colors.black,
+                ),
+                Expanded(
+                  child: Container(
+                    height: 60,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(
+                          color: Colors.black.withOpacity(0.5),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   void _showAddEventOptionsPopup() {
     showDialog(
