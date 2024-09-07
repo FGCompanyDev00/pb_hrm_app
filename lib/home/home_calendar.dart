@@ -430,7 +430,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
         'color': Colors.green.shade100,
         'isMinutesOfMeeting': true,
         'startHour': 7,
-        'duration': 1, // 1-hour duration
+        'duration': 5, // 1-hour duration
       },
       {
         'title': 'Pick up from Hotel to Bank',

@@ -177,7 +177,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   Widget _buildHeader(bool isDarkMode) {
     return Container(
-      height: 150,
+      height: 110,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(
