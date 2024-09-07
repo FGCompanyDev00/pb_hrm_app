@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'package:pb_hrsystem/services/assignment_service.dart';
 import 'package:pb_hrsystem/services/image_viewer.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,6 +34,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
   final TextEditingController _messageController = TextEditingController();
   String _currentUserId = '';
   final WorkTrackingService _workTrackingService = WorkTrackingService();
+  final AssignmentService _assignmentService = AssignmentService();
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -59,6 +61,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
         _tasks = tasks.where((task) => task['proj_id'] == widget.projectId).map((task) {
           return {
             'id': task['id'],
+            'as_id': task['as_id'], 
             'title': task['title'] ?? 'No Title',
             'status': task['s_name'] ?? 'Unknown',
             'start_date': task['created_at']?.substring(0, 10) ?? 'N/A',
@@ -811,10 +814,28 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
               child: const Text('Close'),
             ),
             ElevatedButton(
-              onPressed: () {
-                _deleteTask(task['id']);
-                Navigator.pop(context);  // Close the modal after deleting
-              },
+               onPressed: () {
+    final task = _tasks[index];  // Get the full task object
+    final asId = task['as_id'];  // Extract as_id
+
+    // Log the full task and the as_id for debugging
+    if (kDebugMode) {
+      print('Task object: $task');
+      print('Task as_id: $asId');
+    }
+
+    // If as_id is null, show an error and prevent deletion
+    if (asId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This task cannot be deleted because it has no valid as_id.')),
+      );
+      return;  // Do not proceed with deletion if as_id is null
+    }
+
+    // Proceed with deletion
+    _deleteTask(asId);
+    Navigator.pop(context);  // Close the modal after deleting
+  },
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
                 backgroundColor: Colors.red,
@@ -876,16 +897,51 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     }
   }
 
-  Future<void> _deleteTask(String taskId) async {
-    try {
-      await _workTrackingService.deleteAssignment(taskId);
-      _fetchProjectData();
-    } catch (e) {
-      if (kDebugMode) {
-        print('Failed to delete task: $e');
-      }
+Future<void> _deleteTask(String? asId) async {
+  if (asId == null || asId.isEmpty) {
+    // Handle the case where asId is null or empty
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Task does not have a valid as_id.')),
+    );
+    return; // Exit early since there's no valid as_id
+  }
+
+  try {
+    // Fetch the current tasks to ensure data is up-to-date
+    await _fetchProjectData();
+
+    if (kDebugMode) {
+      print('Attempting to delete task with as_id: $asId');
+    }
+
+    // Call the assignment service to delete the task using as_id
+    await _assignmentService.deleteAssignment(asId);
+
+    // Refresh project data after successful deletion
+    await _fetchProjectData();
+    
+  } catch (e) {
+    if (kDebugMode) {
+      print('Failed to delete task: $e');
+    }
+
+    // Check for 404 Not Found error and handle it
+    if (e.toString().contains('Not Found')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Task not found or already deleted.')),
+      );
+    } else {
+      // Show a general error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete task: $e')),
+      );
     }
   }
+}
+
+
+
+
 
   void _showTaskModal({Map<String, dynamic>? task, int? index, bool isEdit = false}) {
     showDialog(

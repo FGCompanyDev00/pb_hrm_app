@@ -53,18 +53,31 @@ class AssignmentService {
 
 
 
-  // Delete an assignment
-  Future<void> deleteAssignment(String asId) async {
-    final headers = await _getHeaders();
-    final response = await http.delete(
-      Uri.parse('$baseUrl/api/work-tracking/ass/delete/$asId'),
-      headers: headers,
-    );
+Future<void> deleteAssignment(String asId) async {
+  final headers = await _getHeaders();
+  
+  final response = await http.delete(
+    Uri.parse('$baseUrl/api/work-tracking/ass/delete/$asId'),
+    headers: headers,
+  );
 
-    if (response.statusCode != 200) {
+  if (response.statusCode == 200) {
+    print('Assignment deleted successfully.');
+  } else {
+    // Log the response body for more details
+    final responseBody = response.body;
+    print('Failed to delete assignment. Status Code: ${response.statusCode}, Response: $responseBody');
+
+    if (response.statusCode == 404) {
+      throw Exception('Assignment not found.');
+    } else {
       throw Exception('Failed to delete assignment: ${response.reasonPhrase}');
     }
   }
+}
+
+
+
 
   // Add files to an assignment
   Future<void> addFilesToAssignment(String asId, List<String> fileNames) async {
