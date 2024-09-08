@@ -27,7 +27,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
     final response = await http.get(
       Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
       headers: {
-        'Authorization': 'Bearer $token',  // Pass the token in the headers
+        'Authorization': 'Bearer $token',
       },
     );
 
@@ -40,13 +40,24 @@ class _AddMemberPageState extends State<AddMemberPage> {
           'surname': item['surname'],
           'email': item['email'],
           'employee_id': item['employee_id'],
-          'img_name': item['img_name'],
         }).toList();
         _filteredMembers = _members;
       });
     } else {
       throw Exception('Failed to load members');
     }
+  }
+
+  Future<String?> _fetchProfileImage(String employeeId) async {
+    final response = await http.get(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body)['results'];
+      return data['images'];
+    }
+    return null;
   }
 
   void _onMemberSelected(bool? selected, Map<String, dynamic> member) {
@@ -77,48 +88,97 @@ class _AddMemberPageState extends State<AddMemberPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60.0),
-        child: AppBar(
-          automaticallyImplyLeading: false,
-          flexibleSpace: Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/background.png'),
-                fit: BoxFit.cover,
-              ),
-            ),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Image.asset(
+          'assets/background.png',
+          fit: BoxFit.cover,
+        ),
+        title: const Text(
+          'Add Member',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
           ),
-          title: const Text('Add Member', style: TextStyle(color: Colors.black)),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          ),
+        ),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () {
+            Navigator.pop(context);
+          },
         ),
       ),
       body: Column(
         children: [
-          // Selected Members Display
+          // Selected Members Display with the Add Button next to it
           if (_selectedMembers.isNotEmpty)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               height: 80,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: _selectedMembers.length,
-                itemBuilder: (context, index) {
-                  final member = _selectedMembers[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                    child: CircleAvatar(
-                      backgroundImage: NetworkImage(
-                          'https://demo-application-api.flexiflows.co/images/${member['img_name']}'),
-                      radius: 25,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _selectedMembers.length > 3 ? 3 : _selectedMembers.length,
+                      itemBuilder: (context, index) {
+                        final member = _selectedMembers[index];
+                        return FutureBuilder<String?>(
+                          future: _fetchProfileImage(member['employee_id']),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                child: CircleAvatar(
+                                  backgroundImage: snapshot.data != null
+                                      ? NetworkImage(snapshot.data!)
+                                      : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                                  radius: 25,
+                                ),
+                              );
+                            } else {
+                              return const CircleAvatar(
+                                backgroundColor: Colors.grey,
+                                radius: 25,
+                                child: Icon(Icons.person, color: Colors.white),
+                              );
+                            }
+                          },
+                        );
+                      },
                     ),
-                  );
-                },
+                  ),
+                  if (_selectedMembers.length > 3)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: CircleAvatar(
+                        radius: 25,
+                        backgroundColor: Colors.grey[300],
+                        child: Text('+${_selectedMembers.length - 3}', style: const TextStyle(color: Colors.black)),
+                      ),
+                    ),
+                  // Add Button aligned with Figma design
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16.0),
+                    child: ElevatedButton(
+                      onPressed: _onAddButtonPressed,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.yellow[700],
+                        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 15.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20.0),
+                        ),
+                      ),
+                      child: const Text(
+                        '+ Add',
+                        style: TextStyle(color: Colors.black, fontSize: 18),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           // Search Box
@@ -132,7 +192,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                 labelText: 'Search',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
+                  borderRadius: BorderRadius.circular(30.0),  // Rounded search box
                 ),
               ),
             ),
@@ -143,38 +203,37 @@ class _AddMemberPageState extends State<AddMemberPage> {
               itemCount: _filteredMembers.length,
               itemBuilder: (context, index) {
                 final member = _filteredMembers[index];
-                return CheckboxListTile(
+                return ListTile(
+                  leading: FutureBuilder<String?>(
+                    future: _fetchProfileImage(member['employee_id']),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                        return CircleAvatar(
+                          backgroundImage: snapshot.data != null
+                              ? NetworkImage(snapshot.data!)
+                              : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                          radius: 25,
+                        );
+                      } else {
+                        return const CircleAvatar(
+                          backgroundColor: Colors.grey,
+                          radius: 25,
+                          child: Icon(Icons.person, color: Colors.white),
+                        );
+                      }
+                    },
+                  ),
                   title: Text('${member['name']} ${member['surname']}'),
                   subtitle: Text(member['email']),
-                  value: _selectedMembers.contains(member),
-                  secondary: CircleAvatar(
-                    backgroundImage: NetworkImage(
-                        'https://demo-application-api.flexiflows.co/images/${member['img_name']}'),
-                    radius: 20,
+                  trailing: Checkbox(
+                    value: _selectedMembers.contains(member),
+                    activeColor: Colors.green,
+                    onChanged: (bool? selected) {
+                      _onMemberSelected(selected, member);
+                    },
                   ),
-                  onChanged: (bool? selected) {
-                    _onMemberSelected(selected, member);
-                  },
                 );
               },
-            ),
-          ),
-          // Add Button
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton(
-              onPressed: _onAddButtonPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.yellow[700],
-                padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 15.0),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20.0),
-                ),
-              ),
-              child: const Text(
-                '+ Add',
-                style: TextStyle(color: Colors.black),
-              ),
             ),
           ),
         ],

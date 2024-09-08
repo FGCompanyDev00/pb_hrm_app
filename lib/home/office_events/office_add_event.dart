@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/home/office_events/add_member_office_event.dart';
 
 class OfficeAddEventPage extends StatefulWidget {
@@ -15,10 +16,39 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   DateTime? _startDateTime;
   DateTime? _endDateTime;
   List<Map<String, dynamic>> _selectedMembers = [];
+  String _hoveredMemberName = '';
 
   @override
   void initState() {
     super.initState();
+  }
+
+  Future<String> _fetchToken() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token') ?? '';
+  }
+
+  Future<String> _fetchProfileImage(String employeeId) async {
+    try {
+      String token = await _fetchToken(); // Fetch the token from SharedPreferences
+
+      final response = await http.get(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
+        headers: {
+          'Authorization': 'Bearer $token', // Pass the token in the header
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        return result['results']['images']; // Return the 'images' field from the response
+      } else {
+        throw Exception('Failed to load profile image');
+      }
+    } catch (e) {
+      throw Exception('Error fetching profile image: $e');
+    }
   }
 
   Future<void> _selectTime(BuildContext context, bool isStartTime) async {
@@ -30,33 +60,22 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       setState(() {
         if (isStartTime) {
           _startDateTime = DateTime(
-            _startDateTime!.year,
-            _startDateTime!.month,
-            _startDateTime!.day,
+            _startDateTime?.year ?? DateTime.now().year,
+            _startDateTime?.month ?? DateTime.now().month,
+            _startDateTime?.day ?? DateTime.now().day,
             picked.hour,
             picked.minute,
           );
         } else {
           _endDateTime = DateTime(
-            _endDateTime!.year,
-            _endDateTime!.month,
-            _endDateTime!.day,
+            _endDateTime?.year ?? DateTime.now().year,
+            _endDateTime?.month ?? DateTime.now().month,
+            _endDateTime?.day ?? DateTime.now().day,
             picked.hour,
             picked.minute,
           );
         }
       });
-    }
-  }
-
-  Future<String> _fetchProfileImage(String employeeId) async {
-    final response = await http.get(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
-    );
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body)['image_url'];
-    } else {
-      throw Exception('Failed to load profile image');
     }
   }
 
@@ -142,7 +161,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     final selectedMembers = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const AddMemberPage(), // Navigate to AddMemberPage
+        builder: (context) => const AddMemberPage(),
       ),
     );
 
@@ -160,7 +179,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         children: [
           Stack(
             children: [
-              // Background Image for AppBar
               Container(
                 height: 115,
                 decoration: const BoxDecoration(
@@ -288,7 +306,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                               const Text('Start Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
                               const SizedBox(height: 8.0),
                               GestureDetector(
-                                onTap: () => _selectDate(context, true), // Select start date
+                                onTap: () => _selectDate(context, true),
                                 child: Container(
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10.0),
@@ -298,7 +316,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(_startDateTime == null ? 'Start Date' : '${_startDateTime!.toLocal()}'.split(' ')[0]),
+                                      Text(_startDateTime == null
+                                          ? 'Start Date'
+                                          : '${_startDateTime!.toLocal()}'.split(' ')[0]),
                                       const Icon(Icons.calendar_today),
                                     ],
                                   ),
@@ -315,7 +335,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                               const Text('Start Time', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
                               const SizedBox(height: 8.0),
                               GestureDetector(
-                                onTap: () => _selectTime(context, true), // Select start time
+                                onTap: () => _selectTime(context, true),
                                 child: Container(
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10.0),
@@ -325,7 +345,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(_startDateTime == null ? 'Start Time' : TimeOfDay.fromDateTime(_startDateTime!).format(context)),
+                                      Text(_startDateTime == null
+                                          ? 'Start Time'
+                                          : TimeOfDay.fromDateTime(_startDateTime!).format(context)),
                                       const Icon(Icons.access_time),
                                     ],
                                   ),
@@ -336,9 +358,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 26.0),
-
                     Row(
                       children: [
                         Expanded(
@@ -348,7 +368,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                               const Text('End Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
                               const SizedBox(height: 8.0),
                               GestureDetector(
-                                onTap: () => _selectDate(context, false), // Select end date
+                                onTap: () => _selectDate(context, false),
                                 child: Container(
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10.0),
@@ -375,7 +395,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                               const Text('End Time', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
                               const SizedBox(height: 8.0),
                               GestureDetector(
-                                onTap: () => _selectTime(context, false), // Select end time
+                                onTap: () => _selectTime(context, false),
                                 child: Container(
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10.0),
@@ -385,7 +405,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(_endDateTime == null ? 'End Time' : TimeOfDay.fromDateTime(_endDateTime!).format(context)),
+                                      Text(_endDateTime == null
+                                          ? 'End Time'
+                                          : TimeOfDay.fromDateTime(_endDateTime!).format(context)),
                                       const Icon(Icons.access_time),
                                     ],
                                   ),
@@ -396,12 +418,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 16.0),
-                    const Text(
-                      'Location',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
-                    ),
+                    const Text('Location', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
                     const SizedBox(height: 8.0),
                     if (_selectedBookingType == '1. Add meeting')
                       Container(
@@ -470,7 +488,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                     const SizedBox(height: 16.0),
                     Center(
                       child: ElevatedButton(
-                        onPressed: _showAddPeoplePage,  // Updated function to open the AddMemberPage
+                        onPressed: _showAddPeoplePage,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           shape: RoundedRectangleBorder(
@@ -489,22 +507,37 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: _selectedMembers.map((member) {
-                          return FutureBuilder<String>(
-                            future: _fetchProfileImage(member['employee_id']),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return const CircularProgressIndicator();
-                              } else if (snapshot.hasError) {
-                                return const Icon(Icons.error);
-                              } else if (snapshot.hasData && snapshot.data != null) {
-                                return CircleAvatar(
-                                  backgroundImage: NetworkImage(snapshot.data as String),
-                                  radius: 20.0,
-                                );
-                              } else {
-                                return const Icon(Icons.error);
-                              }
-                            },
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                            child: FutureBuilder<String>(
+                              future: _fetchProfileImage(member['employee_id']),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const CircularProgressIndicator();
+                                } else if (snapshot.hasError) {
+                                  return const Icon(Icons.error);
+                                } else if (snapshot.hasData && snapshot.data != null) {
+                                  return MouseRegion(
+                                    onEnter: (_) {
+                                      setState(() {
+                                        _hoveredMemberName = member['name'];
+                                      });
+                                    },
+                                    onExit: (_) {
+                                      setState(() {
+                                        _hoveredMemberName = '';
+                                      });
+                                    },
+                                    child: CircleAvatar(
+                                      backgroundImage: NetworkImage(snapshot.data!),
+                                      radius: 24.0,
+                                    ),
+                                  );
+                                } else {
+                                  return const Icon(Icons.error);
+                                }
+                              },
+                            ),
                           );
                         }).toList(),
                       ),
