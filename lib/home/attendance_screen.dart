@@ -961,7 +961,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 10), // Spacing between the large grey box and Offsite button
+        const SizedBox(width: 10),
         Expanded(
           flex: 1,
           child: GestureDetector(

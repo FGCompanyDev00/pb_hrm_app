@@ -36,6 +36,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
     _selectedDay = _focusedDay;
     _events = ValueNotifier({});
     _eventsForDay = [];
+    _fetchMeetingData();
 
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -126,12 +127,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
       if (response.statusCode == 200) {
         final List<dynamic> results = json.decode(response.body)['results'];
-        final meetingData = List<Map<String, dynamic>>.from(results);
-
         final Map<DateTime, List<Event>> meetingEvents = {};
-        for (var item in meetingData) {
+
+        for (var item in results) {
           final DateTime startDate = DateTime.parse(item['fromdate']);
           final DateTime endDate = DateTime.parse(item['todate']);
+          final Color eventColor = _parseColor(item['backgroundColor']);
           final event = Event(
             item['title'],
             startDate,
@@ -158,13 +159,18 @@ class _HomeCalendarState extends State<HomeCalendar> {
           _eventsForDay = _getEventsForDay(_focusedDay);
         });
       } else {
-        _showErrorDialog(
-            'Failed to Load Meetings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Meetings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Meetings', 'An unexpected error occurred: $e');
     }
   }
+
+  Color _parseColor(String colorString) {
+
+    return Color(int.parse(colorString.replaceFirst('#', '0xff')));
+  }
+
 
   List<Event> _getEventsForDay(DateTime day) {
     final normalizedDay = _normalizeDate(day);
@@ -269,7 +275,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                   'Calendar',
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black,
-                    fontSize: 20, // Smaller font size
+                    fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -295,8 +301,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
   Widget _buildCalendar(bool isDarkMode) {
     return Container(
-      height: 300,
-      margin: const EdgeInsets.all(18.0),
+      height: 270,
+      margin: const EdgeInsets.all(10.0),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.black : Colors.white,
         boxShadow: const [
@@ -309,7 +315,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: TableCalendar<Event>(
-        rowHeight: 44,
+        rowHeight: 38,
         firstDay: DateTime.utc(2010, 10, 16),
         lastDay: DateTime.utc(2030, 3, 14),
         focusedDay: _focusedDay,
@@ -361,9 +367,9 @@ class _HomeCalendarState extends State<HomeCalendar> {
             color: Colors.orange,
             shape: BoxShape.circle,
           ),
-          outsideDaysVisible: false, // Hides the days from the previous or next month
-          weekendTextStyle: TextStyle(color: Colors.black), // Weekend text in black
-          defaultTextStyle: TextStyle(color: Colors.black), // Default day text in black
+          outsideDaysVisible: false,
+          weekendTextStyle: TextStyle(color: Colors.black),
+          defaultTextStyle: TextStyle(color: Colors.black),
         ),
         headerStyle: const HeaderStyle(
           titleCentered: true,
@@ -389,15 +395,26 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   Widget _buildSectionSeparator() {
-    return const GradientAnimationLine();
+    return const Column(
+      children: [
+        GradientAnimationLine(),
+        SizedBox(
+          height: 15,
+        ),
+      ],
+    );
   }
 
   Widget _buildCalendarView() {
+    // Generating time slots from 7 AM to 6 PM
     final List<String> timeSlots = List.generate(12, (index) {
       final hour = index + 7;
-      return '${hour.toString().padLeft(2, '0')} AM';
+      final formattedHour = hour > 12 ? hour - 12 : hour;
+      final period = hour >= 12 ? 'PM' : 'AM';
+      return '${formattedHour.toString().padLeft(2, '0')} $period';
     });
 
+    // Example events
     final List<Map<String, dynamic>> dummyEvents = [
       {
         'title': 'Sale Presentation : HI App production',
@@ -413,7 +430,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
         'color': Colors.green.shade100,
         'isMinutesOfMeeting': true,
         'startHour': 7,
-        'duration': 1, // 1 hour duration
+        'duration': 5, // 1-hour duration
       },
       {
         'title': 'Pick up from Hotel to Bank',
@@ -426,37 +443,37 @@ class _HomeCalendarState extends State<HomeCalendar> {
         'color': Colors.blue.shade100,
         'isMinutesOfMeeting': false,
         'startHour': 8,
-        'duration': 2, // 2 hours duration
+        'duration': 1,
       },
       {
         'title': 'Japan Vendor',
         'time': '08:00 AM - 09:00 AM',
         'location': 'Tokyo, Japan',
         'attendees': [
-          'assets/avatar1.png',
-          'assets/avatar2.png',
-          'assets/avatar3.png',
-          'assets/avatar4.png',
+          'assets/avatar_placeholder.png',
+          'assets/avatar_placeholder.png',
+          'assets/avatar_placeholder.png',
+          'assets/avatar_placeholder.png',
         ],
-        'color': Colors.orange.shade100,
+        'color': Colors.red.shade100,
         'isMinutesOfMeeting': false,
         'startHour': 8,
-        'duration': 1, // 1 hour duration
+        'duration': 1, // 1-hour duration
       },
       {
         'title': 'Deadline for HIAPP product',
         'time': '09:00 AM - 10:00 AM',
         'location': 'Meeting Onsite',
         'attendees': [
-          'assets/avatar1.png',
-          'assets/avatar2.png',
-          'assets/avatar3.png',
-          'assets/avatar4.png',
+          'assets/avatar_placeholder.png',
+          'assets/avatar_placeholder.png',
+          'assets/avatar_placeholder.png',
+          'assets/avatar_placeholder.png',
         ],
-        'color': Colors.red.shade100,
+        'color': Colors.orange.shade100,
         'isMinutesOfMeeting': false,
         'startHour': 9,
-        'duration': 1, // 1 hour duration
+        'duration': 1, // 1-hour duration
       },
     ];
 
@@ -465,12 +482,21 @@ class _HomeCalendarState extends State<HomeCalendar> {
       child: Column(
         children: timeSlots.map((timeSlot) {
           int timeSlotHour = int.parse(timeSlot.split(" ")[0]);
+          String period = timeSlot.split(" ")[1];
+          if (period == "PM" && timeSlotHour != 12) {
+            timeSlotHour += 12;
+          }
 
-          // Filter events that fit within this hour
+          // Filter events that start at or span over this hour
           final List<Map<String, dynamic>> eventsForThisHour = dummyEvents.where((event) {
+            int eventStartHour = event['startHour'];
             int eventEndHour = event['startHour'] + event['duration'];
-            return event['startHour'] <= timeSlotHour && eventEndHour > timeSlotHour;
+            // Check if the event spans this time slot (start or within the duration)
+            return eventStartHour == timeSlotHour || (eventStartHour < timeSlotHour && eventEndHour > timeSlotHour);
           }).toList();
+
+          // Filter out events that have already been rendered (display once)
+          final Set<String> eventTitlesDisplayed = {};
 
           return Column(
             children: [
@@ -481,6 +507,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     padding: const EdgeInsets.only(right: 10.0),
                     child: SizedBox(
                       width: 60,
+                      height: 20,
                       child: Text(
                         timeSlot,
                         style: const TextStyle(
@@ -493,26 +520,27 @@ class _HomeCalendarState extends State<HomeCalendar> {
                   ),
                   Expanded(
                     child: Container(
-                      height: 60.0, // Standard height for one hour
-                      decoration: BoxDecoration(
-                        border: Border(
-                          top: BorderSide(
-                            color: Colors.black.withOpacity(0.5),
-                            width: 1,
-                          ),
-                        ),
-                      ),
+                      height: 140.0, // Standard height for one hour
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
-                          children: eventsForThisHour.map((event) {
+                          children: eventsForThisHour.where((event) {
+                            // Ensure that the event is not displayed more than once
+                            if (eventTitlesDisplayed.contains(event['title'])) {
+                              return false; // Skip duplicate
+                            }
+                            eventTitlesDisplayed.add(event['title']);
+                            return true;
+                          }).map((event) {
                             int eventStart = event['startHour'];
                             int eventEnd = eventStart + (event['duration'] as num).toInt();
 
-                            // If the event spans multiple hours, adjust its height accordingly
-                            double eventHeight = (eventEnd - eventStart) * 60.0;
+                            // Calculate the height based on the event duration
+                            double eventHeight = (eventEnd - eventStart) * 128;
 
-                            return Container(
+                            return Padding(
+                                padding: const EdgeInsets.only(bottom: 12.0),
+                              child: Container(
                               width: MediaQuery.of(context).size.width / eventsForThisHour.length,
                               padding: const EdgeInsets.all(12.0),
                               height: eventHeight,
@@ -539,7 +567,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                           Text(
                                             event['title'],
                                             style: const TextStyle(
-                                              fontSize: 16,
+                                              fontSize: 14,
                                               fontWeight: FontWeight.bold,
                                               color: Colors.black87,
                                             ),
@@ -550,7 +578,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                               children: [
                                                 const Icon(
                                                   Icons.location_on,
-                                                  size: 16,
+                                                  size: 18,
                                                   color: Colors.grey,
                                                 ),
                                                 const SizedBox(width: 4),
@@ -567,13 +595,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                           Text(
                                             event['time'],
                                             style: const TextStyle(
-                                              fontSize: 12,
+                                              fontSize: 14,
                                               color: Colors.black54,
                                             ),
                                           ),
                                         ],
                                       ),
-
                                     ],
                                   ),
                                   const SizedBox(height: 8),
@@ -590,7 +617,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                   ),
                                 ],
                               ),
-                            );
+                            ));
                           }).toList(),
                         ),
                       ),
@@ -604,6 +631,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
       ),
     );
   }
+
 
   void _showAddEventOptionsPopup() {
     showDialog(

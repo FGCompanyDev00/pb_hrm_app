@@ -30,17 +30,18 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
 
     try {
       final employees = await WorkTrackingService().getAllEmployees();
+      // Ensure that each employee has 'isAdmin' and 'isSelected' properly set
       setState(() {
         _employees = employees.map((employee) {
           return {
             ...employee,
-            'isAdmin': employee['isAdmin'] ?? false, // Ensure isAdmin is not null
+            'isAdmin': employee['isAdmin'] ?? false,
             'isSelected': false,
           };
         }).toList();
       });
     } catch (e) {
-      _showErrorDialog(e.toString());
+      _showDialog('Error', e.toString());
     } finally {
       setState(() {
         _isLoading = false;
@@ -49,8 +50,8 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
   }
 
   Future<void> _addMembersToProject() async {
-    if (_selectedPeople.length < 3) {
-      _showErrorDialog('Please select at least three project members, including yourself.');
+    if (_selectedPeople.isEmpty) {
+      _showDialog('Error', 'Please select at least one member.');
       return;
     }
 
@@ -59,16 +60,18 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
     });
 
     try {
-      final members = _selectedPeople.map((p) => {
-        'id': p['id'],
-        'isAdmin': p['isAdmin'] ?? false,
+      final members = _selectedPeople.map((p) {
+        return {
+          'employee_id': p['id'],
+          'member_status': p['isAdmin'] ? '1' : '0', // Admin is 1, normal user is 0
+        };
       }).toList();
 
       await WorkTrackingService().addMembersToProject(widget.projectId, members);
 
-      _showSuccessDialog(); // Show success message and navigate to work tracking page
+      _showDialog('Success', 'Your project members have been successfully added.', isSuccess: true);
     } catch (e) {
-      _showErrorDialog(e.toString());
+      _showDialog('Error', e.toString());
     } finally {
       setState(() {
         _isLoading = false;
@@ -76,40 +79,27 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
     }
   }
 
-  void _showErrorDialog(String message) {
+  // Combined success and error dialog into one method
+  void _showDialog(String title, String message, {bool isSuccess = false}) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Error'),
+        title: Text(title),
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Success'),
-        content: const Text('Your project members have been successfully added.'),
-        actions: [
-          TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close the dialog
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => WorkTrackingPage(
-                    highlightedProjectId: widget.projectId,
+              Navigator.of(context).pop();
+              if (isSuccess) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => WorkTrackingPage(
+                      highlightedProjectId: widget.projectId,
+                    ),
                   ),
-                ),
-              );
+                );
+              }
             },
             child: const Text('OK'),
           ),
@@ -119,6 +109,7 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
   }
 
   void _toggleSelection(Map<String, dynamic> employee) {
+    if (_isLoading) return; // Disable toggling if API call is in progress
     setState(() {
       employee['isSelected'] = !(employee['isSelected'] ?? false);
       if (employee['isSelected']) {
@@ -130,6 +121,7 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
   }
 
   void _toggleAdmin(Map<String, dynamic> employee) {
+    if (_isLoading) return; // Prevent toggling if API call is in progress
     setState(() {
       employee['isAdmin'] = !(employee['isAdmin'] ?? false);
     });
@@ -201,10 +193,10 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
                             backgroundColor: Colors.grey[300],
                             backgroundImage: _selectedPeople[index]['image'] != null
                                 ? NetworkImage(_selectedPeople[index]['image'])
-                                : null, // Use image if available
+                                : null,
                             child: _selectedPeople[index]['image'] == null
                                 ? const Icon(Icons.person, size: 30, color: Colors.white)
-                                : null, // Display default icon if no image
+                                : null,
                           ),
                           if (_selectedPeople[index]['isAdmin'] == true)
                             const Positioned(
@@ -239,7 +231,6 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
               ),
             ),
             const SizedBox(height: 16),
-            // Search Bar and Group Toggle
             Row(
               children: [
                 Expanded(
@@ -260,7 +251,6 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
               ],
             ),
             const SizedBox(height: 16),
-            // Members List
             Expanded(
               child: ListView.builder(
                 itemCount: filteredEmployees.length,
@@ -274,10 +264,10 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
                       backgroundColor: Colors.grey[300],
                       backgroundImage: employee['image'] != null
                           ? NetworkImage(employee['image'])
-                          : null, // Use image if available
+                          : null,
                       child: employee['image'] == null
                           ? const Icon(Icons.person, size: 24, color: Colors.white)
-                          : null, // Display default icon if no image
+                          : null,
                     ),
                     title: Text(employee['name']),
                     subtitle: Text(employee['email']),
