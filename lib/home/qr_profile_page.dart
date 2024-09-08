@@ -22,6 +22,99 @@ class ProfileScreen extends StatefulWidget {
   _ProfileScreenState createState() => _ProfileScreenState();
 }
 
+class DashedLine extends StatelessWidget {
+  final double dashWidth;
+  final double dashHeight;
+  final Color color;
+
+  const DashedLine({
+    Key? key,
+    this.dashWidth = 10.0,
+    this.dashHeight = 4.0,
+    this.color = Colors.yellow,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final boxWidth = constraints.constrainWidth();
+        final dashCount = (boxWidth / (2 * dashWidth)).floor();
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(dashCount, (_) {
+            return SizedBox(
+              width: dashWidth,
+              height: dashHeight,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: color),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+class TicketShapeClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final Path path = Path();
+
+    path.moveTo(0, 20);
+
+    path.arcToPoint(
+      const Offset(20, 0),
+      radius: const Radius.circular(20),
+      clockwise: false,
+    );
+
+    path.lineTo(size.width - 20, 0);
+    path.arcToPoint(
+      Offset(size.width, 20),
+      radius: const Radius.circular(20),
+      clockwise: false,
+    );
+
+    path.lineTo(size.width, size.height * 0.4);
+    path.arcToPoint(
+      Offset(size.width, size.height * 0.6),
+      radius: const Radius.circular(15),
+      clockwise: false,
+    );
+
+    // Bottom-right curve
+    path.lineTo(size.width, size.height - 20);
+    path.arcToPoint(
+      Offset(size.width - 20, size.height),
+      radius: const Radius.circular(20),
+      clockwise: false,
+    );
+
+    path.lineTo(20, size.height);
+    path.arcToPoint(
+      Offset(0, size.height - 20),
+      radius: const Radius.circular(20),
+      clockwise: false,
+    );
+
+    path.lineTo(0, size.height * 0.6);
+    path.arcToPoint(
+      Offset(0, size.height * 0.4),
+      radius: const Radius.circular(15),
+      clockwise: false,
+    );
+
+    path.lineTo(0, 20);
+
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
+}
+
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<Map<String, dynamic>> _profileData;
   late Future<Map<String, dynamic>> _displayData;
@@ -71,6 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       throw Exception('Failed to load profile data');
     }
   }
+
 
   Future<Map<String, dynamic>> _fetchDisplayData() async {
     try {
@@ -141,10 +235,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final byteData = await image.toByteData(format: ImageByteFormat.png);
       final uint8List = byteData!.buffer.asUint8List();
 
-      // Since `saveImage` requires a positional argument, provide the byte array directly
       final result = await SaverGallery.saveImage(
           uint8List,
-          quality: 100,
+          quality: 200,
           name: "qr_code.png",
           androidExistNotSave: false
       );
@@ -178,54 +271,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     return Scaffold(
-        extendBodyBehindAppBar: true,
-        appBar: AppBar(
-        elevation: 3,
-        backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
         flexibleSpace: Container(
-        decoration: const BoxDecoration(
-        image: DecorationImage(
-        image: AssetImage('assets/ready_bg.png'),
-                fit: BoxFit.cover,
-                ),
-                ),
-                ),
-                centerTitle: true,
-                title: const Text(
-                'QR My Profile',
-                style: TextStyle(
-                color: Colors.black,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                ),
-                ),
-                leading: IconButton(
-                icon: const Icon(
-                Icons.arrow_back,
-                  color: Colors.black,
-                ),
-                  onPressed: () {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => const Dashboard()),
-                          (Route<dynamic> route) => false,
-                    );
-                  },
-                ),
-                ),
-                body: Padding(
-                padding: const EdgeInsets.only(top: kToolbarHeight + 30.0),
-                child: FutureBuilder<Map<String, dynamic>>(
-                future: Future.wait([_profileData, _displayData])
-                    .then((results) => {...results[0], ...results[1]}),
-                builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
-                } else if (snapshot.hasData) {
-                final data = snapshot.data!;
-                final String vCardData = '''
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/background.png'),
+              fit: BoxFit.cover,
+            ),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
+            ),
+          ),
+        ),
+        centerTitle: true,
+        title: const Text(
+          'QR My Profile',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 24,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black,
+            size: 20,
+          ),
+          onPressed: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const Dashboard()),
+                  (Route<dynamic> route) => false,
+            );
+          },
+        ),
+        toolbarHeight: 70,
+      ),
+
+      body: Padding(
+        padding: const EdgeInsets.only(top: kToolbarHeight + 30.0),
+        child: FutureBuilder<Map<String, dynamic>>(
+          future: Future.wait([_profileData, _displayData])
+              .then((results) => {...results[0], ...results[1]}),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            } else if (snapshot.hasData) {
+              final data = snapshot.data!;
+              final String vCardData = '''
             BEGIN:VCARD
             VERSION:3.0
             FN:${data['employee_name']} ${data['employee_surname']}
@@ -234,184 +332,160 @@ class _ProfileScreenState extends State<ProfileScreen> {
             END:VCARD
             ''';
 
-            return Stack(
-              children: [
-                Positioned.fill(
-                  child: Image.asset(
-                    isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png',
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                Center(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(25.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Stack(
-                            children: [
-                              Center(
-                                child: CircleAvatar(
-                                  radius: 40,
-                                  backgroundImage:
-                                  NetworkImage(data['images']),
-                                ),
-                              ),
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                bottom: 0,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                        const MyProfilePage(),
-                                      ),
-                                    );
-                                  },
-                                  child: const Icon(
-                                    Icons.arrow_forward_ios,
-                                    size: 30,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0, vertical: 8.0),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.8),
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black26,
-                                  blurRadius: 10,
-                                  offset: Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Column(
+              return Stack(
+                children: [
+
+                  Center(
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.all(25.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Stack(
                               children: [
-                                Text(
-                                  'Hi, Mr. ${data['employee_name']} ',
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDarkMode
-                                        ? Colors.black
-                                        : Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  'Scan to Save Contact',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDarkMode
-                                        ? Colors.black
-                                        : Colors.black,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.all(16.0),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black26,
-                                  blurRadius: 10,
-                                  offset: Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: RepaintBoundary(
-                              key: qrKey,
-                              child: QrImageView(
-                                data: vCardData,
-                                version: QrVersions.auto,
-                                size: 250.0,
-                                gapless: false,
-                                embeddedImage:
-                                const AssetImage('assets/logo.png'),
-                                embeddedImageStyle:
-                                const QrEmbeddedImageStyle(
-                                  size: Size(40, 40),
-                                ),
-                                backgroundColor: Colors.white,
-                                errorStateBuilder: (context, error) {
-                                  return const Center(
-                                    child: Text(
-                                      "Error generating QR code",
-                                      style: TextStyle(color: Colors.red),
+                                Center(
+                                  child: CircleAvatar(
+                                    radius: 60,
+                                    backgroundColor: Colors.grey[200],
+                                    child: CircleAvatar(
+                                      radius: 50,
+                                      backgroundImage: NetworkImage(data['images']),
                                     ),
-                                  );
-                                },
-                                eyeStyle: const QrEyeStyle(
-                                  eyeShape: QrEyeShape.square,
-                                  color: Colors.black,
+                                  ),
                                 ),
-                                dataModuleStyle: const QrDataModuleStyle(
-                                  dataModuleShape: QrDataModuleShape.square,
-                                  color: Colors.black,
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  bottom: 0,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                          const MyProfilePage(),
+                                        ),
+                                      );
+                                    },
+                                    child: const Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 28,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Hi, ${data['employee_name']}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black54, // Subtle text color
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ClipPath(
+                              clipper: TicketShapeClipper(),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.lightGreenAccent[100],
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black26,
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Text(
+                                      'Scan for Save Contact',
+                                      style: TextStyle(
+                                        fontSize: 21,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 15),
+                                    const DashedLine(
+                                      dashWidth: 12,
+                                      dashHeight: 8,
+                                      color: Colors.yellow,
+                                    ),
+                                    const SizedBox(height: 18),
+                                RepaintBoundary(
+                                  key: qrKey,
+                                  child: QrImageView(
+                                    data: vCardData,
+                                    version: QrVersions.auto,
+                                    size: 280.0,
+                                    gapless: false,
+                                    backgroundColor: Colors.white,
+
+                                    eyeStyle: const QrEyeStyle(
+                                      eyeShape: QrEyeShape.circle,
+                                      color: Colors.black,
+                                    ),
+
+                                    dataModuleStyle: const QrDataModuleStyle(
+                                      dataModuleShape: QrDataModuleShape.square,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                                    const SizedBox(height: 20),],
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 20),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              ElevatedButton.icon(
-                                onPressed: _shareQRCode,
-                                icon: const Icon(Icons.share),
-                                label: const Text('Share'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20, vertical: 10),
-                                  textStyle:
-                                  const TextStyle(fontSize: 18),
+                            const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                ElevatedButton.icon(
+                                  onPressed: _shareQRCode,
+                                  icon: const Icon(Icons.share, color: Colors.white),
+                                  label: const Text('Share', style: TextStyle(color: Colors.white)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.grey[700],
+                                    padding: const EdgeInsets.symmetric(horizontal: 39, vertical: 19),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              ElevatedButton.icon(
-                                onPressed: _downloadQRCode,
-                                icon: const Icon(Icons.download),
-                                label: const Text('Download'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20, vertical: 10),
-                                  textStyle:
-                                  const TextStyle(fontSize: 18),
+                                ElevatedButton.icon(
+                                  onPressed: _downloadQRCode,
+                                  icon: const Icon(Icons.download, color: Colors.white),
+                                  label: const Text('Download', style: TextStyle(color: Colors.white)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.amber[700],
+                                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 19),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            );
-          } else {
-            return const Center(child: Text('No data available'));
-          }
-        },
+                ],
+              );
+            } else {
+              return const Center(child: Text('No data available'));
+            }
+          },
+        ),
       ),
-    ));
+    );
   }
 }
