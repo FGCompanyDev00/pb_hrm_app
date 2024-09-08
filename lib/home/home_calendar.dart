@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
@@ -417,8 +418,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
     // Example events
     final List<Map<String, dynamic>> dummyEvents = [
       {
-        'title': 'Sale Presentation : HI App production',
-        'time': '07:00 AM - 08:00 AM',
+        'title': 'Sale Presentation: HI App production',
+        'time': '07:00 AM - 12:00 PM',
         'location': 'Meeting Onsite',
         'attendees': [
           'assets/avatar1.png',
@@ -430,7 +431,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
         'color': Colors.green.shade100,
         'isMinutesOfMeeting': true,
         'startHour': 7,
-        'duration': 5, // 1-hour duration
+        'duration': 5, // 5-hour duration
       },
       {
         'title': 'Pick up from Hotel to Bank',
@@ -443,7 +444,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
         'color': Colors.blue.shade100,
         'isMinutesOfMeeting': false,
         'startHour': 8,
-        'duration': 1,
+        'duration': 2,
       },
       {
         'title': 'Japan Vendor',
@@ -490,126 +491,112 @@ class _HomeCalendarState extends State<HomeCalendar> {
           // Filter events that start at or span over this hour
           final List<Map<String, dynamic>> eventsForThisHour = dummyEvents.where((event) {
             int eventStartHour = event['startHour'];
-            int eventEndHour = event['startHour'] + event['duration'];
-            // Check if the event spans this time slot (start or within the duration)
-            return eventStartHour == timeSlotHour || (eventStartHour < timeSlotHour && eventEndHour > timeSlotHour);
+            int eventEndHour = eventStartHour + (event['duration'] as int);
+            return eventStartHour <= timeSlotHour && eventEndHour > timeSlotHour;
           }).toList();
 
           // Filter out events that have already been rendered (display once)
           final Set<String> eventTitlesDisplayed = {};
 
-          return Column(
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 10.0),
-                    child: SizedBox(
-                      width: 60,
-                      height: 20,
-                      child: Text(
-                        timeSlot,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0), // Apply padding on both sides
+            child: Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 10.0),
+                      child: SizedBox(
+                        width: 60,
+                        height: 20,
+                        child: Text(
+                          timeSlot,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: SizedBox(
-                      height: 140.0, // Standard height for one hour
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
+                    Expanded(
+                      child: SizedBox(
+                        height: 140.0, // Standard height for one hour
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
                           children: eventsForThisHour.where((event) {
-                            // Ensure that the event is not displayed more than once
                             if (eventTitlesDisplayed.contains(event['title'])) {
-                              return false; // Skip duplicate
+                              return false;
                             }
                             eventTitlesDisplayed.add(event['title']);
                             return true;
                           }).map((event) {
                             int eventStart = event['startHour'];
-                            int eventEnd = eventStart + (event['duration'] as num).toInt();
-
-                            // Calculate the height based on the event duration
+                            int eventEnd = eventStart + (event['duration'] as int);
                             double eventHeight = (eventEnd - eventStart) * 128;
 
-                            return Padding(
-                                padding: const EdgeInsets.only(bottom: 12.0),
-                              child: Container(
-                              width: MediaQuery.of(context).size.width / eventsForThisHour.length,
-                              padding: const EdgeInsets.all(12.0),
+                            return Container(
+                              width: MediaQuery.of(context).size.width * 0.8 / eventsForThisHour.length,
+                              margin: const EdgeInsets.only(right: 8.0, bottom: 12.0),
+                              padding: const EdgeInsets.all(8.0),
                               height: eventHeight,
                               decoration: BoxDecoration(
                                 color: event['color'],
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(8),
                                 boxShadow: const [
                                   BoxShadow(
                                     color: Colors.black12,
-                                    blurRadius: 6,
-                                    offset: Offset(0, 3),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2),
                                   ),
                                 ],
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            event['title'],
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.black87,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          if (event['location'] != '')
-                                            Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.location_on,
-                                                  size: 18,
-                                                  color: Colors.grey,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  event['location'],
-                                                  style: const TextStyle(
-                                                    fontSize: 14,
-                                                    color: Colors.black54,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            event['time'],
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.black54,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                  Text(
+                                    event['title'],
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black87,
+                                    ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 4),
+                                  if (event['location'] != '')
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.location_on,
+                                          size: 14,
+                                          color: Colors.grey,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          event['location'],
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    event['time'],
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
                                   Row(
                                     children: (event['attendees'] as List<String>).map((avatar) {
                                       return Padding(
-                                        padding: const EdgeInsets.only(right: 8.0),
+                                        padding: const EdgeInsets.only(right: 4.0),
                                         child: CircleAvatar(
-                                          radius: 16,
+                                          radius: 14,
                                           backgroundImage: AssetImage(avatar),
                                         ),
                                       );
@@ -617,21 +604,21 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                   ),
                                 ],
                               ),
-                            ));
+                            );
                           }).toList(),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
           );
         }).toList(),
       ),
     );
   }
-
 
   void _showAddEventOptionsPopup() {
     showDialog(
