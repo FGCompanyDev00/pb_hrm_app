@@ -468,27 +468,69 @@ class WorkTrackingService {
     }
   }
 
-  Future<void> addMembersToAssignment(String asId, List<Map<String, dynamic>> members) async {
-    final headers = await _getHeaders();
-    final memberData = {
-      "as_id": asId,
-      "members": members.map((member) => {"employee_id": member['employee_id']}).toList(),
-    };
+  // Future<void> addMembersToAssignment(String asId, List<Map<String, dynamic>> members) async {
+  //   final headers = await _getHeaders();
+  //   final memberData = {
+  //     "as_id": asId,
+  //     "members": members.map((member) => {"employee_id": member['employee_id']}).toList(),
+  //   };
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/ass/add-members/$asId'),
-      headers: headers,
-      body: jsonEncode(memberData),
-    );
+  //   final response = await http.post(
+  //     Uri.parse('$baseUrl/api/work-tracking/ass/add-members/$asId'),
+  //     headers: headers,
+  //     body: jsonEncode(memberData),
+  //   );
 
-    if (response.statusCode == 201 || response.statusCode == 200) {
+  //   if (response.statusCode == 201 || response.statusCode == 200) {
+  //     if (kDebugMode) {
+  //       print('Members successfully added to the assignment.');
+  //     }
+  //   } else {
+  //     throw Exception('Failed to add members to the assignment: ${response.reasonPhrase}');
+  //   }
+  // }
+
+Future<void> addMembersToAssignment(String asId, List<Map<String, dynamic>> members) async {
+  final headers = await _getHeaders();
+
+  // Iterate through each member to fetch their profile image
+  for (var member in members) {
+    try {
+      // Fetch the profile image for each member
+      String? profileImageUrl = await fetchAssignmentMemberProfileImage(member['employee_id']);
+      member['profile_image'] = profileImageUrl ?? 'default_image_url'; // Use default image if none found
+
+    } catch (e) {
       if (kDebugMode) {
-        print('Members successfully added to the assignment.');
+        print('Failed to fetch profile image for ${member['employee_id']}: $e');
       }
-    } else {
-      throw Exception('Failed to add members to the assignment: ${response.reasonPhrase}');
+      member['profile_image'] = 'default_image_url'; // Use default image in case of failure
     }
   }
+
+  // Prepare the payload for adding members with their profile images
+  final memberData = {
+    "as_id": asId,
+    "members": members.map((member) => {
+      "employee_id": member['employee_id'],
+      "profile_image": member['profile_image'], // Include profile image URL in the payload
+    }).toList(),
+  };
+
+  final response = await http.post(
+    Uri.parse('$baseUrl/api/work-tracking/ass/add-members/$asId'),
+    headers: headers,
+    body: jsonEncode(memberData),
+  );
+
+  if (response.statusCode == 201 || response.statusCode == 200) {
+    if (kDebugMode) {
+      print('Members successfully added to the assignment.');
+    }
+  } else {
+    throw Exception('Failed to add members to the assignment: ${response.reasonPhrase}');
+  }
+}
 
   // Add members to the created project
   Future<void> addMembersToProject(String projectId, List<Map<String, dynamic>> members) async {
@@ -512,4 +554,36 @@ class WorkTrackingService {
       throw Exception('Failed to add members to the project: ${response.reasonPhrase}');
     }
   }
+
+  Future<String> fetchAssignmentMemberProfileImage(String employeeId) async {
+  final headers = await _getHeaders();
+  final response = await http.get(
+    Uri.parse('$baseUrl/api/profile/$employeeId'),
+    headers: headers,
+  );
+
+  if (response.statusCode == 200) {
+    var body = json.decode(response.body);
+
+    if (body['results'] != null && body['results']['images'] != null && body['results']['images'].isNotEmpty) {
+      String imageUrl = body['results']['images'];
+      // Log the fetched image URL for debugging
+      if (kDebugMode) {
+        print('Fetched image URL for employee $employeeId: $imageUrl');
+      }
+      return imageUrl;  // Return the profile image URL
+    } else {
+      // Log when the image URL is not found or empty
+      if (kDebugMode) {
+        print('No image URL found for employee $employeeId, using default avatar.');
+      }
+      return 'https://your-default-avatar-url.com/default_avatar.jpg'; // Use a default avatar if image URL is missing
+    }
+  } else {
+    throw Exception('Failed to fetch profile image: ${response.reasonPhrase}');
+  }
+}
+
+
+
 }
