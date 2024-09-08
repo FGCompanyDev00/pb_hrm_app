@@ -23,14 +23,16 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
 
   Future<void> _fetchProjectMembers() async {
     final projectId = widget.project['project_id'];
-    final url = 'https://demo-application-api.flexiflows.co/api/work-tracking/proj//find-Member-By-ProjectId/$projectId';
+    final url =
+        'https://demo-application-api.flexiflows.co/api/work-tracking/proj//find-Member-By-ProjectId/$projectId';
 
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final data = json.decode(response.body)['Members'] as List;
         for (var member in data) {
-          final profileImageUrl = await _fetchMemberProfileImage(member['employee_id']);
+          final profileImageUrl =
+          await _fetchMemberProfileImage(member['employee_id']);
           setState(() {
             projectMembers.add({
               'name': member['name'],
@@ -51,12 +53,13 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
   }
 
   Future<String> _fetchMemberProfileImage(String employeeId) async {
-    final url = 'https://demo-application-api.flexiflows.co/api/profile/$employeeId';
+    final url =
+        'https://demo-application-api.flexiflows.co/api/profile/$employeeId';
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['images'] ?? ''; // Replace with the actual key if different
+        return data['images'] ?? '';
       } else {
         if (kDebugMode) {
           print('Failed to load profile image: ${response.statusCode}');
@@ -120,7 +123,8 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
               projectMembers.isEmpty
                   ? const Text(
                 'No project members found',
-                style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+                style: TextStyle(
+                    fontSize: 14, fontStyle: FontStyle.italic),
               )
                   : _buildProjectMembersGrid(projectMembers),
             ],
@@ -210,21 +214,42 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
       itemCount: members.length,
       itemBuilder: (context, index) {
         final member = members[index];
-        return Column(
-          children: [
-            CircleAvatar(
-              backgroundImage: NetworkImage(member['profileImage'] ?? 'https://via.placeholder.com/150'),
-              radius: 25,
-            ),
-            const SizedBox(height: 5),
-            Text(
-              member['name'] ?? 'Unknown',
-              style: const TextStyle(fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-          ],
+        return GestureDetector(
+          onTap: () => _showMemberNameDialog(context, member['name']),
+          child: Column(
+            children: [
+              CircleAvatar(
+                backgroundImage: NetworkImage(
+                    member['profileImage'] ??
+                        'https://via.placeholder.com/150'),
+                radius: 25,
+              ),
+              const SizedBox(height: 5),
+              Text(
+                member['name'] ?? 'Unknown',
+                style: const TextStyle(fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         );
       },
+    );
+  }
+
+  void _showMemberNameDialog(BuildContext context, String name) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Member Name'),
+        content: Text(name),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 }

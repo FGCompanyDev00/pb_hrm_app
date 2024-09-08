@@ -22,7 +22,7 @@ dependencies:
   flutter_local_notifications: ^17.2.2
   permission_handler: ^11.3.1
   intl: any
-  flutter_localization: ^0.2.0
+  flutter_localization: ^0.2.2
   flutter_localizations:
     sdk: flutter
   provider: ^6.1.2
@@ -36,7 +36,7 @@ dependencies:
   responsive_framework: ^0.1.0
   shared_preferences: ^2.2.3
   convex_bottom_bar: ^3.2.0
-  share_plus: ^9.0.0
+  share_plus: ^10.0.2
   path_provider: ^2.1.3
   saver_gallery: ^3.0.5
   cross_file: ^0.3.4+1

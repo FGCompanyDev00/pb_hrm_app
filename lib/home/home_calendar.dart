@@ -519,7 +519,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     ),
                   ),
                   Expanded(
-                    child: Container(
+                    child: SizedBox(
                       height: 140.0, // Standard height for one hour
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
