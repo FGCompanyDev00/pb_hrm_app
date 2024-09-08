@@ -134,7 +134,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
       body: Column(
         children: [
           Container(
-            height: size.height * 0.2,
+            height: size.height * 0.13,
             decoration: BoxDecoration(
               image: DecorationImage(
                 image: AssetImage(

@@ -15,7 +15,7 @@ class ApprovalsViewPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(context),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -29,7 +29,7 @@ class ApprovalsViewPage extends StatelessWidget {
             _buildWorkflowSection(),
             const SizedBox(height: 24),
             _buildDescriptionSection(),
-            const Spacer(),
+            const SizedBox(height: 32),
             _buildActionButtons(context),
           ],
         ),
@@ -65,7 +65,7 @@ class ApprovalsViewPage extends StatelessWidget {
       centerTitle: true,
       backgroundColor: Colors.transparent,
       elevation: 0,
-      toolbarHeight: 100, // Increased height for more impact
+      toolbarHeight: 80, // Sleek modern height
     );
   }
 
@@ -78,7 +78,7 @@ class ApprovalsViewPage extends StatelessWidget {
             item['img_name'] ??
                 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
           ),
-          radius: 35,
+          radius: 40,
         ),
         const SizedBox(width: 20),
         Column(
@@ -99,7 +99,8 @@ class ApprovalsViewPage extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Status: ${item['is_approve'] ?? 'N/A'}',
-              style: const TextStyle(fontSize: 16, color: Colors.orange, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  fontSize: 16, color: Colors.orange, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -116,7 +117,8 @@ class ApprovalsViewPage extends StatelessWidget {
       ),
       child: Text(
         item['types'] ?? 'No Data',
-        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        style: const TextStyle(
+            color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -126,13 +128,11 @@ class ApprovalsViewPage extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          item['name'] ?? 'No Title',
+          item['take_leave_type_id'] ?? 'No Title',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         const SizedBox(height: 12),
         _buildInfoRow(Icons.calendar_today, 'Date', '${item['take_leave_from']} - ${item['take_leave_to']}'),
-        const SizedBox(height: 12),
-        _buildInfoRow(Icons.access_time, 'Time', '09:00 AM - 12:00 PM'),
         const SizedBox(height: 12),
         Text(
           'Type of leave: ${item['take_leave_reason'] ?? 'No Reason'}',
@@ -150,18 +150,19 @@ class ApprovalsViewPage extends StatelessWidget {
         const SizedBox(width: 16),
         const Icon(Icons.arrow_forward, color: Colors.green, size: 30),
         const SizedBox(width: 16),
-        _buildUserAvatar('https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'), // Replace with actual image URL for manager
+        _buildUserAvatar('https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
         const SizedBox(width: 16),
         const Icon(Icons.arrow_forward, color: Colors.green, size: 30),
         const SizedBox(width: 16),
-        _buildUserAvatar('https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'), // Replace with actual image URL for manager
+        _buildUserAvatar('https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
       ],
     );
   }
 
   Widget _buildUserAvatar(String? imageUrl) {
     return CircleAvatar(
-      backgroundImage: NetworkImage(imageUrl ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
+      backgroundImage: NetworkImage(imageUrl ??
+          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
       radius: 25,
     );
   }
@@ -198,7 +199,7 @@ class ApprovalsViewPage extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border.all(color: Colors.grey),
             borderRadius: BorderRadius.circular(8),
-            color: Colors.white, // Adding background color for better contrast
+            color: Colors.white,
           ),
           child: Text(
             item['take_leave_reason'] ?? 'No Description',
@@ -244,21 +245,25 @@ class ApprovalsViewPage extends StatelessWidget {
       return;
     }
 
-    final response = await http.put(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/leave_cancel/${item['take_leave_request_id']}'),
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Request cancelled successfully')),
+    try {
+      final response = await http.put(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_cancel/${item['take_leave_request_id']}'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
       );
-      Navigator.pop(context, true); // Returning to the previous page with success
-    } else {
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request cancelled successfully')),
+        );
+        Navigator.pop(context, true);
+      } else {
+        throw Exception('Failed to cancel request: ${response.reasonPhrase}');
+      }
+    } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to cancel request: ${response.reasonPhrase}')),
+        SnackBar(content: Text('Error: $error')),
       );
     }
   }

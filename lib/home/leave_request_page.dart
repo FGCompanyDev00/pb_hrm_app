@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:intl/intl.dart';
@@ -201,7 +202,8 @@ class LeaveManagementPage extends HookWidget {
           descriptionController.text.isNotEmpty &&
           startDateController.text.isNotEmpty &&
           endDateController.text.isNotEmpty &&
-          daysController.text.isNotEmpty) {
+          daysController.text.isNotEmpty &&
+          leaveTypeId.value != null) { // Make sure leaveTypeId is not null
         try {
           final prefs = await SharedPreferences.getInstance();
           final token = prefs.getString('token');
@@ -228,15 +230,16 @@ class LeaveManagementPage extends HookWidget {
             body: jsonEncode(requestBody),
           );
 
-          // Log the raw response to inspect what the API is returning
-          print('Response status: ${response.statusCode}');
-          print('Response body: ${response.body}');
+          if (kDebugMode) {
+            print('Response status: ${response.statusCode}');
+          }
+          if (kDebugMode) {
+            print('Response body: ${response.body}');
+          }
 
-          // Handle different status codes
           if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
             showCustomDialog(context, 'Success', 'Your leave request has been submitted successfully.');
           } else {
-            // Handle other status codes or unexpected responses
             try {
               final responseBody = jsonDecode(response.body);
               if (responseBody['success'] == true || responseBody.containsKey('data')) {

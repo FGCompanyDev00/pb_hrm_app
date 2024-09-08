@@ -177,7 +177,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   Widget _buildHeader(bool isDarkMode) {
     return Container(
-      height: 110,
+      height: 120,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(
@@ -209,7 +209,7 @@ class _HistoryPageState extends State<HistoryPage> {
               'My History',
               style: TextStyle(
                 color: isDarkMode ? Colors.white : Colors.black,
-                fontSize: 24,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
             ),
