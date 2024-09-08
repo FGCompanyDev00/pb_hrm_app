@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:pb_hrsystem/home/office_events/add_member_office_event.dart';
 
 class OfficeAddEventPage extends StatefulWidget {
   const OfficeAddEventPage({super.key});
@@ -11,6 +14,51 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   String? _selectedBookingType;
   DateTime? _startDateTime;
   DateTime? _endDateTime;
+  List<Map<String, dynamic>> _selectedMembers = [];
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  Future<void> _selectTime(BuildContext context, bool isStartTime) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        if (isStartTime) {
+          _startDateTime = DateTime(
+            _startDateTime!.year,
+            _startDateTime!.month,
+            _startDateTime!.day,
+            picked.hour,
+            picked.minute,
+          );
+        } else {
+          _endDateTime = DateTime(
+            _endDateTime!.year,
+            _endDateTime!.month,
+            _endDateTime!.day,
+            picked.hour,
+            picked.minute,
+          );
+        }
+      });
+    }
+  }
+
+  Future<String> _fetchProfileImage(String employeeId) async {
+    final response = await http.get(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['image_url'];
+    } else {
+      throw Exception('Failed to load profile image');
+    }
+  }
 
   void _showBookingTypeModal(BuildContext context) {
     showModalBottomSheet(
@@ -90,6 +138,21 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     }
   }
 
+  Future<void> _showAddPeoplePage() async {
+    final selectedMembers = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AddMemberPage(), // Navigate to AddMemberPage
+      ),
+    );
+
+    if (selectedMembers != null && selectedMembers.isNotEmpty) {
+      setState(() {
+        _selectedMembers = selectedMembers;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,7 +162,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             children: [
               // Background Image for AppBar
               Container(
-                height: 130,
+                height: 115,
                 decoration: const BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage('assets/background.png'),
@@ -201,7 +264,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                     ),
                     const SizedBox(height: 16.0),
                     const Text(
-                      'Description',
+                      'Description (Optional)',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
                     ),
                     const SizedBox(height: 8.0),
@@ -215,19 +278,17 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       ),
                     ),
                     const SizedBox(height: 16.0),
+                    // Start Date and Time Row
                     Row(
                       children: [
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Start date-Time',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
-                              ),
+                              const Text('Start Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
                               const SizedBox(height: 8.0),
                               GestureDetector(
-                                onTap: () => _selectDate(context, true),
+                                onTap: () => _selectDate(context, true), // Select start date
                                 child: Container(
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10.0),
@@ -237,9 +298,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(_startDateTime == null
-                                          ? 'Start date'
-                                          : '${_startDateTime!.toLocal()}'.split(' ')[0]),
+                                      Text(_startDateTime == null ? 'Start Date' : '${_startDateTime!.toLocal()}'.split(' ')[0]),
                                       const Icon(Icons.calendar_today),
                                     ],
                                   ),
@@ -253,13 +312,10 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'End date-Time',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
-                              ),
+                              const Text('Start Time', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
                               const SizedBox(height: 8.0),
                               GestureDetector(
-                                onTap: () => _selectDate(context, false),
+                                onTap: () => _selectTime(context, true), // Select start time
                                 child: Container(
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10.0),
@@ -269,10 +325,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(_endDateTime == null
-                                          ? 'End date'
-                                          : '${_endDateTime!.toLocal()}'.split(' ')[0]),
-                                      const Icon(Icons.calendar_today),
+                                      Text(_startDateTime == null ? 'Start Time' : TimeOfDay.fromDateTime(_startDateTime!).format(context)),
+                                      const Icon(Icons.access_time),
                                     ],
                                   ),
                                 ),
@@ -282,62 +336,141 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         ),
                       ],
                     ),
+
+                    const SizedBox(height: 26.0),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('End Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
+                              const SizedBox(height: 8.0),
+                              GestureDetector(
+                                onTap: () => _selectDate(context, false), // Select end date
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10.0),
+                                    border: Border.all(color: Colors.grey),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(_endDateTime == null ? 'End Date' : '${_endDateTime!.toLocal()}'.split(' ')[0]),
+                                      const Icon(Icons.calendar_today),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 20.0),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('End Time', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
+                              const SizedBox(height: 8.0),
+                              GestureDetector(
+                                onTap: () => _selectTime(context, false), // Select end time
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10.0),
+                                    border: Border.all(color: Colors.grey),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(_endDateTime == null ? 'End Time' : TimeOfDay.fromDateTime(_endDateTime!).format(context)),
+                                      const Icon(Icons.access_time),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
                     const SizedBox(height: 16.0),
                     const Text(
                       'Location',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
                     ),
                     const SizedBox(height: 8.0),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.grey),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    if (_selectedBookingType == '1. Add meeting')
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10.0),
+                          border: Border.all(color: Colors.grey),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('1. meeting onsite'),
+                            Icon(Icons.menu),
+                          ],
+                        ),
+                      )
+                    else if (_selectedBookingType == '2. Meeting and Booking meeting room')
+                      Column(
                         children: [
-                          Text('1. Local office'),
-                          Icon(Icons.menu),
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10.0),
+                              border: Border.all(color: Colors.grey),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('1. Local office'),
+                                Icon(Icons.menu),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8.0),
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10.0),
+                              border: Border.all(color: Colors.grey),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('1. meeting at local office'),
+                                Icon(Icons.menu),
+                              ],
+                            ),
+                          ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 8.0),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.grey),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('1. meeting at local office'),
-                          Icon(Icons.menu),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8.0),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.grey),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('1. Notify me 30 min before meeting'),
-                          Icon(Icons.menu),
-                        ],
-                      ),
-                    ),
+                      )
+                    else if (_selectedBookingType == '3. Booking car')
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10.0),
+                            border: Border.all(color: Colors.grey),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Car location selected'),
+                              Icon(Icons.menu),
+                            ],
+                          ),
+                        ),
                     const SizedBox(height: 16.0),
                     Center(
                       child: ElevatedButton(
-                        onPressed: () {
-                          // Handle add people logic
-                        },
+                        onPressed: _showAddPeoplePage,  // Updated function to open the AddMemberPage
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.green,
                           shape: RoundedRectangleBorder(
@@ -352,33 +485,30 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       ),
                     ),
                     const SizedBox(height: 16.0),
-                    const Center(
+                    Center(
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircleAvatar(
-                            backgroundImage: AssetImage('assets/person1.png'),
-                            radius: 20.0,
-                          ),
-                          SizedBox(width: 4),
-                          CircleAvatar(
-                            backgroundImage: AssetImage('assets/person2.png'),
-                            radius: 20.0,
-                          ),
-                          SizedBox(width: 4),
-                          CircleAvatar(
-                            backgroundImage: AssetImage('assets/person3.png'),
-                            radius: 20.0,
-                          ),
-                          SizedBox(width: 4),
-                          CircleAvatar(
-                            backgroundColor: Colors.grey,
-                            radius: 20.0,
-                            child: Text('+3'),
-                          ),
-                        ],
+                        children: _selectedMembers.map((member) {
+                          return FutureBuilder<String>(
+                            future: _fetchProfileImage(member['employee_id']),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const CircularProgressIndicator();
+                              } else if (snapshot.hasError) {
+                                return const Icon(Icons.error);
+                              } else if (snapshot.hasData && snapshot.data != null) {
+                                return CircleAvatar(
+                                  backgroundImage: NetworkImage(snapshot.data as String),
+                                  radius: 20.0,
+                                );
+                              } else {
+                                return const Icon(Icons.error);
+                              }
+                            },
+                          );
+                        }).toList(),
                       ),
-                    ),
+                    )
                   ],
                 ),
               ),

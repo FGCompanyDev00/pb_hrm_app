@@ -407,7 +407,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   Widget _buildCalendarView() {
-    // Generating time slots from 7 AM to 6 PM
+    // Time slots from 7 AM to 6 PM
     final List<String> timeSlots = List.generate(12, (index) {
       final hour = index + 7;
       final formattedHour = hour > 12 ? hour - 12 : hour;
@@ -459,7 +459,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
         'color': Colors.red.shade100,
         'isMinutesOfMeeting': false,
         'startHour': 8,
-        'duration': 1, // 1-hour duration
+        'duration': 1,
       },
       {
         'title': 'Deadline for HIAPP product',
@@ -474,7 +474,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
         'color': Colors.orange.shade100,
         'isMinutesOfMeeting': false,
         'startHour': 9,
-        'duration': 1, // 1-hour duration
+        'duration': 2,
       },
     ];
 
@@ -488,18 +488,19 @@ class _HomeCalendarState extends State<HomeCalendar> {
             timeSlotHour += 12;
           }
 
-          // Filter events that start at or span over this hour
           final List<Map<String, dynamic>> eventsForThisHour = dummyEvents.where((event) {
             int eventStartHour = event['startHour'];
             int eventEndHour = eventStartHour + (event['duration'] as int);
-            return eventStartHour <= timeSlotHour && eventEndHour > timeSlotHour;
+
+            return timeSlotHour == eventStartHour ||
+                (timeSlotHour > eventStartHour && timeSlotHour < eventEndHour);
           }).toList();
 
-          // Filter out events that have already been rendered (display once)
+
           final Set<String> eventTitlesDisplayed = {};
 
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0), // Apply padding on both sides
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Column(
               children: [
                 Row(
@@ -522,7 +523,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                     ),
                     Expanded(
                       child: SizedBox(
-                        height: 140.0, // Standard height for one hour
+                        height: 140.0,
                         child: ListView(
                           scrollDirection: Axis.horizontal,
                           children: eventsForThisHour.where((event) {
@@ -534,7 +535,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
                           }).map((event) {
                             int eventStart = event['startHour'];
                             int eventEnd = eventStart + (event['duration'] as int);
-                            double eventHeight = (eventEnd - eventStart) * 128;
+
+                            double eventHeight = (eventEnd - eventStart) * 140.0;
 
                             return Container(
                               width: MediaQuery.of(context).size.width * 0.8 / eventsForThisHour.length,
