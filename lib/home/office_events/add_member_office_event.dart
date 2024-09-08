@@ -40,7 +40,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
           'surname': item['surname'],
           'email': item['email'],
           'employee_id': item['employee_id'],
-          'img_name': item['img_name'],  // Add img_name for profile picture
+          'img_name': item['img_name'],
         }).toList();
         _filteredMembers = _members;
       });
@@ -60,7 +60,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
   }
 
   void _onAddButtonPressed() {
-    Navigator.pop(context, _selectedMembers); // Pass the selected members back
+    Navigator.pop(context, _selectedMembers);
   }
 
   void _filterMembers(String query) {
@@ -80,7 +80,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60.0),
         child: AppBar(
-          automaticallyImplyLeading: false, // Remove default back button
+          automaticallyImplyLeading: false,
           flexibleSpace: Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
@@ -163,7 +163,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton(
-              onPressed: _onAddButtonPressed, // Pass selected members when clicking Add
+              onPressed: _onAddButtonPressed,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.yellow[700],
                 padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 15.0),
