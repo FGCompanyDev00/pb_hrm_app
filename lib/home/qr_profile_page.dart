@@ -351,6 +351,7 @@ N:${data['employee_surname'] ?? ''};${data['employee_name'] ?? ''};;;
 FN:${data['employee_name'] ?? ''} ${data['employee_surname'] ?? ''}
 EMAIL:${data['employee_email'] ?? ''}
 TEL:${data['employee_tel'] ?? ''}
+PHOTO;TYPE=JPEG;VALUE=URI:${data['images'] ?? ''}
 END:VCARD
 ''';
 
