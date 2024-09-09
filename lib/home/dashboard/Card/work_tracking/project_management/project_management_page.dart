@@ -68,6 +68,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
             'due_date': task['updated_at']?.substring(0, 10) ?? 'N/A',
             'description': task['description'] ?? 'No Description',
             'files': task['file_name'] != null ? task['file_name'].split(',') : [],
+            'members': task['members'] ?? [],
           };
         }).toList();
       });
@@ -796,12 +797,17 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
                 const SizedBox(height: 10),
                 const Text('Attachments:'),
                 const SizedBox(height: 10),
-                Column(
-                  children: [
-                    ...task['files'].map<Widget>((filePath) {
+
+                // Attachments Section
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: task['files'].map<Widget>((filePath) {
                       final fileExtension = filePath.split('.').last.toLowerCase();
+
                       return GestureDetector(
                         onTap: () {
+                          print('Opening PDF at: ${widget.baseUrl}/$filePath'); // Debugging line
                           if (fileExtension == 'pdf') {
                             Navigator.push(
                               context,
@@ -834,9 +840,10 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
                         ),
                       );
                     }).toList(),
-                  ],
+                  ),
                 ),
                 const SizedBox(height: 20),
+
                 const Text('Assigned Members:'),
                 const SizedBox(height: 10),
                 task['members'] != null && task['members'].isNotEmpty
@@ -892,39 +899,9 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
               child: const Text('Close'),
             ),
             ElevatedButton(
-              onPressed: () async {
-                final asId = task['as_id'];
-
-                if (asId != null) {
-                  try {
-                    // Call the deleteAssignment function from WorkTrackingService
-                    await _workTrackingService.deleteAssignment(asId);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Task deleted successfully')),
-                    );
-                    Navigator.pop(context); // Close the dialog after deletion
-                    _refreshWholePage(); // Refresh the page after deletion
-                  } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to delete task: $e')),
-                    );
-                  }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Invalid task ID.')),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Colors.red,
-              ),
-              child: const Text('Delete'),
-            ),
-            ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
-                _showEditTaskModal(task, index);  // Open the edit modal
+                _showEditTaskModal(task, index); // Open the edit modal
               },
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.black,
@@ -1008,11 +985,11 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
         'status_id': taskData['status_id'],
         'title': taskData['title'],
         'descriptions': taskData['descriptions'],
-        'memberDetails': taskData['memberDetails'],
+        'memberDetails': taskData['memberDetails'], // If members are part of initial task creation
       });
 
       if (asId != null) {
-        // Step 2: Upload files (PUT)
+        // Step 2: Upload files (PUT) - If files exist
         if (taskData['files'] != null && taskData['files'].isNotEmpty) {
           for (var file in taskData['files']) {
             await _workTrackingService.addFilesToAssignment(asId, [file]);
@@ -1024,16 +1001,27 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
           await _workTrackingService.addMembersToAssignment(asId, taskData['members']);
         }
 
-        // After all steps are complete, refresh the project data
-        _fetchProjectData();
+        // After all steps are complete, show success and refresh the project data
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Task created successfully!')),
+          const SnackBar(content: Text('Task created successfully with files and members!')),
+        );
+
+        // Refresh the project/task list
+        _fetchProjectData();
+
+      } else {
+        // Handle error creating the task
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to create task')),
         );
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Failed to add task: $e');
+        print('Error adding task: $e');
       }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error adding task: $e')),
+      );
     }
   }
 
@@ -1240,6 +1228,10 @@ class __TaskModalState extends State<_TaskModal> {
         'status_id': _selectedStatus,
         'title': _titleController.text,
         'descriptions': _descriptionController.text,
+        'memberDetails': jsonEncode([
+          {'employee_id': '12345', 'role': 'Manager'}, // Example memberDetails structure
+          {'employee_id': '67890', 'role': 'Developer'}
+        ]),
       };
 
       try {
@@ -1279,8 +1271,19 @@ class __TaskModalState extends State<_TaskModal> {
           request.fields['status_id'] = _selectedStatus;
           request.fields['title'] = _titleController.text;
           request.fields['descriptions'] = _descriptionController.text;
-          request.fields['memberDetails'] = _memberDetailsController.text;
-          request.fields['file_name'] = _fileController.text;
+          request.fields['memberDetails'] = taskData['memberDetails'] ?? ''; // Fix for nullable String
+
+          // Attach files (if any)
+          if (_files.isNotEmpty) {
+            for (var file in _files) {
+              request.files.add(
+                await http.MultipartFile.fromPath(
+                  'file_name',
+                  file.path,
+                ),
+              );
+            }
+          }
 
           final response = await request.send();
 
@@ -1321,11 +1324,11 @@ class __TaskModalState extends State<_TaskModal> {
       context,
       MaterialPageRoute(
         builder: (context) => AddPeoplePageWorkTracking(
-          asId: widget.projectId,
+          asId: widget.projectId, // Pass the asId (assignment ID)
           projectId: widget.projectId,
           onSelectedPeople: (people) {
             setState(() {
-              _selectedPeople = people;
+              _selectedPeople = people; // Capture selected people
             });
           },
         ),
@@ -1461,7 +1464,7 @@ class __TaskModalState extends State<_TaskModal> {
                 spacing: 8.0,
                 children: _files.map((file) {
                   return Chip(
-                    label: Text(file.path.split('/').last), // Display file name
+                    label: Text(file.path.split('/').last),
                     deleteIcon: Icon(Icons.cancel, color: Colors.red), // 'X' button
                     onDeleted: () => _removeFile(file), // Remove file on delete button click
                   );
@@ -1571,7 +1574,7 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
   @override
   void initState() {
     super.initState();
-    _fetchProjectMembers();
+    _fetchProjectMembers(); // Fetch available members for the project
   }
 
   Future<void> _fetchProjectMembers() async {
@@ -1580,7 +1583,6 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
     });
 
     try {
-      // Get the token from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token'); // Fetch the token from storage
 
@@ -1588,78 +1590,40 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
         throw Exception('No token found. Please log in again.');
       }
 
-      // Construct API URL with project ID
+      // Fetch project members from the backend
       final url = Uri.parse(
           'https://demo-application-api.flexiflows.co/api/work-tracking/project-member/members?project_id=${widget.projectId}');
+      final response = await http.get(url, headers: {
+        'Authorization': 'Bearer $token', // Pass the token in the headers
+      });
 
-      // Fetch project members with Authorization header
-      final response = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $token', // Include the token in the request headers
-        },
-      );
-
-      // Check for successful response
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        final List<dynamic> membersList = data['results'];
 
-        if (data['results'] != null && data['results'] is List) {
-          final List<dynamic> membersList = data['results'];
-
-          // Use a Set to track unique employee IDs and filter out duplicates
-          final Set<String> uniqueEmployeeIds = {};
-          final uniqueMembers = membersList.where((member) {
-            final employeeId = member['employee_id'];
-            if (uniqueEmployeeIds.contains(employeeId)) {
-              return false; // Skip duplicate
-            } else {
-              uniqueEmployeeIds.add(employeeId);
-              return true; // Keep unique member
-            }
+        // Filter and prepare the list of members
+        setState(() {
+          _members = membersList.map<Map<String, dynamic>>((member) {
+            return {
+              'name': member['name'] ?? 'No Name',
+              'surname': member['surname'] ?? '',
+              'email': member['email'] ?? 'Unknown Email',
+              'employee_id': member['employee_id'],
+              'isSelected': false, // Track selection
+            };
           }).toList();
-
-          // Map the unique members to display and filter out "Unknown Name" and "Unknown Email"
-          setState(() {
-            _members = uniqueMembers
-                .where((member) =>
-            member['name'] != null &&
-                member['name'] != 'Unknown Name' &&
-                member['email'] != null &&
-                member['email'] != 'Unknown Email')
-                .map((member) {
-              return {
-                'name': member['name'] ?? 'Unknown Name',
-                'surname': member['surname'] ?? '',
-                'email': member['email'] ?? 'Unknown Email',
-                'employee_id': member['employee_id'],
-                'images': '', // Placeholder for images
-                'isSelected': false, // Track selection
-              };
-            }).toList();
-          });
-
-          // Fetch profile images for the members based on employee_id
-          await _fetchProfileImages();
-        } else {
-          throw Exception('Invalid response format');
-        }
+        });
       } else {
-        // Handle non-200 status codes
-        print(
-            'Failed to load project members. Status code: ${response.statusCode}, Body: ${response.body}');
         throw Exception('Failed to load project members');
       }
     } catch (e) {
-      // Handle exceptions
       print('Error fetching project members: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching project members: $e')),
       );
     } finally {
-      // Set loading state to false
       setState(() {
-        _isLoading = false;
+        _isLoading = false; // Loading is done
       });
     }
   }
@@ -1706,7 +1670,7 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
   void _onAddMembersPressed() {
     final selectedMembers = _members.where((member) => member['isSelected']).toList();
     if (selectedMembers.isNotEmpty) {
-      widget.onSelectedPeople(selectedMembers);
+      widget.onSelectedPeople(selectedMembers); // Return selected members
       Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1716,33 +1680,47 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
   }
 
   Future<void> _confirmSelection() async {
-    // Prepare the selected member IDs to send to the backend
-    final selectedMembers = _selectedPeople.map((member) {
-      return {'employee_id': member['employee_id']};
-    }).toList();
+    final selectedMembers = _members.where((member) => member['isSelected']).toList();
 
-    // API call to insert members into the assignment
+    // Map the selected members' employee_id to be sent to the backend
+    final List<Map<String, dynamic>> memberDetails = selectedMembers
+        .map<Map<String, dynamic>>((member) => {'employee_id': member['employee_id']})
+        .toList();
+
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token'); // Fetch token for authenticated requests
+
+      if (token == null) {
+        throw Exception('No token found');
+      }
+
+      final url = Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/assignment-members/insert');
       final response = await http.post(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/assignment-members/insert'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'assignment_id': widget.asId,
-          'memberDetails': selectedMembers,
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'assignment_id': widget.asId, // Pass the assignment ID
+          'memberDetails': memberDetails, // Pass the selected members
         }),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // On success, pass selected people back to the parent widget
-        widget.onSelectedPeople(_selectedPeople);
-        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Members added successfully!')),
+        );
+        Navigator.pop(context, true); // Close modal and return success
       } else {
-        throw Exception('Failed to add members to assignment');
+        throw Exception('Failed to add members');
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error adding members: $e');
-      }
+      print('Error adding members: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error adding members: $e')),
+      );
     }
   }
 
@@ -1766,6 +1744,7 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
 
   @override
   Widget build(BuildContext context) {
+    // Filter members based on the search query
     final filteredMembers = _members.where((member) {
       final memberName = member['name']?.toLowerCase() ?? '';
       return memberName.contains(_searchQuery.toLowerCase());
@@ -1790,9 +1769,10 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator()) // Show loading indicator when loading
           : Column(
         children: [
+          // Search bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
             child: TextField(
@@ -1810,6 +1790,7 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
               ),
             ),
           ),
+          // Member list
           Expanded(
             child: ListView.builder(
               itemCount: filteredMembers.length,
@@ -1823,7 +1804,7 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
                   ),
                   child: ListTile(
                     leading: GestureDetector(
-                      onTap: () => _showMemberDetails(member['name']),
+                      onTap: () => _showMemberDetails(member['name']), // Show member details on tap
                       child: CircleAvatar(
                         backgroundImage: NetworkImage(imageUrl),
                         onBackgroundImageError: (exception, stackTrace) {
@@ -1836,9 +1817,9 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
                     title: Text(member['name'] ?? 'No Name'),
                     subtitle: Text('${member['surname']} - ${member['email']}'),
                     trailing: Checkbox(
-                      value: member['isSelected'],
+                      value: member['isSelected'], // Checkbox for selecting the member
                       onChanged: (bool? value) {
-                        _toggleSelection(index);
+                        _toggleSelection(index); // Toggle selection on checkbox change
                       },
                     ),
                   ),
@@ -1846,12 +1827,13 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
               },
             ),
           ),
+          // Button to confirm selected members
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton.icon(
               onPressed: () {
-                _onAddMembersPressed();
-                _confirmSelection();
+                _onAddMembersPressed(); // Confirm selected members
+                _confirmSelection(); // Confirm and save the selected members
               },
               icon: const Icon(Icons.add),
               label: const Text('Add Members'),
