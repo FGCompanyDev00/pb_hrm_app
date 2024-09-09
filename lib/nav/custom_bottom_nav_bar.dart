@@ -63,7 +63,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
             child: Icon(
               Icons.fingerprint,
               color: widget.currentIndex == 0 ? Colors.orangeAccent : Colors.grey,
-              size: 30,
+              size: 35,
             ),
           ),
         ),
@@ -93,7 +93,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
                 child: const Icon(
                   Icons.home,
                   color: Colors.white,
-                  size: 40,
+                  size: 50,
                 ),
               );
             },
@@ -105,7 +105,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
             child: Icon(
               Icons.apps,
               color: widget.currentIndex == 2 ? Colors.orangeAccent : Colors.grey,
-              size: 30,
+              size: 35,
             ),
           ),
         ),
@@ -115,9 +115,9 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
       backgroundColor: Colors.white,
       activeColor: Colors.orangeAccent,
       color: Colors.grey,
-      height: 40,
+      height: 50,
       curveSize: 120,
-      top: -40,
+      top: -30,
       shadowColor: Colors.black.withOpacity(0.1),
       elevation: 20,
     );

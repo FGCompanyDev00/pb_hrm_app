@@ -604,13 +604,10 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
   List<Map<String, dynamic>> _projects = [];
   bool _isLoading = false;
   String? _authToken;
-  String? _highlightedProjectId;
 
   @override
   void initState() {
     super.initState();
-    _highlightedProjectId = widget
-        .highlightedProjectId;
     _loadAuthToken();
   }
 
@@ -654,11 +651,6 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     _fetchProjects();
   }
 
-  void _addProject(Map<String, dynamic> project) {
-    setState(() {
-      _projects.add(project);
-    });
-  }
 
   void _showErrorDialog(String message) {
     showDialog(
