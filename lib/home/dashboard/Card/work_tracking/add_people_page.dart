@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
@@ -49,53 +50,47 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
     }
   }
 
-Future<void> _addMembersToProject() async {
-  if (_selectedPeople.isEmpty) {
-    _showDialog('Error', 'Please select at least one member.');
-    return;
-  }
-
-  setState(() {
-    _isLoading = true;
-  });
-
-  try {
-    // Log selected members before making the API call
-    print("Selected members to add:");
-    for (var person in _selectedPeople) {
-      print("Selected: ${person['name']} (${person['email']})");
+  Future<void> _addMembersToProject() async {
+    if (_selectedPeople.isEmpty) {
+      _showDialog('Error', 'Please select at least one member.');
+      return;
     }
 
-    // Prepare the list of selected members
-    final members = _selectedPeople.map((person) {
-      return {
-        'id': person['id'],
-        'member_status': person['isAdmin'] ? '1' : '0', // Admin is 1, normal user is 0
-      };
-    }).toList();
-
-    // Call the API to add all selected members
-    await WorkTrackingService().addMembersToProject(widget.projectId, members);
-
-    // Log successfully added members after the API call
-    print("Successfully added members:");
-    for (var person in _selectedPeople) {
-      print("Added: ${person['name']} (${person['email']})");
-    }
-
-    // Show success dialog once all members have been added
-    _showDialog('Success', 'All selected members have been successfully added to the project.', isSuccess: true);
-  } catch (e) {
-    _showDialog('Error', 'Failed to add some members. Error: $e');
-  } finally {
     setState(() {
-      _isLoading = false;
+      _isLoading = true;
     });
+
+    try {
+
+      final employeesMember = _selectedPeople.map((person) {
+        return {
+          'employee_id': person['id'],
+          'member_status': person['isAdmin'] ? '1' : '0',
+        };
+      }).toList();
+
+      await WorkTrackingService().addMembersToProject(widget.projectId, employeesMember);
+
+      if (kDebugMode) {
+        for (var person in _selectedPeople) {
+          print("Successfully added: ${person['name']} (${person['email']})");
+        }
+      }
+
+      // Show success dialog once all members have been added
+      _showDialog('Success', 'All selected members have been successfully added to the project.', isSuccess: true);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Failed to add members: $e');
+      }
+      _showDialog('Error', 'Failed to add some members. Error: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
-}
 
-
-  // Combined success and error dialog into one method
   void _showDialog(String title, String message, {bool isSuccess = false}) {
     showDialog(
       context: context,
