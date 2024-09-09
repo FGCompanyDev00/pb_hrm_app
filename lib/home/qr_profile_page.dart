@@ -14,6 +14,7 @@ import 'package:http/http.dart' as http;
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/home/myprofile_page.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -28,11 +29,11 @@ class DashedLine extends StatelessWidget {
   final Color color;
 
   const DashedLine({
-    Key? key,
+    super.key,
     this.dashWidth = 10.0,
     this.dashHeight = 4.0,
     this.color = Colors.yellow,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -120,6 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late Future<Map<String, dynamic>> _displayData;
 
   final GlobalKey qrKey = GlobalKey();
+  late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
   @override
   void initState() {
@@ -229,19 +231,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _downloadQRCode() async {
     try {
-      final RenderRepaintBoundary boundary =
-      qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-      final image = await boundary.toImage(pixelRatio: 4.0);
+      // Ensure the QR code widget is rendered
+      final RenderRepaintBoundary? boundary = qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+
+      if (boundary == null) {
+        Fluttertoast.showToast(
+          msg: "QR Code is not rendered yet. Please wait and try again.",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+        );
+        return;
+      }
+
+      // Convert widget to image with a memory-efficient pixel ratio
+      final image = await boundary.toImage(pixelRatio: 2.0);  // Lowered pixelRatio for better memory handling
       final byteData = await image.toByteData(format: ImageByteFormat.png);
       final uint8List = byteData!.buffer.asUint8List();
 
+      // Get temporary directory for saving the image
+      final tempDir = await getTemporaryDirectory();
+      final file = await File('${tempDir.path}/qr_code.png').create();
+      await file.writeAsBytes(uint8List);
+
+      // Save image using the gallery saver and handle the result
       final result = await SaverGallery.saveImage(
-          uint8List,
-          quality: 200,
-          name: "qr_code.png",
-          androidExistNotSave: false
+        uint8List,
+        quality: 100,  // Set quality lower for better performance
+        name: "qr_code.png",
+        androidExistNotSave: false,
       );
 
+      // Check the result and show appropriate message
       if (result.isSuccess) {
         Fluttertoast.showToast(
           msg: "QR Code downloaded successfully",
@@ -250,14 +270,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       } else {
         Fluttertoast.showToast(
-          msg: "Error downloading QR code",
+          msg: "Error downloading QR code. Please try again.",
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
       }
     } catch (e) {
+      // Handle any other errors during the process
       Fluttertoast.showToast(
-        msg: "Error downloading QR code",
+        msg: "Error downloading QR code: ${e.toString()}",
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.BOTTOM,
       );
@@ -267,8 +288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
+    Provider.of<ThemeNotifier>(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -312,7 +332,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
 
       body: Padding(
-        padding: const EdgeInsets.only(top: kToolbarHeight + 30.0),
+        padding: const EdgeInsets.only(top: kToolbarHeight + 50.0),
         child: FutureBuilder<Map<String, dynamic>>(
           future: Future.wait([_profileData, _displayData])
               .then((results) => {...results[0], ...results[1]}),
@@ -323,14 +343,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               return Center(child: Text('Error: ${snapshot.error}'));
             } else if (snapshot.hasData) {
               final data = snapshot.data!;
+
               final String vCardData = '''
-            BEGIN:VCARD
-            VERSION:3.0
-            FN:${data['employee_name']} ${data['employee_surname']}
-            TEL:${data['employee_tel']}
-            EMAIL:${data['employee_email']}
-            END:VCARD
-            ''';
+              BEGIN:VCARD
+              VERSION:3.0
+              N:${data['employee_surname'] ?? ''};${data['employee_name'] ?? ''};;;
+              FN:${data['employee_name'] ?? ''} ${data['employee_surname'] ?? ''}
+              EMAIL:${data['employee_email'] ?? ''}
+              TEL:${data['employee_tel'] ?? ''}
+              END:VCARD
+              ''';
+
+              debugPrint(vCardData);
 
               return Stack(
                 children: [
@@ -424,15 +448,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   child: QrImageView(
                                     data: vCardData,
                                     version: QrVersions.auto,
-                                    size: 280.0,
+                                    size: 250.0,
                                     gapless: false,
+                                    embeddedImage: const AssetImage('assets/playstore.png'),
+                                    embeddedImageStyle: const QrEmbeddedImageStyle(
+                                      size: Size(40, 40),
+                                    ),
                                     backgroundColor: Colors.white,
-
                                     eyeStyle: const QrEyeStyle(
                                       eyeShape: QrEyeShape.circle,
                                       color: Colors.black,
                                     ),
-
                                     dataModuleStyle: const QrDataModuleStyle(
                                       dataModuleShape: QrDataModuleShape.square,
                                       color: Colors.black,

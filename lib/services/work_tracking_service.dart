@@ -1117,7 +1117,9 @@ class WorkTrackingService {
   Future<Map<String, String>> _getHeaders() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token') ?? '';
-    print('Retrieved Token: $token'); // Debug line
+    if (kDebugMode) {
+      print('Retrieved Token: $token');
+    } // Debug line
 
     return {
       'Content-Type': 'application/json',
@@ -1253,9 +1255,13 @@ class WorkTrackingService {
       if (projectToDelete.isNotEmpty) {
         final String projectId = projectToDelete['project_id'];
         await deleteProject(projectId); // Call the deleteProject method with the project_id
-        print('Project deleted successfully.');
+        if (kDebugMode) {
+          print('Project deleted successfully.');
+        }
       } else {
-        print('Project not found.');
+        if (kDebugMode) {
+          print('Project not found.');
+        }
       }
     } catch (e) {
       throw Exception('Failed to delete project: $e');
@@ -1433,9 +1439,13 @@ Future<void> addPeopleToProject(String projectId, List<Map<String, String>> empl
     );
 
     if (response.statusCode == 200) {
-      print('Assignment successfully updated.');
+      if (kDebugMode) {
+        print('Assignment successfully updated.');
+      }
     } else {
-      print('Failed to update assignment: ${response.statusCode} ${response.reasonPhrase}. Details: ${response.body}');
+      if (kDebugMode) {
+        print('Failed to update assignment: ${response.statusCode} ${response.reasonPhrase}. Details: ${response.body}');
+      }
       throw Exception('Failed to update assignment: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
@@ -1449,9 +1459,13 @@ Future<void> addPeopleToProject(String projectId, List<Map<String, String>> empl
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      print('Assignment successfully deleted.');
+      if (kDebugMode) {
+        print('Assignment successfully deleted.');
+      }
     } else if (response.statusCode == 404) {
-      print('Assignment not found: $asId');
+      if (kDebugMode) {
+        print('Assignment not found: $asId');
+      }
       throw Exception('Assignment not found.');
     } else {
       throw Exception('Failed to delete assignment: ${response.reasonPhrase}. Details: ${response.body}');
