@@ -1106,6 +1106,7 @@
 // }
 
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1297,35 +1298,35 @@ class WorkTrackingService {
     }
   }
 
-  // Fetch project members by project ID
+  // Fetch and sort project members by project ID
   Future<List<Map<String, dynamic>>> fetchMembersByProjectId(
       String projectId) async {
     final headers = await _getHeaders();
     final response = await http.get(
-      Uri.parse(
-          '$baseUrl/api/work-tracking/project-member/members?project_id=$projectId'),
+      Uri.parse('$baseUrl/api/work-tracking/project-member/members?project_id=$projectId'),
       headers: headers,
     );
 
     if (response.statusCode == 200) {
       var body = json.decode(response.body);
       if (body['results'] != null && body['results'] is List) {
-        return (body['results'] as List).map((item) =>
-        {
-          'id': item['member_id'],
+        List<Map<String, dynamic>> members = (body['results'] as List)
+            .map((item) => {
+          'employee_id': item['employee_id'],
           'name': item['name'],
-          'surname': item['surname'],
           'email': item['email'],
-          'isAdmin': item['member_status'] == 2,
-          'image': 'https://via.placeholder.com/150',
-          'isSelected': false,
-        }).toList();
+        })
+            .toList();
+
+        // Sort members by name
+        members.sort((a, b) => a['name'].compareTo(b['name']));
+
+        return members;
       } else {
         throw Exception('Unexpected response format');
       }
     } else {
-      throw Exception(
-          'Failed to load project members: ${response.reasonPhrase}');
+      throw Exception('Failed to load project members: ${response.reasonPhrase}');
     }
   }
 
@@ -1496,26 +1497,29 @@ class WorkTrackingService {
   }
 
   // Add files to an assignment
-  Future<void> addFilesToAssignment(String asId, List<String> fileNames) async {
+  Future<void> addFilesToAssignment(String asId, List<File> files) async {
     final headers = await _getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/ass/add-files/$asId'),
-      headers: headers,
-      body: jsonEncode({
-        "file_name": fileNames,
-      }),
-    );
 
-    if (response.statusCode == 200) {
-      if (kDebugMode) {
-        print('Files added successfully.');
+    for (var file in files) {
+      var request = http.MultipartRequest(
+        'PUT',
+        Uri.parse('$baseUrl/api/work-tracking/ass/add-files/$asId'),
+      );
+
+      request.headers.addAll(headers);
+      request.files.add(await http.MultipartFile.fromPath('file_name', file.path));
+
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('File uploaded successfully.');
+        }
+      } else {
+        throw Exception('Failed to upload file: ${response.reasonPhrase}');
       }
-    } else {
-      throw Exception('Failed to add files to assignment: ${response
-          .reasonPhrase}. Details: ${response.body}');
     }
   }
-
   // Delete a file from an assignment
   Future<void> deleteFileFromAssignment(String asId, String fileName) async {
     final headers = await _getHeaders();
@@ -1609,28 +1613,34 @@ class WorkTrackingService {
   }
 
   // Add members to an assignment
-  Future<void> addMembersToAssignment(String asId,
-      List<Map<String, dynamic>> members) async {
-    final headers = await _getHeaders();
-    final memberData = {
-      "as_id": asId,
-      "members": members.map((member) => {"employee_id": member['employee_id']})
-          .toList(),
-    };
+  Future<void> addMembersToAssignment(String asId, List<Map<String, dynamic>> members) async {
+    try {
+      // Get the authorization headers (you might need to implement _getHeaders)
+      final headers = await _getHeaders();
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/ass/add-members/$asId'),
-      headers: headers,
-      body: jsonEncode(memberData),
-    );
+      // Prepare the member data to be sent to the server
+      final memberData = {
+        "as_id": asId,
+        "members": members.map((member) => {"employee_id": member['employee_id']}).toList(),
+      };
 
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      if (kDebugMode) {
+      // Make the API call to add members to the assignment
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/work-tracking/ass/add-members/$asId'),
+        headers: headers,
+        body: jsonEncode(memberData),
+      );
+
+      // Handle the response
+      if (response.statusCode == 201 || response.statusCode == 200) {
         print('Members successfully added to the assignment.');
+      } else {
+        throw Exception(
+            'Failed to add members to the assignment: ${response.reasonPhrase}');
       }
-    } else {
-      throw Exception(
-          'Failed to add members to the assignment: ${response.reasonPhrase}');
+    } catch (e) {
+      print('Error adding members to assignment: $e');
+      throw Exception('Failed to add members to the assignment');
     }
   }
 

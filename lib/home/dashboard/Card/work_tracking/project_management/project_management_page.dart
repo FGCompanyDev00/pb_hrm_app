@@ -98,6 +98,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     });
   }
 
+
   void _refreshWholePage() {
     setState(() {
       _fetchProjectData();
@@ -434,6 +435,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     List<Map<String, dynamic>> filteredTasks = _tasks.where((task) => _selectedStatus == 'All Status' || task['status'] == _selectedStatus).toList();
+    List<File> _selectedFiles = [];
 
     return Scaffold(
       appBar: PreferredSize(
@@ -999,13 +1001,35 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     });
   }
 
-  Future<void> _addTask(Map<String, dynamic> task) async {
+  Future<void> _addTask(Map<String, dynamic> taskData) async {
     try {
-      final asId = await _workTrackingService.addAssignment(widget.projectId, task);
+      // Step 1: Create the task (POST)
+      final asId = await _workTrackingService.addAssignment(widget.projectId, {
+        'status_id': taskData['status_id'],
+        'title': taskData['title'],
+        'descriptions': taskData['descriptions'],
+        'memberDetails': taskData['memberDetails'],
+      });
+
       if (asId != null) {
-        await _addMembersToAssignment(asId, task['members']);
+        // Step 2: Upload files (PUT)
+        if (taskData['files'] != null && taskData['files'].isNotEmpty) {
+          for (var file in taskData['files']) {
+            await _workTrackingService.addFilesToAssignment(asId, [file]);
+          }
+        }
+
+        // Step 3: Add members (Optional - depending on your flow)
+        if (taskData['members'] != null && taskData['members'].isNotEmpty) {
+          await _workTrackingService.addMembersToAssignment(asId, taskData['members']);
+        }
+
+        // After all steps are complete, refresh the project data
+        _fetchProjectData();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Task created successfully!')),
+        );
       }
-      _fetchProjectData();
     } catch (e) {
       if (kDebugMode) {
         print('Failed to add task: $e');
@@ -1066,9 +1090,9 @@ class CustomAppBarClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     Path path = Path();
-    path.lineTo(0.0, size.height - 30);
+    path.lineTo(0.0, size.height - 10);
     path.quadraticBezierTo(
-        size.width / 2, size.height, size.width, size.height - 30);
+        size.width / 2, size.height, size.width, size.height - 10);
     path.lineTo(size.width, 0.0);
     path.close();
     return path;
@@ -1085,6 +1109,8 @@ class __TaskModalState extends State<_TaskModal> {
   late TextEditingController _startDateController;
   late TextEditingController _dueDateController;
   late TextEditingController _descriptionController;
+  late TextEditingController _memberDetailsController;
+  late TextEditingController _fileController;
   String _selectedStatus = 'Pending';
   final ImagePicker _picker = ImagePicker();
   final List<File> _files = [];
@@ -1096,14 +1122,18 @@ class __TaskModalState extends State<_TaskModal> {
   @override
   void initState() {
     super.initState();
+
     _titleController = TextEditingController(text: widget.task?['title'] ?? '');
     _startDateController = TextEditingController(text: widget.task?['start_date'] ?? '');
     _dueDateController = TextEditingController(text: widget.task?['due_date'] ?? '');
     _descriptionController = TextEditingController(text: widget.task?['description'] ?? '');
+    _memberDetailsController = TextEditingController();
+    _fileController = TextEditingController();
+
     _selectedStatus = widget.task?['status'] ?? _TaskModal.statusOptions.first['id'];
 
     if (widget.isEdit) {
-      _fetchAssignmentMembers(); 
+      _fetchAssignmentMembers();
     }
   }
 
@@ -1126,60 +1156,71 @@ class __TaskModalState extends State<_TaskModal> {
     _startDateController.dispose();
     _dueDateController.dispose();
     _descriptionController.dispose();
+    _memberDetailsController.dispose();
+    _fileController.dispose();
     super.dispose();
   }
 
-  Future<void> _selectStartDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null) {
-      setState(() {
-        _startDateController.text = DateFormat('yyyy-MM-dd').format(picked);
-      });
-    }
-  }
+  // // Future<void> _selectStartDate(BuildContext context) async {
+  // //   final DateTime? picked = await showDatePicker(
+  // //     context: context,
+  // //     initialDate: DateTime.now(),
+  // //     firstDate: DateTime(2000),
+  // //     lastDate: DateTime(2101),
+  // //   );
+  // //   if (picked != null) {
+  // //     setState(() {
+  // //       _startDateController.text = DateFormat('yyyy-MM-dd').format(picked);
+  // //     });
+  // //   }
+  // // }
+  // //
+  // // Future<void> _selectDueDate(BuildContext context) async {
+  // //   final DateTime? picked = await showDatePicker(
+  // //     context: context,
+  // //     initialDate: DateTime.now(),
+  // //     firstDate: DateTime(2000),
+  // //     lastDate: DateTime(2101),
+  // //   );
+  // //   if (picked != null && picked.isAfter(DateTime.parse(_startDateController.text))) {
+  // //     setState(() {
+  // //       _dueDateController.text = DateFormat('yyyy-MM-dd').format(picked);
+  // //     });
+  // //   } else {
+  // //     ScaffoldMessenger.of(context).showSnackBar(
+  // //       const SnackBar(content: Text('Due date must be after start date')),
+  // //     );
+  // //   }
+  // }
 
-  Future<void> _selectDueDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
+  List<File> _selectedFiles = [];
+
+// Function to pick files and add them to the _files list
+  Future<void> _pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'docx', 'mp4'],
     );
-    if (picked != null && picked.isAfter(DateTime.parse(_startDateController.text))) {
+
+    // If the user picks a file, add it to the _files list
+    if (result != null) {
       setState(() {
-        _dueDateController.text = DateFormat('yyyy-MM-dd').format(picked);
+        _files.addAll(result.paths.map((path) => File(path!)).toList());
       });
     } else {
+      // If no file is selected, show a message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Due date must be after start date')),
+        const SnackBar(content: Text('No file selected')),
       );
     }
   }
 
-  Future<void> _pickFile() async {
-    if (_files.length >= 2) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You can only upload up to 2 files')));
-      return;
-    }
-
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
-      type: FileType.custom,
-      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
-    );
-
-    if (result != null) {
-      setState(() {
-        _files.add(File(result.files.single.path!));
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No file selected')));
-    }
+// Function to remove a file from the _files list
+  void _removeFile(File file) {
+    setState(() {
+      _files.remove(file);
+    });
   }
 
   Future<void> _saveTask() async {
@@ -1226,8 +1267,7 @@ class __TaskModalState extends State<_TaskModal> {
               SnackBar(content: Text('Failed to save task: $responseBody')),
             );
           }
-        }
-        else {
+        } else {
           // Add Task API (POST) - Creating a new task
           final request = http.MultipartRequest(
             'POST',
@@ -1239,11 +1279,8 @@ class __TaskModalState extends State<_TaskModal> {
           request.fields['status_id'] = _selectedStatus;
           request.fields['title'] = _titleController.text;
           request.fields['descriptions'] = _descriptionController.text;
-
-          // Add files if there are any to be uploaded
-          for (var file in _files) {
-            request.files.add(await http.MultipartFile.fromPath('file_name', file.path));
-          }
+          request.fields['memberDetails'] = _memberDetailsController.text;
+          request.fields['file_name'] = _fileController.text;
 
           final response = await request.send();
 
@@ -1254,16 +1291,26 @@ class __TaskModalState extends State<_TaskModal> {
             Navigator.pop(context, true);
           } else {
             final errorResponse = await response.stream.bytesToString();
-            print('Failed to add task: $errorResponse');
+            print('Failed to add task: StatusCode: ${response.statusCode}, Error: $errorResponse');
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Failed to add task: $errorResponse')),
             );
           }
         }
-      } catch (e) {
-        print('Error: $e');
+      } on SocketException catch (e) {
+        print('Network error: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save task: $e')),
+          const SnackBar(content: Text('Network error. Please check your internet connection.')),
+        );
+      } on FormatException catch (e) {
+        print('Response format error: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid response format from the server.')),
+        );
+      } catch (e) {
+        print('Unexpected error: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unexpected error: $e')),
         );
       }
     }
@@ -1275,6 +1322,7 @@ class __TaskModalState extends State<_TaskModal> {
       MaterialPageRoute(
         builder: (context) => AddPeoplePageWorkTracking(
           asId: widget.projectId,
+          projectId: widget.projectId,
           onSelectedPeople: (people) {
             setState(() {
               _selectedPeople = people;
@@ -1353,78 +1401,75 @@ class __TaskModalState extends State<_TaskModal> {
               const SizedBox(height: 10),
 
               // Only show additional fields for Add Task
-              if (!widget.isEdit) ...[
-                // Start Date Field (Only for Add)
-                GestureDetector(
-                  onTap: () => _selectStartDate(context),
-                  child: AbsorbPointer(
-                    child: TextFormField(
-                      controller: _startDateController,
-                      decoration: const InputDecoration(
-                        labelText: 'Start Date',
-                        suffixIcon: Icon(Icons.calendar_today),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please select a start date';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
+              // if (!widget.isEdit) ...[
+              //   // Start Date Field (Only for Add)
+              //   GestureDetector(
+              //     onTap: () => _selectStartDate(context),
+              //     child: AbsorbPointer(
+              //       child: TextFormField(
+              //         controller: _startDateController,
+              //         decoration: const InputDecoration(
+              //           labelText: 'Start Date',
+              //           suffixIcon: Icon(Icons.calendar_today),
+              //         ),
+              //         validator: (value) {
+              //           if (value == null || value.isEmpty) {
+              //             return 'Please select a start date';
+              //           }
+              //           return null;
+              //         },
+              //       ),
+              //     ),
+              //   ),
+              //   const SizedBox(height: 10),
+              //
+              //   // Due Date Field (Only for Add)
+              //   GestureDetector(
+              //     onTap: () => _selectDueDate(context),
+              //     child: AbsorbPointer(
+              //       child: TextFormField(
+              //         controller: _dueDateController,
+              //         decoration: const InputDecoration(
+              //           labelText: 'End Date',
+              //           suffixIcon: Icon(Icons.calendar_today),
+              //         ),
+              //         validator: (value) {
+              //           if (value == null || value.isEmpty) {
+              //             return 'Please select an end date';
+              //           }
+              //           return null;
+              //         },
+              //       ),
+              //     ),
+              //   ),
+              //   const SizedBox(height: 10),
 
-                // Due Date Field (Only for Add)
-                GestureDetector(
-                  onTap: () => _selectDueDate(context),
-                  child: AbsorbPointer(
-                    child: TextFormField(
-                      controller: _dueDateController,
-                      decoration: const InputDecoration(
-                        labelText: 'End Date',
-                        suffixIcon: Icon(Icons.calendar_today),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please select an end date';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
+              // File Upload Button (Only for Add)
+              ElevatedButton.icon(
+                onPressed: _pickFile,
+                icon: const Icon(Icons.attach_file),
+                label: const Text('Upload File'),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.green,
                 ),
-                const SizedBox(height: 10),
+              ),
+              const SizedBox(height: 10),
 
-                // File Upload Button (Only for Add)
-                ElevatedButton.icon(
-                  onPressed: _pickFile,
-                  icon: const Icon(Icons.attach_file),
-                  label: const Text('Upload File'),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.green,
-                  ),
-                ),
-                const SizedBox(height: 10),
+              // Display Selected Files (Using Wrap)
+              Wrap(
+                spacing: 8.0,
+                children: _files.map((file) {
+                  return Chip(
+                    label: Text(file.path.split('/').last), // Display file name
+                    deleteIcon: Icon(Icons.cancel, color: Colors.red), // 'X' button
+                    onDeleted: () => _removeFile(file), // Remove file on delete button click
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 10),
 
-                // Display Selected Files (Only for Add)
-                Wrap(
-                  spacing: 8.0,
-                  children: _files.map((file) {
-                    return Chip(
-                      label: Text(file.path.split('/').last),
-                      onDeleted: () {
-                        setState(() {
-                          _files.remove(file);
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 10),
-
-                // Add Members Button (Only for Add)
+              // Add Members Button (Only for Add)
                 ElevatedButton.icon(
                   onPressed: _openAddPeoplePage,
                   icon: const Icon(Icons.person_add),
@@ -1446,7 +1491,7 @@ class __TaskModalState extends State<_TaskModal> {
                       children: [
                         GestureDetector(
                           onTap: () {
-                            // Handle tap on avatar, if needed
+                            // Handle tap on avatar function, if needed
                           },
                           child: CircleAvatar(
                             radius: 30,
@@ -1465,7 +1510,6 @@ class __TaskModalState extends State<_TaskModal> {
                   }).toList(),
                 ),
               ],
-            ],
           ),
         ),
       ),
@@ -1482,7 +1526,7 @@ class __TaskModalState extends State<_TaskModal> {
             foregroundColor: Colors.black,
             backgroundColor: Colors.amber,
           ),
-          child: const Text('Save'),
+          child: const Text('Add'),
         ),
       ],
     );
@@ -1504,9 +1548,15 @@ class __TaskModalState extends State<_TaskModal> {
 
 class AddPeoplePageWorkTracking extends StatefulWidget {
   final String asId;
+  final String projectId;
   final Function(List<Map<String, dynamic>>) onSelectedPeople;
 
-  const AddPeoplePageWorkTracking({super.key, required this.asId, required this.onSelectedPeople});
+  const AddPeoplePageWorkTracking({
+    Key? key,
+    required this.asId,
+    required this.projectId,
+    required this.onSelectedPeople,
+  }) : super(key: key);
 
   @override
   _AddPeoplePageWorkTrackingState createState() => _AddPeoplePageWorkTrackingState();
@@ -1514,74 +1564,230 @@ class AddPeoplePageWorkTracking extends StatefulWidget {
 
 class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
   List<Map<String, dynamic>> _members = [];
-  final List<Map<String, dynamic>> _selectedPeople = [];
+  List<Map<String, dynamic>> _selectedPeople = [];
   String _searchQuery = '';
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchMembers();
+    _fetchProjectMembers();
   }
 
-  Future<void> _fetchMembers() async {
+  Future<void> _fetchProjectMembers() async {
+    setState(() {
+      _isLoading = true; // Set loading state
+    });
+
     try {
-      final members = await WorkTrackingService().fetchAssignmentMembers(widget.asId);
-      setState(() {
-        _members = members.map((member) {
-          return {
-            'name': member['name'] ?? 'Unknown Name',
-            'surname': member['surname'] ?? '',
-            'email': member['email'] ?? 'Unknown Email',
-            'image': member['image'] ?? '',
-            'isSelected': member['isSelected'] ?? false,
-            'employee_id': member['employee_id'] ?? '',
-          };
-        }).toList();
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error fetching members: $e');
+      // Get the token from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token'); // Fetch the token from storage
+
+      if (token == null) {
+        throw Exception('No token found. Please log in again.');
       }
+
+      // Construct API URL with project ID
+      final url = Uri.parse(
+          'https://demo-application-api.flexiflows.co/api/work-tracking/project-member/members?project_id=${widget.projectId}');
+
+      // Fetch project members with Authorization header
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token', // Include the token in the request headers
+        },
+      );
+
+      // Check for successful response
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        if (data['results'] != null && data['results'] is List) {
+          final List<dynamic> membersList = data['results'];
+
+          // Use a Set to track unique employee IDs and filter out duplicates
+          final Set<String> uniqueEmployeeIds = {};
+          final uniqueMembers = membersList.where((member) {
+            final employeeId = member['employee_id'];
+            if (uniqueEmployeeIds.contains(employeeId)) {
+              return false; // Skip duplicate
+            } else {
+              uniqueEmployeeIds.add(employeeId);
+              return true; // Keep unique member
+            }
+          }).toList();
+
+          // Map the unique members to display and filter out "Unknown Name" and "Unknown Email"
+          setState(() {
+            _members = uniqueMembers
+                .where((member) =>
+            member['name'] != null &&
+                member['name'] != 'Unknown Name' &&
+                member['email'] != null &&
+                member['email'] != 'Unknown Email')
+                .map((member) {
+              return {
+                'name': member['name'] ?? 'Unknown Name',
+                'surname': member['surname'] ?? '',
+                'email': member['email'] ?? 'Unknown Email',
+                'employee_id': member['employee_id'],
+                'images': '', // Placeholder for images
+                'isSelected': false, // Track selection
+              };
+            }).toList();
+          });
+
+          // Fetch profile images for the members based on employee_id
+          await _fetchProfileImages();
+        } else {
+          throw Exception('Invalid response format');
+        }
+      } else {
+        // Handle non-200 status codes
+        print(
+            'Failed to load project members. Status code: ${response.statusCode}, Body: ${response.body}');
+        throw Exception('Failed to load project members');
+      }
+    } catch (e) {
+      // Handle exceptions
+      print('Error fetching project members: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching project members: $e')),
+      );
+    } finally {
+      // Set loading state to false
       setState(() {
         _isLoading = false;
       });
     }
   }
-  
+
+  Future<void> _fetchProfileImages() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token'); // Fetch the token from storage
+
+      if (token == null) {
+        throw Exception('No token found. Please log in again.');
+      }
+
+      // Fetch profile images for each member
+      for (var member in _members) {
+        final employeeId = member['employee_id'];
+        final response = await http.get(
+          Uri.parse('https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
+          headers: {
+            'Authorization': 'Bearer $token', // Include the token in the request headers
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final profileData = jsonDecode(response.body);
+          setState(() {
+            member['images'] = profileData['images'] ?? ''; // Update the image URL
+          });
+        } else {
+          print('Failed to load profile image for $employeeId: ${response.body}');
+        }
+      }
+    } catch (e) {
+      print('Error fetching profile images: $e');
+    }
+  }
 
   void _toggleSelection(int index) {
     setState(() {
-      final selectedMember = _members[index];
-      final isAlreadySelected = _selectedPeople.any((member) => member['employee_id'] == selectedMember['employee_id']);
-
-      if (!isAlreadySelected) {
-        selectedMember['isSelected'] = true;
-        _selectedPeople.add(selectedMember);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${selectedMember['name']} is already selected')),
-        );
-      }
+      _members[index]['isSelected'] = !_members[index]['isSelected'];
     });
   }
 
-  void _confirmSelection() {
-    widget.onSelectedPeople(_selectedPeople);
-    Navigator.pop(context);
+  void _onAddMembersPressed() {
+    final selectedMembers = _members.where((member) => member['isSelected']).toList();
+    if (selectedMembers.isNotEmpty) {
+      widget.onSelectedPeople(selectedMembers);
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one member')),
+      );
+    }
+  }
+
+  Future<void> _confirmSelection() async {
+    // Prepare the selected member IDs to send to the backend
+    final selectedMembers = _selectedPeople.map((member) {
+      return {'employee_id': member['employee_id']};
+    }).toList();
+
+    // API call to insert members into the assignment
+    try {
+      final response = await http.post(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/assignment-members/insert'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'assignment_id': widget.asId,
+          'memberDetails': selectedMembers,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // On success, pass selected people back to the parent widget
+        widget.onSelectedPeople(_selectedPeople);
+        Navigator.pop(context);
+      } else {
+        throw Exception('Failed to add members to assignment');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error adding members: $e');
+      }
+    }
+  }
+
+  void _showMemberDetails(String employeeName) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Member Details'),
+        content: Text('Employee Name: $employeeName'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final filteredMembers = _members.where((member) {
-      final memberName = member['name'] ?? '';
-      return memberName.toLowerCase().contains(_searchQuery.toLowerCase());
+      final memberName = member['name']?.toLowerCase() ?? '';
+      return memberName.contains(_searchQuery.toLowerCase());
     }).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add People'),
+        title: const Text(
+          'Add People',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        flexibleSpace: ClipPath(
+          clipper: CustomAppBarClipper(),
+          child: Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/background.png'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -1604,51 +1810,58 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
               ),
             ),
           ),
-       Expanded(
-  child: ListView.builder(
-    itemCount: filteredMembers.length,
-    itemBuilder: (context, index) {
-      String? imageUrl = filteredMembers[index]['image'];
+          Expanded(
+            child: ListView.builder(
+              itemCount: filteredMembers.length,
+              itemBuilder: (context, index) {
+                final member = filteredMembers[index];
+                final imageUrl = member['image'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
 
-      return Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-        child: ListTile(
-                        leading: CircleAvatar(
-                backgroundImage: imageUrl != null && imageUrl.isNotEmpty
-                    ? NetworkImage(imageUrl) // Load fetched image from the URL
-                    : const NetworkImage('https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'), // Your fallback default image URL
-                onBackgroundImageError: (exception, stackTrace) {
-                  // Print the error for debugging
-                  if (kDebugMode) {
-                    print('Image load error for index $index: $exception');
-                  }
-                  // Set a default fallback image in case of an error
-                  setState(() {
-                    imageUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'; // Set fallback image URL on error
-                  });
-                },
-              ),
-          title: Text(filteredMembers[index]['name'] ?? 'No Name'),
-          subtitle: Text('${filteredMembers[index]['surname'] ?? ''} - ${filteredMembers[index]['email'] ?? ''}'),
-          trailing: Checkbox(
-            value: filteredMembers[index]['isSelected'] ?? false,
-            onChanged: (bool? value) {
-              _toggleSelection(index);
-            },
+                return Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                  child: ListTile(
+                    leading: GestureDetector(
+                      onTap: () => _showMemberDetails(member['name']),
+                      child: CircleAvatar(
+                        backgroundImage: NetworkImage(imageUrl),
+                        onBackgroundImageError: (exception, stackTrace) {
+                          if (kDebugMode) {
+                            print('Error loading image for employee ${member['employee_id']}: $exception');
+                          }
+                        },
+                      ),
+                    ),
+                    title: Text(member['name'] ?? 'No Name'),
+                    subtitle: Text('${member['surname']} - ${member['email']}'),
+                    trailing: Checkbox(
+                      value: member['isSelected'],
+                      onChanged: (bool? value) {
+                        _toggleSelection(index);
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
           ),
-        ),
-      );
-    },
-  ),
-),
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: ElevatedButton.icon(
-              onPressed: _confirmSelection,
+              onPressed: () {
+                _onAddMembersPressed();
+                _confirmSelection();
+              },
               icon: const Icon(Icons.add),
-              label: const Text('Add'),
+              label: const Text('Add Members'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber,
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30.0),
+                ),
+              ),
             ),
           ),
         ],
