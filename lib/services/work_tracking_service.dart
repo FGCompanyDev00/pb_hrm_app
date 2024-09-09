@@ -1448,7 +1448,7 @@ Future<void> addPeopleToProject(String projectId, List<Map<String, String>> empl
       headers: headers,
     );
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       print('Assignment successfully deleted.');
     } else if (response.statusCode == 404) {
       print('Assignment not found: $asId');
