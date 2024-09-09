@@ -714,7 +714,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
 
   Widget _buildHeader(bool isDarkMode) {
     return Container(
-      height: 120,
+      height: 130,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(
@@ -722,12 +722,12 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           fit: BoxFit.cover,
         ),
         borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        padding: const EdgeInsets.only(top: 40.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -747,20 +747,24 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                   fontSize: 24,
                   fontWeight: FontWeight.bold),
             ),
-            CircleAvatar(
-              radius: 25,
-              backgroundColor: Colors.green,
-              child: IconButton(
-                icon: const Icon(Icons.add, color: Colors.white, size: 30),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const AddProjectPage()),
-                  );
-                },
+            Transform.translate(
+              offset: const Offset(-15.0, 0.0),
+              child: CircleAvatar(
+                radius: 25,
+                backgroundColor: Colors.green,
+                child: IconButton(
+                  icon: const Icon(Icons.add, color: Colors.white, size: 30),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const AddProjectPage()),
+                    );
+                  },
+                ),
               ),
             ),
+
           ],
         ),
       ),
@@ -769,7 +773,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
 
   Widget _buildTabs() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
       child: Row(
         children: [
           _buildTabButton('My Project', _isMyProjectsSelected, () {
@@ -778,7 +782,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
               _fetchProjects();
             });
           }),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           _buildTabButton('All Project', !_isMyProjectsSelected, () {
             setState(() {
               _isMyProjectsSelected = false;
@@ -903,7 +907,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(12.0),
       itemCount: filteredProjects.length,
       itemBuilder: (context, index) {
         return _buildProjectCard(
@@ -1024,7 +1028,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           borderRadius: BorderRadius.circular(16.0),
         ),
         elevation: 5,
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        margin: const EdgeInsets.symmetric(vertical: 12.0),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -1135,5 +1139,4 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     ),
   );
 }
-
 }
