@@ -345,14 +345,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               final data = snapshot.data!;
 
               final String vCardData = '''
-              BEGIN:VCARD
-              VERSION:3.0
-              N:${data['employee_surname'] ?? ''};${data['employee_name'] ?? ''};;;
-              FN:${data['employee_name'] ?? ''} ${data['employee_surname'] ?? ''}
-              EMAIL:${data['employee_email'] ?? ''}
-              TEL:${data['employee_tel'] ?? ''}
-              END:VCARD
-              ''';
+BEGIN:VCARD
+VERSION:3.0
+N:${data['employee_surname'] ?? ''};${data['employee_name'] ?? ''};;;
+FN:${data['employee_name'] ?? ''} ${data['employee_surname'] ?? ''}
+EMAIL:${data['employee_email'] ?? ''}
+TEL:${data['employee_tel'] ?? ''}
+END:VCARD
+''';
 
               debugPrint(vCardData);
 
