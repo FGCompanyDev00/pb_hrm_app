@@ -436,7 +436,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Sing
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     List<Map<String, dynamic>> filteredTasks = _tasks.where((task) => _selectedStatus == 'All Status' || task['status'] == _selectedStatus).toList();
-    List<File> _selectedFiles = [];
+    List<File> selectedFiles = [];
 
     return Scaffold(
       appBar: PreferredSize(
@@ -1181,7 +1181,7 @@ class __TaskModalState extends State<_TaskModal> {
   // //   }
   // }
 
-  List<File> _selectedFiles = [];
+  final List<File> _selectedFiles = [];
 
 // Function to pick files and add them to the _files list
   Future<void> _pickFile() async {
@@ -1253,7 +1253,7 @@ class __TaskModalState extends State<_TaskModal> {
             );
             Navigator.pop(context, true);
           } else {
-            final responseBody = await response.body;
+            final responseBody = response.body;
             print('Failed to save task: ${response.statusCode}, Response: $responseBody');
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Failed to save task: $responseBody')),
@@ -1465,7 +1465,7 @@ class __TaskModalState extends State<_TaskModal> {
                 children: _files.map((file) {
                   return Chip(
                     label: Text(file.path.split('/').last),
-                    deleteIcon: Icon(Icons.cancel, color: Colors.red), // 'X' button
+                    deleteIcon: const Icon(Icons.cancel, color: Colors.red), // 'X' button
                     onDeleted: () => _removeFile(file), // Remove file on delete button click
                   );
                 }).toList(),
@@ -1555,11 +1555,11 @@ class AddPeoplePageWorkTracking extends StatefulWidget {
   final Function(List<Map<String, dynamic>>) onSelectedPeople;
 
   const AddPeoplePageWorkTracking({
-    Key? key,
+    super.key,
     required this.asId,
     required this.projectId,
     required this.onSelectedPeople,
-  }) : super(key: key);
+  });
 
   @override
   _AddPeoplePageWorkTrackingState createState() => _AddPeoplePageWorkTrackingState();
@@ -1567,7 +1567,7 @@ class AddPeoplePageWorkTracking extends StatefulWidget {
 
 class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
   List<Map<String, dynamic>> _members = [];
-  List<Map<String, dynamic>> _selectedPeople = [];
+  final List<Map<String, dynamic>> _selectedPeople = [];
   String _searchQuery = '';
   bool _isLoading = true;
 
@@ -1728,7 +1728,7 @@ class _AddPeoplePageWorkTrackingState extends State<AddPeoplePageWorkTracking> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Member Details'),
+        title: const Text('Member Details'),
         content: Text('Employee Name: $employeeName'),
         actions: [
           TextButton(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -191,7 +192,7 @@ class _HistoryPageState extends State<HistoryPage> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(top: 40.0, left: 16.0, right: 16.0),
+        padding: const EdgeInsets.only(top: 40.0,left: 16.0, right: 16.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -222,7 +223,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   Widget _buildTabBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
       child: Row(
         children: [
           Expanded(
@@ -236,22 +237,30 @@ class _HistoryPageState extends State<HistoryPage> {
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
                 decoration: BoxDecoration(
                   color: _isPendingSelected ? Colors.amber : Colors.grey[300], // Selected tab color
-                  borderRadius: BorderRadius.circular(15.0), // Rounded corner
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20.0),
+                    bottomLeft: Radius.circular(20.0),
+                  ), // Rounded corner for left side
                 ),
-                child: Center(
-                  child: Text(
-                    'Pending',
-                    style: TextStyle(
-                      color: _isPendingSelected ? Colors.black : Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.hourglass_empty_rounded, size: 24, color: _isPendingSelected ? Colors.white : Colors.grey[600]),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Pending',
+                      style: TextStyle(
+                        color: _isPendingSelected ? Colors.white : Colors.grey[600], // Text color changes based on selection
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 1),
           Expanded(
             child: GestureDetector(
               onTap: () {
@@ -262,18 +271,26 @@ class _HistoryPageState extends State<HistoryPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
                 decoration: BoxDecoration(
-                  color: _isPendingSelected ? Colors.grey[300] : Colors.amber, // Selected tab color
-                  borderRadius: BorderRadius.circular(15.0), // Rounded corner
+                  color: !_isPendingSelected ? Colors.amber : Colors.grey[300], // Selected tab color
+                  borderRadius: const BorderRadius.only(
+                    topRight: Radius.circular(20.0),
+                    bottomRight: Radius.circular(20.0),
+                  ), // Rounded corner for right side
                 ),
-                child: Center(
-                  child: Text(
-                    'History',
-                    style: TextStyle(
-                      color: _isPendingSelected ? Colors.black : Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.history_rounded, size: 24, color: !_isPendingSelected ? Colors.white : Colors.grey[600]),
+                    const SizedBox(width: 8),
+                    Text(
+                      'History',
+                      style: TextStyle(
+                        color: !_isPendingSelected ? Colors.white : Colors.grey[600], // Text color changes based on selection
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
@@ -287,109 +304,189 @@ class _HistoryPageState extends State<HistoryPage> {
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    final Color iconColor = _getStatusColor(item['status']); // Ensure icon color is non-null
+    // Dynamic icon based on the 'types' field
+    Widget _getIconForType(String type) {
+      switch (type) {
+        case 'meeting':
+          return Image.asset('assets/calendar.png', width: 40, height: 40);
+        case 'leave':
+          return Image.asset('assets/leave_calendar.png', width: 40, height: 40);
+        case 'car':
+          return Image.asset('assets/car.png', width: 40, height: 40);
+        default:
+          return const Icon(Icons.info_outline, size: 40, color: Colors.grey);
+      }
+    }
+
+    // Safe date formatting method
+    String _formatDate(String? dateStr) {
+      try {
+        if (dateStr == null || dateStr.isEmpty) {
+          return 'N/A'; // Return a default if the date is invalid
+        }
+        final DateTime parsedDate = DateTime.parse(dateStr);
+        return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);
+      } catch (e) {
+        return 'Invalid Date'; // Handle any errors that arise from parsing
+      }
+    }
+
+    // Color for the status
+    Color _getStatusColor(String status) {
+      switch (status.toLowerCase()) {
+        case 'approved':
+          return Colors.green;
+        case 'rejected':
+        case 'disapproved':
+          return Colors.red;
+        case 'pending':
+        case 'waiting':
+          return Colors.amber;
+        default:
+          return Colors.grey;
+      }
+    }
+
+    // Color for the left vertical line based on 'types'
+    Color _getTypeColor(String type) {
+      switch (type.toLowerCase()) {
+        case 'meeting':
+          return Colors.green; // Green for meeting
+        case 'leave':
+          return Colors.orange; // Orange for leave
+        case 'car':
+          return Colors.blue; // Blue for car
+        default:
+          return Colors.grey; // Grey for unknown types
+      }
+    }
+
+    final String title = item['title'] ?? 'No Title';
+    final String fromDateTime = item['from_date_time'] ?? '';
+    final String toDateTime = item['to_date_time'] ?? '';
+    final String room = item['room_name'] ?? 'No Room Info';
+    final String roomFloor = item['room_floor'] ?? '';
+    final String status = item['status'] ?? 'Pending';
+    final String employeeName = item['employee_name'] ?? 'N/A';
+    final String employeeImage = item['img_name'] ?? 'https://via.placeholder.com/150';
+    final String type = item['types'] ?? 'Unknown';
+
+    final Color statusColor = _getStatusColor(status); // Status color for the status label
+    final Color typeColor = _getTypeColor(type); // Color for the left vertical line
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => DetailsPage(item: item),
-          ),
-        );
+        // Navigate to details page or any other action
       },
       child: Card(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15.0),
-          side: BorderSide(color: iconColor, width: 1.5), // Use non-null color here
+          side: BorderSide(color: statusColor, width: 1.5), // Border color based on status
         ),
-        elevation: 6, // Slightly increased elevation for better shadow
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Column(
-                children: [
-                  Icon(
-                    item['icon'] ?? Icons.info, // Ensure non-null icon
-                    color: iconColor,
-                    size: 40,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    item['types'] ?? 'N/A',
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
+        elevation: 6,
+        margin: const EdgeInsets.symmetric(vertical: 10.0),
+        child: Row(
+          children: [
+            // Left vertical colored line based on type
+            Container(
+              width: 5, // Thickness of the line
+              height: 130, // Adjust height as per card height
+              decoration: BoxDecoration(
+                color: typeColor, // Color based on the type
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(15.0),
+                  bottomLeft: Radius.circular(15.0),
+                ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            const SizedBox(width: 8), // Space between the line and the card content
+            // Card content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center, // Centering icon and profile image vertically
                   children: [
-                    Text(
-                      item['title'] ?? 'N/A',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      item['date'] ?? 'N/A',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      item['room'] ?? 'No Room Info',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
+                    // Left section for icon
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center, // Center icon vertically
                       children: [
-                        Text(
-                          'Status: ',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                          decoration: BoxDecoration(
-                            color: iconColor,
-                            borderRadius: BorderRadius.circular(4.0),
-                          ),
-                          child: Text(
-                            item['status'] ?? 'Unknown',
+                        _getIconForType(type), // Display the appropriate icon
+                      ],
+                    ),
+                    const SizedBox(width: 16),
+                    // Center section for details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title
+                          Text(
+                            title,
                             style: const TextStyle(
-                              color: Colors.black,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
+                              color: Colors.green,
                             ),
                           ),
+                          const SizedBox(height: 4),
+                          // Date range
+                          Text(
+                            'Date: ${_formatDate(fromDateTime)} To ${_formatDate(toDateTime)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          // Room information
+                          Text(
+                            'Room: $room $roomFloor',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Status row
+                          Row(
+                            children: [
+                              const Text(
+                                'Status: ',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                decoration: BoxDecoration(
+                                  color: statusColor, // Background color based on status
+                                  borderRadius: BorderRadius.circular(12.0),
+                                ),
+                                child: Text(
+                                  status,
+                                  style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Right section for employee image
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center, // Center image vertically
+                      children: [
+                        CircleAvatar(
+                          backgroundImage: NetworkImage(employeeImage),
+                          radius: 30,
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
-              CircleAvatar(
-                backgroundImage: NetworkImage(item['img_name'] ?? 'https://via.placeholder.com/150'),
-                radius: 30,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

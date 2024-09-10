@@ -179,6 +179,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
               children: [
+                // Approval Tab
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
@@ -189,23 +190,33 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                       decoration: BoxDecoration(
-                        color: _isApprovalSelected ? Colors.amber : Colors.grey[300],
-                        borderRadius: BorderRadius.circular(15.0),
+                        color: _isApprovalSelected ? Colors.amber : Colors.grey[300], // Selected tab color
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(20.0),
+                          bottomLeft: Radius.circular(20.0),
+                        ), // Rounded corners for left side
                       ),
-                      child: Center(
-                        child: Text(
-                          'Approval',
-                          style: TextStyle(
-                            color: _isApprovalSelected ? Colors.black : Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.approval_rounded, size: 24, color: _isApprovalSelected ? Colors.white : Colors.grey[600]), // Approval icon
+                          const SizedBox(width: 8),
+                          Text(
+                            'Approval',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: _isApprovalSelected ? Colors.white : Colors.grey[600], // Text color changes based on selection
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 1), // Slight gap between the tabs for better visual separation
+
+                // History Tab
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
@@ -216,18 +227,26 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                       decoration: BoxDecoration(
-                        color: _isApprovalSelected ? Colors.grey[300] : Colors.amber,
-                        borderRadius: BorderRadius.circular(15.0),
+                        color: !_isApprovalSelected ? Colors.amber : Colors.grey[300], // Selected tab color
+                        borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(20.0),
+                          bottomRight: Radius.circular(20.0),
+                        ), // Rounded corners for right side
                       ),
-                      child: Center(
-                        child: Text(
-                          'History',
-                          style: TextStyle(
-                            color: _isApprovalSelected ? Colors.black : Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.history_rounded, size: 24, color: !_isApprovalSelected ? Colors.white : Colors.grey[600]), // History icon
+                          const SizedBox(width: 8),
+                          Text(
+                            'History',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: !_isApprovalSelected ? Colors.white : Colors.grey[600], // Text color changes based on selection
+                              fontSize: 16,
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   ),

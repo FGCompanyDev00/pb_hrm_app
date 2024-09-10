@@ -163,14 +163,14 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Grey background
+      backgroundColor: Colors.grey[100],
       body: RefreshIndicator(
-        onRefresh: fetchData, // Pull to refresh functionality
+        onRefresh: fetchData,
         child: Column(
           children: [
             Container(
               width: double.infinity,
-              height: MediaQuery.of(context).size.height * 0.12,
+              height: MediaQuery.of(context).size.height * 0.14,
               decoration: BoxDecoration(
                 image: const DecorationImage(
                   image: AssetImage('assets/ready_bg.png'),
@@ -216,7 +216,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
               ),
             ),
             const SizedBox(height: 10),
-            // TabBar section with Approval and History tabs
+            // TabBar Section for Approval and History tabs
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
@@ -231,26 +231,30 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
-                          color: _isApprovalSelected
-                              ? Colors.amber
-                              : Colors.grey[300],
-                          borderRadius: BorderRadius.circular(20.0),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Approval',
-                            style: TextStyle(
-                              color: _isApprovalSelected
-                                  ? Colors.black
-                                  : Colors.grey[600],
-                              fontWeight: FontWeight.bold,
-                            ),
+                          color: _isApprovalSelected ? Colors.amber : Colors.grey[300],
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(20.0),
+                            bottomLeft: Radius.circular(20.0),
                           ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.grid_view_rounded, size: 24, color: _isApprovalSelected ? Colors.white : Colors.grey[600]),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Approval',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: _isApprovalSelected ? Colors.white : Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 1), // Add a small gap between the two tabs
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
@@ -261,21 +265,25 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
-                          color: !_isApprovalSelected
-                              ? Colors.amber
-                              : Colors.grey[300],
-                          borderRadius: BorderRadius.circular(20.0),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'History',
-                            style: TextStyle(
-                              color: !_isApprovalSelected
-                                  ? Colors.black
-                                  : Colors.grey[600],
-                              fontWeight: FontWeight.bold,
-                            ),
+                          color: !_isApprovalSelected ? Colors.amber : Colors.grey[300],
+                          borderRadius: const BorderRadius.only(
+                            topRight: Radius.circular(20.0),
+                            bottomRight: Radius.circular(20.0),
                           ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.history_rounded, size: 24, color: !_isApprovalSelected ? Colors.white : Colors.grey[600]),
+                            const SizedBox(width: 8),
+                            Text(
+                              'History',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: !_isApprovalSelected ? Colors.white : Colors.grey[600],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -283,6 +291,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                 ],
               ),
             ),
+
             const SizedBox(height: 8),
             // ListView section for displaying approval items
             Expanded(

@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AddMemberPage extends StatefulWidget {
-  const AddMemberPage({Key? key}) : super(key: key);
+  const AddMemberPage({super.key});
 
   @override
   _AddMemberPageState createState() => _AddMemberPageState();
@@ -13,7 +13,7 @@ class AddMemberPage extends StatefulWidget {
 class _AddMemberPageState extends State<AddMemberPage> {
   List<Map<String, dynamic>> _members = [];
   List<Map<String, dynamic>> _filteredMembers = [];
-  List<Map<String, dynamic>> _selectedMembers = [];
+  final List<Map<String, dynamic>> _selectedMembers = [];
 
   @override
   void initState() {
