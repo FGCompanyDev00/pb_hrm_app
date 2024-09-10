@@ -318,70 +318,93 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     return GestureDetector(
       onTap: () => _openApprovalDetail(item),
       child: Card(
-        margin: const EdgeInsets.only(bottom: 16.0),
-        elevation: 4,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(15.0),
+          side: BorderSide(color: _getStatusColor(item['status']), width: 1.5), // Border color based on status
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(_getStatusIcon(item['status']),
-                  color: _getStatusColor(item['status']), size: 36),
-              const SizedBox(width: 12.0),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        elevation: 6,
+        margin: const EdgeInsets.symmetric(vertical: 10.0),
+        child: Row(
+          children: [
+            // Left vertical colored line based on type
+            Container(
+              width: 5,
+              height: 130,
+              decoration: BoxDecoration(
+                color: _getStatusColor(item['status']),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(15.0),
+                  bottomLeft: Radius.circular(15.0),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Card content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      item['requestor_name'] ?? 'No Name',
-                      style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
+                    // Left section for icon
+                    Icon(
+                        _getStatusIcon(item['status']),
+                        size: 40,
+                        color: _getStatusColor(item['status'])
                     ),
-                    const SizedBox(height: 4.0),
-                    Text(
-                      'Reason: ${item['take_leave_reason'] ?? 'No Reason Provided'}',
-                      style: const TextStyle(color: Colors.black),
-                    ),
-                    const SizedBox(height: 8.0),
-                    Text(
-                      'From: ${item['take_leave_from'] ?? 'N/A'} To: ${item['take_leave_to'] ?? 'N/A'}',
-                      style: const TextStyle(color: Colors.black),
-                    ),
-                    const SizedBox(height: 8.0),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0, vertical: 4.0),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(item['status']),
-                            borderRadius: BorderRadius.circular(12.0),
+                    const SizedBox(width: 16),
+                    // Center section for details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title
+                          Text(
+                            item['requestor_name'] ?? 'No Name',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
                           ),
-                          child: Text(
-                            item['status'] ?? 'Unknown',
-                            style: const TextStyle(color: Colors.white),
+                          const SizedBox(height: 4),
+                          // Date range
+                          Text(
+                            'From: ${item['take_leave_from'] ?? 'N/A'} To: ${item['take_leave_to'] ?? 'N/A'}',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          // Status row
+                          Row(
+                            children: [
+                              const Text('Status: ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(item['status']),
+                                  borderRadius: BorderRadius.circular(12.0),
+                                ),
+                                child: Text(
+                                  item['status'] ?? 'Unknown',
+                                  style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Right section for employee image
+                    CircleAvatar(
+                      backgroundImage: NetworkImage(item['img_name'] ?? 'https://via.placeholder.com/150'),
+                      radius: 30,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16.0),
-              CircleAvatar(
-                backgroundImage: item['img_name'] != null
-                    ? NetworkImage(item['img_name'])
-                    : const AssetImage('assets/default_avatar.png')
-                as ImageProvider,
-                radius: 24,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -391,69 +414,102 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     return GestureDetector(
       onTap: () => _openHistoryDetail(item),
       child: Card(
-        margin: const EdgeInsets.only(bottom: 16.0),
-        elevation: 4,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(15.0),
+          side: BorderSide(color: _getStatusColor(item['status']), width: 1.5),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(_getStatusIcon(item['status']),
-                  color: _getStatusColor(item['status']), size: 36),
-              const SizedBox(width: 12.0),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        elevation: 6,
+        margin: const EdgeInsets.symmetric(vertical: 10.0),
+        child: Row(
+          children: [
+            // Left vertical colored line based on type
+            Container(
+              width: 5,
+              height: 130,
+              decoration: BoxDecoration(
+                color: _getStatusColor(item['status']),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(15.0),
+                  bottomLeft: Radius.circular(15.0),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Card content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      item['requestor_name'] ?? 'No Name',
-                      style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
+                    // Left section for icon
+                    Icon(
+                        _getStatusIcon(item['status']),
+                        size: 40,
+                        color: _getStatusColor(item['status'])
                     ),
-                    const SizedBox(height: 4.0),
-                    Text(
-                      'Room: ${item['room_name'] ?? 'No Room Info'}',
-                      style: const TextStyle(color: Colors.black),
-                    ),
-                    const SizedBox(height: 8.0),
-                    Text(
-                      'From: ${item['take_leave_from']} To: ${item['take_leave_to']}',
-                      style: const TextStyle(color: Colors.black),
-                    ),
-                    const SizedBox(height: 8.0),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0, vertical: 4.0),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(item['status']),
-                            borderRadius: BorderRadius.circular(12.0),
+                    const SizedBox(width: 16),
+                    // Center section for details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title
+                          Text(
+                            item['requestor_name'] ?? 'No Name',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
                           ),
-                          child: Text(
-                            item['status'],
-                            style: const TextStyle(color: Colors.white),
+                          const SizedBox(height: 4),
+                          // Date range
+                          Text(
+                            'From: ${item['take_leave_from']} To: ${item['take_leave_to']}',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          // Room information
+                          Text(
+                            'Room: ${item['room_name'] ?? 'No Room Info'}',
+                            style: const TextStyle(fontSize: 12, color: Colors.orange),
+                          ),
+                          const SizedBox(height: 8),
+                          // Status row
+                          Row(
+                            children: [
+                              const Text('Status: ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(item['status']),
+                                  borderRadius: BorderRadius.circular(12.0),
+                                ),
+                                child: Text(
+                                  item['status'],
+                                  style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Right section for employee image
+                    CircleAvatar(
+                      backgroundImage: NetworkImage(item['img_name'] ?? 'https://via.placeholder.com/150'),
+                      radius: 30,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16.0),
-              CircleAvatar(
-                backgroundImage: NetworkImage(item['img_name']),
-                radius: 24,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
+
 }

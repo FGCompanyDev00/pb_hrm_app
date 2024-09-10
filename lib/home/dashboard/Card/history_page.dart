@@ -376,7 +376,12 @@ class _HistoryPageState extends State<HistoryPage> {
 
     return GestureDetector(
       onTap: () {
-        // Navigate to details page or any other action
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DetailsPage(item: item),
+          ),
+        );
       },
       child: Card(
         shape: RoundedRectangleBorder(
@@ -522,24 +527,52 @@ class DetailsPage extends StatelessWidget {
     final textColor = isDarkMode ? Colors.white : Colors.black;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Details'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background.png'),
-              fit: BoxFit.cover,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(85.0),
+        child: Stack(
+          children: [
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage("assets/background.png"),
+                  fit: BoxFit.cover,
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+              ),
+              child: const Center(
+                child: Column(
+                  children: [
+                    SizedBox(height: 65),
+                    Text(
+                      'Details',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(20),
-              bottomRight: Radius.circular(20),
+            Positioned(
+              top: 55,
+              left: 16,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
             ),
-          ),
+          ],
         ),
-        centerTitle: true,
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -556,14 +589,14 @@ class DetailsPage extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32), // Increased spacing for better layout
+            const SizedBox(height: 32),
 
             // Status Highlight
             Container(
-              width: double.infinity, // Full width of the screen
+              width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
               decoration: BoxDecoration(
-                color: statusColor,  // Full color for status box
+                color: statusColor,
                 borderRadius: BorderRadius.circular(12.0),
                 boxShadow: [
                   BoxShadow(
