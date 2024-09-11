@@ -1342,111 +1342,69 @@ class __TaskModalState extends State<_TaskModal> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    Provider.of<ThemeNotifier>(context);
+@override
+Widget build(BuildContext context) {
+  Provider.of<ThemeNotifier>(context);
 
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      title: Text(widget.isEdit ? 'Edit Task' : 'Add Task'),  // Differentiating between Add and Edit
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              // Title Field
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(labelText: 'Title'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter a title';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 10),
+  return AlertDialog(
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+    title: Text(widget.isEdit ? 'Edit Task' : 'Add Task'),
+    content: SingleChildScrollView(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            // Title Field
+            TextFormField(
+              controller: _titleController,
+              decoration: const InputDecoration(labelText: 'Title'),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter a title';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 10),
 
-              // Status Dropdown
-              DropdownButtonFormField<String>(
-                value: _TaskModal.statusOptions.any((status) => status['id'] == _selectedStatus) ? _selectedStatus : null,
-                decoration: const InputDecoration(labelText: 'Status'),
-                icon: const Icon(Icons.arrow_downward),
-                iconSize: 24,
-                elevation: 16,
-                style: const TextStyle(color: Colors.black),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedStatus = newValue!;
-                  });
-                },
-                items: _TaskModal.statusOptions.map<DropdownMenuItem<String>>((status) {
-                  return DropdownMenuItem<String>(
-                    value: status['id'],
-                    child: Row(
-                      children: [
-                        Icon(Icons.circle, color: _getStatusColor(status['name']), size: 12),
-                        const SizedBox(width: 8),
-                        Text(status['name']),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 10),
+            // Status Dropdown
+            DropdownButtonFormField<String>(
+              value: _TaskModal.statusOptions.any((status) => status['id'] == _selectedStatus) ? _selectedStatus : null,
+              decoration: const InputDecoration(labelText: 'Status'),
+              icon: const Icon(Icons.arrow_downward),
+              iconSize: 24,
+              elevation: 16,
+              style: const TextStyle(color: Colors.black),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedStatus = newValue!;
+                });
+              },
+              items: _TaskModal.statusOptions.map<DropdownMenuItem<String>>((status) {
+                return DropdownMenuItem<String>(
+                  value: status['id'],
+                  child: Row(
+                    children: [
+                      Icon(Icons.circle, color: _getStatusColor(status['name']), size: 12),
+                      const SizedBox(width: 8),
+                      Text(status['name']),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 10),
 
-              // Description Field
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 10),
+            // Description Field
+            TextFormField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(labelText: 'Description'),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 10),
 
-              // Only show additional fields for Add Task
-              // if (!widget.isEdit) ...[
-              //   // Start Date Field (Only for Add)
-              //   GestureDetector(
-              //     onTap: () => _selectStartDate(context),
-              //     child: AbsorbPointer(
-              //       child: TextFormField(
-              //         controller: _startDateController,
-              //         decoration: const InputDecoration(
-              //           labelText: 'Start Date',
-              //           suffixIcon: Icon(Icons.calendar_today),
-              //         ),
-              //         validator: (value) {
-              //           if (value == null || value.isEmpty) {
-              //             return 'Please select a start date';
-              //           }
-              //           return null;
-              //         },
-              //       ),
-              //     ),
-              //   ),
-              //   const SizedBox(height: 10),
-              //
-              //   // Due Date Field (Only for Add)
-              //   GestureDetector(
-              //     onTap: () => _selectDueDate(context),
-              //     child: AbsorbPointer(
-              //       child: TextFormField(
-              //         controller: _dueDateController,
-              //         decoration: const InputDecoration(
-              //           labelText: 'End Date',
-              //           suffixIcon: Icon(Icons.calendar_today),
-              //         ),
-              //         validator: (value) {
-              //           if (value == null || value.isEmpty) {
-              //             return 'Please select an end date';
-              //           }
-              //           return null;
-              //         },
-              //       ),
-              //     ),
-              //   ),
-              //   const SizedBox(height: 10),
-
+            // Only show additional fields for Add Task
+            if (!widget.isEdit) ...[
               // File Upload Button (Only for Add)
               ElevatedButton.icon(
                 onPressed: _pickFile,
@@ -1465,75 +1423,78 @@ class __TaskModalState extends State<_TaskModal> {
                 children: _files.map((file) {
                   return Chip(
                     label: Text(file.path.split('/').last),
-                    deleteIcon: const Icon(Icons.cancel, color: Colors.red), // 'X' button
-                    onDeleted: () => _removeFile(file), // Remove file on delete button click
+                    deleteIcon: const Icon(Icons.cancel, color: Colors.red),
+                    onDeleted: () => _removeFile(file),
                   );
                 }).toList(),
               ),
               const SizedBox(height: 10),
 
               // Add Members Button (Only for Add)
-                ElevatedButton.icon(
-                  onPressed: _openAddPeoplePage,
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('Add Members'),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.blue,
-                  ),
+              ElevatedButton.icon(
+                onPressed: _openAddPeoplePage,
+                icon: const Icon(Icons.person_add),
+                label: const Text('Add Members'),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.blue,
                 ),
-                const SizedBox(height: 10),
+              ),
+              const SizedBox(height: 10),
 
-                // Display Selected Members (Only for Add)
-                Wrap(
-                  spacing: 8.0,
-                  runSpacing: 8.0,
-                  children: _selectedPeople.map((person) {
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            // Handle tap on avatar function, if needed
-                          },
-                          child: CircleAvatar(
-                            radius: 30,
-                            backgroundImage: person['profile_image'] != null && person['profile_image'].isNotEmpty
-                                ? NetworkImage(person['profile_image'])
-                                : const AssetImage('assets/default_avatar.png') as ImageProvider,
-                          ),
+              // Display Selected Members (Only for Add)
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: _selectedPeople.map((person) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          // Handle tap on avatar function, if needed
+                        },
+                        child: CircleAvatar(
+                          radius: 30,
+                          backgroundImage: person['profile_image'] != null && person['profile_image'].isNotEmpty
+                              ? NetworkImage(person['profile_image'])
+                              : const AssetImage('assets/default_avatar.png') as ImageProvider,
                         ),
-                        const SizedBox(height: 5),
-                        Text(
-                          person['name'] ?? 'No Name',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                ),
-              ],
-          ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        person['name'] ?? 'No Name',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: const Text('Cancel'),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () {
+          Navigator.pop(context);
+        },
+        child: const Text('Cancel'),
+      ),
+      ElevatedButton(
+        onPressed: _saveTask,
+        style: ElevatedButton.styleFrom(
+          foregroundColor: Colors.black,
+          backgroundColor: Colors.amber,
         ),
-        ElevatedButton(
-          onPressed: _saveTask,
-          style: ElevatedButton.styleFrom(
-            foregroundColor: Colors.black,
-            backgroundColor: Colors.amber,
-          ),
-          child: const Text('Add'),
-        ),
-      ],
-    );
-  }
+        child: Text(widget.isEdit ? 'Save' : 'Add'),
+      ),
+    ],
+  );
+}
+
 
   Color _getStatusColor(String statusName) {
     switch (statusName) {
