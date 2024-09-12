@@ -913,8 +913,8 @@ END:VCARD
                                         ),
                                       );
                                     },
-                                    child: Row(
-                                      children: const [
+                                    child: const Row(
+                                      children: [
                                         Text(
                                           "More",
                                           style: TextStyle(

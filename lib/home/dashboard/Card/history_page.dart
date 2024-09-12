@@ -79,7 +79,8 @@ class _HistoryPageState extends State<HistoryPage> {
   Map<String, dynamic> _formatPendingItem(Map<String, dynamic> item) {
     return {
       'title': item['name'] ?? 'No Title',
-      'date': item['take_leave_from'] ?? "N/A",
+      'startDate': item['take_leave_from'] ?? "N/A",
+      'endDate': item['take_leave_to'] ?? "N/A",
       'room': 'Leave Type',
       'status': item['status'] ?? 'Unknown',
       'statusColor': _getStatusColor(item['status']),
@@ -95,7 +96,8 @@ class _HistoryPageState extends State<HistoryPage> {
   Map<String, dynamic> _formatHistoryItem(Map<String, dynamic> item) {
     return {
       'title': item['name'] ?? 'No Title',
-      'date': item['take_leave_from'] ?? "N/A",
+      'startDate': item['take_leave_from'] ?? "N/A",
+      'endDate': item['take_leave_to'] ?? "N/A",
       'room': 'Leave Type',
       'status': item['status'] ?? 'Unknown',
       'statusColor': _getStatusColor(item['status']),
@@ -305,7 +307,7 @@ class _HistoryPageState extends State<HistoryPage> {
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     // Dynamic icon based on the 'types' field
-    Widget _getIconForType(String type) {
+    Widget getIconForType(String type) {
       switch (type) {
         case 'meeting':
           return Image.asset('assets/calendar.png', width: 40, height: 40);
@@ -319,7 +321,7 @@ class _HistoryPageState extends State<HistoryPage> {
     }
 
     // Safe date formatting method
-    String _formatDate(String? dateStr) {
+    String formatDate(String? dateStr) {
       try {
         if (dateStr == null || dateStr.isEmpty) {
           return 'N/A'; // Return a default if the date is invalid
@@ -332,7 +334,7 @@ class _HistoryPageState extends State<HistoryPage> {
     }
 
     // Color for the status
-    Color _getStatusColor(String status) {
+    Color getStatusColor(String status) {
       switch (status.toLowerCase()) {
         case 'approved':
           return Colors.green;
@@ -348,7 +350,7 @@ class _HistoryPageState extends State<HistoryPage> {
     }
 
     // Color for the left vertical line based on 'types'
-    Color _getTypeColor(String type) {
+    Color getTypeColor(String type) {
       switch (type.toLowerCase()) {
         case 'meeting':
           return Colors.green; // Green for meeting
@@ -371,8 +373,8 @@ class _HistoryPageState extends State<HistoryPage> {
     final String employeeImage = item['img_name'] ?? 'https://via.placeholder.com/150';
     final String type = item['types'] ?? 'Unknown';
 
-    final Color statusColor = _getStatusColor(status); // Status color for the status label
-    final Color typeColor = _getTypeColor(type); // Color for the left vertical line
+    final Color statusColor = getStatusColor(status); // Status color for the status label
+    final Color typeColor = getTypeColor(type); // Color for the left vertical line
 
     return GestureDetector(
       onTap: () {
@@ -416,7 +418,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     Column(
                       mainAxisAlignment: MainAxisAlignment.center, // Center icon vertically
                       children: [
-                        _getIconForType(type), // Display the appropriate icon
+                        getIconForType(type), // Display the appropriate icon
                       ],
                     ),
                     const SizedBox(width: 16),
@@ -437,7 +439,7 @@ class _HistoryPageState extends State<HistoryPage> {
                           const SizedBox(height: 4),
                           // Date range
                           Text(
-                            'Date: ${_formatDate(fromDateTime)} To ${_formatDate(toDateTime)}',
+                            'Date: ${formatDate(fromDateTime)} To ${formatDate(toDateTime)}',
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.grey,
@@ -691,7 +693,7 @@ class DetailsPage extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                item['date']?.split(' To: ')?.first ?? 'N/A',
+                item['take_leave_from'] ?? 'N/A',
                 style: TextStyle(
                   fontSize: 20,
                   color: textColor,
@@ -726,7 +728,7 @@ class DetailsPage extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                item['date']?.split(' To: ')?.last ?? 'N/A',
+                item['take_leave_to'] ?? 'N/A',
                 style: const TextStyle(
                   fontSize: 20,
                   color: Colors.red,  // End date in red

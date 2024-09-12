@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_people_page.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
@@ -55,7 +56,6 @@ class AddProjectPageState extends State<AddProjectPage> {
         'project_name': _projectNameController.text.trim(),
         'department_id': '1',
         'branch_id': '1',
-        // Use the statusMap to get the correct status_id
         'status_id': statusMap[_selectedStatus]!,
         'precent_of_project': (_progress * 100).toStringAsFixed(0),
         'deadline': _deadline1Controller.text.trim(),
@@ -63,20 +63,29 @@ class AddProjectPageState extends State<AddProjectPage> {
       };
 
       try {
-        await WorkTrackingService().addProject(newProject);
+        // Create a new project and get the project ID directly
+        final projectId = await WorkTrackingService().addProject(newProject);
 
-        // Fetch the latest project to get its project_id
-        final latestProject = await WorkTrackingService().fetchLatestProject();
+        // Debugging: print the projectId for confirmation
+        if (kDebugMode) {
+          print('Received project ID from addProject: $projectId');
+        }
 
-        if (latestProject != null) {
+        if (projectId != null) {
+          // Debugging: print the projectId before navigation
+          if (kDebugMode) {
+            print('Navigating to AddPeoplePage with project ID: $projectId');
+          }
+
+          // Pass the newly created project ID to the AddPeoplePage
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => AddPeoplePage(projectId: latestProject['project_id']),
+              builder: (context) => AddPeoplePage(projectId: projectId),
             ),
           );
         } else {
-          _showErrorDialog('Failed to fetch the latest project. Please try again.');
+          _showErrorDialog('Project created but failed to retrieve project ID. Please try again.');
         }
       } catch (e) {
         _showErrorDialog(e.toString());
