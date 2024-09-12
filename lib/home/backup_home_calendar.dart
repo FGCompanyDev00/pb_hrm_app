@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
@@ -167,10 +168,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   Color _parseColor(String colorString) {
-
     return Color(int.parse(colorString.replaceFirst('#', '0xff')));
   }
-
 
   List<Event> _getEventsForDay(DateTime day) {
     final normalizedDay = _normalizeDate(day);
@@ -363,10 +362,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
             color: Colors.green,
             shape: BoxShape.circle,
           ),
-          markerDecoration: BoxDecoration(
-            color: Colors.orange,
-            shape: BoxShape.circle,
-          ),
           outsideDaysVisible: false,
           weekendTextStyle: TextStyle(color: Colors.black),
           defaultTextStyle: TextStyle(color: Colors.black),
@@ -389,6 +384,21 @@ class _HomeCalendarState extends State<HomeCalendar> {
             size: 16,
             color: Colors.black,
           ),
+        ),
+        calendarBuilders: CalendarBuilders(
+          markerBuilder: (context, date, events) {
+            if (events.isNotEmpty) {
+              return Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  width: 16,
+                  height: 3,
+                  color: Colors.green,  // Change this to the desired color for the line
+                ),
+              );
+            }
+            return null;  // No events, so no marker or line
+          },
         ),
       ),
     );

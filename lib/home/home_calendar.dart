@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
+import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,7 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:syncfusion_flutter_calendar/calendar.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -240,7 +242,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
               _buildCalendar(isDarkMode),
               _buildSectionSeparator(),
               Expanded(
-                child: _buildCalendarView(),
+                child: _buildCalendarView(context),
               ),
             ],
           ),
@@ -415,7 +417,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
     );
   }
 
-  Widget _buildCalendarView() {
+  Widget _buildCalendarView(BuildContext context) {
     // Time slots from 7 AM to 6 PM
     final List<String> timeSlots = List.generate(12, (index) {
       final hour = index + 7;
@@ -435,7 +437,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
           'assets/avatar2.png',
           'assets/avatar3.png',
           'assets/avatar4.png',
-          'assets/avatar5.png'
+          'assets/avatar5.png',
+          'assets/avatar6.png'
         ],
         'color': Colors.green.shade100,
         'isMinutesOfMeeting': true,
@@ -500,30 +503,27 @@ class _HomeCalendarState extends State<HomeCalendar> {
           final List<Map<String, dynamic>> eventsForThisHour = dummyEvents.where((event) {
             int eventStartHour = event['startHour'];
             int eventEndHour = eventStartHour + (event['duration'] as int);
-
-            return timeSlotHour == eventStartHour ||
-                (timeSlotHour > eventStartHour && timeSlotHour < eventEndHour);
+            return timeSlotHour == eventStartHour || (timeSlotHour > eventStartHour && timeSlotHour < eventEndHour);
           }).toList();
-
 
           final Set<String> eventTitlesDisplayed = {};
 
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Column(
               children: [
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(right: 10.0),
+                      padding: const EdgeInsets.only(right: 4.0),
                       child: SizedBox(
-                        width: 60,
+                        width: MediaQuery.of(context).size.width * 0.12,
                         height: 20,
                         child: Text(
                           timeSlot,
-                          style: const TextStyle(
-                            fontSize: 16,
+                          style: TextStyle(
+                            fontSize: MediaQuery.of(context).size.width * 0.03,
                             fontWeight: FontWeight.bold,
                             color: Colors.black,
                           ),
@@ -531,30 +531,34 @@ class _HomeCalendarState extends State<HomeCalendar> {
                       ),
                     ),
                     Expanded(
-                      child: SizedBox(
-                        height: 140.0,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          children: eventsForThisHour.where((event) {
-                            if (eventTitlesDisplayed.contains(event['title'])) {
-                              return false;
-                            }
-                            eventTitlesDisplayed.add(event['title']);
-                            return true;
-                          }).map((event) {
-                            int eventStart = event['startHour'];
-                            int eventEnd = eventStart + (event['duration'] as int);
+                      child: MasonryGridView.count(
+                        crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,  // 4 columns for larger screens
+                        itemCount: eventsForThisHour.length,
+                        itemBuilder: (context, index) {
+                          final event = eventsForThisHour[index];
+                          double fixedHeight = 130.0;
 
-                            double eventHeight = (eventEnd - eventStart) * 140.0;
+                          if (eventTitlesDisplayed.contains(event['title'])) return const SizedBox.shrink();
+                          eventTitlesDisplayed.add(event['title']);
 
-                            return Container(
-                              width: MediaQuery.of(context).size.width * 0.8 / eventsForThisHour.length,
-                              margin: const EdgeInsets.only(right: 8.0, bottom: 12.0),
+                          int maxAttendeesPerRow = MediaQuery.of(context).size.width > 600 ? 5 : 3;
+
+                          return InkWell(
+                            onTap: () {
+                              // Navigate to the detail view on tap
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EventDetailView(event: event),
+                                ),
+                              );
+                            },
+                            child: Container(
                               padding: const EdgeInsets.all(8.0),
-                              height: eventHeight,
+                              height: fixedHeight,
                               decoration: BoxDecoration(
                                 color: event['color'],
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(12),
                                 boxShadow: const [
                                   BoxShadow(
                                     color: Colors.black12,
@@ -567,9 +571,9 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    event['title'],
-                                    style: const TextStyle(
-                                      fontSize: 12,
+                                    event['title'] ?? 'No Title',
+                                    style: TextStyle(
+                                      fontSize: MediaQuery.of(context).size.width * 0.025,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.black87,
                                     ),
@@ -578,51 +582,70 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                   if (event['location'] != '')
                                     Row(
                                       children: [
-                                        const Icon(
-                                          Icons.location_on,
-                                          size: 14,
-                                          color: Colors.grey,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          event['location'],
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.black54,
+                                        const Icon(Icons.location_on, size: 12, color: Colors.grey),
+                                        const SizedBox(width: 2),
+                                        Flexible(
+                                          child: Text(
+                                            event['location'] ?? 'No Location',
+                                            style: TextStyle(
+                                              fontSize: MediaQuery.of(context).size.width * 0.022,
+                                              color: Colors.black54,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                       ],
                                     ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    event['time'],
-                                    style: const TextStyle(
-                                      fontSize: 12,
+                                    event['time'] ?? 'No Time',
+                                    style: TextStyle(
+                                      fontSize: MediaQuery.of(context).size.width * 0.022,
                                       color: Colors.black54,
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
+                                  const SizedBox(height: 8),
+                                  // Profile avatars
                                   Row(
-                                    children: (event['attendees'] as List<String>).map((avatar) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(right: 4.0),
-                                        child: CircleAvatar(
-                                          radius: 14,
-                                          backgroundImage: AssetImage(avatar),
-                                        ),
-                                      );
-                                    }).toList(),
+                                    children: List.generate(
+                                      (event['attendees'] as List<String>?)?.length ?? 0, (i) {
+                                      if (i < maxAttendeesPerRow) {
+                                        double avatarRadius = MediaQuery.of(context).size.width * 0.035;
+                                        return Padding(
+                                          padding: const EdgeInsets.only(right: 4.0),
+                                          child: CircleAvatar(
+                                            radius: avatarRadius,
+                                            backgroundImage: AssetImage(event['attendees'][i]),
+                                            onBackgroundImageError: (exception, stackTrace) => const Icon(Icons.error, size: 12),
+                                          ),
+                                        );
+                                      } else if (i == maxAttendeesPerRow && (event['attendees'] as List<String>).length > maxAttendeesPerRow) {
+                                        return CircleAvatar(
+                                          radius: MediaQuery.of(context).size.width * 0.035,
+                                          child: Text(
+                                            '+${(event['attendees'] as List<String>).length - maxAttendeesPerRow}',
+                                            style: TextStyle(fontSize: MediaQuery.of(context).size.width * 0.022),
+                                          ),
+                                        );
+                                      }
+                                      return Container();
+                                    },
+                                    ),
                                   ),
                                 ],
                               ),
-                            );
-                          }).toList(),
-                        ),
+                            ),
+                          );
+                        },
+                        mainAxisSpacing: 8.0,
+                        crossAxisSpacing: 8.0,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
               ],
             ),
           );

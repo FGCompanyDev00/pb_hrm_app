@@ -113,6 +113,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "8.9.2"
+  calendar_day_view:
+    dependency: "direct main"
+    description:
+      name: calendar_day_view
+      sha256: "9d22adfcf1c7e9dac6e65162099b33b193994db0d6611b0930d7938acf18176a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.3.2"
   carousel_slider:
     dependency: "direct main"
     description:
@@ -533,6 +541,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_week_view:
+    dependency: "direct main"
+    description:
+      name: flutter_week_view
+      sha256: "705374a1e84edcd979e92c85254d185607907c737d94e735d4a612b488d80cfd"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.3.0"
   fluttertoast:
     dependency: "direct main"
     description:
@@ -1558,10 +1574,10 @@ packages:
     dependency: transitive
     description:
       name: vm_service
-      sha256: "5c5f338a667b4c644744b661f309fb8080bb94b18a7e91ef1dbd343bed00ed6d"
+      sha256: f652077d0bdf60abe4c1f6377448e8655008eef28f128bc023f7b5e8dfeb48fc
       url: "https://pub.dev"
     source: hosted
-    version: "14.2.5"
+    version: "14.2.4"
   watcher:
     dependency: transitive
     description:
