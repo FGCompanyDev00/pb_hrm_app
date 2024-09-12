@@ -395,11 +395,11 @@ class _HomeCalendarState extends State<HomeCalendar> {
                 child: Container(
                   width: 16,
                   height: 3,
-                  color: Colors.green,  // Change this to the desired color for the line
+                  color: Colors.green,
                 ),
               );
             }
-            return null;  // No events, so no marker or line
+            return null;
           },
         ),
       ),
@@ -774,7 +774,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 }
 
-// Animation and Event classes
 class GradientAnimationLine extends StatefulWidget {
   const GradientAnimationLine({super.key});
 
