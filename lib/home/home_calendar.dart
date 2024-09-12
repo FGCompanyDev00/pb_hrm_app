@@ -509,21 +509,28 @@ class _HomeCalendarState extends State<HomeCalendar> {
           final Set<String> eventTitlesDisplayed = {};
 
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            padding: EdgeInsets.symmetric(
+              horizontal: MediaQuery.of(context).size.width > 800 ? 24.0 : 12.0,
+              vertical: MediaQuery.of(context).size.width > 800 ? 12.0 : 6.0,
+            ),
             child: Column(
               children: [
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.only(right: 4.0),
+                      padding: const EdgeInsets.only(right: 8.0),
                       child: SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.12,
-                        height: 20,
+                        width: MediaQuery.of(context).size.width > 800
+                            ? MediaQuery.of(context).size.width * 0.12
+                            : MediaQuery.of(context).size.width * 0.10,
+                        height: 24,
                         child: Text(
                           timeSlot,
                           style: TextStyle(
-                            fontSize: MediaQuery.of(context).size.width * 0.03,
+                            fontSize: MediaQuery.of(context).size.width > 800
+                                ? MediaQuery.of(context).size.width * 0.025
+                                : MediaQuery.of(context).size.width * 0.03,
                             fontWeight: FontWeight.bold,
                             color: Colors.black,
                           ),
@@ -531,121 +538,144 @@ class _HomeCalendarState extends State<HomeCalendar> {
                       ),
                     ),
                     Expanded(
-                      child: MasonryGridView.count(
-                        crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,  // 4 columns for larger screens
-                        itemCount: eventsForThisHour.length,
-                        itemBuilder: (context, index) {
-                          final event = eventsForThisHour[index];
-                          double fixedHeight = 130.0;
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
 
-                          if (eventTitlesDisplayed.contains(event['title'])) return const SizedBox.shrink();
-                          eventTitlesDisplayed.add(event['title']);
+                          int crossAxisCount = constraints.maxWidth > 1200
+                              ? 6
+                              : constraints.maxWidth > 800
+                              ? 4
+                              : constraints.maxWidth > 600
+                              ? 3
+                              : 2;
 
-                          int maxAttendeesPerRow = MediaQuery.of(context).size.width > 600 ? 5 : 3;
+                          // Increase height for larger screens (only for larger devices)
+                          double fixedHeight = constraints.maxWidth > 1200
+                              ? 210.0 // Increased height for large devices like iPad Pro
+                              : constraints.maxWidth > 800
+                              ? 180.0 // Increased height for medium devices
+                              : 120.0; // Unchanged for small devices
 
-                          return InkWell(
-                            onTap: () {
-                              // Navigate to the detail view on tap
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => EventDetailView(event: event),
+                          return MasonryGridView.count(
+                            crossAxisCount: crossAxisCount,
+                            itemCount: eventsForThisHour.length,
+                            itemBuilder: (context, index) {
+                              final event = eventsForThisHour[index];
+
+                              if (eventTitlesDisplayed.contains(event['title'])) return const SizedBox.shrink();
+                              eventTitlesDisplayed.add(event['title']);
+
+                              // Max attendees per row limited to 3
+                              int maxAttendeesPerRow = 3;
+
+                              return InkWell(
+                                onTap: () {
+                                  // Navigate to the detail view on tap
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => EventDetailView(event: event),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(8.0),
+                                  height: fixedHeight,
+                                  decoration: BoxDecoration(
+                                    color: event['color'],
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 6,
+                                        offset: Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        event['title'] ?? 'No Title',
+                                        style: TextStyle(
+                                          fontSize: MediaQuery.of(context).size.width * (constraints.maxWidth > 800 ? 0.025 : 0.03),
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      if (event['location'] != '')
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.location_on, size: 10, color: Colors.grey),
+                                            const SizedBox(width: 2),
+                                            Flexible(
+                                              child: Text(
+                                                event['location'] ?? 'No Location',
+                                                style: TextStyle(
+                                                  fontSize: MediaQuery.of(context).size.width * (constraints.maxWidth > 800 ? 0.022 : 0.027j),
+                                                  color: Colors.black54,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        event['time'] ?? 'No Time',
+                                        style: TextStyle(
+                                          fontSize: MediaQuery.of(context).size.width * (constraints.maxWidth > 800 ? 0.022 : 0.023),
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      // Profile avatars - limited to 3 per card
+                                      Row(
+                                        children: List.generate(
+                                          (event['attendees'] as List<String>?)?.length ?? 0, (i) {
+                                          if (i < maxAttendeesPerRow) {
+                                            double avatarRadius = MediaQuery.of(context).size.width * 0.032;
+                                            return Padding(
+                                              padding: const EdgeInsets.only(right: 2.0),
+                                              child: CircleAvatar(
+                                                radius: avatarRadius,
+                                                backgroundImage: AssetImage(event['attendees'][i]),
+                                                onBackgroundImageError: (exception, stackTrace) => const Icon(Icons.error, size: 12),
+                                              ),
+                                            );
+                                          } else if (i == maxAttendeesPerRow && (event['attendees'] as List<String>).length > maxAttendeesPerRow) {
+                                            return CircleAvatar(
+                                              radius: MediaQuery.of(context).size.width * 0.032,
+                                              child: Text(
+                                                '+${(event['attendees'] as List<String>).length - maxAttendeesPerRow}',
+                                                style: TextStyle(fontSize: MediaQuery.of(context).size.width * 0.020),
+                                              ),
+                                            );
+                                          }
+                                          return Container();
+                                        },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               );
                             },
-                            child: Container(
-                              padding: const EdgeInsets.all(8.0),
-                              height: fixedHeight,
-                              decoration: BoxDecoration(
-                                color: event['color'],
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 4,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    event['title'] ?? 'No Title',
-                                    style: TextStyle(
-                                      fontSize: MediaQuery.of(context).size.width * 0.025,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  if (event['location'] != '')
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.location_on, size: 12, color: Colors.grey),
-                                        const SizedBox(width: 2),
-                                        Flexible(
-                                          child: Text(
-                                            event['location'] ?? 'No Location',
-                                            style: TextStyle(
-                                              fontSize: MediaQuery.of(context).size.width * 0.022,
-                                              color: Colors.black54,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    event['time'] ?? 'No Time',
-                                    style: TextStyle(
-                                      fontSize: MediaQuery.of(context).size.width * 0.022,
-                                      color: Colors.black54,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  // Profile avatars
-                                  Row(
-                                    children: List.generate(
-                                      (event['attendees'] as List<String>?)?.length ?? 0, (i) {
-                                      if (i < maxAttendeesPerRow) {
-                                        double avatarRadius = MediaQuery.of(context).size.width * 0.035;
-                                        return Padding(
-                                          padding: const EdgeInsets.only(right: 4.0),
-                                          child: CircleAvatar(
-                                            radius: avatarRadius,
-                                            backgroundImage: AssetImage(event['attendees'][i]),
-                                            onBackgroundImageError: (exception, stackTrace) => const Icon(Icons.error, size: 12),
-                                          ),
-                                        );
-                                      } else if (i == maxAttendeesPerRow && (event['attendees'] as List<String>).length > maxAttendeesPerRow) {
-                                        return CircleAvatar(
-                                          radius: MediaQuery.of(context).size.width * 0.035,
-                                          child: Text(
-                                            '+${(event['attendees'] as List<String>).length - maxAttendeesPerRow}',
-                                            style: TextStyle(fontSize: MediaQuery.of(context).size.width * 0.022),
-                                          ),
-                                        );
-                                      }
-                                      return Container();
-                                    },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            mainAxisSpacing: 8.0,
+                            crossAxisSpacing: 8.0,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
                           );
                         },
-                        mainAxisSpacing: 8.0,
-                        crossAxisSpacing: 8.0,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
               ],
             ),
           );
