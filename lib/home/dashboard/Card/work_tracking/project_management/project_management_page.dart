@@ -4118,7 +4118,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Tick
 
   void _addMessage(String message) {
     final DateTime now = DateTime.now();
-    setState(() {
+    setState(() { 
       _messages.insert(0, {
         'comments': message,
         'created_at': now.toIso8601String(),
@@ -4214,8 +4214,8 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Tick
               fontWeight: FontWeight.normal,
             ),
             tabs: const [
-              Tab(text: 'Assignment / Task'),
-              Tab(text: 'Processing / Detail'), // New tab for processing
+              Tab(text: 'Processing / Detail'),
+              Tab(text: 'Assignment/Task'), 
               Tab(text: 'Comment / Chat'),
             ],
           ),
@@ -4223,14 +4223,137 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Tick
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildProcessingOrDetailTab(filteredTasks), // New tab content here
-                _buildProcessingOrDetailTab(filteredTasks),
+                _buildProcessingOrDetailTab(filteredTasks), 
+                _buildAssignmentorTaskTab(filteredTasks),
                 _buildChatAndConversationTab(isDarkMode),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+    Widget _buildAssignmentorTaskTab(List<Map<String, dynamic>> filteredTasks) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  decoration: BoxDecoration(
+                    gradient: isDarkMode
+                        ? const LinearGradient(
+                      colors: [Color(0xFF424242), Color(0xFF303030)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                        : const LinearGradient(
+                      colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                        offset: const Offset(1, 1),
+                      ),
+                    ],
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _statusOptions.contains(_selectedStatus) ? _selectedStatus : null,
+                      icon: const Icon(Icons.arrow_downward, color: Colors.amber),
+                      iconSize: 28,
+                      elevation: 16,
+                      dropdownColor: isDarkMode ? const Color(0xFF424242) : Colors.white,
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedStatus = newValue!;
+                        });
+                      },
+                      items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Row(
+                            children: [
+                              Icon(Icons.circle, color: _getStatusColor(value), size: 14),
+                              const SizedBox(width: 10),
+                              Text(value),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Colors.greenAccent, Colors.teal],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                        offset: const Offset(2, 4),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(10.0),
+                  child: const Icon(
+                    Icons.add,
+                    color: Colors.white,
+                    size: 20.0,
+                  ),
+                ),
+                onPressed: () => _showAddTaskModal(),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _fetchProjectData,
+            child: ListView.builder(
+              padding: const EdgeInsets.all(12.0),
+              itemCount: filteredTasks.length,
+              itemBuilder: (context, index) {
+                return GestureDetector(
+                  onTap: () {
+                    _showTaskViewModal(filteredTasks[index], index);
+                  },
+                  child: _buildTaskCard(filteredTasks[index], index),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 
