@@ -119,7 +119,7 @@ class _DashboardState extends State<Dashboard> {
       onWillPop: () async => false,
       child: Scaffold(
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(115.0),
+          preferredSize: const Size.fromHeight(110.0),
           child: FutureBuilder<UserProfile>(
             future: futureUserProfile,
             builder: (context, snapshot) {
@@ -146,7 +146,7 @@ class _DashboardState extends State<Dashboard> {
                       ),
                       child: SafeArea(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 30.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 14.0),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -157,7 +157,7 @@ class _DashboardState extends State<Dashboard> {
                                     MaterialPageRoute(builder: (context) => const SettingsPage()),
                                   );
                                 },
-                                child: const Icon(Icons.settings, color: Colors.black, size: 30),
+                                child: const Icon(Icons.settings, color: Colors.black, size: 40),
                               ),
                               Expanded(
                                 child: GestureDetector(
@@ -196,7 +196,7 @@ class _DashboardState extends State<Dashboard> {
                                 onTap: () {
                                   _showLogoutDialog(context);
                                 },
-                                child: const Icon(Icons.power_settings_new, color: Colors.black, size: 30),
+                                child: const Icon(Icons.power_settings_new, color: Colors.black, size: 40),
                               ),
                             ],
                           ),
@@ -232,7 +232,7 @@ class _DashboardState extends State<Dashboard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SizedBox(
-                          height: 150.0,
+                          height: 130.0,
                           child: FutureBuilder<List<String>>(
                             future: futureBanners,
                             builder: (context, snapshot) {

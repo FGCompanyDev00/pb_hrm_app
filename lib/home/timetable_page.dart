@@ -46,19 +46,23 @@ class _TimetablePageState extends State<TimetablePage> {
         final List<TimetableItem<String>> fetchedEvents = [];
 
         for (var item in results) {
-          final DateTime startDate = DateTime.parse(item['take_leave_from']);
-          final DateTime endDate = DateTime.parse(item['take_leave_to']);
+          final DateTime startDate = item['take_leave_from'] != null
+              ? DateTime.parse(item['take_leave_from'])
+              : DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 8);
+          final DateTime endDate = item['take_leave_to'] != null
+              ? DateTime.parse(item['take_leave_to'])
+              : DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 17);
           final eventTitle = item['name'];
           final eventDescription = item['take_leave_reason'] ?? 'Approval Pending';
 
           // Create TimetableItems for each day of the event
           for (var day = startDate;
-              day.isBefore(endDate.add(const Duration(days: 1)));
-              day = day.add(const Duration(days: 1))) {
+          day.isBefore(endDate.add(const Duration(days: 1)));
+          day = day.add(const Duration(days: 1))) {
             fetchedEvents.add(
               TimetableItem<String>(
-                DateTime(day.year, day.month, day.day, 0), // Start time (midnight)
-                DateTime(day.year, day.month, day.day, 23, 59), // End time (end of day)
+                DateTime(day.year, day.month, day.day, startDate.hour, startDate.minute),
+                DateTime(day.year, day.month, day.day, endDate.hour, endDate.minute),
                 data: '$eventTitle: $eventDescription',
               ),
             );
@@ -108,7 +112,7 @@ class _TimetablePageState extends State<TimetablePage> {
         ),
         title: const Text(
           "Details Calendar Event",
-          style: TextStyle(color: Colors.black, fontSize: 18),
+          style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         flexibleSpace: Image.asset(
@@ -120,7 +124,6 @@ class _TimetablePageState extends State<TimetablePage> {
       ),
       body: Column(
         children: [
-          // Date and month selection
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16.0),
             child: Row(
@@ -155,8 +158,6 @@ class _TimetablePageState extends State<TimetablePage> {
               ],
             ),
           ),
-
-          // Calendar row with selected date highlighted
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: Row(
@@ -164,7 +165,7 @@ class _TimetablePageState extends State<TimetablePage> {
               children: List.generate(7, (index) {
                 final day = selectedDate.add(Duration(days: index - 3));
                 final hasEvent = events.any((event) =>
-                    event.start.day == day.day &&
+                event.start.day == day.day &&
                     event.start.month == day.month &&
                     event.start.year == day.year);
                 return _buildDateItem(
@@ -182,8 +183,6 @@ class _TimetablePageState extends State<TimetablePage> {
               }),
             ),
           ),
-
-          // Time slots and event blocks
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -216,9 +215,12 @@ class _TimetablePageState extends State<TimetablePage> {
               color: isSelected
                   ? const Color(0xFFD4A017)
                   : hasEvent
-                      ? Colors.green.withOpacity(0.5)
-                      : Colors.white,
+                  ? Colors.green.withOpacity(0.5)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(8),
+              boxShadow: isSelected
+                  ? [BoxShadow(color: Colors.black26, blurRadius: 10)]
+                  : [],
             ),
             child: Text(
               "$date",
@@ -249,23 +251,23 @@ class _TimetablePageState extends State<TimetablePage> {
           Expanded(
             child: event != null && event.isNotEmpty
                 ? Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      event,
-                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                  )
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                event,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              ),
+            )
                 : Container(
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: Colors.grey.shade300, width: 1),
-                      ),
-                    ),
-                  ),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -275,14 +277,14 @@ class _TimetablePageState extends State<TimetablePage> {
   List<Widget> _buildEventSlotsForDay(DateTime date) {
     final List<Widget> slots = [];
     final eventsForDay = events.where((event) =>
-        event.start.day == date.day &&
+    event.start.day == date.day &&
         event.start.month == date.month &&
         event.start.year == date.year).toList();
 
     for (var i = 0; i < 24; i++) {
       final String timeLabel = "${i.toString().padLeft(2, '0')}:00";
       final matchingEvent = eventsForDay.firstWhere(
-        (event) => event.start.hour == i,
+            (event) => event.start.hour == i,
         orElse: () => TimetableItem<String>(
           DateTime(date.year, date.month, date.day, i),
           DateTime(date.year, date.month, date.day, i + 1),
@@ -302,4 +304,3 @@ class _TimetablePageState extends State<TimetablePage> {
     return slots;
   }
 }
-//repush
