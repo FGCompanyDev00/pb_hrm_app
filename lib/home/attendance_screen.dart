@@ -1005,7 +1005,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70.0),
+        preferredSize: const Size.fromHeight(90.0),
         child: Container(
           width: double.infinity,
           decoration: const BoxDecoration(
