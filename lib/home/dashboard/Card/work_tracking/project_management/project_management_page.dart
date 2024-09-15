@@ -4234,377 +4234,687 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Tick
     );
   }
 
-    Widget _buildAssignmentorTaskTab(List<Map<String, dynamic>> filteredTasks) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
+Widget _buildAssignmentorTaskTab(List<Map<String, dynamic>> filteredTasks) {
+  final themeNotifier = Provider.of<ThemeNotifier>(context);
+  final bool isDarkMode = themeNotifier.isDarkMode;
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  decoration: BoxDecoration(
-                    gradient: isDarkMode
-                        ? const LinearGradient(
-                      colors: [Color(0xFF424242), Color(0xFF303030)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                        : const LinearGradient(
-                      colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                        offset: const Offset(1, 1),
-                      ),
-                    ],
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _statusOptions.contains(_selectedStatus) ? _selectedStatus : null,
-                      icon: const Icon(Icons.arrow_downward, color: Colors.amber),
-                      iconSize: 28,
-                      elevation: 16,
-                      dropdownColor: isDarkMode ? const Color(0xFF424242) : Colors.white,
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black87,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedStatus = newValue!;
-                        });
-                      },
-                      items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Row(
-                            children: [
-                              Icon(Icons.circle, color: _getStatusColor(value), size: 14),
-                              const SizedBox(width: 10),
-                              Text(value),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Colors.greenAccent, Colors.teal],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                        offset: const Offset(2, 4),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(10.0),
-                  child: const Icon(
-                    Icons.add,
-                    color: Colors.white,
-                    size: 20.0,
-                  ),
-                ),
-                onPressed: () => _showAddTaskModal(),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _fetchProjectData,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12.0),
-              itemCount: filteredTasks.length,
-              itemBuilder: (context, index) {
-                return GestureDetector(
-                  onTap: () {
-                    _showTaskViewModal(filteredTasks[index], index);
-                  },
-                  child: _buildTaskCard(filteredTasks[index], index),
-                );
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProcessingOrDetailTab(List<Map<String, dynamic>> filteredTasks) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  decoration: BoxDecoration(
-                    gradient: isDarkMode
-                        ? const LinearGradient(
-                      colors: [Color(0xFF424242), Color(0xFF303030)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                        : const LinearGradient(
-                      colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                        offset: const Offset(1, 1),
-                      ),
-                    ],
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _statusOptions.contains(_selectedStatus) ? _selectedStatus : null,
-                      icon: const Icon(Icons.arrow_downward, color: Colors.amber),
-                      iconSize: 28,
-                      elevation: 16,
-                      dropdownColor: isDarkMode ? const Color(0xFF424242) : Colors.white,
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black87,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedStatus = newValue!;
-                        });
-                      },
-                      items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Row(
-                            children: [
-                              Icon(Icons.circle, color: _getStatusColor(value), size: 14),
-                              const SizedBox(width: 10),
-                              Text(value),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Colors.greenAccent, Colors.teal],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                        offset: const Offset(2, 4),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(10.0),
-                  child: const Icon(
-                    Icons.add,
-                    color: Colors.white,
-                    size: 20.0,
-                  ),
-                ),
-                onPressed: () => _showAddTaskModal(),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _fetchProjectData,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12.0),
-              itemCount: filteredTasks.length,
-              itemBuilder: (context, index) {
-                return GestureDetector(
-                  onTap: () {
-                    _showTaskViewModal(filteredTasks[index], index);
-                  },
-                  child: _buildTaskCard(filteredTasks[index], index),
-                );
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTaskCard(Map<String, dynamic> task, int index) {
-    final progressColors = {
-      'Pending': Colors.orange,
-      'Processing': Colors.blue,
-      'Finished': Colors.green,
-    };
-
-    final startDate = DateTime.parse(task['start_date'] ?? DateTime.now().toIso8601String());
-    final dueDate = DateTime.parse(task['due_date'] ?? DateTime.now().toIso8601String());
-    final daysRemaining = dueDate.difference(startDate).inDays;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 10.0),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFFE0E0F0),
-            Color(0xFFF7F7FF),
-            Color(0xFFFFFFFF),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            spreadRadius: 1,
-            offset: const Offset(4, 4),
-          ),
-        ],
-        borderRadius: BorderRadius.circular(16.0),
-      ),
-      child: Padding(
+  return Column(
+    children: [
+      Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.circle,
-                  color: progressColors[task['status']] ?? Colors.black,
-                  size: 14,
+            Expanded(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                decoration: BoxDecoration(
+                  gradient: isDarkMode
+                      ? const LinearGradient(
+                          colors: [Color(0xFF424242), Color(0xFF303030)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : const LinearGradient(
+                          colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                      offset: const Offset(1, 1),
+                    ),
+                  ],
+                  borderRadius: BorderRadius.circular(12.0),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  task['status'] ?? 'Unknown',
-                  style: TextStyle(
-                    color: progressColors[task['status']] ?? Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _statusOptions.contains(_selectedStatus) ? _selectedStatus : null,
+                    icon: const Icon(Icons.arrow_downward, color: Colors.amber),
+                    iconSize: 28,
+                    elevation: 16,
+                    dropdownColor: isDarkMode ? const Color(0xFF424242) : Colors.white,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedStatus = newValue!;
+                      });
+                    },
+                    items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Row(
+                          children: [
+                            Icon(Icons.circle, color: _getStatusColor(value), size: 14),
+                            const SizedBox(width: 10),
+                            Text(value),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
-                const Spacer(),
-                const Icon(
-                  Icons.more_vert,
-                  color: Colors.black54,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              task['title'] ?? 'No Title',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
               ),
             ),
-            const SizedBox(height: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildIconTextRow(
-                  icon: Icons.calendar_today,
-                  label: 'Start Date: ${task['start_date'] ?? 'N/A'}',
-                  iconColor: Colors.orangeAccent,
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Colors.greenAccent, Colors.teal],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                      offset: const Offset(2, 4),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                _buildIconTextRow(
-                  icon: Icons.calendar_today_outlined,
-                  label: 'Due Date: ${task['due_date'] ?? 'N/A'}',
-                  iconColor: Colors.redAccent,
+                padding: const EdgeInsets.all(10.0),
+                child: const Icon(
+                  Icons.add,
+                  color: Colors.white,
+                  size: 20.0,
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildIconTextRow(
-              icon: Icons.timelapse,
-              label: 'Days Remaining: $daysRemaining',
-              iconColor: Colors.greenAccent,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              task['description'] ?? 'No Description',
-              style: const TextStyle(
-                color: Colors.black54,
-                fontSize: 14,
-                height: 1.5,
               ),
+              onPressed: () => _showAddTaskModal(),
             ),
           ],
         ),
       ),
-    );
-  }
+      Expanded(
+        child: RefreshIndicator(
+          onRefresh: _fetchProjectData,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(12.0),
+            itemCount: filteredTasks.length,
+            itemBuilder: (context, index) {
+              return GestureDetector(
+                onTap: () {
+                  _showTaskViewModal(filteredTasks[index], index);
+                },
+                child: _buildAssignmentTaskCard(filteredTasks[index], index),
+              );
+            },
+          ),
+        ),
+      ),
+    ],
+  );
+}
 
-  Widget _buildIconTextRow({required IconData icon, required String label, Color? iconColor}) {
-    return Row(
-      children: [
-        Icon(icon, color: iconColor ?? Colors.black54, size: 18), 
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            label,
+Widget _buildProcessingOrDetailTab(List<Map<String, dynamic>> filteredTasks) {
+  final themeNotifier = Provider.of<ThemeNotifier>(context);
+  final bool isDarkMode = themeNotifier.isDarkMode;
+
+  return Column(
+    children: [
+      Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                decoration: BoxDecoration(
+                  gradient: isDarkMode
+                      ? const LinearGradient(
+                          colors: [Color(0xFF424242), Color(0xFF303030)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : const LinearGradient(
+                          colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                      offset: const Offset(1, 1),
+                    ),
+                  ],
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _statusOptions.contains(_selectedStatus) ? _selectedStatus : null,
+                    icon: const Icon(Icons.arrow_downward, color: Colors.amber),
+                    iconSize: 28,
+                    elevation: 16,
+                    dropdownColor: isDarkMode ? const Color(0xFF424242) : Colors.white,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedStatus = newValue!;
+                      });
+                    },
+                    items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
+                      return DropdownMenuItem<String>(
+                        value: value,
+                        child: Row(
+                          children: [
+                            Icon(Icons.circle, color: _getStatusColor(value), size: 14),
+                            const SizedBox(width: 10),
+                            Text(value),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Colors.greenAccent, Colors.teal],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                      offset: const Offset(2, 4),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(10.0),
+                child: const Icon(
+                  Icons.add,
+                  color: Colors.white,
+                  size: 20.0,
+                ),
+              ),
+              onPressed: () => _showAddTaskModal(),
+            ),
+          ],
+        ),
+      ),
+      Expanded(
+        child: RefreshIndicator(
+          onRefresh: _fetchProjectData,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(12.0),
+            itemCount: filteredTasks.length,
+            itemBuilder: (context, index) {
+              return GestureDetector(
+                onTap: () {
+                  _showTaskViewModal(filteredTasks[index], index);
+                },
+                child: _buildProcessingTaskCard(filteredTasks[index], index),
+              );
+            },
+          ),
+        ),
+      ),
+    ],
+  );
+}
+Widget _buildAssignmentTaskCard(Map<String, dynamic> task, int index) {
+  final progressColors = {
+    'Pending': Colors.orange,
+    'Processing': Colors.blue,
+    'Finished': Colors.green,
+  };
+
+  final startDate = DateTime.parse(task['start_date'] ?? DateTime.now().toIso8601String());
+  final dueDate = DateTime.parse(task['due_date'] ?? DateTime.now().toIso8601String());
+  final daysRemaining = dueDate.difference(startDate).inDays;
+
+  return Container(
+    margin: const EdgeInsets.symmetric(vertical: 10.0),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [
+          Color(0xFFE0E0F0),
+          Color(0xFFF7F7FF),
+          Color(0xFFFFFFFF),
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.1),
+          blurRadius: 8,
+          spreadRadius: 1,
+          offset: const Offset(4, 4),
+        ),
+      ],
+      borderRadius: BorderRadius.circular(16.0),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.circle,
+                color: progressColors[task['status']] ?? Colors.black,
+                size: 14,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                task['status'] ?? 'Unknown',
+                style: TextStyle(
+                  color: progressColors[task['status']] ?? Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const Spacer(),
+              const Icon(
+                Icons.more_vert,
+                color: Colors.black54,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            task['title'] ?? 'No Title',
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
               color: Colors.black87,
             ),
           ),
+          const SizedBox(height: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildIconTextRow(
+                icon: Icons.calendar_today,
+                label: 'Start Date: ${task['start_date'] ?? 'N/A'}',
+                iconColor: Colors.orangeAccent,
+              ),
+              const SizedBox(height: 8),
+              _buildIconTextRow(
+                icon: Icons.calendar_today_outlined,
+                label: 'Due Date: ${task['due_date'] ?? 'N/A'}',
+                iconColor: Colors.redAccent,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildIconTextRow(
+            icon: Icons.timelapse,
+            label: 'Days Remaining: $daysRemaining',
+            iconColor: Colors.greenAccent,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            task['description'] ?? 'No Description',
+            style: const TextStyle(
+              color: Colors.black54,
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Hardcoded avatars as per Figma design
+          SizedBox(
+            height: 50,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: 3, // Show 3 placeholders for now
+              itemBuilder: (context, memberIndex) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4.0),
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.black,
+                    child: Icon(Icons.account_circle, size: 30, color: Colors.grey),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
+  // Define hardcoded properties for the Processing Task card
+  final progressColors = {
+    'Pending': Colors.orange,
+    'Processing': Colors.blue,
+    'Finished': Colors.green,
+  };
+
+  // Hardcoded start date, due date, and days remaining
+  final startDate = '2024-09-07';
+  final dueDate = '2024-09-09';
+  final daysRemaining = 2; // Hardcoded for demonstration
+
+  return Container(
+    margin: const EdgeInsets.symmetric(vertical: 10.0),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [
+          Color(0xFFE0E0F0),
+          Color(0xFFF7F7FF),
+          Color(0xFFFFFFFF),
+        ],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.1),
+          blurRadius: 8,
+          spreadRadius: 1,
+          offset: const Offset(4, 4),
         ),
       ],
-    );
-  }
+      borderRadius: BorderRadius.circular(16.0),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.circle,
+                color: progressColors['Finished'], // Hardcoded to 'Finished'
+                size: 14,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Finished', // Hardcoded status
+                style: TextStyle(
+                  color: progressColors['Finished'],
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const Spacer(),
+              const Icon(
+                Icons.more_vert,
+                color: Colors.black54,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Hardcoded Task Title', // Hardcoded title
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildIconTextRow(
+                icon: Icons.calendar_today,
+                label: 'Start Date: $startDate', // Hardcoded start date
+                iconColor: Colors.orangeAccent,
+              ),
+              const SizedBox(height: 8),
+              _buildIconTextRow(
+                icon: Icons.calendar_today_outlined,
+                label: 'Due Date: $dueDate', // Hardcoded due date
+                iconColor: Colors.redAccent,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildIconTextRow(
+            icon: Icons.timelapse,
+            label: 'Days Remaining: $daysRemaining', // Hardcoded days remaining
+            iconColor: Colors.greenAccent,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Hardcoded Description', // Hardcoded description
+            style: TextStyle(
+              color: Colors.black54,
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+      
+        ],
+      ),
+    ),
+  );
+}
+
+
+Widget _buildIconTextRow({required IconData icon, required String label, required Color iconColor}) {
+  return Row(
+    children: [
+      Icon(icon, color: iconColor, size: 18),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.black87,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+
+// Widget _buildAssignmentTaskCard(Map<String, dynamic> task, int index) {
+//   final progressColors = {
+//     'Pending': Colors.orange,
+//     'Processing': Colors.blue,
+//     'Finished': Colors.green,
+//   };
+
+//   final startDate = DateTime.parse(task['start_date'] ?? DateTime.now().toIso8601String());
+//   final dueDate = DateTime.parse(task['due_date'] ?? DateTime.now().toIso8601String());
+//   final daysRemaining = dueDate.difference(startDate).inDays;
+
+//   return Container(
+//     margin: const EdgeInsets.symmetric(vertical: 10.0),
+//     decoration: BoxDecoration(
+//       gradient: const LinearGradient(
+//         colors: [
+//           Color(0xFFE0E0F0),
+//           Color(0xFFF7F7FF),
+//           Color(0xFFFFFFFF),
+//         ],
+//         begin: Alignment.topCenter,
+//         end: Alignment.bottomCenter,
+//       ),
+//       boxShadow: [
+//         BoxShadow(
+//           color: Colors.black.withOpacity(0.1),
+//           blurRadius: 8,
+//           spreadRadius: 1,
+//           offset: const Offset(4, 4),
+//         ),
+//       ],
+//       borderRadius: BorderRadius.circular(16.0),
+//     ),
+//     child: Padding(
+//       padding: const EdgeInsets.all(16.0),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Row(
+//             children: [
+//               Icon(
+//                 Icons.circle,
+//                 color: progressColors[task['status']] ?? Colors.black,
+//                 size: 14,
+//               ),
+//               const SizedBox(width: 8),
+//               Text(
+//                 task['status'] ?? 'Unknown',
+//                 style: TextStyle(
+//                   color: progressColors[task['status']] ?? Colors.black,
+//                   fontWeight: FontWeight.bold,
+//                   fontSize: 16,
+//                 ),
+//               ),
+//               const Spacer(),
+//               const Icon(
+//                 Icons.more_vert,
+//                 color: Colors.black54,
+//               ),
+//             ],
+//           ),
+//           const SizedBox(height: 12),
+//           Text(
+//             task['title'] ?? 'No Title',
+//             style: const TextStyle(
+//               fontSize: 20,
+//               fontWeight: FontWeight.w600,
+//               color: Colors.black87,
+//             ),
+//           ),
+//           const SizedBox(height: 12),
+//           Column(
+//             crossAxisAlignment: CrossAxisAlignment.start,
+//             children: [
+//               _buildIconTextRow(
+//                 icon: Icons.calendar_today,
+//                 label: 'Start Date: ${task['start_date'] ?? 'N/A'}',
+//                 iconColor: Colors.orangeAccent,
+//               ),
+//               const SizedBox(height: 8),
+//               _buildIconTextRow(
+//                 icon: Icons.calendar_today_outlined,
+//                 label: 'Due Date: ${task['due_date'] ?? 'N/A'}',
+//                 iconColor: Colors.redAccent,
+//               ),
+//             ],
+//           ),
+//           const SizedBox(height: 12),
+//           _buildIconTextRow(
+//             icon: Icons.timelapse,
+//             label: 'Days Remaining: $daysRemaining',
+//             iconColor: Colors.greenAccent,
+//           ),
+//           const SizedBox(height: 12),
+//           Text(
+//             task['description'] ?? 'No Description',
+//             style: const TextStyle(
+//               color: Colors.black54,
+//               fontSize: 14,
+//               height: 1.5,
+//             ),
+//           ),
+//           const SizedBox(height: 12),
+          
+//           SizedBox(
+//             height: 40,
+//             child: ListView.builder(
+//               scrollDirection: Axis.horizontal,
+//               itemCount: task['members']?.length ?? 3, 
+//               itemBuilder: (context, memberIndex) {
+//                 final member = task['members'] != null && memberIndex < task['members'].length
+//                     ? task['members'][memberIndex]
+//                     : null; // Use member data if available
+
+//                 final imageUrl = member?['image'] ?? 'https://example.com/default_avatar.jpg';
+
+//                 return Padding(
+//                   padding: const EdgeInsets.symmetric(horizontal: 4.0),
+//                   child: CircleAvatar(
+//                     backgroundImage: NetworkImage(imageUrl),
+//                     radius: 20,
+//                     onBackgroundImageError: (exception, stackTrace) {
+//                       print('Error loading member image: $exception');
+//                     },
+//                   ),
+//                 );
+//               },
+//             ),
+//           ),
+//         ],
+//       ),
+//     ),
+//   );
+// }
+
+
+// Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
+  
+//   return _buildAssignmentTaskCard(task, index); 
+// }
+
+// // Helper method for building icon-text rows
+// Widget _buildIconTextRow({required IconData icon, required String label, required Color iconColor}) {
+//   return Row(
+//     children: [
+//       Icon(icon, color: iconColor, size: 18),
+//       const SizedBox(width: 8),
+//       Expanded(
+//         child: Text(
+//           label,
+//           style: const TextStyle(
+//             fontSize: 14,
+//             color: Colors.black87,
+//           ),
+//         ),
+//       ),
+//     ],
+//   );
+// }
+
+
+  // Widget _buildIconTextRow({required IconData icon, required String label, Color? iconColor}) {
+  //   return Row(
+  //     children: [
+  //       Icon(icon, color: iconColor ?? Colors.black54, size: 18), 
+  //       const SizedBox(width: 8),
+  //       Expanded(
+  //         child: Text(
+  //           label,
+  //           style: const TextStyle(
+  //             fontSize: 14,
+  //             color: Colors.black87,
+  //           ),
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
 
   void _showTaskViewModal(Map<String, dynamic> task, int index) {
     showDialog(
@@ -5405,7 +5715,7 @@ Future<void> _confirmSelection() async {
       throw Exception('No token found');
     }
 
-    final url = Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/assignment-members/insert');
+    final url = Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/assignment-members/update/${widget.projectId}'); // Updated URL for member update
     final response = await http.post(
       url,
       headers: {
@@ -5423,16 +5733,18 @@ Future<void> _confirmSelection() async {
     print('Response body: ${response.body}');
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      print('Members added successfully!');
+      print('Members updated successfully!');
       Navigator.pop(context, true); // Close modal and return success
     } else {
       final responseBody = jsonDecode(response.body);
-      throw Exception('Failed to add members: ${responseBody['error'] ?? response.body}');
+      throw Exception('Failed to update members: ${responseBody['error'] ?? response.body}');
     }
   } catch (e) {
-    print('Error adding members: $e');
+    print('Error updating members: $e');
+   
   }
 }
+
   void _showMemberDetails(String employeeName) {
     showDialog(
       context: context,
