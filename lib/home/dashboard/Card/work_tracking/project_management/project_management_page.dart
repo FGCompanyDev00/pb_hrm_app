@@ -5402,22 +5402,77 @@ class __TaskModalState extends State<_TaskModal> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    Provider.of<ThemeNotifier>(context);
+@override
+Widget build(BuildContext context) {
+  Provider.of<ThemeNotifier>(context);
 
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      title: Text(widget.isEdit ? 'Edit Task' : 'Add Task'),  // Differentiating between Add and Edit
-      content: SingleChildScrollView(
+  return AlertDialog(
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+    titlePadding: EdgeInsets.zero,
+    title: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      decoration: const BoxDecoration(
+        color: Colors.amber,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(15),
+          topRight: Radius.circular(15),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          const Text(
+            'Processing or Detail',
+            style: TextStyle(color: Colors.black, fontSize: 19, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: 48), // To keep the title centered
+        ],
+      ),
+    ),
+    content: SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Add Button
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton.icon(
+                  onPressed: _saveTask,
+                  icon: const Icon(Icons.add, color: Colors.white),
+                  label: const Text(
+                    'Add',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber.shade700,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 15),
+
               // Title Field
+              const Text(
+                'Title',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 5),
               TextFormField(
                 controller: _titleController,
-                decoration: const InputDecoration(labelText: 'Title'),
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter a title';
@@ -5425,79 +5480,94 @@ class __TaskModalState extends State<_TaskModal> {
                   return null;
                 },
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 15),
 
-              // Status Dropdown
-              DropdownButtonFormField<String>(
-                value: _TaskModal.statusOptions.any((status) => status['id'] == _selectedStatus) ? _selectedStatus : null,
-                decoration: const InputDecoration(labelText: 'Status'),
-                icon: const Icon(Icons.arrow_downward),
-                iconSize: 24,
-                elevation: 16,
-                style: const TextStyle(color: Colors.black),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedStatus = newValue!;
-                  });
-                },
-                items: _TaskModal.statusOptions.map<DropdownMenuItem<String>>((status) {
-                  return DropdownMenuItem<String>(
-                    value: status['id'],
-                    child: Row(
+              // Status and Upload Image in the same row
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2, // Adjusts width ratio for the status dropdown
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.circle, color: _getStatusColor(status['name']), size: 12),
-                        const SizedBox(width: 8),
-                        Text(status['name']),
+                        const Text(
+                          'Status',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 5),
+                        DropdownButtonFormField<String>(
+                          value: _TaskModal.statusOptions.any((status) => status['id'] == _selectedStatus)
+                              ? _selectedStatus
+                              : null,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                          ),
+                          icon: const Icon(Icons.arrow_downward),
+                          style: const TextStyle(color: Colors.black),
+                          onChanged: (String? newValue) {
+                            setState(() {
+                              _selectedStatus = newValue!;
+                            });
+                          },
+                          items: _TaskModal.statusOptions.map<DropdownMenuItem<String>>((status) {
+                            return DropdownMenuItem<String>(
+                              value: status['id'],
+                              child: Row(
+                                children: [
+                                  Icon(Icons.circle, color: _getStatusColor(status['name']), size: 12),
+                                  const SizedBox(width: 8),
+                                  Text(status['name']),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
                       ],
                     ),
-                  );
-                }).toList(),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    flex: 1, // Adjusts width ratio for the upload button
+                    child: ElevatedButton.icon(
+                      onPressed: _pickFile,
+                      icon: const Icon(Icons.upload_file, color: Colors.white),
+                      label: const Text('Upload'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(vertical: 14), // Shorter button
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 10),
-
-              // Description Field
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 10),
-
+              
+              const SizedBox(height: 15),
               // Only show file upload and member addition for Add Task
               if (!widget.isEdit) ...[
                 ElevatedButton.icon(
-                  onPressed: _pickFile,
-                  icon: const Icon(Icons.attach_file),
-                  label: const Text('Upload File'),
+                  onPressed: _openAddPeoplePage,
+                  icon: const Icon(Icons.person_add),
+                  label: const Text('Add People'),
                   style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.green,
+                    backgroundColor: Colors.blue,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 15),
 
                 Wrap(
                   spacing: 8.0,
                   children: _files.map((file) {
                     return Chip(
                       label: Text(file.path.split('/').last),
-                      deleteIcon: const Icon(Icons.cancel, color: Colors.red), // 'X' button
-                      onDeleted: () => _removeFile(file), // Remove file on delete button click
+                      deleteIcon: const Icon(Icons.cancel, color: Colors.red),
+                      onDeleted: () => _removeFile(file),
                     );
                   }).toList(),
                 ),
-                const SizedBox(height: 10),
-
-                ElevatedButton.icon(
-                  onPressed: _openAddPeoplePage,
-                  icon: const Icon(Icons.person_add),
-                  label: const Text('Add Members'),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.blue,
-                  ),
-                ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 15),
               ],
 
               // Always show selected members for both Add and Edit Task
@@ -5528,28 +5598,31 @@ class __TaskModalState extends State<_TaskModal> {
                   );
                 }).toList(),
               ),
+              // Description Field
+              const Text(
+                'Description',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 5),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                ),
+                maxLines: 3,
+              ),
             ],
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: _saveTask,
-          style: ElevatedButton.styleFrom(
-            foregroundColor: Colors.black,
-            backgroundColor: Colors.amber,
-          ),
-          child: const Text('Save'),
-        ),
-      ],
-    );
-  }
+    ),
+  );
+}
+
+
+
+
 
   Color _getStatusColor(String statusName) {
     switch (statusName) {
