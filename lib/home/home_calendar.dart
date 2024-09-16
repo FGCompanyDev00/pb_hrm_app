@@ -233,6 +233,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
+    // Collect all events into a single list
+    List<Event> combinedEvents = [];
+    _events.value.forEach((key, value) {
+      combinedEvents.addAll(value);
+    });
+
     return Scaffold(
       body: Stack(
         children: [
@@ -242,7 +248,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
               _buildCalendar(isDarkMode),
               _buildSectionSeparator(),
               Expanded(
-                child: _buildCalendarView(context),
+                child: _buildCalendarView(context,  _eventsForDay),
               ),
             ],
           ),
@@ -324,16 +330,18 @@ class _HomeCalendarState extends State<HomeCalendar> {
           return isSameDay(_selectedDay, day);
         },
         onDaySelected: (selectedDay, focusedDay) {
-          if (_singleTapSelectedDay != null &&
-              isSameDay(_singleTapSelectedDay, selectedDay)) {
+          if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
+            // Double-tap detected, navigate to TimetablePage
             _showDayView(selectedDay);
             _singleTapSelectedDay = null;
           } else {
+            // Single-tap detected, update selected day
             setState(() {
               _singleTapSelectedDay = selectedDay;
               _selectedDay = selectedDay;
               _focusedDay = focusedDay;
-              _syncfusionSelectedDate = selectedDay;
+
+              // Fetch events for the selected day
               _eventsForDay = _getEventsForDay(selectedDay);
             });
           }
@@ -425,13 +433,25 @@ class _HomeCalendarState extends State<HomeCalendar> {
       children: [
         GradientAnimationLine(),
         SizedBox(
-          height: 15,
+          height: 5,
         ),
       ],
     );
   }
 
-  Widget _buildCalendarView(BuildContext context) {
+  final colors = [
+    Colors.blueAccent,
+    Colors.greenAccent,
+    Colors.purpleAccent,
+    Colors.orangeAccent,
+    Colors.tealAccent,
+  ];
+
+  Color getEventColor(Event event) {
+    return colors[event.hashCode % colors.length];
+  }
+
+  Widget _buildCalendarView(BuildContext context, List<Event> events) {
     // Time slots from 7 AM to 6 PM
     final List<String> timeSlots = List.generate(12, (index) {
       final hour = index + 7;
@@ -440,260 +460,212 @@ class _HomeCalendarState extends State<HomeCalendar> {
       return '${formattedHour.toString().padLeft(2, '0')} $period';
     });
 
-    // Example events
-    final List<Map<String, dynamic>> dummyEvents = [
-      {
-        'title': 'Sale Presentation: HI App production',
-        'time': '07:00 AM - 12:00 PM',
-        'location': 'Meeting Onsite',
-        'attendees': [
-          'assets/avatar1.png',
-          'assets/avatar2.png',
-          'assets/avatar3.png',
-          'assets/avatar4.png',
-          'assets/avatar5.png',
-          'assets/avatar6.png'
-        ],
-        'color': Colors.green.shade100,
-        'isMinutesOfMeeting': true,
-        'startHour': 7,
-        'duration': 5, // 5-hour duration
-      },
-      {
-        'title': 'Pick up from Hotel to Bank',
-        'time': '08:00 AM - 10:00 AM',
-        'location': '',
-        'attendees': [
-          'assets/avatar1.png',
-          'assets/avatar2.png',
-        ],
-        'color': Colors.blue.shade100,
-        'isMinutesOfMeeting': false,
-        'startHour': 8,
-        'duration': 2,
-      },
-      {
-        'title': 'Japan Vendor',
-        'time': '08:00 AM - 09:00 AM',
-        'location': 'Tokyo, Japan',
-        'attendees': [
-          'assets/avatar_placeholder.png',
-          'assets/avatar_placeholder.png',
-          'assets/avatar_placeholder.png',
-          'assets/avatar_placeholder.png',
-        ],
-        'color': Colors.red.shade100,
-        'isMinutesOfMeeting': false,
-        'startHour': 8,
-        'duration': 1,
-      },
-      {
-        'title': 'Deadline for HIAPP product',
-        'time': '09:00 AM - 10:00 AM',
-        'location': 'Meeting Onsite',
-        'attendees': [
-          'assets/avatar_placeholder.png',
-          'assets/avatar_placeholder.png',
-          'assets/avatar_placeholder.png',
-          'assets/avatar_placeholder.png',
-        ],
-        'color': Colors.orange.shade100,
-        'isMinutesOfMeeting': false,
-        'startHour': 9,
-        'duration': 2,
-      },
-    ];
+    // Display the selected day at the top
+    String selectedDateString = DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!);
 
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
       child: Column(
-        children: timeSlots.map((timeSlot) {
-          int timeSlotHour = int.parse(timeSlot.split(" ")[0]);
-          String period = timeSlot.split(" ")[1];
-          if (period == "PM" && timeSlotHour != 12) {
-            timeSlotHour += 12;
-          }
-
-          final List<Map<String, dynamic>> eventsForThisHour = dummyEvents.where((event) {
-            int eventStartHour = event['startHour'];
-            int eventEndHour = eventStartHour + (event['duration'] as int);
-            return timeSlotHour == eventStartHour || (timeSlotHour > eventStartHour && timeSlotHour < eventEndHour);
-          }).toList();
-
-          final Set<String> eventTitlesDisplayed = {};
-
-          return Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: MediaQuery.of(context).size.width > 800 ? 24.0 : 18.0,
-              vertical: MediaQuery.of(context).size.width > 800 ? 6.0 : 2.0,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: Text(
+                selectedDateString,
+                style: const TextStyle(
+                  fontSize: 16, // Smaller text
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black, // Black color
+                ),
+                textAlign: TextAlign.center, // Center the text
+              ),
             ),
-            child: Column(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12.0),
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width > 800
-                            ? MediaQuery.of(context).size.width * 0.12
-                            : MediaQuery.of(context).size.width * 0.10,
-                        height: 24,
-                        child: Text(
-                          timeSlot,
-                          style: TextStyle(
-                            fontSize: MediaQuery.of(context).size.width > 800
-                                ? MediaQuery.of(context).size.width * 0.025
-                                : MediaQuery.of(context).size.width * 0.03,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
+          ),
+
+          // Check if there are events for the selected day
+          if (events.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.only(top: 20),
+                child: Text(
+                  "There are no events this day",
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+            )
+          else
+            Column(
+              children: timeSlots.map((timeSlot) {
+                int timeSlotHour = int.parse(timeSlot.split(" ")[0]);
+                String period = timeSlot.split(" ")[1];
+                if (period == "PM" && timeSlotHour != 12) {
+                  timeSlotHour += 12;
+                }
+
+                // Filter events for the current time slot
+                final List<Event> eventsForThisHour = events.where((event) {
+                  int eventStartHour = event.startDateTime.hour;
+                  int eventEndHour = eventStartHour + event.endDateTime.difference(event.startDateTime).inHours;
+                  return timeSlotHour == eventStartHour || (timeSlotHour > eventStartHour && timeSlotHour < eventEndHour);
+                }).toList();
+
+                return Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: MediaQuery.of(context).size.width > 800 ? 24.0 : 18.0,
+                    vertical: MediaQuery.of(context).size.width > 800 ? 6.0 : 2.0,
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(right: 12.0),
+                            child: SizedBox(
+                              width: MediaQuery.of(context).size.width > 800
+                                  ? MediaQuery.of(context).size.width * 0.12
+                                  : MediaQuery.of(context).size.width * 0.10,
+                              height: 24,
+                              child: Text(
+                                timeSlot,
+                                style: TextStyle(
+                                  fontSize: MediaQuery.of(context).size.width > 800
+                                      ? MediaQuery.of(context).size.width * 0.025
+                                      : MediaQuery.of(context).size.width * 0.03,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
+                          Expanded(
+                            child: Column(
+                              children: eventsForThisHour.map((event) {
+                                // Get the dynamic color for the event
+                                final eventColor = getEventColor(event);
 
-                          int crossAxisCount = constraints.maxWidth > 1200
-                              ? 6
-                              : constraints.maxWidth > 800
-                              ? 4
-                              : constraints.maxWidth > 600
-                              ? 3
-                              : 2;
-
-                          // Increase height for larger screens (only for larger devices)
-                          double fixedHeight = constraints.maxWidth > 1200
-                              ? 210.0 // Increased height for large devices like iPad Pro
-                              : constraints.maxWidth > 800
-                              ? 180.0 // Increased height for medium devices
-                              : 120.0; // Unchanged for small devices
-
-                          return MasonryGridView.count(
-                            crossAxisCount: crossAxisCount,
-                            itemCount: eventsForThisHour.length,
-                            itemBuilder: (context, index) {
-                              final event = eventsForThisHour[index];
-
-                              if (eventTitlesDisplayed.contains(event['title'])) return const SizedBox.shrink();
-                              eventTitlesDisplayed.add(event['title']);
-
-                              // Max attendees per row limited to 3
-                              int maxAttendeesPerRow = 3;
-
-                              return InkWell(
-                                onTap: () {
-                                  // Navigate to the detail view on tap
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => EventDetailView(event: event),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(8.0),
-                                  height: fixedHeight,
-                                  decoration: BoxDecoration(
-                                    color: event['color'],
-                                    borderRadius: BorderRadius.circular(10),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 6,
-                                        offset: Offset(0, 3),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        event['title'] ?? 'No Title',
-                                        style: TextStyle(
-                                          fontSize: MediaQuery.of(context).size.width * (constraints.maxWidth > 800 ? 0.025 : 0.03),
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
+                                return InkWell(
+                                  onTap: () {
+                                    // Pass event data to EventDetailView without attendees
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => EventDetailView(
+                                          event: {
+                                            'title': event.title,
+                                            'time': '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
+                                            'location': event.description,
+                                            'status': event.status,
+                                          },
                                         ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
                                       ),
-                                      const SizedBox(height: 4),
-                                      if (event['location'] != '')
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(16.0),
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(15),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Colors.black12,
+                                          blurRadius: 8,
+                                          offset: Offset(0, 4),
+                                        ),
+                                      ],
+                                      border: Border(
+                                        right: BorderSide(
+                                          color: eventColor, // Dynamic right-side border color
+                                          width: 6, // Adjust the width of the colored border
+                                        ),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Event title
+                                        Text(
+                                          event.title,
+                                          style: TextStyle(
+                                            fontSize: MediaQuery.of(context).size.width * 0.04,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 1,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        // Event time (start and end time)
                                         Row(
                                           children: [
-                                            const Icon(Icons.location_on, size: 10, color: Colors.grey),
-                                            const SizedBox(width: 2),
-                                            Flexible(
-                                              child: Text(
-                                                event['location'] ?? 'No Location',
-                                                style: TextStyle(
-                                                  fontSize: MediaQuery.of(context).size.width * (constraints.maxWidth > 800 ? 0.022 : 0.027),
-                                                  color: Colors.black54,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                                maxLines: 1,
-                                              ),
+                                            const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
+                                              style: const TextStyle(color: Colors.black54),
                                             ),
                                           ],
                                         ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        event['time'] ?? 'No Time',
-                                        style: TextStyle(
-                                          fontSize: MediaQuery.of(context).size.width * (constraints.maxWidth > 800 ? 0.022 : 0.023),
-                                          color: Colors.black54,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      // Profile avatars - limited to 3 per card
-                                      Row(
-                                        children: List.generate(
-                                          (event['attendees'] as List<String>?)?.length ?? 0, (i) {
-                                          if (i < maxAttendeesPerRow) {
-                                            double avatarRadius = MediaQuery.of(context).size.width * 0.032;
-                                            return Padding(
-                                              padding: const EdgeInsets.only(right: 2.0),
-                                              child: CircleAvatar(
-                                                radius: avatarRadius,
-                                                backgroundImage: AssetImage(event['attendees'][i]),
-                                                onBackgroundImageError: (exception, stackTrace) => const Icon(Icons.error, size: 12),
+                                        const SizedBox(height: 8),
+                                        // Location
+                                        if (event.description.isNotEmpty) ...[
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                event.description,
+                                                style: const TextStyle(color: Colors.black54),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
                                               ),
-                                            );
-                                          } else if (i == maxAttendeesPerRow && (event['attendees'] as List<String>).length > maxAttendeesPerRow) {
-                                            return CircleAvatar(
-                                              radius: MediaQuery.of(context).size.width * 0.032,
-                                              child: Text(
-                                                '+${(event['attendees'] as List<String>).length - maxAttendeesPerRow}',
-                                                style: TextStyle(fontSize: MediaQuery.of(context).size.width * 0.020),
-                                              ),
-                                            );
-                                          }
-                                          return Container();
-                                        },
+                                            ],
+                                          ),
+                                        ],
+                                        const SizedBox(height: 8),
+                                        // Event status
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.check_circle, size: 16, color: Colors.grey),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              'Status: ${event.status}',
+                                              style: const TextStyle(color: Colors.black54),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 8),
+                                        // Event Type (if it's a meeting or not)
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.event, size: 16, color: Colors.grey),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              event.isMeeting ? 'Meeting' : 'Leave Request',
+                                              style: const TextStyle(color: Colors.black54),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                            mainAxisSpacing: 12.0,
-                            crossAxisSpacing: 12.0,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                          );
-                        },
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-              ],
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
-          );
-        }).toList(),
+        ],
       ),
     );
   }

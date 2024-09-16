@@ -7,7 +7,6 @@ class EventDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double avatarRadius = MediaQuery.of(context).size.width * 0.06;
     double horizontalPadding = MediaQuery.of(context).size.width * 0.05;
 
     return Scaffold(
@@ -101,29 +100,19 @@ class EventDetailView extends StatelessWidget {
                     ),
                   ],
                 ),
-              const SizedBox(height: 16),
-              const Text(
-                'Attendees',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 12.0,
-                runSpacing: 12.0,
-                children: (event['attendees'] as List<String>).map((avatar) {
-                  return CircleAvatar(
-                    radius: avatarRadius,
-                    backgroundImage: AssetImage(avatar),
-                    onBackgroundImageError: (exception, stackTrace) => const Icon(Icons.error),
-                    child: const Tooltip(
-                      message: "Attendee",
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.grey, size: 18),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Status: ${event['status'] ?? 'No Status'}',
+                    style: TextStyle(
+                      fontSize: MediaQuery.of(context).size.width * 0.04,
+                      color: Colors.black54,
                     ),
-                  );
-                }).toList(),
+                  ),
+                ],
               ),
             ],
           ),
