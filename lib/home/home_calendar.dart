@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
+import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,7 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:syncfusion_flutter_calendar/calendar.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -27,6 +29,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
+  DateTime _syncfusionSelectedDate = DateTime.now();
   List<Event> _eventsForDay = [];
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
@@ -36,6 +39,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
     _selectedDay = _focusedDay;
     _events = ValueNotifier({});
     _eventsForDay = [];
+    _fetchMeetingData();
 
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -44,7 +48,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
     InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-    _fetchLeaveRequests(DateTime.now());
+    _fetchLeaveRequests();
     _fetchMeetingData();
   }
 
@@ -52,9 +56,10 @@ class _HomeCalendarState extends State<HomeCalendar> {
     return DateTime(date.year, date.month, date.day);
   }
 
-  Future<void> _fetchLeaveRequests(DateTime selectedDate) async {
+  Future<void> _fetchLeaveRequests() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
+
     if (token == null) {
       _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');
       return;
@@ -68,24 +73,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
       if (response.statusCode == 200) {
         final List<dynamic> results = json.decode(response.body)['results'];
-        print("Leave Requests Fetched: $results"); // Log API response
-
         final leaveRequests = List<Map<String, dynamic>>.from(results);
+
         final Map<DateTime, List<Event>> approvalEvents = {};
-
         for (var item in leaveRequests) {
-          final DateTime startDate = item['take_leave_from'] != null
-              ? DateTime.parse(item['take_leave_from'])
-              : DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 8); // Default to 8 AM
-
-          DateTime endDate = item['take_leave_to'] != null
-              ? DateTime.parse(item['take_leave_to'])
-              : DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 17); // Default to 5 PM
-
-          if (!startDate.isBefore(endDate)) {
-            endDate = startDate.add(const Duration(hours: 1));
-          }
-
+          final DateTime startDate = _normalizeDate(DateTime.parse(item['take_leave_from']));
+          final DateTime endDate = _normalizeDate(DateTime.parse(item['take_leave_to']));
           final event = Event(
             item['name'],
             startDate,
@@ -109,7 +102,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
         setState(() {
           _events.value = approvalEvents;
-          print("_events.value populated: ${_events.value}"); // Log populated events
+          _eventsForDay = _getEventsForDay(_focusedDay);
         });
       } else {
         _showErrorDialog(
@@ -123,6 +116,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
   Future<void> _fetchMeetingData() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
+
     if (token == null) {
       _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');
       return;
@@ -136,12 +130,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
       if (response.statusCode == 200) {
         final List<dynamic> results = json.decode(response.body)['results'];
-        print("Meeting Data Fetched: $results"); // Log API response
+        final Map<DateTime, List<Event>> meetingEvents = {};
 
         for (var item in results) {
           final DateTime startDate = DateTime.parse(item['fromdate']);
           final DateTime endDate = DateTime.parse(item['todate']);
-
+          final Color eventColor = _parseColor(item['backgroundColor']);
           final event = Event(
             item['title'],
             startDate,
@@ -151,11 +145,22 @@ class _HomeCalendarState extends State<HomeCalendar> {
             true,
           );
 
-          setState(() {
-            _addEventToDay(event, startDate, endDate);
-            print("_events.value after adding meeting: ${_events.value}"); // Log added meeting events
-          });
+          for (var day = startDate;
+          day.isBefore(endDate.add(const Duration(days: 1)));
+          day = day.add(const Duration(days: 1))) {
+            final normalizedDay = _normalizeDate(day);
+            if (meetingEvents.containsKey(normalizedDay)) {
+              meetingEvents[normalizedDay]!.add(event);
+            } else {
+              meetingEvents[normalizedDay] = [event];
+            }
+          }
         }
+
+        setState(() {
+          _events.value.addAll(meetingEvents);
+          _eventsForDay = _getEventsForDay(_focusedDay);
+        });
       } else {
         _showErrorDialog('Failed to Load Meetings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
@@ -164,29 +169,22 @@ class _HomeCalendarState extends State<HomeCalendar> {
     }
   }
 
+  Color _parseColor(String colorString) {
+    return Color(int.parse(colorString.replaceFirst('#', '0xff')));
+  }
+
   List<Event> _getEventsForDay(DateTime day) {
     final normalizedDay = _normalizeDate(day);
-    final events = _events.value[normalizedDay] ?? [];
-    print("Events for the day $normalizedDay: $events"); // Log events for specific day
-    return events;
+    return _events.value[normalizedDay] ?? [];
   }
 
-  List<Event> _getOverlappingEvents(Event event) {
-    return _eventsForDay.where((otherEvent) => _doEventsOverlap(event, otherEvent)).toList();
-  }
-
-  _showDayView(DateTime selectedDay) {
+  void _showDayView(DateTime selectedDay) {
     final List<Event> dayEvents = _getEventsForDay(selectedDay);
 
     final List<TimetableItem<String>> timetableItems = dayEvents.map((event) {
-      DateTime start = event.startDateTime;
-      DateTime end = event.endDateTime;
-
-      // Default time if only the date is provided
-
       return TimetableItem<String>(
-        start,
-        end,
+        event.startDateTime,
+        event.endDateTime,
         data: event.title,
       );
     }).toList();
@@ -208,19 +206,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
       event.endDateTime,
       data: event.title,
     );
-  }
-
-  void _addEventToDay(Event event, DateTime startDate, DateTime endDate) {
-    for (var day = startDate;
-    day.isBefore(endDate.add(const Duration(days: 1)));
-    day = day.add(const Duration(days: 1))) {
-      final normalizedDay = DateTime(day.year, day.month, day.day);
-      if (_events.value.containsKey(normalizedDay)) {
-        _events.value[normalizedDay]!.add(event);
-      } else {
-        _events.value[normalizedDay] = [event];
-      }
-    }
   }
 
   void _showErrorDialog(String title, String message) {
@@ -315,183 +300,384 @@ class _HomeCalendarState extends State<HomeCalendar> {
     );
   }
 
-  bool _doEventsOverlap(Event event1, Event event2) {
-    return event1.endDateTime.isAfter(event2.startDateTime) &&
-        event1.startDateTime.isBefore(event2.endDateTime);
-  }
-
   Widget _buildCalendar(bool isDarkMode) {
-    return StreamBuilder<Map<DateTime, List<Event>>>(
-      stream: _getEventStream(), // Using stream for real-time updates
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator()); // Loading spinner
-        }
+    return Container(
+      height: 285,
+      margin: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.black : Colors.white,
+        boxShadow: const [
 
-        final events = snapshot.data!;
-        return Container(
-          height: 280,
-          margin: const EdgeInsets.all(10.0),
-          decoration: BoxDecoration(
-            color: isDarkMode ? Colors.black : Colors.white,
-            borderRadius: BorderRadius.circular(8),
+        ],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: TableCalendar<Event>(
+        rowHeight: 40,
+        firstDay: DateTime.utc(2010, 10, 16),
+        lastDay: DateTime.utc(2030, 3, 14),
+        focusedDay: _focusedDay,
+        calendarFormat: CalendarFormat.month,
+        availableCalendarFormats: const {
+          CalendarFormat.month: 'Month',
+        },
+        selectedDayPredicate: (day) {
+          return isSameDay(_selectedDay, day);
+        },
+        onDaySelected: (selectedDay, focusedDay) {
+          if (_singleTapSelectedDay != null &&
+              isSameDay(_singleTapSelectedDay, selectedDay)) {
+            _showDayView(selectedDay);
+            _singleTapSelectedDay = null;
+          } else {
+            setState(() {
+              _singleTapSelectedDay = selectedDay;
+              _selectedDay = selectedDay;
+              _focusedDay = focusedDay;
+              _syncfusionSelectedDate = selectedDay;
+              _eventsForDay = _getEventsForDay(selectedDay);
+            });
+          }
+        },
+        onFormatChanged: (format) {
+          if (_calendarFormat != format) {
+            setState(() {
+              _calendarFormat = format;
+            });
+          }
+        },
+        onPageChanged: (focusedDay) {
+          setState(() {
+            _focusedDay = focusedDay;
+          });
+        },
+        eventLoader: _getEventsForDay,
+        calendarStyle: const CalendarStyle(
+          todayDecoration: BoxDecoration(
+            color: Colors.orangeAccent,
+            shape: BoxShape.circle,
           ),
-          child: GestureDetector(
-            onDoubleTap: () {
-              // Navigate to the timetable page on double-tap
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TimetablePage(
-                    date: _focusedDay,
-                    events: _eventsForDay.map(convertEventToTimetableItem).toList(),
-                  ),
+          selectedDecoration: BoxDecoration(
+            color: Colors.green,
+            shape: BoxShape.circle,
+          ),
+          outsideDaysVisible: false,
+          weekendTextStyle: TextStyle(color: Colors.black),
+          defaultTextStyle: TextStyle(color: Colors.black),
+        ),
+        headerStyle: const HeaderStyle(
+          titleCentered: true,
+          formatButtonVisible: false,
+          titleTextStyle: TextStyle(
+            fontSize: 20.0,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+          leftChevronIcon: Icon(
+            Icons.chevron_left,
+            size: 16,
+            color: Colors.black,
+          ),
+          rightChevronIcon: Icon(
+            Icons.chevron_right,
+            size: 16,
+            color: Colors.black,
+          ),
+        ),
+        calendarBuilders: CalendarBuilders(
+          markerBuilder: (context, date, events) {
+            if (events.isNotEmpty) {
+              return Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  width: 16,
+                  height: 3,
+                  color: Colors.green,
                 ),
               );
-            },
-            child: SfCalendar(
-              view: CalendarView.month,
-              initialSelectedDate: _selectedDay,
-              dataSource: MeetingDataSource(_getAllEvents()), // Using stream data
-              monthViewSettings: MonthViewSettings(
-                appointmentDisplayMode: MonthAppointmentDisplayMode.indicator,
-                showAgenda: false,
-                showTrailingAndLeadingDates: false,
-              ),
-              todayHighlightColor: Colors.orangeAccent,
-              selectionDecoration: BoxDecoration(
-                color: Colors.transparent,
-                border: Border.all(color: Colors.orange, width: 2),
-                shape: BoxShape.circle,
-              ),
-              onTap: (CalendarTapDetails details) {
-                if (details.targetElement == CalendarElement.calendarCell) {
-                  setState(() {
-                    _selectedDay = details.date;
-                    _eventsForDay = _getEventsForDay(details.date!); // Update events for the selected day
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Events updated for ${DateFormat.yMMMMd().format(details.date!)}')),
-                  );
-                }
-              },
-            ),
-          ),
-        );
-      },
+            }
+            return null;
+          },
+        ),
+      ),
     );
   }
 
-  List<Event> _getAllEvents() {
-    // Combines all events in _events into a single list
-    return _events.value.values.expand((eventList) => eventList).toList();
-  }
-
-// Stream method to simulate real-time data updates
-  Stream<Map<DateTime, List<Event>>> _getEventStream() async* {
-    while (true) {
-      await Future.delayed(const Duration(seconds: 2)); // Simulate data fetching delay
-      yield _events.value; // Emit current events map for real-time updates
-    }
-  }
-
   Widget _buildSectionSeparator() {
-    return Column(
+    return const Column(
       children: [
-        Container(
-          height: 8.0,
-          margin: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 2.0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                spreadRadius: 2,
-                blurRadius: 6,
-                offset: const Offset(0, 4),
-              ),
-            ],
-            gradient: const LinearGradient(
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-              colors: [
-                Colors.yellow,
-                Colors.orange,
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(
-          height: 12,
+        GradientAnimationLine(),
+        SizedBox(
+          height: 15,
         ),
       ],
     );
   }
 
   Widget _buildCalendarView(BuildContext context) {
-    return StreamBuilder<List<Event>>(
-      stream: _getDayEventStream(), // Stream for real-time updates
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator()); // Loading spinner
-        }
+    // Time slots from 7 AM to 6 PM
+    final List<String> timeSlots = List.generate(12, (index) {
+      final hour = index + 7;
+      final formattedHour = hour > 12 ? hour - 12 : hour;
+      final period = hour >= 12 ? 'PM' : 'AM';
+      return '${formattedHour.toString().padLeft(2, '0')} $period';
+    });
 
-        final dayEvents = snapshot.data!;
-        if (dayEvents.isEmpty) {
-          return const Center(child: Text('No events for the selected day.'));
-        }
-
-        return Container(
-          height: 400,  // Adjust the height for day view display
-          margin: const EdgeInsets.all(10.0),
-          child: SfCalendar(
-            view: CalendarView.day,
-            dataSource: MeetingDataSource(dayEvents), // Display events for selected day
-            initialDisplayDate: _selectedDay,
-            timeSlotViewSettings: TimeSlotViewSettings(
-              startHour: _getStartHour(dayEvents), // Start at the first event's time or a default value
-              endHour: _getStartHour(dayEvents) + 4, // Limit to 4 hours after the start hour
-              timeIntervalHeight: 60,
-              timeFormat: 'h:mm a',
-            ),
-            appointmentBuilder: (BuildContext context, CalendarAppointmentDetails details) {
-              final Event event = details.appointments.first;
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 4.0),
-                decoration: BoxDecoration(
-                  color: Colors.green[100],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green, width: 2), // Green border as before
-                ),
-                child: ListTile(
-                  title: Text(
-                    event.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text('${event.formattedTime} - ${DateFormat.jm().format(event.endDateTime)}'),
-                  trailing: event.isMeeting
-                      ? const Icon(Icons.videocam, color: Colors.orange)
-                      : const Icon(Icons.work, color: Colors.green),
-                ),
-              );
-            },
-          ),
-        );
+    // Example events
+    final List<Map<String, dynamic>> dummyEvents = [
+      {
+        'title': 'Sale Presentation: HI App production',
+        'time': '07:00 AM - 12:00 PM',
+        'location': 'Meeting Onsite',
+        'attendees': [
+          'assets/avatar1.png',
+          'assets/avatar2.png',
+          'assets/avatar3.png',
+          'assets/avatar4.png',
+          'assets/avatar5.png',
+          'assets/avatar6.png'
+        ],
+        'color': Colors.green.shade100,
+        'isMinutesOfMeeting': true,
+        'startHour': 7,
+        'duration': 5, // 5-hour duration
       },
+      {
+        'title': 'Pick up from Hotel to Bank',
+        'time': '08:00 AM - 10:00 AM',
+        'location': '',
+        'attendees': [
+          'assets/avatar1.png',
+          'assets/avatar2.png',
+        ],
+        'color': Colors.blue.shade100,
+        'isMinutesOfMeeting': false,
+        'startHour': 8,
+        'duration': 2,
+      },
+      {
+        'title': 'Japan Vendor',
+        'time': '08:00 AM - 09:00 AM',
+        'location': 'Tokyo, Japan',
+        'attendees': [
+          'assets/avatar_placeholder.png',
+          'assets/avatar_placeholder.png',
+          'assets/avatar_placeholder.png',
+          'assets/avatar_placeholder.png',
+        ],
+        'color': Colors.red.shade100,
+        'isMinutesOfMeeting': false,
+        'startHour': 8,
+        'duration': 1,
+      },
+      {
+        'title': 'Deadline for HIAPP product',
+        'time': '09:00 AM - 10:00 AM',
+        'location': 'Meeting Onsite',
+        'attendees': [
+          'assets/avatar_placeholder.png',
+          'assets/avatar_placeholder.png',
+          'assets/avatar_placeholder.png',
+          'assets/avatar_placeholder.png',
+        ],
+        'color': Colors.orange.shade100,
+        'isMinutesOfMeeting': false,
+        'startHour': 9,
+        'duration': 2,
+      },
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: Column(
+        children: timeSlots.map((timeSlot) {
+          int timeSlotHour = int.parse(timeSlot.split(" ")[0]);
+          String period = timeSlot.split(" ")[1];
+          if (period == "PM" && timeSlotHour != 12) {
+            timeSlotHour += 12;
+          }
+
+          final List<Map<String, dynamic>> eventsForThisHour = dummyEvents.where((event) {
+            int eventStartHour = event['startHour'];
+            int eventEndHour = eventStartHour + (event['duration'] as int);
+            return timeSlotHour == eventStartHour || (timeSlotHour > eventStartHour && timeSlotHour < eventEndHour);
+          }).toList();
+
+          final Set<String> eventTitlesDisplayed = {};
+
+          return Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: MediaQuery.of(context).size.width > 800 ? 24.0 : 18.0,
+              vertical: MediaQuery.of(context).size.width > 800 ? 6.0 : 2.0,
+            ),
+            child: Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 12.0),
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width > 800
+                            ? MediaQuery.of(context).size.width * 0.12
+                            : MediaQuery.of(context).size.width * 0.10,
+                        height: 24,
+                        child: Text(
+                          timeSlot,
+                          style: TextStyle(
+                            fontSize: MediaQuery.of(context).size.width > 800
+                                ? MediaQuery.of(context).size.width * 0.025
+                                : MediaQuery.of(context).size.width * 0.03,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+
+                          int crossAxisCount = constraints.maxWidth > 1200
+                              ? 6
+                              : constraints.maxWidth > 800
+                              ? 4
+                              : constraints.maxWidth > 600
+                              ? 3
+                              : 2;
+
+                          // Increase height for larger screens (only for larger devices)
+                          double fixedHeight = constraints.maxWidth > 1200
+                              ? 210.0 // Increased height for large devices like iPad Pro
+                              : constraints.maxWidth > 800
+                              ? 180.0 // Increased height for medium devices
+                              : 120.0; // Unchanged for small devices
+
+                          return MasonryGridView.count(
+                            crossAxisCount: crossAxisCount,
+                            itemCount: eventsForThisHour.length,
+                            itemBuilder: (context, index) {
+                              final event = eventsForThisHour[index];
+
+                              if (eventTitlesDisplayed.contains(event['title'])) return const SizedBox.shrink();
+                              eventTitlesDisplayed.add(event['title']);
+
+                              // Max attendees per row limited to 3
+                              int maxAttendeesPerRow = 3;
+
+                              return InkWell(
+                                onTap: () {
+                                  // Navigate to the detail view on tap
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => EventDetailView(event: event),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(8.0),
+                                  height: fixedHeight,
+                                  decoration: BoxDecoration(
+                                    color: event['color'],
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 6,
+                                        offset: Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        event['title'] ?? 'No Title',
+                                        style: TextStyle(
+                                          fontSize: MediaQuery.of(context).size.width * (constraints.maxWidth > 800 ? 0.025 : 0.03),
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black87,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      if (event['location'] != '')
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.location_on, size: 10, color: Colors.grey),
+                                            const SizedBox(width: 2),
+                                            Flexible(
+                                              child: Text(
+                                                event['location'] ?? 'No Location',
+                                                style: TextStyle(
+                                                  fontSize: MediaQuery.of(context).size.width * (constraints.maxWidth > 800 ? 0.022 : 0.027),
+                                                  color: Colors.black54,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        event['time'] ?? 'No Time',
+                                        style: TextStyle(
+                                          fontSize: MediaQuery.of(context).size.width * (constraints.maxWidth > 800 ? 0.022 : 0.023),
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      // Profile avatars - limited to 3 per card
+                                      Row(
+                                        children: List.generate(
+                                          (event['attendees'] as List<String>?)?.length ?? 0, (i) {
+                                          if (i < maxAttendeesPerRow) {
+                                            double avatarRadius = MediaQuery.of(context).size.width * 0.032;
+                                            return Padding(
+                                              padding: const EdgeInsets.only(right: 2.0),
+                                              child: CircleAvatar(
+                                                radius: avatarRadius,
+                                                backgroundImage: AssetImage(event['attendees'][i]),
+                                                onBackgroundImageError: (exception, stackTrace) => const Icon(Icons.error, size: 12),
+                                              ),
+                                            );
+                                          } else if (i == maxAttendeesPerRow && (event['attendees'] as List<String>).length > maxAttendeesPerRow) {
+                                            return CircleAvatar(
+                                              radius: MediaQuery.of(context).size.width * 0.032,
+                                              child: Text(
+                                                '+${(event['attendees'] as List<String>).length - maxAttendeesPerRow}',
+                                                style: TextStyle(fontSize: MediaQuery.of(context).size.width * 0.020),
+                                              ),
+                                            );
+                                          }
+                                          return Container();
+                                        },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                            mainAxisSpacing: 12.0,
+                            crossAxisSpacing: 12.0,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
     );
-  }
-
-// Real-time stream for day-specific events
-  Stream<List<Event>> _getDayEventStream() async* {
-    while (true) {
-      await Future.delayed(const Duration(seconds: 2)); // Simulate data fetching delay
-      yield _getEventsForDay(_selectedDay!); // Emit events for the selected day
-    }
-  }
-
-// Get start hour based on earliest event
-  double _getStartHour(List<Event> events) {
-    return events.isEmpty ? 8.0 : events.map((e) => e.startDateTime.hour).reduce((a, b) => a < b ? a : b).toDouble();
   }
 
   void _showAddEventOptionsPopup() {
@@ -502,8 +688,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
         return Stack(
           children: [
             Positioned(
-              top: 45,
-              right: 38,
+              top: 75,
+              right: 40,
               child: Material(
                 color: Colors.transparent,
                 child: Container(

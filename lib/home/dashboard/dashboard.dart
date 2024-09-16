@@ -508,10 +508,11 @@ class _DashboardState extends State<Dashboard> {
                   children: [
                     ElevatedButton(
                       onPressed: () {
-                        Navigator.of(context).pop();
+                        Navigator.of(context).pop(); // Closes the dialog
                       },
                       style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.black, backgroundColor: Colors.grey.shade200,
+                        foregroundColor: Colors.black,
+                        backgroundColor: Colors.grey.shade200,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
@@ -520,11 +521,13 @@ class _DashboardState extends State<Dashboard> {
                     ),
                     ElevatedButton(
                       onPressed: () {
+                        // Pop any active dialogs
                         Navigator.of(context).pop();
-                        Navigator.popUntil(context, (route) => route.isFirst);
-                        Navigator.pushReplacement(
-                          context,
+
+                        // Navigate back to the first route in the stack and replace with LoginPage
+                        Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(builder: (context) => const LoginPage()),
+                              (Route<dynamic> route) => false, // Removes all previous routes
                         );
                       },
                       style: ElevatedButton.styleFrom(

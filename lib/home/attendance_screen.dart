@@ -700,7 +700,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ? Colors.orange
             : Colors.red;
     final now = DateTime.now();
-    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 5, 0); // 8:00 AM
+    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 8, 0); // 8:00 AM
     final checkInDisabledTime = DateTime(now.year, now.month, now.day, 13, 0); // 1:00 PM
     bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
     bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 0) && _isCheckOutAvailable;
