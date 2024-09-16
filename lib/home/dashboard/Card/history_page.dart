@@ -77,16 +77,45 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Map<String, dynamic> _formatPendingItem(Map<String, dynamic> item) {
+    String title;
+    String startDate;
+    String endDate;
+    String details;
+
+    // Check type and adjust accordingly
+    if (item['types'] == 'car') {
+      title = item['purpose'] ?? 'Car Request';
+      startDate = item['date_out'] ?? 'N/A';
+      endDate = item['date_in'] ?? 'N/A';
+      details = 'Driver: ${item['driver_name'] ?? 'N/A'}, Place: ${item['place'] ?? 'N/A'}';
+    } else if (item['types'] == 'leave') {
+      title = item['name'] ?? 'Leave Request';
+      startDate = item['take_leave_from'] ?? 'N/A';
+      endDate = item['take_leave_to'] ?? 'N/A';
+      details = item['take_leave_reason'] ?? 'No Details Provided';
+    } else if (item['types'] == 'meeting') {
+      title = item['title'] ?? 'Meeting Request';
+      startDate = item['from_date_time'] ?? 'N/A';
+      endDate = item['to_date_time'] ?? 'N/A';
+      details = 'Room: ${item['room_name'] ?? 'No Room Info'}, Floor: ${item['room_floor'] ?? 'N/A'}';
+    } else {
+      title = 'Unknown Request';
+      startDate = 'N/A';
+      endDate = 'N/A';
+      details = 'No Details Available';
+    }
+
     return {
-      'title': item['name'] ?? 'No Title',
-      'startDate': item['take_leave_from'] ?? "N/A",
-      'endDate': item['take_leave_to'] ?? "N/A",
-      'room': 'Leave Type',
+      'title': title,
+      'startDate': startDate,
+      'endDate': endDate,
+      'room': 'Request Type: ${item['types'] ?? 'Unknown'}',
       'status': item['status'] ?? 'Unknown',
       'statusColor': _getStatusColor(item['status']),
       'icon': _getIconForType(item['types'], item['status']),
       'iconColor': _getStatusColor(item['status']),
-      'details': item['take_leave_reason'] ?? 'No Details Provided',
+      'iconColor': _getStatusColor(item['status']),
+      'details': details,
       'timestamp': DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now(),
       'img_name': item['img_name'] ?? 'https://via.placeholder.com/150',
       'types': item['types'] ?? 'Unknown',
@@ -194,7 +223,7 @@ class _HistoryPageState extends State<HistoryPage> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(top: 40.0,left: 16.0, right: 16.0),
+        padding: const EdgeInsets.only(top: 40.0, left: 16.0, right: 16.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -610,7 +639,7 @@ class DetailsPage extends StatelessWidget {
                 ],
               ),
               child: Text(
-               item['status'] ?? "Unknown",
+                item['status'] ?? "Unknown",
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -769,5 +798,3 @@ class DetailsPage extends StatelessWidget {
     );
   }
 }
-
-
