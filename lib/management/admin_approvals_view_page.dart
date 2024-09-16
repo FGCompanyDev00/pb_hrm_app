@@ -161,7 +161,7 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _buildInfoRow(Icons.bookmark, 'Title', widget.item['name'] ?? 'No Title'),
+        _buildInfoRow(Icons.bookmark, 'Title', widget.item['title'] ?? 'No Title'),
         const SizedBox(height: 8),
         _buildInfoRow(Icons.calendar_today, 'Date',
             '${widget.item['take_leave_from']} - ${widget.item['take_leave_to']}'),
@@ -294,7 +294,7 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
       }),
     );
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       setState(() {
         lineManagerImage = widget.item['line_manager_img']; // Update line manager image
         lineManagerDecision = decision;

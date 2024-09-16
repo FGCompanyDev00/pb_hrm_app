@@ -59,18 +59,14 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
 
       if (approvalResponse.statusCode == 200) {
         final dynamic approvalData = json.decode(approvalResponse.body);
-        if (approvalData is Map<String, dynamic> &&
-            approvalData.containsKey('results')) {
-          final List<dynamic>? approvalItemsData = approvalData['results'];
-          if (approvalItemsData != null) {
-            approvalItems = approvalItemsData
-                .whereType<Map<String, dynamic>>()
-                .where((item) =>
-            item['status'] == 'Waiting' ||
-                item['status'] == 'Branch Waiting' ||
-                item['status'] == 'Unknown')
-                .toList();
-          }
+
+        // Check if the response is a Map and contains a list under a specific key
+        if (approvalData is Map<String, dynamic> && approvalData.containsKey('results')) {
+          final List<dynamic> results = approvalData['results'];
+          approvalItems = results
+              .whereType<Map<String, dynamic>>()
+              .where((item) => item['status'] == 'Waiting')
+              .toList();
         }
       }
 
@@ -85,16 +81,15 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
 
       if (historyResponse.statusCode == 200) {
         final dynamic historyData = json.decode(historyResponse.body);
-        if (historyData is Map<String, dynamic> &&
-            historyData.containsKey('results')) {
-          final List<dynamic>? historyItemsData = historyData['results'];
-          if (historyItemsData != null) {
-            historyItems = historyItemsData
-                .whereType<Map<String, dynamic>>()
-                .where((item) =>
-            item['status'] == 'Approved' || item['status'] == 'reject')
-                .toList();
-          }
+
+        // Check if the response is a Map and contains a list under a specific key
+        if (historyData is Map<String, dynamic> && historyData.containsKey('results')) {
+          final List<dynamic> results = historyData['results'];
+          historyItems = results
+              .whereType<Map<String, dynamic>>()
+              .where((item) =>
+          item['status'] == 'Approved' || item['status'] == 'Rejected')
+              .toList();
         }
       }
     } catch (e) {
@@ -191,10 +186,10 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                       icon: const Icon(Icons.arrow_back,
                           size: 30, color: Colors.black),
                       onPressed: () {
-                        Navigator.pushReplacement(
+                        Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(
-                              builder: (context) => const Dashboard()),
+                          MaterialPageRoute(builder: (context) => const Dashboard()),
+                              (Route<dynamic> route) => false,
                         );
                       },
                     ),
@@ -370,10 +365,16 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                           const SizedBox(height: 4),
                           // Date range
                           Text(
-                            'From: ${item['take_leave_from'] ?? 'N/A'} To: ${item['take_leave_to'] ?? 'N/A'}',
+                            'From: ${item['take_leave_from']} To: ${item['take_leave_to']}',
                             style: const TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                           const SizedBox(height: 4),
+                          // Room information
+                          Text(
+                            'Room: ${item['room_name'] ?? 'No Room Info'}',
+                            style: const TextStyle(fontSize: 12, color: Colors.orange),
+                          ),
+                          const SizedBox(height: 8),
                           // Status row
                           Row(
                             children: [
@@ -385,7 +386,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                                   borderRadius: BorderRadius.circular(12.0),
                                 ),
                                 child: Text(
-                                  item['status'] ?? 'Unknown',
+                                  item['status'],
                                   style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
                                 ),
                               ),

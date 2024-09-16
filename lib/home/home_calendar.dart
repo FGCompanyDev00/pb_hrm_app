@@ -321,136 +321,78 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   Widget _buildCalendar(bool isDarkMode) {
-    return Container(
-      height: 280,
-      margin: const EdgeInsets.all(10.0),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.black : Colors.white,
-        boxShadow: const [],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TableCalendar<Event>(
-        rowHeight: 38,
-        firstDay: DateTime.utc(2010, 10, 16),
-        lastDay: DateTime.utc(2030, 3, 14),
-        focusedDay: _focusedDay,
-        calendarFormat: CalendarFormat.month,
-        availableCalendarFormats: const {
-          CalendarFormat.month: 'Month',
-        },
-        selectedDayPredicate: (day) {
-          return isSameDay(_selectedDay, day);
-        },
-        onDaySelected: (selectedDay, focusedDay) {
-          if (_singleTapSelectedDay != null &&
-              isSameDay(_singleTapSelectedDay, selectedDay)) {
-            _showDayView(selectedDay);
-            _singleTapSelectedDay = null;
-          } else {
-            setState(() {
-              _singleTapSelectedDay = selectedDay;
-              _selectedDay = selectedDay;
-              _focusedDay = focusedDay;
-              _eventsForDay = _getEventsForDay(selectedDay);
-            });
-          }
-        },
-        onFormatChanged: (format) {
-          if (_calendarFormat != format) {
-            setState(() {
-              _calendarFormat = format;
-            });
-          }
-        },
-        onPageChanged: (focusedDay) {
-          setState(() {
-            _focusedDay = focusedDay;
-          });
-        },
-        eventLoader: _getEventsForDay,
-        calendarStyle: const CalendarStyle(
-          todayDecoration: BoxDecoration(
-            color: Colors.orangeAccent,
-            shape: BoxShape.circle,
-          ),
-          selectedDecoration: BoxDecoration(
-            color: Colors.orange,
-            shape: BoxShape.circle,
-          ),
-          outsideDaysVisible: false,
-          weekendTextStyle: TextStyle(color: Colors.black),
-          defaultTextStyle: TextStyle(color: Colors.black),
-        ),
-        headerStyle: HeaderStyle(
-          titleCentered: true,
-          formatButtonVisible: false,
-          titleTextStyle: const TextStyle(
-            fontSize: 20.0,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-          leftChevronIcon: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey, width: 1),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Icon(
-              Icons.chevron_left,
-              size: 16,
-              color: Colors.black,
-            ),
-          ),
-          rightChevronIcon: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey, width: 1),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: const Icon(
-              Icons.chevron_right,
-              size: 16,
-              color: Colors.black,
-            ),
-          ),
-        ),
-        calendarBuilders: CalendarBuilders(
-          markerBuilder: (context, date, events) {
-            if (events.isNotEmpty) {
-              List<Widget> markers = [];
-              for (var i = 0; i < (events.length > 3 ? 3 : events.length); i++) {
-                final event = events[i];
-                final isMeeting = event.isMeeting;
-                final isMultiDayEvent = event.startDateTime.isBefore(date) && event.endDateTime.isAfter(date);
+    return StreamBuilder<Map<DateTime, List<Event>>>(
+      stream: _getEventStream(), // Using stream for real-time updates
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator()); // Loading spinner
+        }
 
-                // Green line for leave requests, orange line for meetings
-                final eventColor = isMeeting ? Colors.orange : Colors.green;
-
-                markers.add(
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 0.8),
-                      height: 3,
-                      width: isMultiDayEvent ? double.infinity : 16,
-                      color: eventColor,
-                    ),
+        final events = snapshot.data!;
+        return Container(
+          height: 280,
+          margin: const EdgeInsets.all(10.0),
+          decoration: BoxDecoration(
+            color: isDarkMode ? Colors.black : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: GestureDetector(
+            onDoubleTap: () {
+              // Navigate to the timetable page on double-tap
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TimetablePage(
+                    date: _focusedDay,
+                    events: _eventsForDay.map(convertEventToTimetableItem).toList(),
                   ),
-                );
-              }
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: markers,
+                ),
               );
-            }
-            return null;
-          },
-        ),
-
-      ),
+            },
+            child: SfCalendar(
+              view: CalendarView.month,
+              initialSelectedDate: _selectedDay,
+              dataSource: MeetingDataSource(_getAllEvents()), // Using stream data
+              monthViewSettings: MonthViewSettings(
+                appointmentDisplayMode: MonthAppointmentDisplayMode.indicator,
+                showAgenda: false,
+                showTrailingAndLeadingDates: false,
+              ),
+              todayHighlightColor: Colors.orangeAccent,
+              selectionDecoration: BoxDecoration(
+                color: Colors.transparent,
+                border: Border.all(color: Colors.orange, width: 2),
+                shape: BoxShape.circle,
+              ),
+              onTap: (CalendarTapDetails details) {
+                if (details.targetElement == CalendarElement.calendarCell) {
+                  setState(() {
+                    _selectedDay = details.date;
+                    _eventsForDay = _getEventsForDay(details.date!); // Update events for the selected day
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Events updated for ${DateFormat.yMMMMd().format(details.date!)}')),
+                  );
+                }
+              },
+            ),
+          ),
+        );
+      },
     );
+  }
 
+  List<Event> _getAllEvents() {
+    // Combines all events in _events into a single list
+    return _events.value.values.expand((eventList) => eventList).toList();
+  }
+
+// Stream method to simulate real-time data updates
+  Stream<Map<DateTime, List<Event>>> _getEventStream() async* {
+    while (true) {
+      await Future.delayed(const Duration(seconds: 2)); // Simulate data fetching delay
+      yield _events.value; // Emit current events map for real-time updates
+    }
   }
 
   Widget _buildSectionSeparator() {
@@ -487,142 +429,69 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   Widget _buildCalendarView(BuildContext context) {
-    double eventWidth = MediaQuery.of(context).size.width - 140; // Adjust based on screen width and padding
+    return StreamBuilder<List<Event>>(
+      stream: _getDayEventStream(), // Stream for real-time updates
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator()); // Loading spinner
+        }
 
-    return SingleChildScrollView(
-      child: Stack(
-        children: [
-          _buildTimeLabels(), // Time labels on the left
-          ..._eventsForDay.asMap().entries.map((entry) {
-            int index = entry.key;
-            Event event = entry.value;
+        final dayEvents = snapshot.data!;
+        if (dayEvents.isEmpty) {
+          return const Center(child: Text('No events for the selected day.'));
+        }
 
-            // Detect overlaps
-            List<Event> overlappingEvents = _getOverlappingEvents(event);
-
-            // Calculate dynamic left position based on how many events overlap
-            double leftOffset = overlappingEvents.indexOf(event) * (eventWidth / overlappingEvents.length);
-            double adjustedWidth = eventWidth / overlappingEvents.length;
-
-            return Positioned(
-              top: _calculateTopPosition(event.startDateTime), // Position based on start time
-              height: _calculateHeight(event), // Adjust height based on event duration
-              left: 100 + leftOffset, // Dynamic left position
-              width: adjustedWidth, // Adjust width to fit multiple overlapping events
-              child: _buildModernEventCard(event),
-            );
-          }).toList(),
-        ],
-      ),
-    );
-  }
-
-// Building the time labels (7 AM to 6 PM)
-  Widget _buildTimeLabels() {
-    return Column(
-      children: List.generate(12, (index) {
-        DateTime time = DateTime(2024, 9, 15, 7 + index); // Generate times from 7 AM to 6 PM
         return Container(
-          height: 80, // Assuming each hour block takes 80px height
-          padding: const EdgeInsets.only(left: 10, right: 10),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              DateFormat.j().format(time), // Format time as AM/PM
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[700],
-              ),
+          height: 400,  // Adjust the height for day view display
+          margin: const EdgeInsets.all(10.0),
+          child: SfCalendar(
+            view: CalendarView.day,
+            dataSource: MeetingDataSource(dayEvents), // Display events for selected day
+            initialDisplayDate: _selectedDay,
+            timeSlotViewSettings: TimeSlotViewSettings(
+              startHour: _getStartHour(dayEvents), // Start at the first event's time or a default value
+              endHour: _getStartHour(dayEvents) + 4, // Limit to 4 hours after the start hour
+              timeIntervalHeight: 60,
+              timeFormat: 'h:mm a',
             ),
+            appointmentBuilder: (BuildContext context, CalendarAppointmentDetails details) {
+              final Event event = details.appointments.first;
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 4.0),
+                decoration: BoxDecoration(
+                  color: Colors.green[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green, width: 2), // Green border as before
+                ),
+                child: ListTile(
+                  title: Text(
+                    event.title,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text('${event.formattedTime} - ${DateFormat.jm().format(event.endDateTime)}'),
+                  trailing: event.isMeeting
+                      ? const Icon(Icons.videocam, color: Colors.orange)
+                      : const Icon(Icons.work, color: Colors.green),
+                ),
+              );
+            },
           ),
         );
-      }),
+      },
     );
   }
 
-// Calculation of top position for event based on time
-  double _calculateTopPosition(DateTime startTime) {
-    double hourHeight = 80.0; // 80px height per hour for better vertical space
-    return (startTime.hour + startTime.minute / 60.0) * hourHeight;
+// Real-time stream for day-specific events
+  Stream<List<Event>> _getDayEventStream() async* {
+    while (true) {
+      await Future.delayed(const Duration(seconds: 2)); // Simulate data fetching delay
+      yield _getEventsForDay(_selectedDay!); // Emit events for the selected day
+    }
   }
 
-// Calculation of height based on event duration
-  double _calculateHeight(Event event) {
-    double hourHeight = 80.0;
-    Duration duration = event.endDateTime.difference(event.startDateTime);
-    return duration.inMinutes / 60.0 * hourHeight;
-  }
-
-// Modern compact card design for each event
-  Widget _buildModernEventCard(Event event) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: event.isMeeting ? Colors.orangeAccent : Colors.blueAccent,
-          width: 2.0,
-        ),
-      ),
-      color: event.isMeeting ? Colors.orange[100] : Colors.blue[100], // Different colors for meeting and personal events
-      margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 10.0), // Compact margins
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundImage: AssetImage('assets/sample_user.png'), // Placeholder image
-                  radius: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    event.title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.schedule, size: 16, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(
-                  '${event.formattedTime} - ${DateFormat.jm().format(event.endDateTime)}',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            if (event.description.isNotEmpty)
-              Row(
-                children: [
-                  const Icon(Icons.location_pin, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      event.description,
-                      style: const TextStyle(fontSize: 12, color: Colors.black54),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
+// Get start hour based on earliest event
+  double _getStartHour(List<Event> events) {
+    return events.isEmpty ? 8.0 : events.map((e) => e.startDateTime.hour).reduce((a, b) => a < b ? a : b).toDouble();
   }
 
   void _showAddEventOptionsPopup() {

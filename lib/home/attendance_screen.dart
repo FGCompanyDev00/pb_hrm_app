@@ -1,6 +1,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -8,7 +9,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:my_device_info_plus/my_device_info_plus.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter_background/flutter_background.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -40,6 +41,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   bool _isLoading = true;
   bool _biometricEnabled = false;
   bool _isCheckOutAvailable = true;
+  static const String officeApiUrl = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/office';
+  static const String offsiteApiUrl = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offsite';
 
   static const double _officeRange = 500;
   static const LatLng _officeLocation = LatLng(2.891589, 101.524822);
@@ -123,15 +126,130 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _retrieveDeviceId() async {
-    try {
-      var result = await MyDeviceInfoPlus.getDeviceInfo();
-      setState(() {
-        _deviceId = result['deviceId']; // Adjust based on available keys like 'uniqueId' or others
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        print('Failed to get device info: $e');
+    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+    if (Platform.isAndroid) {
+      AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
+      _deviceId = androidInfo.id;
+    } else if (Platform.isIOS) {
+      IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+      _deviceId = iosInfo.identifierForVendor!;
+    }
+    setState(() {
+      print('Device ID retrieved: $_deviceId');
+    });
+  }
+
+  Future<void> _performCheckIn(DateTime now) async {
+    setState(() {
+      _checkInTime = DateFormat('HH:mm:ss').format(now);
+      _checkOutTime = '--:--:--';  // Reset check-out time to placeholder
+      _checkInDateTime = now;
+      _checkOutDateTime = null;
+      _workingHours = Duration.zero;  // Reset working hours immediately on new check-in
+      _isCheckInActive = true;
+      _isCheckOutAvailable = true;
+      _startTimerForWorkingHours();  // Start tracking working hours
+    });
+
+    // Store check-in time locally
+    await _storeCheckInTime(_checkInTime);  // Save the new check-in time
+    await _storeCheckOutTime(_checkOutTime);  // Reset stored check-out time to --:--:--
+
+    // Send Check-in request for Home/Office
+    if (_currentSection == 'Home' || _currentSection == 'Office') {
+      _sendCheckInOutRequest(officeApiUrl);  // Send to Office/Home API
+    } else {
+      _sendCheckInOutRequest(offsiteApiUrl);  // Send to Offsite API
+    }
+  }
+
+  Future<void> _performCheckOut(DateTime now) async {
+    setState(() {
+      _checkOutTime = DateFormat('HH:mm:ss').format(now);
+      _checkOutDateTime = now;
+      if (_checkInDateTime != null) {
+        _workingHours = now.difference(_checkInDateTime!);  // Calculate working hours
+        _isCheckInActive = false;
+        _isCheckOutAvailable = false;
+        _timer?.cancel();  // Stop the working hours timer
+        _showWorkingHoursDialog(context);  // Show the working hours summary
       }
+    });
+
+    // Store check-out time and working hours locally
+    await _storeCheckOutTime(_checkOutTime);  // Save the new check-out time
+    await _storeWorkingHours(_workingHours);  // Save the total working hours
+
+    // Send Check-out request for Home/Office or Offsite
+    if (_currentSection == 'Home' || _currentSection == 'Office') {
+      _sendCheckInOutRequest(officeApiUrl);  // Send to Office/Home API
+    } else {
+      _sendCheckInOutRequest(offsiteApiUrl);  // Send to Offsite API
+    }
+  }
+
+  Future<void> _resetSessionData() async {
+    setState(() {
+      _checkInTime = '--:--:--';
+      _checkOutTime = '--:--:--';
+      _workingHours = Duration.zero;
+      _checkInDateTime = null;
+      _checkOutDateTime = null;
+    });
+
+    // Reset stored values in SharedPreferences
+    await _storeCheckInTime(_checkInTime);
+    await _storeCheckOutTime(_checkOutTime);
+    await _storeWorkingHours(Duration.zero);
+  }
+
+  Future<void> _sendCheckInOutRequest(String url) async {
+    Position? currentPosition = await _getCurrentPosition();
+
+    if (currentPosition == null) {
+      _showCustomDialog(context, 'Location Error', 'Unable to retrieve your location.');
+      return;
+    }
+
+    // Check for valid device ID
+    if (_deviceId == null || _deviceId.isEmpty) {
+      _showCustomDialog(context, 'Device ID Error', 'Device ID is missing or invalid.');
+      return;
+    }
+
+    final Map<String, dynamic> requestBody = {
+      'device_id': _deviceId,
+      'device_id': _deviceId,
+      'latitude': currentPosition.latitude.toString(),
+      'longitude': currentPosition.longitude.toString(),
+    };
+
+    print('Request Body: $requestBody'); // Log the request body
+
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('token');
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 202 || response.statusCode == 201) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        _showCustomDialog(context, 'Success', responseData['message'] ?? 'Check-in/check-out successful');
+      } else {
+        throw Exception('Failed with status code ${response.statusCode}');
+      }
+    } catch (error) {
+      _showCustomDialog(context, 'Error', 'Failed to check in/check out: $error');
     }
   }
 
@@ -233,6 +351,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
+
   void _startTimerForLiveTime() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {}); // Update the UI every second
@@ -253,50 +372,37 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
-  // Function to store the check-in time locally
   Future<void> _storeCheckInTime(String checkInTime) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('checkInTime', checkInTime);
   }
 
-  // Function to store the check-out time locally
   Future<void> _storeCheckOutTime(String checkOutTime) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('checkOutTime', checkOutTime);
   }
 
-  // Function to store the working hours locally
   Future<void> _storeWorkingHours(Duration workingHours) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('workingHours', workingHours.toString());
   }
 
-  // Function to retrieve the check-in time
   Future<String?> _getCheckInTime() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString('checkInTime');
   }
 
-  // Function to retrieve the check-out time
   Future<String?> _getCheckOutTime() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString('checkOutTime');
   }
 
-  // Function to retrieve the working hours
   Future<Duration?> _getWorkingHours() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? workingHoursStr = prefs.getString('workingHours');
     if (workingHoursStr != null) {
       List<String> parts = workingHoursStr.split(':');
-      if (parts.length == 3) {
-        int hours = int.parse(parts[0]);
-        int minutes = int.parse(parts[1]);
-        double secondsDouble = double.parse(parts[2]);
-        int seconds = secondsDouble.round();
-
-        return Duration(hours: hours, minutes: minutes, seconds: seconds);
-      }
+      return Duration(hours: int.parse(parts[0]), minutes: int.parse(parts[1]), seconds: int.parse(parts[2]));
     }
     return null;
   }
@@ -348,40 +454,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       }
       return null;
     }
-  }
-
-
-  void _performCheckIn(DateTime now) async {
-    setState(() {
-      _checkInTime = DateFormat('HH:mm:ss').format(now);
-      _checkInDateTime = now;
-      _checkOutDateTime = null;
-      _workingHours = Duration.zero;
-      _isCheckInActive = true;
-      _isCheckOutAvailable = true;
-      _startTimerForWorkingHours();
-    });
-
-    // Store check-in time locally
-    await _storeCheckInTime(_checkInTime);
-  }
-
-  void _performCheckOut(DateTime now) async {
-    setState(() {
-      _checkOutTime = DateFormat('HH:mm:ss').format(now);
-      _checkOutDateTime = now;
-      if (_checkInDateTime != null) {
-        _workingHours = now.difference(_checkInDateTime!);
-        _isCheckInActive = false;
-        _isCheckOutAvailable = false; // Disable check-out button after checkout
-        _timer?.cancel();
-        _showWorkingHoursDialog(context);
-      }
-    });
-
-    // Store check-out time and working hours locally
-    await _storeCheckOutTime(_checkOutTime);
-    await _storeWorkingHours(Duration.zero); // Reset working hours after checkout
   }
 
   void _showLocationModal(BuildContext context, String location) {
@@ -486,17 +558,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  void _showCustomDialog(BuildContext context, String title, String message) {
+  void _showCustomDialog(BuildContext context, String title, String message, {bool isSuccess = true}) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12)),
+            borderRadius: BorderRadius.circular(12),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.info, color: Colors.red, size: 50),
+              Icon(
+                isSuccess ? Icons.check_circle_outline : Icons.cancel,  // Success or Error Icon
+                color: isSuccess ? Colors.green : Colors.red,  // Success = Green, Error = Red
+                size: 50,
+              ),
               const SizedBox(height: 16),
               Text(
                 title,
@@ -509,6 +586,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               Text(
                 message,
                 style: const TextStyle(fontSize: 18),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               ElevatedButton(
@@ -516,7 +594,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   Navigator.of(context).pop();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDAA520), // gold color
+                  backgroundColor: isSuccess ? Colors.green : Colors.red,  // Button color based on success or error
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
@@ -622,7 +700,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ? Colors.orange
             : Colors.red;
     final now = DateTime.now();
-    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 8, 0); // 8:00 AM
+    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 5, 0); // 8:00 AM
     final checkInDisabledTime = DateTime(now.year, now.month, now.day, 13, 0); // 1:00 PM
     bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
     bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 0) && _isCheckOutAvailable;

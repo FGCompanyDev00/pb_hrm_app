@@ -155,9 +155,10 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                   IconButton(
                     icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
                     onPressed: () {
-                      Navigator.pushReplacement(
+                      Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(builder: (context) => const Dashboard()),
+                            (Route<dynamic> route) => false,
                       );
                     },
                   ),

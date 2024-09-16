@@ -154,15 +154,19 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             IconButton(
-              icon: Icon(Icons.arrow_back,
-                  color: isDarkMode ? Colors.white : Colors.black),
+              icon: Icon(
+                Icons.arrow_back,
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
               onPressed: () {
-                Navigator.pushReplacement(
+                Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const Dashboard()),
+                      (Route<dynamic> route) => false,
                 );
               },
             ),
+
             Text(
               'Work Tracking',
               style: TextStyle(color: isDarkMode ? Colors.white : Colors.black,

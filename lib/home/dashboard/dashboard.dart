@@ -521,6 +521,7 @@ class _DashboardState extends State<Dashboard> {
                     ElevatedButton(
                       onPressed: () {
                         Navigator.of(context).pop();
+                        Navigator.popUntil(context, (route) => route.isFirst);
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(builder: (context) => const LoginPage()),
