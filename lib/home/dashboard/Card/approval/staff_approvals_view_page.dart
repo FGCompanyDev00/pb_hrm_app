@@ -3,18 +3,28 @@ import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_request.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
-class ApprovalsViewPage extends StatelessWidget {
+class ApprovalsViewPage extends StatefulWidget {
   final Map<String, dynamic> item;
 
-  const ApprovalsViewPage({
-    super.key,
-    required this.item,
-  });
+  const ApprovalsViewPage({super.key, required this.item});
+
+  @override
+  _ApprovalsViewPageState createState() => _ApprovalsViewPageState();
+}
+
+class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
+  late Map<String, dynamic> item;
+
+  @override
+  void initState() {
+    super.initState();
+    item = widget.item;
+  }
 
   @override
   Widget build(BuildContext context) {
     final padding = EdgeInsets.symmetric(
-      horizontal: MediaQuery.of(context).size.width * 0.03, // Compact horizontal padding
+      horizontal: MediaQuery.of(context).size.width * 0.03,
     );
 
     return Scaffold(
@@ -24,17 +34,17 @@ class ApprovalsViewPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 60), // Extra top margin
+            const SizedBox(height: 60),
             _buildRequestorSection(),
-            const SizedBox(height: 30), // Extra top margin between sections
+            const SizedBox(height: 30),
             _buildBlueSection(),
-            const SizedBox(height: 20), // Extra top margin between sections
+            const SizedBox(height: 20),
             _buildDetailsSection(),
-            const SizedBox(height: 10), // Extra top margin between sections
+            const SizedBox(height: 10),
             _buildWorkflowSection(),
-            const SizedBox(height: 10), // Extra top margin between sections
+            const SizedBox(height: 10),
             _buildDescriptionSection(),
-            const SizedBox(height: 30), // Extra top margin before buttons
+            const SizedBox(height: 30),
             _buildActionButtons(context),
           ],
         ),
@@ -58,7 +68,7 @@ class ApprovalsViewPage extends StatelessWidget {
       ),
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: Colors.black),
-        onPressed: () => Navigator.of(context).pop(),
+        onPressed: () => Navigator.of(context).pop(true),
       ),
       title: const Text(
         'Approvals',
@@ -83,9 +93,9 @@ class ApprovalsViewPage extends StatelessWidget {
             item['img_name'] ??
                 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
           ),
-          radius: 35, // Reduced size for compactness
+          radius: 35,
         ),
-        const SizedBox(width: 16), // Reduced space between avatar and text
+        const SizedBox(width: 16),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -93,19 +103,19 @@ class ApprovalsViewPage extends StatelessWidget {
               item['requestor_name'] ?? 'No Name',
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 18, // Reduced font size for compact design
+                fontSize: 18,
               ),
             ),
-            const SizedBox(height: 6), // Reduced vertical spacing
+            const SizedBox(height: 6),
             Text(
               'Submitted on ${item['created_at']?.split("T")[0] ?? 'N/A'}',
-              style: const TextStyle(fontSize: 13, color: Colors.black), // Smaller text
+              style: const TextStyle(fontSize: 13, color: Colors.black),
             ),
-            const SizedBox(height: 6), // Reduced vertical spacing
+            const SizedBox(height: 6),
             Text(
               'Status: ${item['is_approve'] ?? 'N/A'}',
               style: const TextStyle(
-                  fontSize: 15, color: Colors.orange, fontWeight: FontWeight.bold), // Slightly smaller text
+                  fontSize: 15, color: Colors.orange, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -115,7 +125,7 @@ class ApprovalsViewPage extends StatelessWidget {
 
   Widget _buildBlueSection() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16), // Reduced padding
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.lightBlueAccent,
         borderRadius: BorderRadius.circular(12),
@@ -123,7 +133,7 @@ class ApprovalsViewPage extends StatelessWidget {
       child: Text(
         item['types'] ?? 'No Data',
         style: const TextStyle(
-            color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold), // Slightly reduced font size
+            color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -134,14 +144,14 @@ class ApprovalsViewPage extends StatelessWidget {
       children: [
         Text(
           item['take_leave_type_id'] ?? 'No Title',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), // Reduced font size
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        const SizedBox(height: 10), // Reduced vertical spacing
+        const SizedBox(height: 10),
         _buildInfoRow(Icons.calendar_today, 'Date', '${item['take_leave_from']} - ${item['take_leave_to']}'),
-        const SizedBox(height: 10), // Reduced vertical spacing
+        const SizedBox(height: 10),
         Text(
           'Type of leave: ${item['take_leave_reason'] ?? 'No Reason'}',
-          style: const TextStyle(fontSize: 15, color: Colors.orange, fontWeight: FontWeight.bold), // Reduced font size
+          style: const TextStyle(fontSize: 15, color: Colors.orange, fontWeight: FontWeight.bold),
         ),
       ],
     );
@@ -152,8 +162,8 @@ class ApprovalsViewPage extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         _buildUserAvatar(item['img_name']),
-        const SizedBox(width: 12), // Reduced space between avatars
-        const Icon(Icons.arrow_forward, color: Colors.green, size: 24), // Slightly smaller icon
+        const SizedBox(width: 12),
+        const Icon(Icons.arrow_forward, color: Colors.green, size: 24),
         const SizedBox(width: 12),
         _buildUserAvatar('https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
         const SizedBox(width: 12),
@@ -168,7 +178,7 @@ class ApprovalsViewPage extends StatelessWidget {
     return CircleAvatar(
       backgroundImage: NetworkImage(imageUrl ??
           'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-      radius: 22, // Reduced avatar size
+      radius: 22,
     );
   }
 
@@ -180,7 +190,7 @@ class ApprovalsViewPage extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           '$title: ',
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold), // Slightly smaller font
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
         Text(
           content,
@@ -200,7 +210,7 @@ class ApprovalsViewPage extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Container(
-          padding: const EdgeInsets.all(12), // Reduced padding
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             border: Border.all(color: Colors.black),
             borderRadius: BorderRadius.circular(8),
@@ -208,7 +218,7 @@ class ApprovalsViewPage extends StatelessWidget {
           ),
           child: Text(
             item['take_leave_reason'] ?? 'No Description',
-            style: const TextStyle(fontSize: 15, color: Colors.black54), // Slightly smaller font
+            style: const TextStyle(fontSize: 15, color: Colors.black54),
           ),
         ),
       ],
@@ -235,7 +245,7 @@ class ApprovalsViewPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
         ),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)), // Slightly smaller font size
+      child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
     );
   }
 
@@ -258,7 +268,7 @@ class ApprovalsViewPage extends StatelessWidget {
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Request cancelled successfully')),
         );
@@ -273,12 +283,20 @@ class ApprovalsViewPage extends StatelessWidget {
     }
   }
 
-  void _editRequest(BuildContext context) {
-    Navigator.push(
+  Future<void> _refreshData(BuildContext context) async {
+    setState(() {});
+  }
+
+  void _editRequest(BuildContext context) async {
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => EditRequestPage(item: item),
       ),
     );
+
+    if (result == true) {
+      _refreshData(context);  // Refresh the page to reflect updated data
+    }
   }
 }

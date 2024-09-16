@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approval/finish_staff_approvals_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_approvals_view_page.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
-import 'finish_staff_approvals_page.dart';
 
 class StaffApprovalsPage extends StatefulWidget {
   const StaffApprovalsPage({super.key});
@@ -19,31 +19,12 @@ class StaffApprovalsPage extends StatefulWidget {
 class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
   bool _isApprovalSelected = true;
   List<Map<String, dynamic>> _approvalItems = [];
-  final List<Map<String, dynamic>> _historyItems = [];
+  List<Map<String, dynamic>> _historyItems = [];
 
   @override
   void initState() {
     super.initState();
     _fetchApprovalsData();
-
-    // Example data for the history section
-    _historyItems.add({
-      'name': 'Ms. Zhao Lusi (Test Data)',
-      'is_approve': 'Rejected',
-      'take_leave_from': '2024-05-14',
-      'take_leave_to': '2024-05-14',
-      'days': 1,
-      'take_leave_reason': 'Marketing meeting',
-      'submission_date': '2024-02-26 11:30:00',
-      'time_from': '09:00 AM',
-      'time_to': '12:00 PM',
-      'discretion': '020 7866511',
-      'description': 'Tel 0207865511 Marketing create new product For App',
-      'rejection_date': '2024-05-14 09:00:11',
-      'img_name': '',
-      'approver_image': '',
-      'supervisor_image': '',
-    });
   }
 
   Future<void> _fetchApprovalsData() async {
@@ -78,7 +59,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
 
         setState(() {
           _approvalItems = List<Map<String, dynamic>>.from(approvalResults);
-          _historyItems.addAll(List<Map<String, dynamic>>.from(historyResults));
+          _historyItems = List<Map<String, dynamic>>.from(historyResults);
         });
       } else {
         if (kDebugMode) {
@@ -93,15 +74,29 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
   }
 
   Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Waiting':
-        return Colors.amber;
-      case 'Approved':
+    switch (status.toLowerCase()) {
+      case 'approved':
         return Colors.green;
-      case 'Rejected':
+      case 'rejected':
+      case 'reject':
         return Colors.red;
+      case 'cancelled':
+        return Colors.grey;
       default:
-        return Colors.orange;
+        return Colors.amber;
+    }
+  }
+
+  String _getIconForType(String type) {
+    switch (type.toLowerCase()) {
+      case 'leave':
+        return 'assets/leave_calendar.png';
+      case 'car':
+        return 'assets/car.png';
+      case 'meeting':
+        return 'assets/calendar.png';
+      default:
+        return 'assets/default_icon.png'; // Fallback icon
     }
   }
 
@@ -110,14 +105,14 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => ApprovalsViewPage(item: item), // Navigate to staff_approvals_view_page.dart
+          builder: (context) => ApprovalsViewPage(item: item),
         ),
       );
     } else {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => FinishStaffApprovalsPage(item: item), // Navigate to finish_staff_approvals_page.dart
+          builder: (context) => FinishStaffApprovalsPage(item: item),
         ),
       );
     }
@@ -137,9 +132,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
             height: size.height * 0.13,
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage(
-                  isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png',
-                ),
+                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
                 fit: BoxFit.cover,
               ),
               borderRadius: const BorderRadius.only(
@@ -155,11 +148,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                   IconButton(
                     icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
                     onPressed: () {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (context) => const Dashboard()),
-                            (Route<dynamic> route) => false,
-                      );
+                      Navigator.pop(context);
                     },
                   ),
                   Text(
@@ -180,7 +169,6 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
               children: [
-                // Approval Tab
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
@@ -191,22 +179,22 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                       decoration: BoxDecoration(
-                        color: _isApprovalSelected ? Colors.amber : Colors.grey[300], // Selected tab color
+                        color: _isApprovalSelected ? Colors.amber : Colors.grey[300],
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(20.0),
                           bottomLeft: Radius.circular(20.0),
-                        ), // Rounded corners for left side
+                        ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.approval_rounded, size: 24, color: _isApprovalSelected ? Colors.white : Colors.grey[600]), // Approval icon
+                          Icon(Icons.approval_rounded, size: 24, color: _isApprovalSelected ? Colors.white : Colors.grey[600]),
                           const SizedBox(width: 8),
                           Text(
                             'Approval',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: _isApprovalSelected ? Colors.white : Colors.grey[600], // Text color changes based on selection
+                              color: _isApprovalSelected ? Colors.white : Colors.grey[600],
                               fontSize: 16,
                             ),
                           ),
@@ -215,9 +203,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 1), // Slight gap between the tabs for better visual separation
-
-                // History Tab
+                const SizedBox(width: 1),
                 Expanded(
                   child: GestureDetector(
                     onTap: () {
@@ -228,22 +214,22 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12.0),
                       decoration: BoxDecoration(
-                        color: !_isApprovalSelected ? Colors.amber : Colors.grey[300], // Selected tab color
+                        color: !_isApprovalSelected ? Colors.amber : Colors.grey[300],
                         borderRadius: const BorderRadius.only(
                           topRight: Radius.circular(20.0),
                           bottomRight: Radius.circular(20.0),
-                        ), // Rounded corners for right side
+                        ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.history_rounded, size: 24, color: !_isApprovalSelected ? Colors.white : Colors.grey[600]), // History icon
+                          Icon(Icons.history_rounded, size: 24, color: !_isApprovalSelected ? Colors.white : Colors.grey[600]),
                           const SizedBox(width: 8),
                           Text(
                             'History',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: !_isApprovalSelected ? Colors.white : Colors.grey[600], // Text color changes based on selection
+                              color: !_isApprovalSelected ? Colors.white : Colors.grey[600],
                               fontSize: 16,
                             ),
                           ),
@@ -258,7 +244,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
           const SizedBox(height: 8),
           Expanded(
             child: RefreshIndicator(
-              onRefresh: _fetchApprovalsData, // Pull to refresh
+              onRefresh: _fetchApprovalsData,
               child: ListView.builder(
                 padding: const EdgeInsets.all(16.0),
                 itemCount: _isApprovalSelected ? _approvalItems.length : _historyItems.length,
@@ -289,10 +275,10 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                Icons.event_note,
-                color: _getStatusColor(item['status'] ?? 'Unknown'),
-                size: 40,
+              Image.asset(
+                _getIconForType(item['types'] ?? 'default'),
+                width: 40,
+                height: 40,
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -300,7 +286,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item['name'] ?? 'No Title',
+                      item['requestor_name'] ?? 'No Title',
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
                         fontWeight: FontWeight.bold,
@@ -340,11 +326,11 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(item['is_approve'] ?? 'Unknown'),
+                            color: _getStatusColor(item['status'] ?? 'Unknown'),
                             borderRadius: BorderRadius.circular(4.0),
                           ),
                           child: Text(
-                            item['is_approve'] ?? 'Unknown',
+                            item['is_approve'] ?? item['status'] ?? 'Unknown',
                             style: const TextStyle(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
