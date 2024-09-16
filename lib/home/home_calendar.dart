@@ -386,12 +386,30 @@ class _HomeCalendarState extends State<HomeCalendar> {
         calendarBuilders: CalendarBuilders(
           markerBuilder: (context, date, events) {
             if (events.isNotEmpty) {
+              // Sort events by the start date, showing the latest ones first
+              final sortedEvents = events..sort((a, b) => b.startDateTime.compareTo(a.startDateTime));
+
+              // Get the three latest events
+              final latestEvents = sortedEvents.take(3).toList();
+
+              // Check how many events overlap with the selected date
+              final eventSpans = latestEvents.where((event) {
+                return date.isAfter(event.startDateTime.subtract(const Duration(days: 1))) &&
+                    date.isBefore(event.endDateTime.add(const Duration(days: 1)));
+              }).toList();
+
               return Align(
                 alignment: Alignment.bottomCenter,
-                child: Container(
-                  width: 16,
-                  height: 3,
-                  color: Colors.green,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: eventSpans.map((event) {
+                    return Container(
+                      width: 16,
+                      height: 3,
+                      margin: const EdgeInsets.symmetric(vertical: 1),
+                      color: Colors.green,  // Event color, you can customize this
+                    );
+                  }).toList(),
                 ),
               );
             }
