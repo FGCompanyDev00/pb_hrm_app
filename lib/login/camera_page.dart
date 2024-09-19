@@ -7,30 +7,48 @@ class CameraPage extends StatelessWidget {
   const CameraPage({super.key});
 
   Future<void> _requestCameraPermission(BuildContext context) async {
-    PermissionStatus status = await Permission.camera.request();
+    PermissionStatus status = await Permission.camera.status;
 
     if (status.isGranted) {
       Navigator.push(context, MaterialPageRoute(builder: (context) => const ReadyPage()));
-    } else {
-      // Handle permission denied
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text(AppLocalizations.of(context)!.permissionDenied),
-            content: Text(AppLocalizations.of(context)!.cameraPermissionRequired),
-            actions: [
-              TextButton(
-                child: Text(AppLocalizations.of(context)!.ok),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        },
-      );
+    } else if (status.isRestricted || status.isPermanentlyDenied) {
+      // Handle restricted or permanently denied status
+      _showPermissionDeniedDialog(context, isPermanentlyDenied: true);
+    } else if (status.isDenied) {
+      // Request camera permission again if previously denied
+      PermissionStatus newStatus = await Permission.camera.request();
+      if (newStatus.isGranted) {
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const ReadyPage()));
+      } else {
+        // Show dialog if denied again
+        _showPermissionDeniedDialog(context, isPermanentlyDenied: false);
+      }
     }
+  }
+
+  void _showPermissionDeniedDialog(BuildContext context, {required bool isPermanentlyDenied}) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(AppLocalizations.of(context)!.permissionDenied),
+          content: Text(isPermanentlyDenied
+              ? 'Camera access is permanently denied. Please open your settings to enable it.'
+              : 'We need camera access to proceed.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                if (isPermanentlyDenied) {
+                  openAppSettings();  // Open the app settings for the user to manually change permission
+                }
+                Navigator.of(context).pop();
+              },
+              child: Text(AppLocalizations.of(context)!.ok),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override

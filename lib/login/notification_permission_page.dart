@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'location_information_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'dart:io';
 
 class NotificationPermissionPage extends StatefulWidget {
   const NotificationPermissionPage({super.key});
@@ -22,35 +23,63 @@ class _NotificationPermissionPageState extends State<NotificationPermissionPage>
   }
 
   Future<void> _initializeNotifications() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/ic_launcher');
+    final DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+      onDidReceiveLocalNotification: (int id, String? title, String? body, String? payload) async {
+        // Handle notification received on iOS
+      },
+    );
 
-    const InitializationSettings initializationSettings = InitializationSettings(
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    final InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
     );
 
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
   Future<void> _requestNotificationPermission() async {
-    final status = await Permission.notification.status;
-
-    if (status.isGranted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LocationInformationPage()),
+    if (Platform.isIOS) {
+      final bool? result = await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
       );
-    } else {
-      final newStatus = await Permission.notification.request();
-      if (newStatus.isGranted) {
+      if (result == true) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const LocationInformationPage()),
         );
-      } else if (newStatus.isDenied) {
+      } else {
         _showPermissionDeniedDialog();
-      } else if (newStatus.isPermanentlyDenied) {
-        openAppSettings();
+      }
+    } else {
+      // Android permission flow
+      final status = await Permission.notification.status;
+
+      if (status.isGranted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LocationInformationPage()),
+        );
+      } else {
+        final newStatus = await Permission.notification.request();
+        if (newStatus.isGranted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const LocationInformationPage()),
+          );
+        } else if (newStatus.isDenied) {
+          _showPermissionDeniedDialog();
+        } else if (newStatus.isPermanentlyDenied) {
+          openAppSettings();
+        }
       }
     }
   }

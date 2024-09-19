@@ -7,30 +7,78 @@ class LocationInformationPage extends StatelessWidget {
   const LocationInformationPage({super.key});
 
   Future<void> _requestLocationPermission(BuildContext context) async {
-    PermissionStatus status = await Permission.location.request();
+    PermissionStatus status = await Permission.locationWhenInUse.status;
 
-    if (status.isGranted) {
+    if (status.isGranted || status.isLimited) {
+      // Permission is granted (limited status is iOS-specific)
       Navigator.push(context, MaterialPageRoute(builder: (context) => const CameraPage()));
-    } else {
-      // Handle permission denied
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text(AppLocalizations.of(context)!.permissionDenied),
-            content: Text(AppLocalizations.of(context)!.locationPermissionRequired),
-            actions: [
-              TextButton(
-                child: Text(AppLocalizations.of(context)!.ok),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        },
-      );
+      return;
     }
+
+    // Request permission
+    PermissionStatus newStatus = await Permission.locationWhenInUse.request();
+
+    if (newStatus.isGranted || newStatus.isLimited) {
+      // Permission granted (or limited)
+      Navigator.push(context, MaterialPageRoute(builder: (context) => const CameraPage()));
+    } else if (newStatus.isDenied) {
+      // Permission denied but not permanently
+      _showPermissionDeniedDialog(context, false);
+    } else if (newStatus.isPermanentlyDenied) {
+      // Permission permanently denied
+      _showPermissionDeniedDialog(context, true);
+    } else if (newStatus.isRestricted) {
+      // iOS-specific restricted status
+      _showErrorDialog(context, 'Permission status: restricted');
+    } else {
+      // Other statuses like error or failed
+      _showErrorDialog(context, 'Permission status: $newStatus');
+    }
+  }
+
+  void _showPermissionDeniedDialog(BuildContext context, bool isPermanentlyDenied) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(AppLocalizations.of(context)!.permissionDenied),
+          content: Text(isPermanentlyDenied
+              ? 'Location access is permanently denied. Please open your settings to enable it.'
+              : 'We need location access to continue.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                if (isPermanentlyDenied) {
+                  openAppSettings(); // Prompt user to manually change settings
+                }
+                Navigator.of(context).pop();
+              },
+              child: Text(AppLocalizations.of(context)!.ok),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Error'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();  // Close dialog
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override

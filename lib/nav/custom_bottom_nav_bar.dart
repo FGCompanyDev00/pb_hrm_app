@@ -93,7 +93,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
                 child: const Icon(
                   Icons.home,
                   color: Colors.white,
-                  size: 50,
+                  size: 52,
                 ),
               );
             },
@@ -115,11 +115,11 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
       backgroundColor: Colors.white,
       activeColor: Colors.orangeAccent,
       color: Colors.grey,
-      height: 50,
-      curveSize: 120,
-      top: -30,
+      height: 80,
+      curveSize: 150,
+      top: -22,
       shadowColor: Colors.black.withOpacity(0.1),
-      elevation: 20,
+      elevation: 50,
     );
   }
 }
