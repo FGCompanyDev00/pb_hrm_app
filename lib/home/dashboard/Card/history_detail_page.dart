@@ -76,50 +76,41 @@ class _DetailsPageState extends State<DetailsPage> {
     final textColor = isDarkMode ? Colors.white : Colors.black;
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(85.0),
-        child: Stack(
-          children: [
-            Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage("assets/background.png"),
-                  fit: BoxFit.cover,
-                ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
-              child: const Center(
-                child: Column(
-                  children: [
-                    SizedBox(height: 65),
-                    Text(
-                      'Details',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/background.png'),
+              fit: BoxFit.cover,
             ),
-            Positioned(
-              top: 55,
-              left: 16,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              ),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
             ),
-          ],
+          ),
         ),
+        centerTitle: true,
+        title: const Text(
+          'Details',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 22,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black,
+            size: 20,
+          ),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+        toolbarHeight: 80,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

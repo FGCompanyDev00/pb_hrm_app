@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/management/admin_approvals_view_page.dart';
 import 'package:pb_hrsystem/management/admin_history_view_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -60,12 +61,13 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       if (approvalResponse.statusCode == 200) {
         final dynamic approvalData = json.decode(approvalResponse.body);
 
-        // Check if the response is a Map and contains a list under a specific key
-        if (approvalData is Map<String, dynamic> && approvalData.containsKey('results')) {
+        if (approvalData is Map<String, dynamic> &&
+            approvalData.containsKey('results')) {
           final List<dynamic> results = approvalData['results'];
           approvalItems = results
               .whereType<Map<String, dynamic>>()
               .where((item) => item['status'] == 'Waiting')
+              .map((item) => _formatItem(item))
               .toList();
         }
       }
@@ -82,13 +84,15 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       if (historyResponse.statusCode == 200) {
         final dynamic historyData = json.decode(historyResponse.body);
 
-        // Check if the response is a Map and contains a list under a specific key
-        if (historyData is Map<String, dynamic> && historyData.containsKey('results')) {
+        if (historyData is Map<String, dynamic> &&
+            historyData.containsKey('results')) {
           final List<dynamic> results = historyData['results'];
           historyItems = results
               .whereType<Map<String, dynamic>>()
               .where((item) =>
-          item['status'] == 'Approved' || item['status'] == 'Rejected')
+          item['status'] == 'Approved' ||
+              item['status'] == 'Rejected')
+              .map((item) => _formatItem(item))
               .toList();
         }
       }
@@ -101,39 +105,113 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     }
   }
 
+  Map<String, dynamic> _formatItem(Map<String, dynamic> item) {
+    String types = item['types'] ?? 'Unknown';
+
+    Map<String, dynamic> formattedItem = {
+      'types': types,
+      'status': item['status'] ?? 'Unknown',
+      'statusColor': _getStatusColor(item['status']),
+      'icon': _getStatusIcon(item['status']),
+      'iconColor': _getStatusColor(item['status']),
+      'img_name': item['img_name'] ?? 'https://via.placeholder.com/150',
+    };
+
+    if (types == 'meeting') {
+      formattedItem['title'] = item['title'] ?? 'No Title';
+      formattedItem['startDate'] = item['from_date_time'] ?? 'N/A';
+      formattedItem['endDate'] = item['to_date_time'] ?? 'N/A';
+      formattedItem['room'] = item['room_name'] ?? 'No Room Info';
+      formattedItem['details'] = item['remark'] ?? 'No Details Provided';
+      formattedItem['employee_name'] = item['employee_name'] ?? 'N/A';
+    } else if (types == 'leave') {
+      formattedItem['title'] = item['name'] ?? 'No Title';
+      formattedItem['startDate'] = item['take_leave_from'] ?? 'N/A';
+      formattedItem['endDate'] = item['take_leave_to'] ?? 'N/A';
+      formattedItem['room'] = 'Leave Type';
+      formattedItem['details'] =
+          item['take_leave_reason'] ?? 'No Details Provided';
+      formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
+    } else if (types == 'car') {
+      formattedItem['title'] = item['purpose'] ?? 'No Title';
+      formattedItem['startDate'] = item['date_out'] ?? 'N/A';
+      formattedItem['endDate'] = item['date_in'] ?? 'N/A';
+      formattedItem['room'] = item['place'] ?? 'No Place Info';
+      formattedItem['details'] = item['purpose'] ?? 'No Details Provided';
+      formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
+    } else {
+      // Default processing
+      formattedItem['title'] = 'Unknown Type';
+    }
+
+    return formattedItem;
+  }
+
   Color _getStatusColor(String? status) {
-    switch (status) {
-      case 'Waiting':
-      case 'Branch Waiting':
-        return Colors.orange;
-      case 'Approved':
+    switch (status?.toLowerCase()) {
+      case 'waiting':
+      case 'branch waiting':
+      case 'pending':
+        return Colors.amber;
+      case 'approved':
         return Colors.green;
-      case 'Rejected':
+      case 'rejected':
+      case 'disapproved':
+      case 'cancel':
         return Colors.red;
-      case 'Processing':
+      case 'processing':
         return Colors.blue;
-      case 'Unknown':
+      case 'unknown':
         return Colors.grey;
       default:
-        return Colors.red;
+        return Colors.grey;
     }
   }
 
   IconData _getStatusIcon(String? status) {
-    switch (status) {
-      case 'Waiting':
-      case 'Branch Waiting':
+    switch (status?.toLowerCase()) {
+      case 'waiting':
+      case 'branch waiting':
+      case 'pending':
         return Icons.hourglass_empty;
-      case 'Approved':
+      case 'approved':
         return Icons.check_circle;
-      case 'Rejected':
+      case 'rejected':
+      case 'disapproved':
+      case 'cancel':
         return Icons.cancel;
-      case 'Processing':
+      case 'processing':
         return Icons.timelapse;
-      case 'Unknown':
+      case 'unknown':
         return Icons.help_outline;
       default:
-        return Icons.cancel;
+        return Icons.info;
+    }
+  }
+
+  Widget getIconForType(String type) {
+    switch (type.toLowerCase()) {
+      case 'meeting':
+        return Image.asset('assets/calendar.png', width: 40, height: 40);
+      case 'leave':
+        return Image.asset('assets/leave_calendar.png', width: 40, height: 40);
+      case 'car':
+        return Image.asset('assets/car.png', width: 40, height: 40);
+      default:
+        return const Icon(Icons.info_outline, size: 40, color: Colors.grey);
+    }
+  }
+
+  Color getTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'meeting':
+        return Colors.green;
+      case 'leave':
+        return Colors.orange;
+      case 'car':
+        return Colors.blue;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -155,6 +233,18 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     );
   }
 
+  String formatDate(String? dateStr) {
+    try {
+      if (dateStr == null || dateStr.isEmpty) {
+        return 'N/A';
+      }
+      final DateTime parsedDate = DateTime.parse(dateStr);
+      return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);
+    } catch (e) {
+      return 'Invalid Date';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -165,7 +255,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           children: [
             Container(
               width: double.infinity,
-              height: MediaQuery.of(context).size.height * 0.14,
+              height: MediaQuery.of(context).size.height * 0.15,
               decoration: BoxDecoration(
                 image: const DecorationImage(
                   image: AssetImage('assets/ready_bg.png'),
@@ -180,7 +270,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
               child: Stack(
                 children: [
                   Positioned(
-                    top: 50,
+                    top: 80,
                     left: 10,
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back,
@@ -188,7 +278,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                       onPressed: () {
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(builder: (context) => const Dashboard()),
+                          MaterialPageRoute(
+                              builder: (context) => const Dashboard()),
                               (Route<dynamic> route) => false,
                         );
                       },
@@ -196,7 +287,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                   ),
                   const Center(
                     child: Padding(
-                      padding: EdgeInsets.only(top: 50.0),
+                      padding: EdgeInsets.only(top: 65.0),
                       child: Text(
                         'Approvals',
                         style: TextStyle(
@@ -226,7 +317,9 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
-                          color: _isApprovalSelected ? Colors.amber : Colors.grey[300],
+                          color: _isApprovalSelected
+                              ? Colors.amber
+                              : Colors.grey[300],
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(20.0),
                             bottomLeft: Radius.circular(20.0),
@@ -235,13 +328,19 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.grid_view_rounded, size: 24, color: _isApprovalSelected ? Colors.white : Colors.grey[600]),
+                            Icon(Icons.grid_view_rounded,
+                                size: 24,
+                                color: _isApprovalSelected
+                                    ? Colors.white
+                                    : Colors.grey[600]),
                             const SizedBox(width: 8),
                             Text(
                               'Approval',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: _isApprovalSelected ? Colors.white : Colors.grey[600],
+                                color: _isApprovalSelected
+                                    ? Colors.white
+                                    : Colors.grey[600],
                               ),
                             ),
                           ],
@@ -249,7 +348,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 1), // Add a small gap between the two tabs
+                  const SizedBox(width: 1),
                   Expanded(
                     child: GestureDetector(
                       onTap: () {
@@ -260,7 +359,9 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
-                          color: !_isApprovalSelected ? Colors.amber : Colors.grey[300],
+                          color: !_isApprovalSelected
+                              ? Colors.amber
+                              : Colors.grey[300],
                           borderRadius: const BorderRadius.only(
                             topRight: Radius.circular(20.0),
                             bottomRight: Radius.circular(20.0),
@@ -269,13 +370,19 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.history_rounded, size: 24, color: !_isApprovalSelected ? Colors.white : Colors.grey[600]),
+                            Icon(Icons.history_rounded,
+                                size: 24,
+                                color: !_isApprovalSelected
+                                    ? Colors.white
+                                    : Colors.grey[600]),
                             const SizedBox(width: 8),
                             Text(
                               'History',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: !_isApprovalSelected ? Colors.white : Colors.grey[600],
+                                color: !_isApprovalSelected
+                                    ? Colors.white
+                                    : Colors.grey[600],
                               ),
                             ),
                           ],
@@ -296,10 +403,10 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                 padding: const EdgeInsets.all(16.0),
                 children: _isApprovalSelected
                     ? approvalItems
-                    .map((item) => _buildApprovalCard(item))
+                    .map((item) => _buildCard(item))
                     .toList()
                     : historyItems
-                    .map((item) => _buildHistoryCard(item))
+                    .map((item) => _buildCard(item))
                     .toList(),
               ),
             ),
@@ -309,24 +416,44 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     );
   }
 
-  Widget _buildApprovalCard(Map<String, dynamic> item) {
+  Widget _buildCard(Map<String, dynamic> item) {
+    final String types = item['types'] ?? 'Unknown';
+
+    String title = item['title'] ?? 'No Title';
+    String startDate = item['startDate'] ?? 'N/A';
+    String endDate = item['endDate'] ?? 'N/A';
+    String room = item['room'] ?? 'No Info';
+    String status = item['status'] ?? 'Pending';
+    String employeeName = item['employee_name'] ?? 'N/A';
+    String employeeImage =
+        item['img_name'] ?? 'https://via.placeholder.com/150';
+
+    Color statusColor = _getStatusColor(status);
+    Color typeColor = getTypeColor(types);
+
     return GestureDetector(
-      onTap: () => _openApprovalDetail(item),
+      onTap: () {
+        if (_isApprovalSelected) {
+          _openApprovalDetail(item);
+        } else {
+          _openHistoryDetail(item);
+        }
+      },
       child: Card(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15.0),
-          side: BorderSide(color: _getStatusColor(item['status']), width: 1.5), // Border color based on status
+          side: BorderSide(color: statusColor, width: 1.5),
         ),
         elevation: 6,
         margin: const EdgeInsets.symmetric(vertical: 10.0),
         child: Row(
           children: [
-            // Left vertical colored line based on type
+            // Left vertical colored line
             Container(
               width: 5,
               height: 130,
               decoration: BoxDecoration(
-                color: _getStatusColor(item['status']),
+                color: typeColor,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(15.0),
                   bottomLeft: Radius.circular(15.0),
@@ -342,11 +469,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // Left section for icon
-                    Icon(
-                        _getStatusIcon(item['status']),
-                        size: 40,
-                        color: _getStatusColor(item['status'])
-                    ),
+                    getIconForType(types),
                     const SizedBox(width: 16),
                     // Center section for details
                     Expanded(
@@ -355,7 +478,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                         children: [
                           // Title
                           Text(
-                            item['requestor_name'] ?? 'No Name',
+                            title,
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -365,29 +488,43 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                           const SizedBox(height: 4),
                           // Date range
                           Text(
-                            'From: ${item['take_leave_from']} To: ${item['take_leave_to']}',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            'Date: ${formatDate(startDate)} To ${formatDate(endDate)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
                           ),
                           const SizedBox(height: 4),
-                          // Room information
+                          // Room or Place
                           Text(
-                            'Room: ${item['room_name'] ?? 'No Room Info'}',
-                            style: const TextStyle(fontSize: 12, color: Colors.orange),
+                            'Info: $room',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.orange,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           // Status row
                           Row(
                             children: [
-                              const Text('Status: ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                              const Text(
+                                'Status: ',
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold),
+                              ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0, vertical: 4.0),
                                 decoration: BoxDecoration(
-                                  color: _getStatusColor(item['status']),
+                                  color: statusColor,
                                   borderRadius: BorderRadius.circular(12.0),
                                 ),
                                 child: Text(
-                                  item['status'],
-                                  style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                                  status,
+                                  style: const TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ],
@@ -398,7 +535,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                     const SizedBox(width: 16),
                     // Right section for employee image
                     CircleAvatar(
-                      backgroundImage: NetworkImage(item['img_name'] ?? 'https://via.placeholder.com/150'),
+                      backgroundImage: NetworkImage(employeeImage),
                       radius: 30,
                     ),
                   ],
@@ -410,107 +547,4 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       ),
     );
   }
-
-  Widget _buildHistoryCard(Map<String, dynamic> item) {
-    return GestureDetector(
-      onTap: () => _openHistoryDetail(item),
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15.0),
-          side: BorderSide(color: _getStatusColor(item['status']), width: 1.5),
-        ),
-        elevation: 6,
-        margin: const EdgeInsets.symmetric(vertical: 10.0),
-        child: Row(
-          children: [
-            // Left vertical colored line based on type
-            Container(
-              width: 5,
-              height: 130,
-              decoration: BoxDecoration(
-                color: _getStatusColor(item['status']),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(15.0),
-                  bottomLeft: Radius.circular(15.0),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Card content
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Left section for icon
-                    Icon(
-                        _getStatusIcon(item['status']),
-                        size: 40,
-                        color: _getStatusColor(item['status'])
-                    ),
-                    const SizedBox(width: 16),
-                    // Center section for details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Title
-                          Text(
-                            item['requestor_name'] ?? 'No Name',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          // Date range
-                          Text(
-                            'From: ${item['take_leave_from']} To: ${item['take_leave_to']}',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 4),
-                          // Room information
-                          Text(
-                            'Room: ${item['room_name'] ?? 'No Room Info'}',
-                            style: const TextStyle(fontSize: 12, color: Colors.orange),
-                          ),
-                          const SizedBox(height: 8),
-                          // Status row
-                          Row(
-                            children: [
-                              const Text('Status: ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                decoration: BoxDecoration(
-                                  color: _getStatusColor(item['status']),
-                                  borderRadius: BorderRadius.circular(12.0),
-                                ),
-                                child: Text(
-                                  item['status'],
-                                  style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // Right section for employee image
-                    CircleAvatar(
-                      backgroundImage: NetworkImage(item['img_name'] ?? 'https://via.placeholder.com/150'),
-                      radius: 30,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
 }

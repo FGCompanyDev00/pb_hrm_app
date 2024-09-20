@@ -180,7 +180,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           Stack(
             children: [
               Container(
-                height: 115,
+                height: 140,
                 decoration: const BoxDecoration(
                   image: DecorationImage(
                     image: AssetImage('assets/background.png'),
@@ -193,7 +193,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ),
               ),
               Positioned(
-                top: 60.0,
+                top: 70.0,
                 left: 16.0,
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -203,7 +203,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ),
               ),
               const Positioned(
-                top: 60.0,
+                top: 80.0,
                 left: 0,
                 right: 0,
                 child: Center(

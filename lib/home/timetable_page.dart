@@ -104,23 +104,39 @@ class _TimetablePageState extends State<TimetablePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          "Details Calendar Event",
-          style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/background.png'),
+              fit: BoxFit.cover,
+            ),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
+            ),
+          ),
         ),
         centerTitle: true,
-        flexibleSpace: Image.asset(
-          "assets/background.png",
-          fit: BoxFit.cover,
+        title: const Text(
+          'Detail Calendar Event',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 24,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black,
+            size: 20,
+          ),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+        toolbarHeight: 80,
       ),
       body: Column(
         children: [

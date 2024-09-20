@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
@@ -84,8 +83,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
             startDate,
             endDate,
             item['take_leave_reason'] ?? 'Approval Pending',
-            item['is_approve'] ?? 'Waiting',
-            false,
+            status: item['is_approve'] ?? 'Waiting',
+            isMeeting: false,
           );
 
           for (var day = startDate;
@@ -105,8 +104,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
           _eventsForDay = _getEventsForDay(_focusedDay);
         });
       } else {
-        _showErrorDialog(
-            'Failed to Load Leave Requests', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Leave Requests',
+            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Leave Requests', 'An unexpected error occurred: $e');
@@ -124,12 +123,21 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
     try {
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/out-meeting/outmeeting/my-members'),
+        Uri.parse(
+            'https://demo-application-api.flexiflows.co/api/work-tracking/out-meeting/outmeeting/my-members'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> results = json.decode(response.body)['results'];
+        final data = json.decode(response.body);
+
+        // Check if 'results' is null or not a list
+        if (data == null || data['results'] == null || data['results'] is! List) {
+          _showErrorDialog('Error Fetching Meetings', 'No meeting data available.');
+          return;
+        }
+
+        final List<dynamic> results = data['results'];
         final Map<DateTime, List<Event>> meetingEvents = {};
 
         for (var item in results) {
@@ -141,8 +149,17 @@ class _HomeCalendarState extends State<HomeCalendar> {
             startDate,
             endDate,
             item['description'] ?? '',
-            'Meeting',
-            true,
+            status: item['status'] ?? '',
+            isMeeting: true,
+            location: item['location'] ?? '',
+            createdBy: item['created_by_name'] ?? '',
+            imgName: item['img_name'] ?? '',
+            createdAt: item['created_at'] ?? '',
+            uid: item['outmeeting_uid'] ?? '',
+            isRepeat: item['is_repeat'] ?? '',
+            videoConference: item['video_conference'] ?? '',
+            backgroundColor: eventColor,
+            outmeetingUid: item['outmeeting_uid'] ?? '',
           );
 
           for (var day = startDate;
@@ -162,7 +179,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
           _eventsForDay = _getEventsForDay(_focusedDay);
         });
       } else {
-        _showErrorDialog('Failed to Load Meetings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Meetings',
+            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Meetings', 'An unexpected error occurred: $e');
@@ -228,12 +246,26 @@ class _HomeCalendarState extends State<HomeCalendar> {
     );
   }
 
+  final colors = [
+    Colors.blueAccent,
+    Colors.greenAccent,
+    Colors.purpleAccent,
+    Colors.orangeAccent,
+    Colors.tealAccent,
+  ];
+
+  Color getEventColor(Event event) {
+    if (event.isMeeting && event.backgroundColor != null) {
+      return event.backgroundColor!;
+    }
+    return colors[event.hashCode % colors.length];
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    // Collect all events into a single list
     List<Event> combinedEvents = [];
     _events.value.forEach((key, value) {
       combinedEvents.addAll(value);
@@ -248,7 +280,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
               _buildCalendar(isDarkMode),
               _buildSectionSeparator(),
               Expanded(
-                child: _buildCalendarView(context,  _eventsForDay),
+                child: _buildCalendarView(context, _eventsForDay),
               ),
             ],
           ),
@@ -260,7 +292,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
   Widget _buildCalendarHeader(bool isDarkMode) {
     return Container(
       width: double.infinity,
-      height: 120,
+      height: 135,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
@@ -277,12 +309,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(height: 50),
+                const SizedBox(height: 60),
                 Text(
                   'Calendar',
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black,
-                    fontSize: 24,
+                    fontSize: 25,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -290,7 +322,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
             ),
           ),
           Positioned(
-            top: 55,
+            top: 65,
             right: 20,
             child: IconButton(
               icon: const Icon(
@@ -308,13 +340,10 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
   Widget _buildCalendar(bool isDarkMode) {
     return Container(
-      height: 285,
+      height: 295,
       margin: const EdgeInsets.all(20.0),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.black : Colors.white,
-        boxShadow: const [
-
-        ],
         borderRadius: BorderRadius.circular(8),
       ),
       child: TableCalendar<Event>(
@@ -331,17 +360,13 @@ class _HomeCalendarState extends State<HomeCalendar> {
         },
         onDaySelected: (selectedDay, focusedDay) {
           if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
-            // Double-tap detected, navigate to TimetablePage
             _showDayView(selectedDay);
             _singleTapSelectedDay = null;
           } else {
-            // Single-tap detected, update selected day
             setState(() {
               _singleTapSelectedDay = selectedDay;
               _selectedDay = selectedDay;
               _focusedDay = focusedDay;
-
-              // Fetch events for the selected day
               _eventsForDay = _getEventsForDay(selectedDay);
             });
           }
@@ -394,13 +419,8 @@ class _HomeCalendarState extends State<HomeCalendar> {
         calendarBuilders: CalendarBuilders(
           markerBuilder: (context, date, events) {
             if (events.isNotEmpty) {
-              // Sort events by the start date, showing the latest ones first
               final sortedEvents = events..sort((a, b) => b.startDateTime.compareTo(a.startDateTime));
-
-              // Get the three latest events
               final latestEvents = sortedEvents.take(3).toList();
-
-              // Check how many events overlap with the selected date
               final eventSpans = latestEvents.where((event) {
                 return date.isAfter(event.startDateTime.subtract(const Duration(days: 1))) &&
                     date.isBefore(event.endDateTime.add(const Duration(days: 1)));
@@ -415,7 +435,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                       width: 16,
                       height: 3,
                       margin: const EdgeInsets.symmetric(vertical: 1),
-                      color: Colors.green,  // Event color, you can customize this
+                      color: Colors.green,
                     );
                   }).toList(),
                 ),
@@ -439,20 +459,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
     );
   }
 
-  final colors = [
-    Colors.blueAccent,
-    Colors.greenAccent,
-    Colors.purpleAccent,
-    Colors.orangeAccent,
-    Colors.tealAccent,
-  ];
-
-  Color getEventColor(Event event) {
-    return colors[event.hashCode % colors.length];
-  }
-
   Widget _buildCalendarView(BuildContext context, List<Event> events) {
-    // Time slots from 7 AM to 6 PM
     final List<String> timeSlots = List.generate(12, (index) {
       final hour = index + 7;
       final formattedHour = hour > 12 ? hour - 12 : hour;
@@ -460,7 +467,6 @@ class _HomeCalendarState extends State<HomeCalendar> {
       return '${formattedHour.toString().padLeft(2, '0')} $period';
     });
 
-    // Display the selected day at the top
     String selectedDateString = DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!);
 
     return SingleChildScrollView(
@@ -474,16 +480,14 @@ class _HomeCalendarState extends State<HomeCalendar> {
               child: Text(
                 selectedDateString,
                 style: const TextStyle(
-                  fontSize: 16, // Smaller text
+                  fontSize: 16,
                   fontWeight: FontWeight.w500,
-                  color: Colors.black, // Black color
+                  color: Colors.black,
                 ),
-                textAlign: TextAlign.center, // Center the text
+                textAlign: TextAlign.center,
               ),
             ),
           ),
-
-          // Check if there are events for the selected day
           if (events.isEmpty)
             const Center(
               child: Padding(
@@ -506,11 +510,11 @@ class _HomeCalendarState extends State<HomeCalendar> {
                   timeSlotHour += 12;
                 }
 
-                // Filter events for the current time slot
                 final List<Event> eventsForThisHour = events.where((event) {
                   int eventStartHour = event.startDateTime.hour;
                   int eventEndHour = eventStartHour + event.endDateTime.difference(event.startDateTime).inHours;
-                  return timeSlotHour == eventStartHour || (timeSlotHour > eventStartHour && timeSlotHour < eventEndHour);
+                  return timeSlotHour == eventStartHour ||
+                      (timeSlotHour > eventStartHour && timeSlotHour < eventEndHour);
                 }).toList();
 
                 return Padding(
@@ -545,26 +549,34 @@ class _HomeCalendarState extends State<HomeCalendar> {
                           Expanded(
                             child: Column(
                               children: eventsForThisHour.map((event) {
-                                // Get the dynamic color for the event
                                 final eventColor = getEventColor(event);
 
                                 return InkWell(
                                   onTap: () {
-                                    // Pass event data to EventDetailView without attendees
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) => EventDetailView(
                                           event: {
                                             'title': event.title,
-                                            'time': '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
-                                            'location': event.description,
+                                            'time':
+                                            '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
+                                            'location': event.location ?? '',
                                             'status': event.status,
+                                            'description': event.description,
+                                            'createdBy': event.createdBy ?? '',
+                                            'isRepeat': event.isRepeat ?? '',
+                                            'videoConference': event.videoConference ?? '',
+                                            'uid': event.outmeetingUid ?? '', // For meetings
+                                            'img_name': event.imgName ?? '',   // For meetings
+                                            'created_at': event.createdAt ?? '',// For meetings
+                                            'isMeeting': event.isMeeting,
                                           },
                                         ),
                                       ),
                                     );
                                   },
+
                                   child: Container(
                                     padding: const EdgeInsets.all(16.0),
                                     margin: const EdgeInsets.only(bottom: 12),
@@ -580,15 +592,14 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                       ],
                                       border: Border(
                                         right: BorderSide(
-                                          color: eventColor, // Dynamic right-side border color
-                                          width: 6, // Adjust the width of the colored border
+                                          color: eventColor,
+                                          width: 6,
                                         ),
                                       ),
                                     ),
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        // Event title
                                         Text(
                                           event.title,
                                           style: TextStyle(
@@ -600,10 +611,10 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                           maxLines: 1,
                                         ),
                                         const SizedBox(height: 8),
-                                        // Event time (start and end time)
                                         Row(
                                           children: [
-                                            const Icon(Icons.access_time, size: 16, color: Colors.grey),
+                                            const Icon(Icons.access_time,
+                                                size: 16, color: Colors.green),
                                             const SizedBox(width: 8),
                                             Text(
                                               '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
@@ -612,26 +623,58 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                           ],
                                         ),
                                         const SizedBox(height: 8),
-                                        // Location
-                                        if (event.description.isNotEmpty) ...[
+                                        if (event.location != null && event.location!.isNotEmpty) ...[
                                           Row(
                                             children: [
-                                              const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                                              const Icon(Icons.location_on,
+                                                  size: 16, color: Colors.red),
                                               const SizedBox(width: 8),
                                               Text(
-                                                event.description,
+                                                event.location!,
                                                 style: const TextStyle(color: Colors.black54),
                                                 overflow: TextOverflow.ellipsis,
                                                 maxLines: 1,
                                               ),
                                             ],
                                           ),
+                                          const SizedBox(height: 8),
                                         ],
-                                        const SizedBox(height: 8),
-                                        // Event status
+                                        if (event.createdBy != null && event.createdBy!.isNotEmpty) ...[
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.person,
+                                                  size: 16, color: Colors.blue),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'Created by: ${event.createdBy}',
+                                                style: const TextStyle(color: Colors.black54),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                        ],
+                                        if (event.description.isNotEmpty) ...[
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.description,
+                                                  size: 16, color: Colors.grey),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  event.description,
+                                                  style: const TextStyle(color: Colors.black54),
+                                                  overflow: TextOverflow.ellipsis,
+                                                  maxLines: 2,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                        ],
                                         Row(
                                           children: [
-                                            const Icon(Icons.check_circle, size: 16, color: Colors.grey),
+                                            const Icon(Icons.check_circle,
+                                                size: 16, color: Colors.green),
                                             const SizedBox(width: 8),
                                             Text(
                                               'Status: ${event.status}',
@@ -640,10 +683,10 @@ class _HomeCalendarState extends State<HomeCalendar> {
                                           ],
                                         ),
                                         const SizedBox(height: 8),
-                                        // Event Type (if it's a meeting or not)
                                         Row(
                                           children: [
-                                            const Icon(Icons.event, size: 16, color: Colors.grey),
+                                            const Icon(Icons.event,
+                                                size: 16, color: Colors.orange),
                                             const SizedBox(width: 8),
                                             Text(
                                               event.isMeeting ? 'Meeting' : 'Leave Request',
@@ -768,17 +811,29 @@ class _HomeCalendarState extends State<HomeCalendar> {
           newEvent['startDateTime'],
           newEvent['endDateTime'],
           newEvent['description'] ?? '',
-          'Pending', // Default to pending status for new events
-          true, // isMeeting set to true for office events
+          status: 'Pending', // Default to pending status for new events
+          isMeeting: true, // isMeeting set to true for office events
         );
       }
     }
   }
 
-  void _addEvent(String title, DateTime startDateTime, DateTime endDateTime,
-      String description, String status, bool isMeeting) {
+  void _addEvent(
+      String title,
+      DateTime startDateTime,
+      DateTime endDateTime,
+      String description, {
+        required String status,
+        required bool isMeeting,
+      }) {
     final newEvent = Event(
-        title, startDateTime, endDateTime, description, status, isMeeting);
+      title,
+      startDateTime,
+      endDateTime,
+      description,
+      status: status,
+      isMeeting: isMeeting,
+    );
     final eventsForDay = _getEventsForDay(_selectedDay!);
     setState(() {
       _events.value = {
@@ -863,9 +918,33 @@ class Event {
   final String description;
   final String status;
   final bool isMeeting;
+  final String? location;
+  final String? createdBy;
+  final String? imgName;
+  final String? createdAt;
+  final String? uid;
+  final String? isRepeat;
+  final String? videoConference;
+  final Color? backgroundColor;
+  final String? outmeetingUid;
 
-  Event(this.title, this.startDateTime, this.endDateTime, this.description,
-      this.status, this.isMeeting);
+  Event(
+      this.title,
+      this.startDateTime,
+      this.endDateTime,
+      this.description, {
+        required this.status,
+        required this.isMeeting,
+        this.location,
+        this.createdBy,
+        this.imgName,
+        this.createdAt,
+        this.uid,
+        this.isRepeat,
+        this.videoConference,
+        this.backgroundColor,
+        this.outmeetingUid,
+      });
 
   String get formattedTime => DateFormat.jm().format(startDateTime);
 

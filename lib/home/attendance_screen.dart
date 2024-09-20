@@ -1083,7 +1083,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(90.0),
+        preferredSize: const Size.fromHeight(80.0),
         child: Container(
           width: double.infinity,
           decoration: const BoxDecoration(
@@ -1099,7 +1099,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           child: const Center(
             child: Column(
               children: [
-                SizedBox(height: 75),
+                SizedBox(height: 85),
                 Text(
                   'Attendance',
                   style: TextStyle(

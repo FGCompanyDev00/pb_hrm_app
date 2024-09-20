@@ -4,11 +4,15 @@ import 'package:convex_bottom_bar/convex_bottom_bar.dart';
 class CustomBottomNavBar extends StatefulWidget {
   final int currentIndex;
   final Function(int) onTap;
+  final double fingerprintTopOffset;
+  final double appTopOffset;
 
   const CustomBottomNavBar({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    this.fingerprintTopOffset = -8.0,
+    this.appTopOffset = -8.0,
   });
 
   @override
@@ -59,7 +63,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
       items: [
         TabItem(
           icon: Transform.translate(
-            offset: const Offset(0, 9),
+            offset: Offset(0, widget.fingerprintTopOffset),
             child: Icon(
               Icons.fingerprint,
               color: widget.currentIndex == 0 ? Colors.orangeAccent : Colors.grey,
@@ -72,12 +76,14 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
             animation: _animationController,
             builder: (context, child) {
               return Container(
+                width: 30,
+                height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: widget.currentIndex == 1
                       ? Border.all(
                     color: _colorAnimation.value!,
-                    width: 4.0,
+                    width: 4.0, // Border width
                   )
                       : null,
                   boxShadow: widget.currentIndex == 1
@@ -101,7 +107,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
         ),
         TabItem(
           icon: Transform.translate(
-            offset: const Offset(0, 9),
+            offset: Offset(0, widget.appTopOffset),
             child: Icon(
               Icons.apps,
               color: widget.currentIndex == 2 ? Colors.orangeAccent : Colors.grey,
@@ -115,7 +121,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
       backgroundColor: Colors.white,
       activeColor: Colors.orangeAccent,
       color: Colors.grey,
-      height: 80,
+      height: 90,
       curveSize: 150,
       top: -22,
       shadowColor: Colors.black.withOpacity(0.1),
