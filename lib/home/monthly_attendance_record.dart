@@ -220,7 +220,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
             Container(
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('assets/background.png'), // Ensure this path is correct
+                  image: AssetImage('assets/background.png'),
                   fit: BoxFit.cover,
                 ),
               ),

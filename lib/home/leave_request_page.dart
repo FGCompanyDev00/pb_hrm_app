@@ -138,7 +138,7 @@ class LeaveManagementPage extends HookWidget {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['results']);
+        return List<Map<String, dynamic>>.from(data['data']);  // Ensure correct path to data
       } else {
         showCustomDialog(context, 'Error', 'Failed to load leave types');
         return [];

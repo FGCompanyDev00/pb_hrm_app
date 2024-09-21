@@ -132,45 +132,6 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-//   Future<void> _enableBiometrics(bool enable) async {
-//     if (enable) {
-//         bool canCheckBiometrics = await auth.canCheckBiometrics;
-//         if (!canCheckBiometrics) {
-//             ScaffoldMessenger.of(context).showSnackBar(
-//                 const SnackBar(
-//                     content: Text('Biometric authentication is not available.'),
-//                 ),
-//             );
-//             return;
-//         }
-//         try {
-//             bool authenticated = await auth.authenticate(
-//                 localizedReason: 'Please authenticate to enable biometric login',
-//                 options: const AuthenticationOptions(
-//                     stickyAuth: true,
-//                     useErrorDialogs: true,
-//                 ),
-//             );
-//             if (authenticated) {
-//                 setState(() {
-//                     _biometricEnabled = true;
-//                 });
-//                 await _saveBiometricSetting(true);
-//             }
-//         } catch (e) {
-//             if (kDebugMode) {
-//                 print('Error enabling biometrics: $e');
-//             }
-//         }
-//     } else {
-//         setState(() {
-//             _biometricEnabled = false;
-//         });
-//         await _saveBiometricSetting(false);
-//     }
-// }
-
-
   Future<void> _toggleNotification(bool enable) async {
     if (enable) {
       setState(() {
@@ -193,11 +154,11 @@ class _SettingsPageState extends State<SettingsPage> {
         'psbv_next_channel', // Updated channel ID for app
         'PSBV Next Notifications', // Updated channel name
         channelDescription:
-        'Notifications about assignments, project updates, and member changes in PSBV Next app.', // Updated channel description
+        'Notifications about assignments, project updates, and member changes in PSBV Next app.',
         importance: Importance.max,
         priority: Priority.high,
         showWhen: true,
-        icon: '@mipmap/playstore', // Use your app's logo here
+        icon: '@mipmap/playstore',
       );
       const NotificationDetails platformChannelSpecifics =
       NotificationDetails(android: androidPlatformChannelSpecifics);
