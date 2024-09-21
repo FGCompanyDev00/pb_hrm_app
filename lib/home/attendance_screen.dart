@@ -1082,36 +1082,31 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80.0),
-        child: Container(
-          width: double.infinity,
+      appBar: AppBar(
+        flexibleSpace: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(
-              image: AssetImage("assets/background.png"),
+              image: AssetImage('assets/background.png'),
               fit: BoxFit.cover,
             ),
             borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(20),
-              bottomRight: Radius.circular(20),
-            ),
-          ),
-          child: const Center(
-            child: Column(
-              children: [
-                SizedBox(height: 85),
-                Text(
-                  'Attendance',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 25,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
             ),
           ),
         ),
+        centerTitle: true,
+        title: const Text(
+          'Attendance',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        toolbarHeight: 80,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
       ),
       body: Stack(
         children: [
