@@ -113,7 +113,6 @@ class _AddMemberPageState extends State<AddMemberPage> {
       ),
       body: Column(
         children: [
-          // Selected Members Display with the Add Button next to it
           if (_selectedMembers.isNotEmpty)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -160,7 +159,6 @@ class _AddMemberPageState extends State<AddMemberPage> {
                         child: Text('+${_selectedMembers.length - 3}', style: const TextStyle(color: Colors.black)),
                       ),
                     ),
-                  // Add Button aligned with Figma design
                   Padding(
                     padding: const EdgeInsets.only(left: 16.0),
                     child: ElevatedButton(
@@ -181,7 +179,6 @@ class _AddMemberPageState extends State<AddMemberPage> {
                 ],
               ),
             ),
-          // Search Box
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
@@ -192,12 +189,11 @@ class _AddMemberPageState extends State<AddMemberPage> {
                 labelText: 'Search',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30.0),  // Rounded search box
+                  borderRadius: BorderRadius.circular(30.0),
                 ),
               ),
             ),
           ),
-          // Member List
           Expanded(
             child: ListView.builder(
               itemCount: _filteredMembers.length,
