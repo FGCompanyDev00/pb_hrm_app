@@ -600,6 +600,22 @@ class DetailsPage extends StatelessWidget {
     }
   }
 
+  Color _getIconColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'approved':
+        return Colors.green;
+      case 'disapproved':
+      case 'rejected':
+      case 'cancel':
+        return Colors.redAccent;
+      case 'waiting':
+      case 'pending':
+        return Colors.orangeAccent;
+      default:
+        return Colors.blueGrey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
@@ -645,8 +661,7 @@ class DetailsPage extends StatelessWidget {
               top: 55,
               left: 16,
               child: IconButton(
-                icon:
-                const Icon(Icons.arrow_back, color: Colors.black),
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
                 onPressed: () {
                   Navigator.pop(context);
                 },
@@ -655,7 +670,6 @@ class DetailsPage extends StatelessWidget {
           ],
         ),
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -678,15 +692,13 @@ class DetailsPage extends StatelessWidget {
             // Status Highlight
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
               decoration: BoxDecoration(
                 color: statusColor,
                 borderRadius: BorderRadius.circular(12.0),
                 boxShadow: [
                   BoxShadow(
-                    color:
-                    Colors.black.withOpacity(0.2),
+                    color: Colors.black.withOpacity(0.2),
                     spreadRadius: 2,
                     blurRadius: 8,
                     offset: const Offset(0, 4),
@@ -698,7 +710,7 @@ class DetailsPage extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: textColor,
+                  color: Colors.white,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -707,44 +719,26 @@ class DetailsPage extends StatelessWidget {
 
             // Conditionally display details based on 'types'
             if (types == 'meeting') ...[
-              _buildInfoRow(Icons.title, 'Title',
-                  item['title'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.calendar_today, 'From',
-                  item['from_date_time'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.calendar_today, 'To',
-                  item['to_date_time'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.room, 'Room',
-                  item['room_name'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.person, 'Employee',
-                  item['employee_name'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.notes, 'Details',
-                  item['details'] ?? 'No Details', isDarkMode),
+              _buildInfoRow(Icons.title, 'Title', item['title'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.calendar_today, 'From', item['from_date_time'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.calendar_today, 'To', item['to_date_time'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.room, 'Room', item['room_name'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.person, 'Employee', item['employee_name'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.notes, 'Details', item['details'] ?? 'No Details', _getIconColor(item['status'])),
             ] else if (types == 'leave') ...[
-              _buildInfoRow(Icons.title, 'Leave Type',
-                  item['title'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.calendar_today, 'From',
-                  item['take_leave_from'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.calendar_today, 'To',
-                  item['take_leave_to'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.person, 'Employee',
-                  item['requestor_name'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.notes, 'Reason',
-                  item['take_leave_reason'] ?? 'N/A', isDarkMode),
+              _buildInfoRow(Icons.title, 'Leave Type', item['title'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.calendar_today, 'From', item['take_leave_from'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.calendar_today, 'To', item['take_leave_to'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.person, 'Employee', item['requestor_name'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.notes, 'Reason', item['take_leave_reason'] ?? 'N/A', _getIconColor(item['status'])),
             ] else if (types == 'car') ...[
-              _buildInfoRow(Icons.title, 'Purpose',
-                  item['title'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.calendar_today, 'Date Out',
-                  item['date_out'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.calendar_today, 'Date In',
-                  item['date_in'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.access_time, 'Time Out',
-                  item['time_out'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.access_time, 'Time In',
-                  item['time_in'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.place, 'Place',
-                  item['place'] ?? 'N/A', isDarkMode),
-              _buildInfoRow(Icons.person, 'Requestor',
-                  item['requestor_name'] ?? 'N/A', isDarkMode),
+              _buildInfoRow(Icons.title, 'Purpose', item['title'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.calendar_today, 'Date Out', item['date_out'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.calendar_today, 'Date In', item['date_in'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.access_time, 'Time Out', item['time_out'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.access_time, 'Time In', item['time_in'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.place, 'Place', item['place'] ?? 'N/A', _getIconColor(item['status'])),
+              _buildInfoRow(Icons.person, 'Requestor', item['requestor_name'] ?? 'N/A', _getIconColor(item['status'])),
             ] else ...[
               // Default details
               Center(
@@ -763,6 +757,29 @@ class DetailsPage extends StatelessWidget {
       ),
     );
   }
+
+  // Build the info row with custom icon color and improved design
+  Widget _buildInfoRow(IconData icon, String title, String content, Color iconColor) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, size: 24, color: iconColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '$title: $content',
+              style: const TextStyle(
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
   Widget _buildInfoRow(IconData icon, String label, String value,
       bool isDarkMode,
@@ -789,4 +806,3 @@ class DetailsPage extends StatelessWidget {
       ),
     );
   }
-}

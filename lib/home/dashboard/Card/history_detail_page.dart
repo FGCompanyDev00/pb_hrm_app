@@ -142,13 +142,19 @@ class _DetailsPageState extends State<DetailsPage> {
             // Status Highlight
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0, vertical: 16.0),
               decoration: BoxDecoration(
                 color: statusColor,
                 borderRadius: BorderRadius.circular(12.0),
+                gradient: LinearGradient(
+                  colors: [statusColor.withOpacity(0.7), statusColor],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2), // External shadow
+                    color: Colors.black.withOpacity(0.2),
                     spreadRadius: 2,
                     blurRadius: 8,
                     offset: const Offset(0, 4),
@@ -160,7 +166,7 @@ class _DetailsPageState extends State<DetailsPage> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: textColor, // Text color based on theme
+                  color: textColor,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -169,22 +175,36 @@ class _DetailsPageState extends State<DetailsPage> {
 
             // Dynamic fields based on types
             if (widget.types == 'car') ...[
-              _buildDetailRow('Vehicle ID', _itemDetails!['vehicle_id'] ?? 'N/A', textColor),
-              _buildDetailRow('Requestor ID', _itemDetails!['requestor_id'] ?? 'N/A', textColor),
-              _buildDetailRow('Date Out', _itemDetails!['date_out'] ?? 'N/A', textColor),
-              _buildDetailRow('Date In', _itemDetails!['date_in'] ?? 'N/A', textColor),
-              _buildDetailRow('Total Distance', _itemDetails!['total_distance'].toString(), textColor),
+              _buildDetailRow(
+                  Icons.directions_car, 'Vehicle ID', _itemDetails!['vehicle_id'] ?? 'N/A', textColor, Colors.blueAccent),
+              _buildDetailRow(
+                  Icons.person, 'Requestor ID', _itemDetails!['requestor_id'] ?? 'N/A', textColor, Colors.orange),
+              _buildDetailRow(Icons.calendar_today, 'Date Out',
+                  _itemDetails!['date_out'] ?? 'N/A', textColor, Colors.purple),
+              _buildDetailRow(Icons.calendar_today, 'Date In',
+                  _itemDetails!['date_in'] ?? 'N/A', textColor, Colors.green),
+              _buildDetailRow(Icons.speed, 'Total Distance',
+                  _itemDetails!['total_distance'].toString(), textColor, Colors.redAccent),
             ] else if (widget.types == 'leave') ...[
-              _buildDetailRow('Requestor ID', _itemDetails!['requestor_id'] ?? 'N/A', textColor),
-              _buildDetailRow('Leave From', _itemDetails!['take_leave_from'] ?? 'N/A', textColor),
-              _buildDetailRow('Leave To', _itemDetails!['take_leave_to'] ?? 'N/A', textColor),
-              _buildDetailRow('Days', _itemDetails!['days'].toString(), textColor),
+              _buildDetailRow(
+                  Icons.person, 'Requestor ID', _itemDetails!['requestor_id'] ?? 'N/A', textColor, Colors.orange),
+              _buildDetailRow(Icons.calendar_today, 'Leave From',
+                  _itemDetails!['take_leave_from'] ?? 'N/A', textColor, Colors.green),
+              _buildDetailRow(Icons.calendar_today, 'Leave To',
+                  _itemDetails!['take_leave_to'] ?? 'N/A', textColor, Colors.redAccent),
+              _buildDetailRow(Icons.timelapse, 'Days',
+                  _itemDetails!['days'].toString(), textColor, Colors.blue),
             ] else if (widget.types == 'meeting') ...[
-              _buildDetailRow('Room ID', _itemDetails!['room_id'] ?? 'N/A', textColor),
-              _buildDetailRow('Employee ID', _itemDetails!['employee_id'] ?? 'N/A', textColor),
-              _buildDetailRow('From', _itemDetails!['from_date_time'] ?? 'N/A', textColor),
-              _buildDetailRow('To', _itemDetails!['to_date_time'] ?? 'N/A', textColor),
-              _buildDetailRow('Created Date', _itemDetails!['date_create'] ?? 'N/A', textColor),
+              _buildDetailRow(Icons.room, 'Room ID',
+                  _itemDetails!['room_id'] ?? 'N/A', textColor, Colors.teal),
+              _buildDetailRow(Icons.person, 'Employee ID',
+                  _itemDetails!['employee_id'] ?? 'N/A', textColor, Colors.orange),
+              _buildDetailRow(Icons.calendar_today, 'From',
+                  _itemDetails!['from_date_time'] ?? 'N/A', textColor, Colors.green),
+              _buildDetailRow(Icons.calendar_today, 'To',
+                  _itemDetails!['to_date_time'] ?? 'N/A', textColor, Colors.redAccent),
+              _buildDetailRow(Icons.create, 'Created Date',
+                  _itemDetails!['date_create'] ?? 'N/A', textColor, Colors.blue),
             ],
           ],
         ),
@@ -192,20 +212,27 @@ class _DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  // Method to build each row of details
-  Widget _buildDetailRow(String label, String value, Color textColor) {
+  // Method to build each row of details with a customized icon color
+  Widget _buildDetailRow(
+      IconData icon, String label, String value, Color textColor, Color iconColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: textColor,
-            ),
+          Row(
+            children: [
+              Icon(icon, size: 22, color: iconColor),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+            ],
           ),
           Text(
             value,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -43,6 +44,20 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
       }
     }
   }
+
+  String formatDate(String? dateStr) {
+    try {
+      if (dateStr == null || dateStr.isEmpty) {
+        return 'N/A';
+      }
+      final DateTime parsedDate = DateTime.parse(dateStr);
+      return DateFormat('yyyy-MM-dd').format(parsedDate);
+    } catch (e) {
+      print('Date parsing error: $e');
+      return 'Invalid Date';
+    }
+  }
+
 
   // Check final leave request approval state
   Future<void> _checkFinalLeaveStatus() async {
@@ -121,6 +136,20 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
   }
 
   Widget _buildRequestorSection() {
+    String requestorName = widget.item['requestor_name'] ?? 'No Name';
+    String submittedOn = formatDate(widget.item['created_at']);
+
+    print('Requestor Info: ${widget.item}');
+
+    final String types = widget.item['types'] ?? 'Unknown';
+    if (types == 'leave') {
+      submittedOn = widget.item['created_at']?.split("T")[0] ?? 'N/A';
+    } else if (types == 'meeting') {
+      submittedOn = widget.item['date_create']?.split("T")[0] ?? 'N/A';
+    } else if (types == 'car') {
+      submittedOn = widget.item['created_date']?.split("T")[0] ?? 'N/A';
+    }
+
     return Column(
       children: [
         CircleAvatar(
@@ -130,13 +159,13 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
         ),
         const SizedBox(height: 8),
         Text(
-          widget.item['requestor_name'] ?? 'No Name',
+          requestorName,
           style: const TextStyle(
               color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
         ),
         const SizedBox(height: 4),
         Text(
-          'Submitted on ${widget.item['created_at']?.split("T")[0] ?? 'N/A'}',
+          'Submitted on $submittedOn',
           style: const TextStyle(fontSize: 14, color: Colors.black54),
         ),
       ],
@@ -158,20 +187,62 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
   }
 
   Widget _buildDetailsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        _buildInfoRow(Icons.bookmark, 'Title', widget.item['title'] ?? 'No Title'),
-        const SizedBox(height: 8),
-        _buildInfoRow(Icons.calendar_today, 'Date',
-            '${widget.item['take_leave_from']} - ${widget.item['take_leave_to']}'),
-        const SizedBox(height: 8),
-        Text(
-          'Type of leave: ${widget.item['take_leave_reason'] ?? 'No Reason'}',
-          style: const TextStyle(fontSize: 14, color: Colors.orange),
+    final String types = widget.item['types'] ?? 'Unknown';
+
+    if (types == 'meeting') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _buildInfoRow(Icons.bookmark, 'Title', widget.item['title'] ?? 'No Title', Colors.green),
+          const SizedBox(height: 8),
+          _buildInfoRow(Icons.calendar_today, 'Date',
+              '${widget.item['startDate'] ?? 'N/A'} - ${widget.item['endDate'] ?? 'N/A'}', Colors.blue),
+          const SizedBox(height: 8),
+          _buildInfoRow(Icons.meeting_room, 'Room', widget.item['room'] ?? 'No Room Info', Colors.orange),
+          const SizedBox(height: 8),
+          _buildInfoRow(Icons.description, 'Details', widget.item['details'] ?? 'No Details Provided', Colors.purple),
+          const SizedBox(height: 8),
+          _buildInfoRow(Icons.person, 'Employee', widget.item['employee_name'] ?? 'N/A', Colors.red),
+        ],
+      );
+    } else if (types == 'leave') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _buildInfoRow(Icons.bookmark, 'Title', widget.item['title'] ?? 'No Title', Colors.green),
+          const SizedBox(height: 8),
+          _buildInfoRow(Icons.calendar_today, 'Date',
+              '${widget.item['startDate'] ?? 'N/A'} - ${widget.item['endDate'] ?? 'N/A'}', Colors.blue),
+          const SizedBox(height: 8),
+          _buildInfoRow(Icons.description, 'Reason', widget.item['details'] ?? 'No Reason Provided', Colors.purple),
+          const SizedBox(height: 8),
+          _buildInfoRow(Icons.person, 'Employee', widget.item['employee_name'] ?? 'N/A', Colors.red),
+        ],
+      );
+    } else if (types == 'car') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _buildInfoRow(Icons.bookmark, 'Purpose', widget.item['title'] ?? 'No Title', Colors.green),
+          const SizedBox(height: 8),
+          _buildInfoRow(Icons.calendar_today, 'Date',
+              '${widget.item['startDate'] ?? 'N/A'} - ${widget.item['endDate'] ?? 'N/A'}', Colors.blue),
+          const SizedBox(height: 8),
+          _buildInfoRow(Icons.place, 'Place', widget.item['room'] ?? 'No Place Info', Colors.orange),
+          const SizedBox(height: 8),
+          _buildInfoRow(Icons.description, 'Details', widget.item['details'] ?? 'No Details Provided', Colors.purple),
+          const SizedBox(height: 8),
+          _buildInfoRow(Icons.person, 'Employee', widget.item['employee_name'] ?? 'N/A', Colors.red),
+        ],
+      );
+    } else {
+      return const Center(
+        child: Text(
+          'Unknown Request Type',
+          style: TextStyle(fontSize: 16, color: Colors.red),
         ),
-      ],
-    );
+      );
+    }
   }
 
   Widget _buildWorkflowSection() {
@@ -197,13 +268,16 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String title, String content) {
+  Widget _buildInfoRow(IconData icon, String title, String content, Color color) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, size: 18),
+        Icon(icon, size: 18, color: color),
         const SizedBox(width: 4),
-        Text('$title: $content', style: const TextStyle(fontSize: 14, color: Colors.black)),
+        Text(
+          '$title: $content',
+          style: const TextStyle(fontSize: 14, color: Colors.black),
+        ),
       ],
     );
   }

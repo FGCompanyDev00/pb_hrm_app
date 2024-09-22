@@ -125,25 +125,39 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       formattedItem['details'] = item['remark'] ?? 'No Details Provided';
       formattedItem['employee_name'] = item['employee_name'] ?? 'N/A';
     } else if (types == 'leave') {
-      formattedItem['title'] = item['name'] ?? 'No Title';
-      formattedItem['startDate'] = item['take_leave_from'] ?? 'N/A';
-      formattedItem['endDate'] = item['take_leave_to'] ?? 'N/A';
+      formattedItem['title'] = item['take_leave_name'] ?? 'No Title';
+
+      formattedItem['startDate'] = (item['take_leave_from'] != null && item['take_leave_from'].isNotEmpty)
+          ? item['take_leave_from']
+          : 'N/A';
+
+      formattedItem['endDate'] = (item['take_leave_to'] != null && item['take_leave_to'].isNotEmpty)
+          ? item['take_leave_to']
+          : 'N/A';
+
       formattedItem['room'] = 'Leave Type';
-      formattedItem['details'] =
-          item['take_leave_reason'] ?? 'No Details Provided';
+      formattedItem['details'] = item['take_leave_reason'] ?? 'No Details Provided';
       formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
-    } else if (types == 'car') {
+    }
+    else if (types == 'car') {
       formattedItem['title'] = item['purpose'] ?? 'No Title';
-      formattedItem['startDate'] = item['date_out'] ?? 'N/A';
-      formattedItem['endDate'] = item['date_in'] ?? 'N/A';
+
+      formattedItem['startDate'] = (item['date_out'] != null && item['date_out'].isNotEmpty)
+          ? item['date_out']
+          : 'N/A';
+
+      formattedItem['endDate'] = (item['date_in'] != null && item['date_in'].isNotEmpty)
+          ? item['date_in']
+          : 'N/A';
+
       formattedItem['room'] = item['place'] ?? 'No Place Info';
       formattedItem['details'] = item['purpose'] ?? 'No Details Provided';
       formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
-    } else {
+    }
+    else {
       // Default processing
       formattedItem['title'] = 'Unknown Type';
     }
-
     return formattedItem;
   }
 
