@@ -4642,14 +4642,25 @@ Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Status row with clock icon
           Row(
             children: [
-              Icon(
-                Icons.circle,
-                color: progressColors[task['status']] ?? Colors.black,
-                size: 14,
-              ),
               const SizedBox(width: 8),
+              const Text(
+                'Status:',
+                style: TextStyle(
+                  color: Colors.black87, // Main status label color
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+              ),
+             const SizedBox(width: 2),
+               const Icon(
+                Icons.access_time, // Clock icon
+                color: Colors.amber, // Yellow color for the clock icon
+                size: 16,
+              ),
+               const SizedBox(width: 2),
               Text(
                 task['status'] ?? 'Unknown',
                 style: TextStyle(
@@ -4666,39 +4677,31 @@ Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            task['title'] ?? 'No Title',
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildIconTextRow(
-                icon: Icons.calendar_today,
-                label: 'Start Date: ${task['start_date'] ?? 'N/A'}',
-                iconColor: Colors.orangeAccent,
-              ),
-              const SizedBox(height: 8),
-              _buildIconTextRow(
-                icon: Icons.calendar_today_outlined,
-                label: 'Due Date: ${task['due_date'] ?? 'N/A'}',
-                iconColor: Colors.redAccent,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildIconTextRow(
-            icon: Icons.timelapse,
-            label: 'Days Remaining: $daysRemaining',
-            iconColor: Colors.greenAccent,
-          ),
-          const SizedBox(height: 12),
-          Text(
+          // Task title with "Title:" label
+RichText(
+  text: TextSpan(
+    children: [
+      TextSpan(
+        text: 'Title: ', // Add the "Title:" label
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Colors.black87,
+          fontSize: 20,
+        ),
+      ),
+      TextSpan(
+        text: task['title'] ?? 'No Title', // Display the actual task title
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          color: Colors.black87,
+          fontSize: 20,
+        ),
+      ),
+    ],
+  ),
+),
+
+           Text(
             task['description'] ?? 'No Description',
             style: const TextStyle(
               color: Colors.black54,
@@ -4706,6 +4709,34 @@ Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
               height: 1.5,
             ),
           ),
+          const SizedBox(height: 12),
+          // Start and Due date row
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildIconTextRow(
+                icon: Icons.calendar_today,
+                label: 'Date: ${task['start_date'] ?? 'N/A'} - ${task['due_date'] ?? 'N/A'}',
+                iconColor: Colors.orangeAccent,
+              ),
+              const SizedBox(height: 8),
+              _buildIconTextRow(
+                icon: Icons.access_time_outlined,
+                label: 'Time: 09:00 AM - 12:00 PM', // Can adjust the time display dynamically if needed
+                iconColor: Colors.redAccent,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Days remaining section
+          _buildIconTextRow(
+            icon: Icons.timelapse,
+            label: 'Days Remaining: $daysRemaining',
+            iconColor: Colors.greenAccent,
+          ),
+          const SizedBox(height: 12),
+          // Task description
+         
         ],
       ),
     ),
