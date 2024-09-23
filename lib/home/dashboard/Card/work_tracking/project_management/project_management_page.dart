@@ -4642,7 +4642,7 @@ Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status row with clock icon
+          // Status row with dynamic clock icon color
           Row(
             children: [
               const SizedBox(width: 8),
@@ -4654,13 +4654,13 @@ Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
                   fontSize: 14,
                 ),
               ),
-             const SizedBox(width: 2),
-               const Icon(
+              const SizedBox(width: 2),
+              Icon(
                 Icons.access_time, // Clock icon
-                color: Colors.amber, // Yellow color for the clock icon
+                color: progressColors[task['status']] ?? Colors.black, // Dynamic color based on task status
                 size: 16,
               ),
-               const SizedBox(width: 2),
+              const SizedBox(width: 2),
               Text(
                 task['status'] ?? 'Unknown',
                 style: TextStyle(
@@ -4678,30 +4678,31 @@ Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
           ),
           const SizedBox(height: 12),
           // Task title with "Title:" label
-RichText(
-  text: TextSpan(
-    children: [
-      TextSpan(
-        text: 'Title: ', // Add the "Title:" label
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.black87,
-          fontSize: 20,
-        ),
-      ),
-      TextSpan(
-        text: task['title'] ?? 'No Title', // Display the actual task title
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          color: Colors.black87,
-          fontSize: 20,
-        ),
-      ),
-    ],
-  ),
-),
-
-           Text(
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: 'Title: ', // Add the "Title:" label
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                    fontSize: 20,
+                  ),
+                ),
+                TextSpan(
+                  text: task['title'] ?? 'No Title', // Display the actual task title
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                    fontSize: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Task description
+          Text(
             task['description'] ?? 'No Description',
             style: const TextStyle(
               color: Colors.black54,
@@ -4722,8 +4723,8 @@ RichText(
               const SizedBox(height: 8),
               _buildIconTextRow(
                 icon: Icons.access_time_outlined,
-                label: 'Time: 09:00 AM - 12:00 PM', // Can adjust the time display dynamically if needed
-                iconColor: Colors.redAccent,
+                label: 'Time: 09:00 AM - 12:00 PM', // Adjust the time display dynamically if needed
+                iconColor: progressColors[task['status']] ?? Colors.redAccent, // Dynamic time icon color
               ),
             ],
           ),
@@ -4734,14 +4735,12 @@ RichText(
             label: 'Days Remaining: $daysRemaining',
             iconColor: Colors.greenAccent,
           ),
-          const SizedBox(height: 12),
-          // Task description
-         
         ],
       ),
     ),
   );
 }
+
 
 
 
