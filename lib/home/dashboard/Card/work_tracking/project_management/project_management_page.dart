@@ -4605,17 +4605,15 @@ Widget _buildAssignmentTaskCard(Map<String, dynamic> task, int index) {
 }
 
 Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
-  // Define hardcoded properties for the Processing Task card
   final progressColors = {
     'Pending': Colors.orange,
     'Processing': Colors.blue,
     'Finished': Colors.green,
   };
 
-  // Hardcoded start date, due date, and days remaining
-  final startDate = '2024-09-07';
-  final dueDate = '2024-09-09';
-  final daysRemaining = 2; // Hardcoded for demonstration
+  final startDate = DateTime.parse(task['start_date'] ?? DateTime.now().toIso8601String());
+  final dueDate = DateTime.parse(task['due_date'] ?? DateTime.now().toIso8601String());
+  final daysRemaining = dueDate.difference(startDate).inDays;
 
   return Container(
     margin: const EdgeInsets.symmetric(vertical: 10.0),
@@ -4648,14 +4646,14 @@ Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
             children: [
               Icon(
                 Icons.circle,
-                color: progressColors['Finished'], // Hardcoded to 'Finished'
+                color: progressColors[task['status']] ?? Colors.black,
                 size: 14,
               ),
               const SizedBox(width: 8),
               Text(
-                'Finished', // Hardcoded status
+                task['status'] ?? 'Unknown',
                 style: TextStyle(
-                  color: progressColors['Finished'],
+                  color: progressColors[task['status']] ?? Colors.black,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -4669,7 +4667,7 @@ Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
           ),
           const SizedBox(height: 12),
           Text(
-            'Hardcoded Task Title', // Hardcoded title
+            task['title'] ?? 'No Title',
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
@@ -4682,13 +4680,13 @@ Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
             children: [
               _buildIconTextRow(
                 icon: Icons.calendar_today,
-                label: 'Start Date: $startDate', // Hardcoded start date
+                label: 'Start Date: ${task['start_date'] ?? 'N/A'}',
                 iconColor: Colors.orangeAccent,
               ),
               const SizedBox(height: 8),
               _buildIconTextRow(
                 icon: Icons.calendar_today_outlined,
-                label: 'Due Date: $dueDate', // Hardcoded due date
+                label: 'Due Date: ${task['due_date'] ?? 'N/A'}',
                 iconColor: Colors.redAccent,
               ),
             ],
@@ -4696,26 +4694,24 @@ Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
           const SizedBox(height: 12),
           _buildIconTextRow(
             icon: Icons.timelapse,
-            label: 'Days Remaining: $daysRemaining', // Hardcoded days remaining
+            label: 'Days Remaining: $daysRemaining',
             iconColor: Colors.greenAccent,
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Hardcoded Description', // Hardcoded description
-            style: TextStyle(
+          Text(
+            task['description'] ?? 'No Description',
+            style: const TextStyle(
               color: Colors.black54,
               fontSize: 14,
               height: 1.5,
             ),
           ),
-          const SizedBox(height: 12),
-          
-      
         ],
       ),
     ),
   );
 }
+
 
 
 Widget _buildIconTextRow({required IconData icon, required String label, required Color iconColor}) {
