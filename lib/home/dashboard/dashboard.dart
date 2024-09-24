@@ -119,7 +119,7 @@ class _DashboardState extends State<Dashboard> {
       onWillPop: () async => false,
       child: Scaffold(
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(110.0),
+          preferredSize: const Size.fromHeight(140.0),
           child: FutureBuilder<UserProfile>(
             future: futureUserProfile,
             builder: (context, snapshot) {
@@ -146,7 +146,7 @@ class _DashboardState extends State<Dashboard> {
                       ),
                       child: SafeArea(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 14.0),
+                          padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 40.0),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -172,7 +172,7 @@ class _DashboardState extends State<Dashboard> {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       CircleAvatar(
-                                        radius: 22,
+                                        radius: 25,
                                         backgroundImage: snapshot.data!.imgName != 'default_avatar.jpg'
                                             ? NetworkImage(snapshot.data!.imgName)
                                             : const AssetImage('assets/default_avatar.jpg') as ImageProvider,

@@ -292,7 +292,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
   Widget _buildCalendarHeader(bool isDarkMode) {
     return Container(
       width: double.infinity,
-      height: 135,
+      height: 140,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
@@ -314,7 +314,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
                   'Calendar',
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black,
-                    fontSize: 25,
+                    fontSize: 30,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -322,12 +322,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
             ),
           ),
           Positioned(
-            top: 65,
-            right: 20,
+            top: 60,
+            right: 10,
             child: IconButton(
               icon: const Icon(
                 Icons.add_circle,
-                size: 40,
+                size: 55,
                 color: Colors.green,
               ),
               onPressed: _showAddEventOptionsPopup,

@@ -569,12 +569,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                isSuccess ? Icons.check_circle_outline : Icons.cancel,  // Success or Error Icon
-                color: isSuccess ? Colors.green : Colors.red,  // Success = Green, Error = Red
-                size: 50,
-              ),
-              const SizedBox(height: 16),
               Text(
                 title,
                 style: const TextStyle(
@@ -594,7 +588,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   Navigator.of(context).pop();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isSuccess ? Colors.green : Colors.red,  // Button color based on success or error
+                  backgroundColor: Colors.red,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
@@ -694,97 +688,145 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildHeaderContent(BuildContext context) {
-    final fingerprintColor = _currentSection == 'Office'
+    final fingerprintBackgroundColor = _currentSection == 'Office'
         ? Colors.green
         : _currentSection == 'Home'
-            ? Colors.orange
-            : Colors.red;
+        ? Colors.orange
+        : Colors.red;
+
     final now = DateTime.now();
-    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 8, 0); // 8:00 AM
-    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 13, 0); // 1:00 PM
+    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 8, 0);
+    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 13, 0);
     bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
     bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 0) && _isCheckOutAvailable;
 
-    return Container(
-      margin: const EdgeInsets.only(top: 16.0),
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            DateFormat('EEEE MMMM dd - yyyy, HH:mm:ss').format(DateTime.now()),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          Column(
-            children: [
-              Icon(Icons.fingerprint, size: 100, color: fingerprintColor),
-              const SizedBox(height: 8),
-              const Text(
-                'Register Your Presence and Start Your Work',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Check in time can be late by 01:00',
-                style: TextStyle(color: Colors.red, fontSize: 16),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      if (now.isBefore(checkInTimeAllowed)) {
-                        _showCustomDialog(context, 'Too Early', 'Check-in will be available at 8:00 AM.');
-                      } else if (isCheckInEnabled) {
-                        _authenticate(context, true);
-                      } else if (_isCheckInActive) {
-                        _showCustomDialog(context, 'Already Checked In', 'You have already checked in.');
-                      } else {
-                        _showCustomDialog(context, 'Check-In Disabled', 'Check-in is only available between 8:00 AM and 1:00 PM.');
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isCheckInEnabled ? fingerprintColor : Colors.grey,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                    ),
-                    child: const Text('Check In'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (_isCheckInActive && !isCheckOutEnabled) {
-                        _showCustomDialog(context, 'Too Early', 'Wait until working hours hit 8 hours of working time.');
-                      } else if (isCheckOutEnabled) {
-                        _authenticate(context, false);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isCheckOutEnabled ? Colors.red : Colors.grey,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                    ),
-                    child: const Text('Check Out'),
+    return GestureDetector(
+      onTap: () async {
+        if (!_isCheckInActive) {
+          if (now.isBefore(checkInTimeAllowed) || now.isAfter(checkInDisabledTime)) {
+            _showCustomDialog(
+              context,
+              'Check-In Not Allowed',
+              'You cannot check in outside working hours (8:00 AM - 1:00 PM). Please try again during the allowed time.',
+            );
+          } else if (isCheckInEnabled) {
+            bool isAuthenticated = await _authenticateWithBiometrics();
+            if (isAuthenticated) {
+              _performCheckIn(DateTime.now());
+              _showCustomDialog(context, 'Check-In Success', 'You have successfully checked in.');
+            } else {
+              _showCustomDialog(context, 'Authentication Failed', 'Please authenticate to check in.');
+            }
+          }
+        } else if (_isCheckInActive && isCheckOutEnabled) {
+          bool isAuthenticated = await _authenticateWithBiometrics();
+          if (isAuthenticated) {
+            _performCheckOut(DateTime.now());
+            _showCustomDialog(context, 'Check-Out Success', 'You have successfully checked out.');
+          } else {
+            _showCustomDialog(context, 'Authentication Failed', 'Please authenticate to check out.');
+          }
+        } else if (_isCheckInActive) {
+          _showCustomDialog(context, 'Already Checked In', 'You have already checked in.');
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(top: 16.0),
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Date and Time
+            Text(
+              DateFormat('EEEE MMMM dd - yyyy, HH:mm:ss').format(DateTime.now()),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+
+            // Fingerprint button with dynamic background color
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: fingerprintBackgroundColor,
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
                   ),
                 ],
               ),
-            ],
-          ),
-        ],
+              child: const Icon(
+                Icons.fingerprint,
+                size: 60,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Check In/Check Out button text
+            Text(
+              _isCheckInActive ? 'Check Out' : 'Check In',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+
+            // Register presence text
+            const Text(
+              'Register Your Presence and Start Your Work',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 16),
+
+            // Month and Year display (e.g., February - 2024)
+            Text(
+              DateFormat('MMMM - yyyy').format(DateTime.now()),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+
+            // Summary Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildSummaryItem('Check In', _checkInTime, Icons.login, Colors.green),
+                _buildSummaryItem('Check Out', _checkOutTime, Icons.logout, Colors.red),
+                _buildSummaryItem('Working Hours', _workingHours.toString().split('.').first.padLeft(8, '0'), Icons.timer, Colors.blue),
+              ],
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildSummaryItem(String title, String time, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 36),
+        const SizedBox(height: 8),
+        Text(
+          time,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          title,
+          style: const TextStyle(color: Colors.black),
+        ),
+      ],
     );
   }
 
@@ -823,8 +865,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   children: [
                     _buildHeaderContent(context),
                     const SizedBox(height: 16),
-                    _buildSummaryRow(_checkInTime, _checkOutTime, _workingHours.toString().split('.').first.padLeft(8, '0')),
-                    const SizedBox(height: 16),
                     _buildWeeklyRecordsList(),
                   ],
                 ),
@@ -832,37 +872,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
           ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildSummaryRow(String checkIn, String checkOut, String workingHours) {
-    return Card(
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildSummaryItem('Check In', checkIn, Icons.login, Colors.green),
-            _buildSummaryItem('Check Out', checkOut, Icons.logout, Colors.red),
-            _buildSummaryItem('Working Hours', workingHours, Icons.timer, Colors.blue),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryItem(String title, String time, IconData icon, Color color) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 36),
-        const SizedBox(height: 8),
-        Text(time, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Text(title, style: const TextStyle(color: Colors.black)),
       ],
     );
   }
@@ -1083,28 +1092,39 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background.png'),
-              fit: BoxFit.cover,
+        flexibleSpace: PreferredSize(
+          preferredSize: const Size.fromHeight(100.0),
+          child: Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/background.png'),
+                fit: BoxFit.cover,
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
             ),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(bottom: 20),
+                  child: Text(
+                    'Attendance',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
         centerTitle: true,
-        title: const Text(
-          'Attendance',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        toolbarHeight: 80,
+        toolbarHeight: 110,
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),

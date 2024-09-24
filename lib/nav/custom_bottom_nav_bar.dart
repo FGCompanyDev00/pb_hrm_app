@@ -11,8 +11,8 @@ class CustomBottomNavBar extends StatefulWidget {
     super.key,
     required this.currentIndex,
     required this.onTap,
-    this.fingerprintTopOffset = -8.0,
-    this.appTopOffset = -8.0,
+    this.fingerprintTopOffset = -4.0,
+    this.appTopOffset = -4.0,
   });
 
   @override
@@ -32,22 +32,20 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
       vsync: this,
     )..repeat(reverse: true);
 
-    _colorAnimation = TweenSequence<Color?>(
-      [
-        TweenSequenceItem(
-          tween: ColorTween(begin: Colors.green, end: Colors.yellow),
-          weight: 2.0,
-        ),
-        TweenSequenceItem(
-          tween: ColorTween(begin: Colors.yellow, end: Colors.orange),
-          weight: 2.0,
-        ),
-        TweenSequenceItem(
-          tween: ColorTween(begin: Colors.orange, end: Colors.green),
-          weight: 2.0,
-        ),
-      ],
-    ).animate(_animationController);
+    _colorAnimation = TweenSequence<Color?>([
+      TweenSequenceItem(
+        tween: ColorTween(begin: Colors.green, end: Colors.yellow),
+        weight: 2.0,
+      ),
+      TweenSequenceItem(
+        tween: ColorTween(begin: Colors.yellow, end: Colors.orange),
+        weight: 2.0,
+      ),
+      TweenSequenceItem(
+        tween: ColorTween(begin: Colors.orange, end: Colors.green),
+        weight: 2.0,
+      ),
+    ]).animate(_animationController);
   }
 
   @override
@@ -67,7 +65,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
             child: Icon(
               Icons.fingerprint,
               color: widget.currentIndex == 0 ? Colors.orangeAccent : Colors.grey,
-              size: 35,
+              size: 28,
             ),
           ),
         ),
@@ -76,21 +74,21 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
             animation: _animationController,
             builder: (context, child) {
               return Container(
-                width: 30,
-                height: 40,
+                width: 50,
+                height: 50,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: widget.currentIndex == 1
                       ? Border.all(
                     color: _colorAnimation.value!,
-                    width: 4.0, // Border width
+                    width: 3.0,
                   )
                       : null,
                   boxShadow: widget.currentIndex == 1
                       ? [
                     BoxShadow(
                       color: _colorAnimation.value!.withOpacity(0.7),
-                      blurRadius: 10.0,
+                      blurRadius: 8.0,
                       spreadRadius: 2.0,
                     ),
                   ]
@@ -98,8 +96,8 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
                 ),
                 child: const Icon(
                   Icons.home,
-                  color: Colors.white,
-                  size: 52,
+                  color: Colors.white,  // Fixed color for the home icon
+                  size: 35,
                 ),
               );
             },
@@ -111,7 +109,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
             child: Icon(
               Icons.apps,
               color: widget.currentIndex == 2 ? Colors.orangeAccent : Colors.grey,
-              size: 35,
+              size: 28,
             ),
           ),
         ),
@@ -121,11 +119,11 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
       backgroundColor: Colors.white,
       activeColor: Colors.orangeAccent,
       color: Colors.grey,
-      height: 90,
-      curveSize: 150,
-      top: -22,
-      shadowColor: Colors.black.withOpacity(0.1),
-      elevation: 50,
+      height: 60,
+      curveSize: 110,
+      top: -15,
+      shadowColor: Colors.black.withOpacity(0.05),
+      elevation: 20,
     );
   }
 }
