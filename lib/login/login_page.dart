@@ -25,6 +25,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   bool _gradientAnimation = false;
   String _selectedLanguage = 'English'; // Default language
+  String _selectedDate = DateFormat('dd MMM yyyy').format(DateTime.now());
   final List<String> _languages = ['English', 'Laos', 'Chinese'];
   final LocalAuthentication auth = LocalAuthentication();
   bool _rememberMe = false;
@@ -189,6 +190,22 @@ class _LoginPageState extends State<LoginPage> {
     prefs.remove('password');
     prefs.remove('rememberMe');
   }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+
+    if (pickedDate != null && pickedDate != DateTime.now()) {
+      setState(() {
+        _selectedDate = DateFormat('dd MMM yyyy').format(pickedDate);
+      });
+    }
+  }
+
 
   void _showCustomDialog(BuildContext context, String title, String message) {
     showDialog(
@@ -478,47 +495,50 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildCustomDateRow() {
-  String currentDate = DateFormat('dd MMM yyyy').format(DateTime.now());
-
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Smaller padding
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        colors: [Color(0xFFFEE9C3), Color(0xFFFFF3D6)], 
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: BorderRadius.circular(15.0), 
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.1), 
-          offset: const Offset(2, 2),
-          blurRadius: 4,
-        ),
-      ],
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(
-          Icons.calendar_today,
-          color: Colors.black54,
-          size: 20.0, // Smaller icon size
-        ),
-        const SizedBox(width: 8), // Reduced spacing between the icon and text
-        Text(
-          currentDate,
-          style: const TextStyle(
-            fontSize: 16, // Smaller text size
-            color: Colors.black87,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.0, // Adjusted letter spacing
+    return GestureDetector(
+      onTap: () {
+        _selectDate(context);  // Trigger date picker when the row is tapped
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Smaller padding
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFFEE9C3), Color(0xFFFFF3D6)], 
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+          borderRadius: BorderRadius.circular(15.0), 
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1), 
+              offset: const Offset(2, 2),
+              blurRadius: 4,
+            ),
+          ],
         ),
-      ],
-    ),
-  );
-}
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.calendar_today,
+              color: Colors.black54,
+              size: 20.0, // Smaller icon size
+            ),
+            const SizedBox(width: 8), // Reduced spacing between the icon and text
+            Text(
+              _selectedDate,  // Display the selected date
+              style: const TextStyle(
+                fontSize: 16, // Smaller text size
+                color: Colors.black87,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.0, // Adjusted letter spacing
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
 
 
