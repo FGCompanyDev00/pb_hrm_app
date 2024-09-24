@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
@@ -30,6 +31,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
   DateTime? _singleTapSelectedDay;
   List<Event> _eventsForDay = [];
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+  bool _showFiltersAndSearchBar = false;
 
   // Filtering and Search
   String _selectedCategory = 'All';
@@ -135,6 +137,12 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     }
   }
 
+  Future<void> _onRefresh() async {
+    setState(() {
+      _showFiltersAndSearchBar = true; // Show filters and search bar on refresh
+    });
+  }
+
   Future<void> _fetchMeetingData() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -237,7 +245,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     if (_selectedCategory != 'All') {
       dayEvents = dayEvents.where((event) {
         // Check for null category values before comparing
-        return event.category != null && event.category == _selectedCategory;
+        return event.category == _selectedCategory;
       }).toList();
     }
 
@@ -245,8 +253,8 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     if (_searchQuery.isNotEmpty) {
       dayEvents = dayEvents.where((event) {
         // Ensure title and description are not null, and check for search query
-        final eventTitle = event.title?.toLowerCase() ?? '';
-        final eventDescription = event.description?.toLowerCase() ?? '';
+        final eventTitle = event.title.toLowerCase();
+        final eventDescription = event.description.toLowerCase();
         return eventTitle.contains(_searchQuery.toLowerCase()) || eventDescription.contains(_searchQuery.toLowerCase());
       }).toList();
     }
@@ -257,12 +265,16 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     });
 
     // Debugging: Print filtered events for verification
-    print('Filtered Events: $_eventsForDay');
+    if (kDebugMode) {
+      print('Filtered Events: $_eventsForDay');
+    }
   }
 
   void _showDayView(DateTime selectedDay) {
     // Debugging: Print selected day
-    print('Selected Day: $selectedDay');
+    if (kDebugMode) {
+      print('Selected Day: $selectedDay');
+    }
 
     final List<Event> dayEvents = _getEventsForDay(selectedDay);
     final List<TimetableItem<String>> timetableItems = dayEvents.map((event) {
@@ -475,17 +487,20 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     return Scaffold(
       body: Stack(
         children: [
-          Column(
-            children: [
-              _buildCalendarHeader(isDarkMode),
-              _buildFilters(),
-              _buildSearchBar(),
-              _buildCalendar(isDarkMode),
-              _buildSectionSeparator(),
-              Expanded(
-                child: _buildCalendarView(context, _eventsForDay),
-              ),
-            ],
+          RefreshIndicator(
+            onRefresh: _onRefresh,
+            child: Column(
+              children: [
+                _buildCalendarHeader(isDarkMode),
+                if (_showFiltersAndSearchBar) _buildFilters(),
+                if (_showFiltersAndSearchBar) _buildSearchBar(),
+                _buildCalendar(isDarkMode),
+                _buildSectionSeparator(),
+                Expanded(
+                  child: _buildCalendarView(context, _eventsForDay),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -589,24 +604,20 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
   Widget _buildCalendar(bool isDarkMode) {
     return Container(
-      height: 300,
-      margin: const EdgeInsets.all(10.0),
+      height: 250, // Reduced height for a more compact view
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.black : Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: TableCalendar<Event>(
-        rowHeight: 38,
+        rowHeight: 35, // Reduced row height
         firstDay: DateTime.utc(2010, 10, 16),
         lastDay: DateTime.utc(2030, 3, 14),
         focusedDay: _focusedDay,
         calendarFormat: _calendarFormat,
-        availableCalendarFormats: const {
-          CalendarFormat.month: 'Month',
-        },
-        selectedDayPredicate: (day) {
-          return isSameDay(_selectedDay, day);
-        },
+        availableCalendarFormats: const {CalendarFormat.month: 'Month'},
+        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
         onDaySelected: (selectedDay, focusedDay) {
           if (_singleTapSelectedDay != null &&
               isSameDay(_singleTapSelectedDay, selectedDay)) {
@@ -622,18 +633,11 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           }
         },
         onFormatChanged: (format) {
-          // Ensure that the calendar format remains within available formats
           if (format != CalendarFormat.month) {
-            setState(() {
-              _calendarFormat = CalendarFormat.month;
-            });
+            setState(() => _calendarFormat = CalendarFormat.month);
           }
         },
-        onPageChanged: (focusedDay) {
-          setState(() {
-            _focusedDay = focusedDay;
-          });
-        },
+        onPageChanged: (focusedDay) => setState(() => _focusedDay = focusedDay),
         eventLoader: _getEventsForDay,
         calendarStyle: CalendarStyle(
           todayDecoration: BoxDecoration(
@@ -645,45 +649,41 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             shape: BoxShape.circle,
           ),
           outsideDaysVisible: false,
-          weekendTextStyle:
-          TextStyle(color: isDarkMode ? Colors.white54 : Colors.black54),
-          defaultTextStyle:
-          TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-          markerDecoration: const BoxDecoration(
-            color: Colors.transparent,
+          weekendTextStyle: TextStyle(
+            color: isDarkMode ? Colors.white54 : Colors.black54,
+          ),
+          defaultTextStyle: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
         headerStyle: HeaderStyle(
           titleCentered: true,
           formatButtonVisible: false,
           titleTextStyle: TextStyle(
-            fontSize: 20.0,
+            fontSize: 18.0, // Slightly smaller title font size
             fontWeight: FontWeight.bold,
             color: isDarkMode ? Colors.white : Colors.black,
           ),
           leftChevronIcon: Icon(
             Icons.chevron_left,
-            size: 16,
+            size: 14, // Smaller icon size
             color: isDarkMode ? Colors.white : Colors.black,
-            semanticLabel: 'Previous Month',
           ),
           rightChevronIcon: Icon(
             Icons.chevron_right,
-            size: 16,
+            size: 14, // Smaller icon size
             color: isDarkMode ? Colors.white : Colors.black,
-            semanticLabel: 'Next Month',
           ),
         ),
         calendarBuilders: CalendarBuilders(
           markerBuilder: (context, date, events) {
             if (events.isNotEmpty) {
-              final sortedEvents = events
-                ..sort((a, b) => b.startDateTime.compareTo(a.startDateTime));
-              final latestEvents = sortedEvents.take(3).toList();
-              final eventSpans = latestEvents.where((event) {
-                return date.isAfter(event.startDateTime.subtract(const Duration(days: 1))) &&
-                    date.isBefore(event.endDateTime.add(const Duration(days: 1)));
-              }).toList();
+              final eventSpans = events
+                  .where((event) =>
+              date.isAfter(event.startDateTime.subtract(const Duration(days: 1))) &&
+                  date.isBefore(event.endDateTime.add(const Duration(days: 1))))
+                  .take(2) // Display a maximum of 2 markers for simplicity
+                  .toList();
 
               return Align(
                 alignment: Alignment.bottomCenter,
@@ -691,8 +691,8 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: eventSpans.map((event) {
                     return Container(
-                      width: 6,
-                      height: 6,
+                      width: 5, // Slightly smaller marker
+                      height: 5,
                       margin: const EdgeInsets.symmetric(horizontal: 1),
                       decoration: BoxDecoration(
                         color: getEventColor(event),
@@ -715,121 +715,60 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
       children: [
         GradientAnimationLine(),
         SizedBox(
-          height: 5,
+          height: 18,
         ),
       ],
     );
   }
 
   Widget _buildCalendarView(BuildContext context, List<Event> events) {
-    // Define a list of time slots from 7 AM to 6 PM
-    final List<String> timeSlots = List.generate(12, (index) {
-      final hour = index + 7;
-      final formattedHour = hour > 12 ? hour - 12 : hour;
-      final period = hour >= 12 ? 'PM' : 'AM';
-      return '${formattedHour.toString().padLeft(2, '0')} $period';
-    });
-
     String selectedDateString = DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!);
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Text(
-                selectedDateString,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                ),
-                textAlign: TextAlign.center,
-              ),
+    // Create a MeetingDataSource with events for the selected day
+    final dataSource = MeetingDataSource(events);
+
+    return Column(
+      children: [
+        Center(
+          child: Text(
+            selectedDateString,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Colors.black,
             ),
-            const SizedBox(height: 20),
-            if (events.isEmpty)
-              const Center(
-                child: Text(
-                  "No events for this day",
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
-                ),
-              )
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: timeSlots.map((timeSlot) {
-                  int timeSlotHour = int.parse(timeSlot.split(" ")[0]);
-                  String period = timeSlot.split(" ")[1];
-                  if (period == "PM" && timeSlotHour != 12) {
-                    timeSlotHour += 12;
-                  }
-
-                  // Filter events for this time slot
-                  final List<Event> eventsForThisHour = events.where((event) {
-                    int eventStartHour = event.startDateTime.hour;
-                    int eventEndHour = event.endDateTime.hour;
-                    return timeSlotHour == eventStartHour ||
-                        (timeSlotHour >= eventStartHour && timeSlotHour <= eventEndHour);
-                  }).toList();
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Text(
-                          timeSlot,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
-                      ),
-                      ...eventsForThisHour.map((event) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: ListTile(
-                            title: Text(event.title),
-                            subtitle: Text(
-                                '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}'),
-                            trailing: Icon(Icons.arrow_forward),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => EventDetailView(event: {
-                                    'title': event.title,
-                                    'time':
-                                    '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
-                                    'location': event.location ?? '',
-                                    'status': event.status,
-                                    'description': event.description,
-                                  }),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ))
-                    ],
-                  );
-                }).toList(),
-              ),
-          ],
+            textAlign: TextAlign.center,
+          ),
         ),
-      ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: SfCalendar(
+            view: CalendarView.day,
+            initialDisplayDate: _selectedDay,
+            dataSource: dataSource,
+            timeSlotViewSettings: const TimeSlotViewSettings(
+              startHour: 8,
+              endHour: 18,
+              timeInterval: Duration(minutes: 30),
+            ),
+            appointmentBuilder: (BuildContext context, CalendarAppointmentDetails details) {
+              final Event event = details.appointments.first;
+              return Container(
+                decoration: BoxDecoration(
+                  color: getEventColor(event),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Center(
+                  child: Text(
+                    event.title,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -962,6 +901,11 @@ class MeetingDataSource extends CalendarDataSource {
   @override
   String getSubject(int index) {
     return appointments![index].title;
+  }
+
+  @override
+  Color getColor(int index) {
+    return appointments![index].backgroundColor ?? Colors.blueAccent;
   }
 
   @override
