@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
@@ -14,7 +13,7 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:syncfusion_flutter_calendar/calendar.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -23,15 +22,22 @@ class HomeCalendar extends StatefulWidget {
   _HomeCalendarState createState() => _HomeCalendarState();
 }
 
-class _HomeCalendarState extends State<HomeCalendar> {
+class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin {
   late final ValueNotifier<Map<DateTime, List<Event>>> _events;
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
-  DateTime _syncfusionSelectedDate = DateTime.now();
   List<Event> _eventsForDay = [];
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+
+  // Filtering and Search
+  String _selectedCategory = 'All';
+  final List<String> _categories = ['All', 'Meetings', 'Leave Requests'];
+  String _searchQuery = '';
+
+  // Animation Controller
+  late AnimationController _animationController;
 
   @override
   void initState() {
@@ -40,6 +46,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
     _events = ValueNotifier({});
     _eventsForDay = [];
     _fetchMeetingData();
+    _fetchLeaveRequests();
 
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -48,8 +55,17 @@ class _HomeCalendarState extends State<HomeCalendar> {
     InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-    _fetchLeaveRequests();
-    _fetchMeetingData();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
+
+  @override
+  void dispose() {
+    _events.dispose();
+    _animationController.dispose();
+    super.dispose();
   }
 
   DateTime _normalizeDate(DateTime date) {
@@ -79,13 +95,17 @@ class _HomeCalendarState extends State<HomeCalendar> {
         for (var item in leaveRequests) {
           final DateTime startDate = _normalizeDate(DateTime.parse(item['take_leave_from']));
           final DateTime endDate = _normalizeDate(DateTime.parse(item['take_leave_to']));
+          final String uid = 'leave_${item['id'] ?? UniqueKey().toString()}'; // Ensure unique UID
+
           final event = Event(
             item['name'],
             startDate,
             endDate,
             item['take_leave_reason'] ?? 'Approval Pending',
-            item['is_approve'] ?? 'Waiting',
-            false,
+            status: item['is_approve'] == 1 ? 'Approved' : 'Waiting',
+            isMeeting: false,
+            category: 'Leave Requests',
+            uid: uid,
           );
 
           for (var day = startDate;
@@ -93,7 +113,9 @@ class _HomeCalendarState extends State<HomeCalendar> {
           day = day.add(const Duration(days: 1))) {
             final normalizedDay = _normalizeDate(day);
             if (approvalEvents.containsKey(normalizedDay)) {
-              approvalEvents[normalizedDay]!.add(event);
+              if (!approvalEvents[normalizedDay]!.any((e) => e.uid == event.uid)) {
+                approvalEvents[normalizedDay]!.add(event);
+              }
             } else {
               approvalEvents[normalizedDay] = [event];
             }
@@ -101,12 +123,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
         }
 
         setState(() {
-          _events.value = approvalEvents;
-          _eventsForDay = _getEventsForDay(_focusedDay);
+          _events.value = {..._events.value, ...approvalEvents};
+          _filterAndSearchEvents();
         });
       } else {
-        _showErrorDialog(
-            'Failed to Load Leave Requests', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Leave Requests',
+            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Leave Requests', 'An unexpected error occurred: $e');
@@ -124,25 +146,45 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
     try {
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/out-meeting/outmeeting/my-members'),
+        Uri.parse(
+            'https://demo-application-api.flexiflows.co/api/work-tracking/out-meeting/outmeeting/my-members'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> results = json.decode(response.body)['results'];
+        final data = json.decode(response.body);
+
+        if (data == null || data['results'] == null || data['results'] is! List) {
+          _showErrorDialog('Error Fetching Meetings', 'No meeting data available.');
+          return;
+        }
+
+        final List<dynamic> results = data['results'];
         final Map<DateTime, List<Event>> meetingEvents = {};
 
         for (var item in results) {
           final DateTime startDate = DateTime.parse(item['fromdate']);
           final DateTime endDate = DateTime.parse(item['todate']);
           final Color eventColor = _parseColor(item['backgroundColor']);
+          final String uid = item['outmeeting_uid'] ?? UniqueKey().toString(); // Ensure unique UID
+
           final event = Event(
             item['title'],
             startDate,
             endDate,
             item['description'] ?? '',
-            'Meeting',
-            true,
+            status: item['status'] ?? '',
+            isMeeting: true,
+            location: item['location'] ?? '',
+            createdBy: item['created_by_name'] ?? '',
+            imgName: item['img_name'] ?? '',
+            createdAt: item['created_at'] ?? '',
+            uid: uid,
+            isRepeat: item['is_repeat'] ?? '',
+            videoConference: item['video_conference'] ?? '',
+            backgroundColor: eventColor,
+            outmeetingUid: item['outmeeting_uid'] ?? '',
+            category: 'Meetings',
           );
 
           for (var day = startDate;
@@ -150,7 +192,9 @@ class _HomeCalendarState extends State<HomeCalendar> {
           day = day.add(const Duration(days: 1))) {
             final normalizedDay = _normalizeDate(day);
             if (meetingEvents.containsKey(normalizedDay)) {
-              meetingEvents[normalizedDay]!.add(event);
+              if (!meetingEvents[normalizedDay]!.any((e) => e.uid == event.uid)) {
+                meetingEvents[normalizedDay]!.add(event);
+              }
             } else {
               meetingEvents[normalizedDay] = [event];
             }
@@ -158,11 +202,12 @@ class _HomeCalendarState extends State<HomeCalendar> {
         }
 
         setState(() {
-          _events.value.addAll(meetingEvents);
-          _eventsForDay = _getEventsForDay(_focusedDay);
+          _events.value = {..._events.value, ...meetingEvents};
+          _filterAndSearchEvents();
         });
       } else {
-        _showErrorDialog('Failed to Load Meetings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Meetings',
+            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Meetings', 'An unexpected error occurred: $e');
@@ -170,12 +215,37 @@ class _HomeCalendarState extends State<HomeCalendar> {
   }
 
   Color _parseColor(String colorString) {
-    return Color(int.parse(colorString.replaceFirst('#', '0xff')));
+    try {
+      return Color(int.parse(colorString.replaceFirst('#', '0xff')));
+    } catch (_) {
+      return Colors.blueAccent;
+    }
   }
 
   List<Event> _getEventsForDay(DateTime day) {
     final normalizedDay = _normalizeDate(day);
     return _events.value[normalizedDay] ?? [];
+  }
+
+  void _filterAndSearchEvents() {
+    if (_selectedDay == null) return;
+    List<Event> dayEvents = _getEventsForDay(_selectedDay!);
+
+    if (_selectedCategory != 'All') {
+      dayEvents = dayEvents.where((event) => event.category == _selectedCategory).toList();
+    }
+
+    if (_searchQuery.isNotEmpty) {
+      dayEvents = dayEvents
+          .where((event) =>
+      event.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          event.description.toLowerCase().contains(_searchQuery.toLowerCase()))
+          .toList();
+    }
+
+    setState(() {
+      _eventsForDay = dayEvents;
+    });
   }
 
   void _showDayView(DateTime selectedDay) {
@@ -200,27 +270,19 @@ class _HomeCalendarState extends State<HomeCalendar> {
     );
   }
 
-  TimetableItem<String> convertEventToTimetableItem(Event event) {
-    return TimetableItem<String>(
-      event.startDateTime,
-      event.endDateTime,
-      data: event.title,
-    );
-  }
-
   void _showErrorDialog(String title, String message) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(title),
-          content: Text(message),
+          title: Text(title, semanticsLabel: title),
+          content: Text(message, semanticsLabel: message),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: const Text('OK'),
+              child: const Text('OK', semanticsLabel: 'OK'),
             ),
           ],
         );
@@ -228,456 +290,19 @@ class _HomeCalendarState extends State<HomeCalendar> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
+  final List<Color> colors = [
+    Colors.blueAccent,
+    Colors.greenAccent,
+    Colors.purpleAccent,
+    Colors.orangeAccent,
+    Colors.tealAccent,
+  ];
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              _buildCalendarHeader(isDarkMode),
-              _buildCalendar(isDarkMode),
-              _buildSectionSeparator(),
-              Expanded(
-                child: _buildCalendarView(context),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCalendarHeader(bool isDarkMode) {
-    return Container(
-      width: double.infinity,
-      height: 120,
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-          fit: BoxFit.cover,
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-        ),
-      ),
-      child: Stack(
-        children: [
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 50),
-                Text(
-                  'Calendar',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 55,
-            right: 20,
-            child: IconButton(
-              icon: const Icon(
-                Icons.add_circle,
-                size: 40,
-                color: Colors.green,
-              ),
-              onPressed: _showAddEventOptionsPopup,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCalendar(bool isDarkMode) {
-    return Container(
-      height: 285,
-      margin: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.black : Colors.white,
-        boxShadow: const [
-
-        ],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TableCalendar<Event>(
-        rowHeight: 40,
-        firstDay: DateTime.utc(2010, 10, 16),
-        lastDay: DateTime.utc(2030, 3, 14),
-        focusedDay: _focusedDay,
-        calendarFormat: CalendarFormat.month,
-        availableCalendarFormats: const {
-          CalendarFormat.month: 'Month',
-        },
-        selectedDayPredicate: (day) {
-          return isSameDay(_selectedDay, day);
-        },
-        onDaySelected: (selectedDay, focusedDay) {
-          if (_singleTapSelectedDay != null &&
-              isSameDay(_singleTapSelectedDay, selectedDay)) {
-            _showDayView(selectedDay);
-            _singleTapSelectedDay = null;
-          } else {
-            setState(() {
-              _singleTapSelectedDay = selectedDay;
-              _selectedDay = selectedDay;
-              _focusedDay = focusedDay;
-              _syncfusionSelectedDate = selectedDay;
-              _eventsForDay = _getEventsForDay(selectedDay);
-            });
-          }
-        },
-        onFormatChanged: (format) {
-          if (_calendarFormat != format) {
-            setState(() {
-              _calendarFormat = format;
-            });
-          }
-        },
-        onPageChanged: (focusedDay) {
-          setState(() {
-            _focusedDay = focusedDay;
-          });
-        },
-        eventLoader: _getEventsForDay,
-        calendarStyle: const CalendarStyle(
-          todayDecoration: BoxDecoration(
-            color: Colors.orangeAccent,
-            shape: BoxShape.circle,
-          ),
-          selectedDecoration: BoxDecoration(
-            color: Colors.green,
-            shape: BoxShape.circle,
-          ),
-          outsideDaysVisible: false,
-          weekendTextStyle: TextStyle(color: Colors.black),
-          defaultTextStyle: TextStyle(color: Colors.black),
-        ),
-        headerStyle: const HeaderStyle(
-          titleCentered: true,
-          formatButtonVisible: false,
-          titleTextStyle: TextStyle(
-            fontSize: 20.0,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-          leftChevronIcon: Icon(
-            Icons.chevron_left,
-            size: 16,
-            color: Colors.black,
-          ),
-          rightChevronIcon: Icon(
-            Icons.chevron_right,
-            size: 16,
-            color: Colors.black,
-          ),
-        ),
-        calendarBuilders: CalendarBuilders(
-          markerBuilder: (context, date, events) {
-            if (events.isNotEmpty) {
-              return Align(
-                alignment: Alignment.bottomCenter,
-                child: Container(
-                  width: 16,
-                  height: 3,
-                  color: Colors.green,
-                ),
-              );
-            }
-            return null;
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionSeparator() {
-    return const Column(
-      children: [
-        GradientAnimationLine(),
-        SizedBox(
-          height: 15,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCalendarView(BuildContext context) {
-    // Time slots from 7 AM to 6 PM
-    final List<String> timeSlots = List.generate(12, (index) {
-      final hour = index + 7;
-      final formattedHour = hour > 12 ? hour - 12 : hour;
-      final period = hour >= 12 ? 'PM' : 'AM';
-      return '${formattedHour.toString().padLeft(2, '0')} $period';
-    });
-
-    // Example events
-    final List<Map<String, dynamic>> dummyEvents = [
-      {
-        'title': 'Sale Presentation: HI App production',
-        'time': '07:00 AM - 12:00 PM',
-        'location': 'Meeting Onsite',
-        'attendees': [
-          'assets/avatar1.png',
-          'assets/avatar2.png',
-          'assets/avatar3.png',
-          'assets/avatar4.png',
-          'assets/avatar5.png',
-          'assets/avatar6.png'
-        ],
-        'color': Colors.green.shade100,
-        'isMinutesOfMeeting': true,
-        'startHour': 7,
-        'duration': 5, // 5-hour duration
-      },
-      {
-        'title': 'Pick up from Hotel to Bank',
-        'time': '08:00 AM - 10:00 AM',
-        'location': '',
-        'attendees': [
-          'assets/avatar1.png',
-          'assets/avatar2.png',
-        ],
-        'color': Colors.blue.shade100,
-        'isMinutesOfMeeting': false,
-        'startHour': 8,
-        'duration': 2,
-      },
-      {
-        'title': 'Japan Vendor',
-        'time': '08:00 AM - 09:00 AM',
-        'location': 'Tokyo, Japan',
-        'attendees': [
-          'assets/avatar_placeholder.png',
-          'assets/avatar_placeholder.png',
-          'assets/avatar_placeholder.png',
-          'assets/avatar_placeholder.png',
-        ],
-        'color': Colors.red.shade100,
-        'isMinutesOfMeeting': false,
-        'startHour': 8,
-        'duration': 1,
-      },
-      {
-        'title': 'Deadline for HIAPP product',
-        'time': '09:00 AM - 10:00 AM',
-        'location': 'Meeting Onsite',
-        'attendees': [
-          'assets/avatar_placeholder.png',
-          'assets/avatar_placeholder.png',
-          'assets/avatar_placeholder.png',
-          'assets/avatar_placeholder.png',
-        ],
-        'color': Colors.orange.shade100,
-        'isMinutesOfMeeting': false,
-        'startHour': 9,
-        'duration': 2,
-      },
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: Column(
-        children: timeSlots.map((timeSlot) {
-          int timeSlotHour = int.parse(timeSlot.split(" ")[0]);
-          String period = timeSlot.split(" ")[1];
-          if (period == "PM" && timeSlotHour != 12) {
-            timeSlotHour += 12;
-          }
-
-          final List<Map<String, dynamic>> eventsForThisHour = dummyEvents.where((event) {
-            int eventStartHour = event['startHour'];
-            int eventEndHour = eventStartHour + (event['duration'] as int);
-            return timeSlotHour == eventStartHour || (timeSlotHour > eventStartHour && timeSlotHour < eventEndHour);
-          }).toList();
-
-          final Set<String> eventTitlesDisplayed = {};
-
-          return Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: MediaQuery.of(context).size.width > 800 ? 24.0 : 18.0,
-              vertical: MediaQuery.of(context).size.width > 800 ? 6.0 : 2.0,
-            ),
-            child: Column(
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12.0),
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width > 800
-                            ? MediaQuery.of(context).size.width * 0.12
-                            : MediaQuery.of(context).size.width * 0.10,
-                        height: 24,
-                        child: Text(
-                          timeSlot,
-                          style: TextStyle(
-                            fontSize: MediaQuery.of(context).size.width > 800
-                                ? MediaQuery.of(context).size.width * 0.025
-                                : MediaQuery.of(context).size.width * 0.03,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-
-                          int crossAxisCount = constraints.maxWidth > 1200
-                              ? 6
-                              : constraints.maxWidth > 800
-                              ? 4
-                              : constraints.maxWidth > 600
-                              ? 3
-                              : 2;
-
-                          // Increase height for larger screens (only for larger devices)
-                          double fixedHeight = constraints.maxWidth > 1200
-                              ? 210.0 // Increased height for large devices like iPad Pro
-                              : constraints.maxWidth > 800
-                              ? 180.0 // Increased height for medium devices
-                              : 120.0; // Unchanged for small devices
-
-                          return MasonryGridView.count(
-                            crossAxisCount: crossAxisCount,
-                            itemCount: eventsForThisHour.length,
-                            itemBuilder: (context, index) {
-                              final event = eventsForThisHour[index];
-
-                              if (eventTitlesDisplayed.contains(event['title'])) return const SizedBox.shrink();
-                              eventTitlesDisplayed.add(event['title']);
-
-                              // Max attendees per row limited to 3
-                              int maxAttendeesPerRow = 3;
-
-                              return InkWell(
-                                onTap: () {
-                                  // Navigate to the detail view on tap
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => EventDetailView(event: event),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(8.0),
-                                  height: fixedHeight,
-                                  decoration: BoxDecoration(
-                                    color: event['color'],
-                                    borderRadius: BorderRadius.circular(10),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 6,
-                                        offset: Offset(0, 3),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        event['title'] ?? 'No Title',
-                                        style: TextStyle(
-                                          fontSize: MediaQuery.of(context).size.width * (constraints.maxWidth > 800 ? 0.025 : 0.03),
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      if (event['location'] != '')
-                                        Row(
-                                          children: [
-                                            const Icon(Icons.location_on, size: 10, color: Colors.grey),
-                                            const SizedBox(width: 2),
-                                            Flexible(
-                                              child: Text(
-                                                event['location'] ?? 'No Location',
-                                                style: TextStyle(
-                                                  fontSize: MediaQuery.of(context).size.width * (constraints.maxWidth > 800 ? 0.022 : 0.027),
-                                                  color: Colors.black54,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                                maxLines: 1,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        event['time'] ?? 'No Time',
-                                        style: TextStyle(
-                                          fontSize: MediaQuery.of(context).size.width * (constraints.maxWidth > 800 ? 0.022 : 0.023),
-                                          color: Colors.black54,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      // Profile avatars - limited to 3 per card
-                                      Row(
-                                        children: List.generate(
-                                          (event['attendees'] as List<String>?)?.length ?? 0, (i) {
-                                          if (i < maxAttendeesPerRow) {
-                                            double avatarRadius = MediaQuery.of(context).size.width * 0.032;
-                                            return Padding(
-                                              padding: const EdgeInsets.only(right: 2.0),
-                                              child: CircleAvatar(
-                                                radius: avatarRadius,
-                                                backgroundImage: AssetImage(event['attendees'][i]),
-                                                onBackgroundImageError: (exception, stackTrace) => const Icon(Icons.error, size: 12),
-                                              ),
-                                            );
-                                          } else if (i == maxAttendeesPerRow && (event['attendees'] as List<String>).length > maxAttendeesPerRow) {
-                                            return CircleAvatar(
-                                              radius: MediaQuery.of(context).size.width * 0.032,
-                                              child: Text(
-                                                '+${(event['attendees'] as List<String>).length - maxAttendeesPerRow}',
-                                                style: TextStyle(fontSize: MediaQuery.of(context).size.width * 0.020),
-                                              ),
-                                            );
-                                          }
-                                          return Container();
-                                        },
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                            mainAxisSpacing: 12.0,
-                            crossAxisSpacing: 12.0,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
+  Color getEventColor(Event event) {
+    if (event.isMeeting && event.backgroundColor != null) {
+      return event.backgroundColor!;
+    }
+    return colors[event.hashCode % colors.length];
   }
 
   void _showAddEventOptionsPopup() {
@@ -748,7 +373,7 @@ class _HomeCalendarState extends State<HomeCalendar> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: Colors.black54),
+            Icon(icon, size: 20, color: Colors.black54, semanticLabel: label),
             const SizedBox(width: 12),
             Text(label, style: const TextStyle(color: Colors.black87)),
           ],
@@ -775,28 +400,563 @@ class _HomeCalendarState extends State<HomeCalendar> {
       if (newEvent != null) {
         _addEvent(
           newEvent['title'],
-          newEvent['startDateTime'],
-          newEvent['endDateTime'],
+          DateTime.parse(newEvent['startDateTime']),
+          DateTime.parse(newEvent['endDateTime']),
           newEvent['description'] ?? '',
-          'Pending', // Default to pending status for new events
-          true, // isMeeting set to true for office events
+          status: 'Pending',
+          isMeeting: true,
+          category: 'Meetings',
+          uid: newEvent['uid'] ?? UniqueKey().toString(),
+        );
+        Fluttertoast.showToast(
+          msg: "Event Created Successfully",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.green[600],
+          textColor: Colors.white,
         );
       }
     }
   }
 
-  void _addEvent(String title, DateTime startDateTime, DateTime endDateTime,
-      String description, String status, bool isMeeting) {
+  void _addEvent(
+      String title,
+      DateTime startDateTime,
+      DateTime endDateTime,
+      String description, {
+        required String status,
+        required bool isMeeting,
+        required String category,
+        required String uid,
+      }) {
     final newEvent = Event(
-        title, startDateTime, endDateTime, description, status, isMeeting);
-    final eventsForDay = _getEventsForDay(_selectedDay!);
+      title,
+      startDateTime,
+      endDateTime,
+      description,
+      status: status,
+      isMeeting: isMeeting,
+      category: category,
+      uid: uid,
+    );
+    final normalizedDay = _normalizeDate(startDateTime);
     setState(() {
-      _events.value = {
-        ..._events.value,
-        _selectedDay!: [...eventsForDay, newEvent],
-      };
-      _eventsForDay = _getEventsForDay(_selectedDay!);
+      if (_events.value.containsKey(normalizedDay)) {
+        if (!_events.value[normalizedDay]!.any((e) => e.uid == uid)) {
+          _events.value[normalizedDay]!.add(newEvent);
+        }
+      } else {
+        _events.value[normalizedDay] = [newEvent];
+      }
+      _filterAndSearchEvents();
+      _animationController.forward(from: 0.0);
     });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              _buildCalendarHeader(isDarkMode),
+              _buildFilters(),
+              _buildSearchBar(),
+              _buildCalendar(isDarkMode),
+              _buildSectionSeparator(),
+              Expanded(
+                child: _buildCalendarView(context, _eventsForDay),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalendarHeader(bool isDarkMode) {
+    return Container(
+      width: double.infinity,
+      height: 140,
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+          fit: BoxFit.cover,
+        ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 60),
+                Text(
+                  'Calendar',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black,
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 60,
+            right: 10,
+            child: IconButton(
+              icon: const Icon(
+                Icons.add_circle,
+                size: 55,
+                color: Colors.green,
+                semanticLabel: 'Add Event',
+              ),
+              onPressed: _showAddEventOptionsPopup,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilters() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Wrap(
+        spacing: 8.0,
+        children: _categories.map((category) {
+          return FilterChip(
+            label: Text(category),
+            selected: _selectedCategory == category,
+            onSelected: (bool selected) {
+              setState(() {
+                _selectedCategory = category;
+                _filterAndSearchEvents();
+              });
+            },
+            selectedColor: Colors.blueAccent,
+            checkmarkColor: Colors.white,
+            labelStyle: TextStyle(
+              color: _selectedCategory == category ? Colors.white : Colors.black,
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: TextField(
+        decoration: InputDecoration(
+          labelText: 'Search Events',
+          prefixIcon: const Icon(Icons.search),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
+        ),
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+            _filterAndSearchEvents();
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildCalendar(bool isDarkMode) {
+    return Container(
+      height: 300,
+      margin: const EdgeInsets.all(10.0),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.black : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: TableCalendar<Event>(
+        rowHeight: 38,
+        firstDay: DateTime.utc(2010, 10, 16),
+        lastDay: DateTime.utc(2030, 3, 14),
+        focusedDay: _focusedDay,
+        calendarFormat: _calendarFormat,
+        availableCalendarFormats: const {
+          CalendarFormat.month: 'Month',
+        },
+        selectedDayPredicate: (day) {
+          return isSameDay(_selectedDay, day);
+        },
+        onDaySelected: (selectedDay, focusedDay) {
+          if (_singleTapSelectedDay != null &&
+              isSameDay(_singleTapSelectedDay, selectedDay)) {
+            _showDayView(selectedDay);
+            _singleTapSelectedDay = null;
+          } else {
+            setState(() {
+              _singleTapSelectedDay = selectedDay;
+              _selectedDay = selectedDay;
+              _focusedDay = focusedDay;
+              _filterAndSearchEvents();
+            });
+          }
+        },
+        onFormatChanged: (format) {
+          // Ensure that the calendar format remains within available formats
+          if (format != CalendarFormat.month) {
+            setState(() {
+              _calendarFormat = CalendarFormat.month;
+            });
+          }
+        },
+        onPageChanged: (focusedDay) {
+          setState(() {
+            _focusedDay = focusedDay;
+          });
+        },
+        eventLoader: _getEventsForDay,
+        calendarStyle: CalendarStyle(
+          todayDecoration: BoxDecoration(
+            color: Colors.orangeAccent.withOpacity(0.5),
+            shape: BoxShape.circle,
+          ),
+          selectedDecoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.7),
+            shape: BoxShape.circle,
+          ),
+          outsideDaysVisible: false,
+          weekendTextStyle:
+          TextStyle(color: isDarkMode ? Colors.white54 : Colors.black54),
+          defaultTextStyle:
+          TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+          markerDecoration: const BoxDecoration(
+            color: Colors.transparent,
+          ),
+        ),
+        headerStyle: HeaderStyle(
+          titleCentered: true,
+          formatButtonVisible: false,
+          titleTextStyle: TextStyle(
+            fontSize: 20.0,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+          leftChevronIcon: Icon(
+            Icons.chevron_left,
+            size: 16,
+            color: isDarkMode ? Colors.white : Colors.black,
+            semanticLabel: 'Previous Month',
+          ),
+          rightChevronIcon: Icon(
+            Icons.chevron_right,
+            size: 16,
+            color: isDarkMode ? Colors.white : Colors.black,
+            semanticLabel: 'Next Month',
+          ),
+        ),
+        calendarBuilders: CalendarBuilders(
+          markerBuilder: (context, date, events) {
+            if (events.isNotEmpty) {
+              final sortedEvents = events
+                ..sort((a, b) => b.startDateTime.compareTo(a.startDateTime));
+              final latestEvents = sortedEvents.take(3).toList();
+              final eventSpans = latestEvents.where((event) {
+                return date.isAfter(event.startDateTime.subtract(const Duration(days: 1))) &&
+                    date.isBefore(event.endDateTime.add(const Duration(days: 1)));
+              }).toList();
+
+              return Align(
+                alignment: Alignment.bottomCenter,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: eventSpans.map((event) {
+                    return Container(
+                      width: 6,
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                      decoration: BoxDecoration(
+                        color: getEventColor(event),
+                        shape: BoxShape.circle,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              );
+            }
+            return null;
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionSeparator() {
+    return const Column(
+      children: [
+        GradientAnimationLine(),
+        SizedBox(
+          height: 5,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCalendarView(BuildContext context, List<Event> events) {
+    final List<String> timeSlots = List.generate(12, (index) {
+      final hour = index + 7;
+      final formattedHour = hour > 12 ? hour - 12 : hour;
+      final period = hour >= 12 ? 'PM' : 'AM';
+      return '${formattedHour.toString().padLeft(2, '0')} $period';
+    });
+
+    String selectedDateString = DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: Text(
+                selectedDateString,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          if (events.isEmpty)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.only(top: 20),
+                child: Text(
+                  "There are no events this day",
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey,
+                  ),
+                ),
+              ),
+            )
+          else
+            Column(
+              children: timeSlots.map((timeSlot) {
+                int timeSlotHour = int.parse(timeSlot.split(" ")[0]);
+                String period = timeSlot.split(" ")[1];
+                if (period == "PM" && timeSlotHour != 12) {
+                  timeSlotHour += 12;
+                }
+
+                final List<Event> eventsForThisHour = events.where((event) {
+                  int eventStartHour = event.startDateTime.hour;
+                  int eventEndHour = event.endDateTime.hour;
+                  return timeSlotHour == eventStartHour ||
+                      (timeSlotHour > eventStartHour && timeSlotHour < eventEndHour);
+                }).toList();
+
+                return Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: MediaQuery.of(context).size.width > 800 ? 24.0 : 18.0,
+                      vertical: MediaQuery.of(context).size.width > 800 ? 6.0 : 2.0,
+                    ),
+                    child: Column(
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(right: 12.0),
+                                child: SizedBox(
+                                  width: MediaQuery.of(context).size.width > 800
+                                      ? MediaQuery.of(context).size.width * 0.12
+                                      : MediaQuery.of(context).size.width * 0.10,
+                                  height: 24,
+                                  child: Text(
+                                    timeSlot,
+                                    style: TextStyle(
+                                      fontSize: MediaQuery.of(context).size.width > 800
+                                          ? MediaQuery.of(context).size.width * 0.025
+                                          : MediaQuery.of(context).size.width * 0.03,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  children: eventsForThisHour.map((event) {
+                                    final eventColor = getEventColor(event);
+
+                                    return InkWell(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => EventDetailView(
+                                              event: {
+                                                'title': event.title,
+                                                'time':
+                                                '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
+                                                'location': event.location ?? '',
+                                                'status': event.status,
+                                                'description': event.description,
+                                                'createdBy': event.createdBy ?? '',
+                                                'isRepeat': event.isRepeat ?? '',
+                                                'videoConference': event.videoConference ?? '',
+                                                'uid': event.uid ?? '',
+                                                'img_name': event.imgName ?? '',
+                                                'created_at': event.createdAt ?? '',
+                                                'isMeeting': event.isMeeting,
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 300),
+                                        padding: const EdgeInsets.all(16.0),
+                                        margin: const EdgeInsets.only(bottom: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(15),
+                                          boxShadow: const [
+                                            BoxShadow(
+                                              color: Colors.black12,
+                                              blurRadius: 8,
+                                              offset: Offset(0, 4),
+                                            ),
+                                          ],
+                                          border: Border(
+                                            right: BorderSide(
+                                              color: eventColor,
+                                              width: 6,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              event.title,
+                                              style: TextStyle(
+                                                fontSize: MediaQuery.of(context).size.width * 0.04,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black87,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.access_time,
+                                                    size: 16, color: Colors.green, semanticLabel: 'Time'),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
+                                                  style: const TextStyle(color: Colors.black54),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            if (event.location != null && event.location!.isNotEmpty) ...[
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.location_on,
+                                                      size: 16, color: Colors.red, semanticLabel: 'Location'),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    event.location!,
+                                                    style: const TextStyle(color: Colors.black54),
+                                                    overflow: TextOverflow.ellipsis,
+                                                    maxLines: 1,
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                            ],
+                                            if (event.createdBy != null && event.createdBy!.isNotEmpty) ...[
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.person,
+                                                      size: 16, color: Colors.blue, semanticLabel: 'Created By'),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    'Created by: ${event.createdBy}',
+                                                    style: const TextStyle(color: Colors.black54),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                            ],
+                                            if (event.description.isNotEmpty) ...[
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.description,
+                                                      size: 16, color: Colors.grey, semanticLabel: 'Description'),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      event.description,
+                                                      style: const TextStyle(color: Colors.black54),
+                                                      overflow: TextOverflow.ellipsis,
+                                                      maxLines: 2,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 8),
+                                            ],
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.check_circle,
+                                                    size: 16, color: Colors.green, semanticLabel: 'Status'),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'Status: ${event.status}',
+                                                  style: const TextStyle(color: Colors.black54),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.event,
+                                                    size: 16, color: Colors.orange, semanticLabel: 'Category'),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  event.category,
+                                                  style: const TextStyle(color: Colors.black54),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ]));
+              }).toList(),
+            ),
+        ],
+      ),
+    );
   }
 }
 
@@ -873,9 +1033,35 @@ class Event {
   final String description;
   final String status;
   final bool isMeeting;
+  final String? location;
+  final String? createdBy;
+  final String? imgName;
+  final String? createdAt;
+  final String uid;
+  final String? isRepeat;
+  final String? videoConference;
+  final Color? backgroundColor;
+  final String? outmeetingUid;
+  final String category;
 
-  Event(this.title, this.startDateTime, this.endDateTime, this.description,
-      this.status, this.isMeeting);
+  Event(
+      this.title,
+      this.startDateTime,
+      this.endDateTime,
+      this.description, {
+        required this.status,
+        required this.isMeeting,
+        this.location,
+        this.createdBy,
+        this.imgName,
+        this.createdAt,
+        required this.uid,
+        this.isRepeat,
+        this.videoConference,
+        this.backgroundColor,
+        this.outmeetingUid,
+        required this.category,
+      });
 
   String get formattedTime => DateFormat.jm().format(startDateTime);
 

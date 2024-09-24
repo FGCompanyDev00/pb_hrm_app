@@ -1124,7 +1124,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
         ),
         centerTitle: true,
-        toolbarHeight: 110,
+        toolbarHeight: 100,
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
