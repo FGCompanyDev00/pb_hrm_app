@@ -4198,39 +4198,41 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Tick
         ),
       ),
 
-      body: Column(
+     body: Column(
+  children: [
+    TabBar(
+       isScrollable: true,
+      controller: _tabController,
+      labelColor: Colors.amber,
+      unselectedLabelColor: Colors.grey,
+      indicatorColor: Colors.amber,
+      labelStyle: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+      ),
+      unselectedLabelStyle: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.normal,
+      ),
+      tabs: const [
+        Tab(text: 'Processing or Detail'),
+        Tab(text: 'Assignment /Task'),
+        Tab(text: 'Comment/Chat'),// Comment / Chat tab is hidden from the TabBar but kept in TabBarView
+      ],
+    ),
+    Expanded(
+      child: TabBarView(
+        controller: _tabController,
         children: [
-          TabBar(
-            controller: _tabController,
-            labelColor: Colors.amber,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Colors.amber,
-            labelStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.normal,
-            ),
-            tabs: const [
-              Tab(text: 'Processing / Detail'),
-              Tab(text: 'Assignment/Task'), 
-              Tab(text: 'Comment / Chat'),
-            ],
-          ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildProcessingOrDetailTab(filteredTasks), 
-                _buildAssignmentorTaskTab(filteredTasks),
-                _buildChatAndConversationTab(isDarkMode),
-              ],
-            ),
-          ),
+          _buildProcessingOrDetailTab(filteredTasks),  // Tab 1
+          _buildAssignmentorTaskTab(filteredTasks),    // Tab 2
+          _buildChatAndConversationTab(isDarkMode),    // Tab 3 (accessible by swiping)
         ],
       ),
+    ),
+  ],
+),
+
     );
   }
 
