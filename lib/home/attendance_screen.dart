@@ -782,12 +782,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-
+            const Divider(
+            height: 20,
+            thickness: 1,
+            indent: 1,
+            endIndent: 0,
+            color: Colors.grey,
+          ),
             // Register presence text
             const Text(
               'Register Your Presence and Start Your Work',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
             ),
+            const Divider(
+            height: 20,
+            thickness: 1,
+            indent: 1,
+            endIndent: 0,
+            color: Colors.grey,
+          ),
             const SizedBox(height: 16),
 
             // Month and Year display (e.g., February - 2024)
