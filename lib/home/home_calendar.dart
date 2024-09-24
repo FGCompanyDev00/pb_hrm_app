@@ -340,14 +340,14 @@ class _HomeCalendarState extends State<HomeCalendar> {
 
   Widget _buildCalendar(bool isDarkMode) {
     return Container(
-      height: 295,
-      margin: const EdgeInsets.all(20.0),
+      height: 300,
+      margin: const EdgeInsets.all(10.0),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.black : Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
       child: TableCalendar<Event>(
-        rowHeight: 40,
+        rowHeight: 38,
         firstDay: DateTime.utc(2010, 10, 16),
         lastDay: DateTime.utc(2030, 3, 14),
         focusedDay: _focusedDay,

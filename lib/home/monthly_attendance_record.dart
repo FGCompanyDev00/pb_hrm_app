@@ -23,7 +23,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
   }
 
   Future<void> _fetchAttendanceRecords() async {
-    String? token = await _getToken(); // Fetch the authentication token from SharedPreferences
+    String? token = await _getToken();
     if (token == null || token.isEmpty) {
       _showCustomDialog(context, 'Error', 'Unable to retrieve authentication token.');
       return;
@@ -212,36 +212,39 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return PreferredSize(
-      preferredSize: const Size.fromHeight(50.50),
-      child: AppBar(
-        flexibleSpace: Stack(
-          children: [
-            Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/background.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ],
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0, // Remove shadow
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          color: Colors.black,
-        ),
-        title: const Text(
-          'Attendance Report',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+    return AppBar(
+      flexibleSpace: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/background.png'),
+            fit: BoxFit.cover,
+          ),
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(30),
+            bottomRight: Radius.circular(30),
+          ),
         ),
       ),
+      centerTitle: true,
+      title: const Text(
+        'Monthly Attendance',
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      leading: IconButton(
+        icon: const Icon(
+          Icons.arrow_back_ios_new,
+          color: Colors.black,
+          size: 22,
+        ),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      toolbarHeight: 100,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
     );
   }
 
