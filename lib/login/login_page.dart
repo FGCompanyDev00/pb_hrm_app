@@ -477,44 +477,50 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-
   Widget _buildCustomDateRow() {
-    String currentDate = DateFormat('dd MMM yyyy').format(DateTime.now());
+  String currentDate = DateFormat('dd MMM yyyy').format(DateTime.now());
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(10.0),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            offset: const Offset(2, 2),
-            blurRadius: 6,
-          ),
-        ],
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Smaller padding
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [Color(0xFFFEE9C3), Color(0xFFFFF3D6)], 
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.calendar_today,
-            color: Colors.black54,
-            size: 28.0,
+      borderRadius: BorderRadius.circular(15.0), 
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.1), 
+          offset: const Offset(2, 2),
+          blurRadius: 4,
+        ),
+      ],
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(
+          Icons.calendar_today,
+          color: Colors.black54,
+          size: 20.0, // Smaller icon size
+        ),
+        const SizedBox(width: 8), // Reduced spacing between the icon and text
+        Text(
+          currentDate,
+          style: const TextStyle(
+            fontSize: 16, // Smaller text size
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.0, // Adjusted letter spacing
           ),
-          const SizedBox(width: 8),
-          Text(
-            currentDate,
-            style: const TextStyle(
-              fontSize: 20,
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
+
 
   Widget _buildTextFields(BuildContext context) {
     return Column(
