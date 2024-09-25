@@ -19,22 +19,25 @@ class _EventDetailViewState extends State<EventDetailView>
   String _userResponse = '';
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
+  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
     _checkUserResponse();
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeOutCubic,
-          ),
-        );
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+        .animate(CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOutCubic,
+    ));
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeIn,
+    );
     _animationController.forward();
   }
 
@@ -45,17 +48,14 @@ class _EventDetailViewState extends State<EventDetailView>
   }
 
   Future<void> _checkUserResponse() async {
-    // TODO: Implement logic to check if the user has already responded
-    // For now, we'll assume the user has not responded
     setState(() {
       _hasResponded = widget.event['userHasResponded'] ?? false;
       _userResponse = widget.event['userResponse'] ?? '';
     });
   }
 
-  Future<void> _joinMeeting() async {
+  Future<void> _respondToMeeting(String responseType) async {
     if (_hasResponded) return;
-
     setState(() {
       _isLoading = true;
     });
@@ -67,15 +67,39 @@ class _EventDetailViewState extends State<EventDetailView>
     final token = prefs.getString('token');
 
     if (token == null) {
-      _showErrorDialog('Authentication Error', 'Please log in again.');
+      _showSnackBar('Authentication Error. Please log in again.', Colors.red);
       setState(() {
         _isLoading = false;
       });
       return;
     }
 
-    final url =
-    Uri.parse('$baseUrl/api/work-tracking/out-meeting/outmeeting/yes/$uid');
+    String endpoint;
+    String successMessage;
+
+    switch (responseType) {
+      case 'yes':
+        endpoint = 'yes';
+        successMessage = 'Successfully joined the meeting.';
+        break;
+      case 'no':
+        endpoint = 'no';
+        successMessage = 'Successfully rejected the meeting.';
+        break;
+      case 'maybe':
+        endpoint = 'maybe';
+        successMessage = 'You have marked your response as Maybe.';
+        break;
+      default:
+        _showSnackBar('Invalid response type.', Colors.red);
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+    }
+
+    final url = Uri.parse(
+        '$baseUrl/api/work-tracking/out-meeting/outmeeting/$endpoint/$uid');
 
     try {
       final response = await http.put(
@@ -88,17 +112,15 @@ class _EventDetailViewState extends State<EventDetailView>
           response.statusCode == 202) {
         setState(() {
           _hasResponded = true;
-          _userResponse = 'joined';
+          _userResponse = responseType;
         });
-        _showSuccessDialog('Successfully joined the meeting.');
+        _showSnackBar(successMessage, Colors.green);
       } else {
-        _showErrorDialog(
-          'Failed to join the meeting',
-          'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}',
-        );
+        _showSnackBar(
+            'Failed to respond. Status: ${response.statusCode}', Colors.red);
       }
-    } catch (e) {
-      _showErrorDialog('Error', 'An unexpected error occurred: $e');
+    } catch (_) {
+      _showSnackBar('An unexpected error occurred.', Colors.red);
     } finally {
       setState(() {
         _isLoading = false;
@@ -106,120 +128,39 @@ class _EventDetailViewState extends State<EventDetailView>
     }
   }
 
-  Future<void> _rejectMeeting() async {
-    if (_hasResponded) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    final uid = widget.event['uid'] ?? widget.event['outmeeting_uid'];
-    final baseUrl = 'https://demo-application-api.flexiflows.co';
-
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    if (token == null) {
-      _showErrorDialog('Authentication Error', 'Please log in again.');
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
-
-    final url =
-    Uri.parse('$baseUrl/api/work-tracking/out-meeting/outmeeting/no/$uid');
-
-    try {
-      final response = await http.put(
-        url,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200 ||
-          response.statusCode == 201 ||
-          response.statusCode == 202) {
-        setState(() {
-          _hasResponded = true;
-          _userResponse = 'rejected';
-        });
-        _showSuccessDialog('Successfully rejected the meeting.');
-      } else {
-        _showErrorDialog(
-          'Failed to reject the meeting',
-          'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}',
-        );
-      }
-    } catch (e) {
-      _showErrorDialog('Error', 'An unexpected error occurred: $e');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _showErrorDialog(String title, String message) {
+  void _showSnackBar(String message, Color color) {
     if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showSuccessDialog(String message) {
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Success'),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-                // The UI will refresh to reflect the user's response
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
   Widget _buildDetailItem(
       IconData icon, String title, String content, Color iconColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              '$title: $content',
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.black87,
-              ),
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: Card(
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: ListTile(
+          leading: Icon(icon, color: iconColor, size: 28),
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
             ),
           ),
-        ],
+          subtitle: Text(
+            content,
+            style: const TextStyle(fontSize: 14),
+          ),
+        ),
       ),
     );
   }
@@ -227,7 +168,10 @@ class _EventDetailViewState extends State<EventDetailView>
   Widget _buildAnimatedContent(Widget child) {
     return SlideTransition(
       position: _slideAnimation,
-      child: child,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: child,
+      ),
     );
   }
 
@@ -242,19 +186,15 @@ class _EventDetailViewState extends State<EventDetailView>
     final String imageUrl = widget.event['img_name'] ?? '';
     final String createdAt = widget.event['created_at'] ?? '';
 
-    // Parse the submission date
     String formattedDate = '';
     if (createdAt.isNotEmpty) {
       DateTime parsedDate = DateTime.parse(createdAt);
       formattedDate = DateFormat('MMM dd, yyyy').format(parsedDate);
     }
 
-    // Parse the start and end dates
     String formattedStartDate = '';
     String formattedEndDate = '';
-
     if (isMeeting) {
-      // For meetings, use 'fromdate' and 'todate'
       if (widget.event['fromdate'] != null && widget.event['todate'] != null) {
         DateTime startDate = DateTime.parse(widget.event['fromdate']);
         DateTime endDate = DateTime.parse(widget.event['todate']);
@@ -263,7 +203,6 @@ class _EventDetailViewState extends State<EventDetailView>
         formattedEndDate = DateFormat('MMM dd, yyyy hh:mm a').format(endDate);
       }
     } else {
-      // For leave requests, use 'take_leave_from' and 'take_leave_to'
       if (widget.event['take_leave_from'] != null &&
           widget.event['take_leave_to'] != null) {
         DateTime startDate = DateTime.parse(widget.event['take_leave_from']);
@@ -274,7 +213,7 @@ class _EventDetailViewState extends State<EventDetailView>
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.white,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         flexibleSpace: Container(
@@ -316,51 +255,39 @@ class _EventDetailViewState extends State<EventDetailView>
         children: [
           Padding(
             padding: EdgeInsets.symmetric(
-                horizontal: horizontalPadding, vertical: 170.0),
+                horizontal: horizontalPadding, vertical: 150.0),
             child: _buildAnimatedContent(
               SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (isMeeting) ...[
-                      Row(
+                    if (isMeeting)
+                      Column(
                         children: [
-                          // Profile Image
                           CircleAvatar(
-                            radius: 40,
+                            radius: 50,
                             backgroundImage: imageUrl.isNotEmpty
                                 ? NetworkImage(imageUrl)
                                 : const AssetImage('assets/default_avatar.png')
                             as ImageProvider,
                           ),
-                          const SizedBox(width: 16),
-                          // Creator Name and Submission Date
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  creatorName,
-                                  style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                if (formattedDate.isNotEmpty)
-                                  Text(
-                                    'Submitted on $formattedDate',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                              ],
+                          const SizedBox(height: 10),
+                          Text(
+                            creatorName,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
+                          if (formattedDate.isNotEmpty)
+                            Text(
+                              'Submitted on $formattedDate',
+                              style: const TextStyle(
+                                  fontSize: 14, color: Colors.grey),
+                            ),
+                          const SizedBox(height: 20),
                         ],
                       ),
-                      const SizedBox(height: 30),
-                    ],
                     Text(
                       widget.event['title'] ?? 'No Title',
                       style: const TextStyle(
@@ -375,7 +302,7 @@ class _EventDetailViewState extends State<EventDetailView>
                         Icons.description,
                         'Description',
                         widget.event['description'],
-                        Colors.blue,
+                        Colors.blueAccent,
                       ),
                     if (formattedStartDate.isNotEmpty)
                       _buildDetailItem(
@@ -389,7 +316,7 @@ class _EventDetailViewState extends State<EventDetailView>
                         Icons.calendar_today_outlined,
                         'End Date',
                         formattedEndDate,
-                        Colors.red,
+                        Colors.redAccent,
                       ),
                     if (widget.event['location'] != null &&
                         widget.event['location'].isNotEmpty)
@@ -452,16 +379,14 @@ class _EventDetailViewState extends State<EventDetailView>
                             ),
                           ),
                           const SizedBox(height: 10),
-                          ...List<Widget>.from(
-                            widget.event['members'].map(
-                                  (member) => _buildDetailItem(
-                                Icons.person,
-                                'Member',
-                                member.toString(),
-                                Colors.deepPurple,
-                              ),
+                          ...List<Widget>.from(widget.event['members'].map(
+                                (member) => _buildDetailItem(
+                              Icons.person,
+                              'Member',
+                              member.toString(),
+                              Colors.deepPurple,
                             ),
-                          ),
+                          )),
                         ],
                       ),
                     const SizedBox(height: 100),
@@ -475,62 +400,105 @@ class _EventDetailViewState extends State<EventDetailView>
               bottom: 0,
               left: 0,
               right: 0,
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                    horizontal: horizontalPadding, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.95),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, -5),
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding, vertical: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.95),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, -5),
+                      ),
+                    ],
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
                     ),
-                  ],
-                ),
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _hasResponded ? null : _joinMeeting,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _hasResponded
-                              ? Colors.grey
-                              : Colors.green,
-                          padding:
-                          const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: _isLoading
+                      ? const Center(
+                    child: CircularProgressIndicator(),
+                  )
+                      : Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _hasResponded
+                              ? null
+                              : () => _respondToMeeting('yes'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _hasResponded
+                                ? Colors.grey
+                                : Colors.green,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation:
+                            _hasResponded ? 0 : 5,
+                          ),
+                          child: const Text(
+                            'Join',
+                            style: TextStyle(fontSize: 18),
                           ),
                         ),
-                        child: const Text(
-                          'Join',
-                          style: TextStyle(fontSize: 18),
-                        ),
                       ),
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _hasResponded ? null : _rejectMeeting,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                          _hasResponded ? Colors.grey : Colors.red,
-                          padding:
-                          const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _hasResponded
+                              ? null
+                              : () => _respondToMeeting('maybe'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _hasResponded
+                                ? Colors.grey
+                                : Colors.orange,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation:
+                            _hasResponded ? 0 : 5,
+                          ),
+                          child: const Text(
+                            'Maybe',
+                            style: TextStyle(fontSize: 18),
                           ),
                         ),
-                        child: const Text(
-                          'Reject',
-                          style: TextStyle(fontSize: 18),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _hasResponded
+                              ? null
+                              : () => _respondToMeeting('no'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _hasResponded
+                                ? Colors.grey
+                                : Colors.red,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation:
+                            _hasResponded ? 0 : 5,
+                          ),
+                          child: const Text(
+                            'Reject',
+                            style: TextStyle(fontSize: 18),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

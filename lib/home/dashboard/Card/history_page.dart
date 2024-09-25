@@ -780,7 +780,6 @@ class DetailsPage extends StatelessWidget {
   }
 }
 
-
   Widget _buildInfoRow(IconData icon, String label, String value,
       bool isDarkMode,
       {Color iconColor = Colors.black54}) {

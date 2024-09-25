@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
@@ -57,10 +58,14 @@ class _NotificationPageState extends State<NotificationPage> {
               .toList();
         });
       } else {
-        print('Failed to load notifications');
+        if (kDebugMode) {
+          print('Failed to load notifications');
+        }
       }
     } catch (e) {
-      print('Error fetching notifications: $e');
+      if (kDebugMode) {
+        print('Error fetching notifications: $e');
+      }
     }
   }
 
@@ -82,11 +87,15 @@ class _NotificationPageState extends State<NotificationPage> {
         final Map<String, dynamic> data = json.decode(response.body);
         return data['results']['images'] ?? '';
       } else {
-        print('Failed to load profile image: ${response.statusCode}');
+        if (kDebugMode) {
+          print('Failed to load profile image: ${response.statusCode}');
+        }
         return ''; // Return empty URL to avoid crashes
       }
     } catch (e) {
-      print('Error fetching profile image: $e');
+      if (kDebugMode) {
+        print('Error fetching profile image: $e');
+      }
       return ''; // Return empty URL to avoid crashes
     }
   }
@@ -101,7 +110,6 @@ class _NotificationPageState extends State<NotificationPage> {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
