@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
+import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
@@ -67,6 +68,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ThemeNotifier()),
         ChangeNotifierProvider(create: (_) => LanguageNotifier()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+         ChangeNotifierProvider(create: (_) => DateProvider()),
       ],
       child: const MyApp(),
     ),

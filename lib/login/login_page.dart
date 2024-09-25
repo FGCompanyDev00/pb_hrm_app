@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/login/forgot_password_page.dart';
 import 'package:pb_hrsystem/login/notification_permission_page.dart';
 import 'package:pb_hrsystem/main.dart';
@@ -191,21 +192,33 @@ class _LoginPageState extends State<LoginPage> {
     prefs.remove('rememberMe');
   }
 
-  Future<void> _selectDate(BuildContext context) async {
+  // Future<void> _selectDate(BuildContext context) async {
+  //   final DateTime? pickedDate = await showDatePicker(
+  //     context: context,
+  //     initialDate: DateTime.now(),
+  //     firstDate: DateTime(2000),
+  //     lastDate: DateTime(2101),
+  //   );
+
+  //   if (pickedDate != null && pickedDate != DateTime.now()) {
+  //     setState(() {
+  //       _selectedDate = DateFormat('dd MMM yyyy').format(pickedDate);
+  //     });
+  //   }
+  // }
+
+ Future<void> _selectDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: Provider.of<DateProvider>(context, listen: false).selectedDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
 
-    if (pickedDate != null && pickedDate != DateTime.now()) {
-      setState(() {
-        _selectedDate = DateFormat('dd MMM yyyy').format(pickedDate);
-      });
+    if (pickedDate != null) {
+      Provider.of<DateProvider>(context, listen: false).updateSelectedDate(pickedDate);
     }
   }
-
 
   void _showCustomDialog(BuildContext context, String title, String message) {
     showDialog(
@@ -525,14 +538,27 @@ class _LoginPageState extends State<LoginPage> {
               size: 20.0, // Smaller icon size
             ),
             const SizedBox(width: 8), // Reduced spacing between the icon and text
-            Text(
-              _selectedDate,  // Display the selected date
-              style: const TextStyle(
-                fontSize: 16, // Smaller text size
-                color: Colors.black87,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.0, // Adjusted letter spacing
-              ),
+            // Text(
+            //   _selectedDate,  // Display the selected date
+            //   style: const TextStyle(
+            //     fontSize: 16, // Smaller text size
+            //     color: Colors.black87,
+            //     fontWeight: FontWeight.w600,
+            //     letterSpacing: 1.0, // Adjusted letter spacing
+            //   ),
+            // ),
+            Consumer<DateProvider>(
+              builder: (context, dateProvider, child) {
+                return Text(
+                  dateProvider.formattedSelectedDate,  // Display formatted selected date
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.0,
+                  ),
+                );
+              },
             ),
           ],
         ),
