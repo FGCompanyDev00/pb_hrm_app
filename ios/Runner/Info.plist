@@ -28,20 +28,29 @@
     <string>$(FLUTTER_BUILD_NUMBER)</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+
+    <!-- Privacy Permission Purpose Strings -->
     <key>NSLocalNotificationUsageDescription</key>
-    <string>We would like to send you notifications for important updates.</string>
+    <string>We send notifications for updates and promotions related to the app.</string>
+
     <key>NSCameraUsageDescription</key>
-    <string>We need access to the camera </string>
+    <string>We need access to the camera to allow you to take and upload photos for your profile and other features.</string>
+
     <key>NSFaceIDUsageDescription</key>
-    <string>We need access to Face ID for secure authentication.</string>
+    <string>We need access to Face ID for secure authentication and faster login.</string>
+
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>We need your location to provide location-based services.</string>
+    <string>We need your location to provide personalized location-based services, such as finding nearby stores or services.</string>
+
     <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>We need access to add photos to your library.</string>
+    <string>We need access to add photos to your library when you save images from the app.</string>
+
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>We need access to the photo library for saving and selecting images.</string>
+    <string>We need access to your photo library to allow you to select images for upload or to save images to your device.</string>
+
     <key>NSUserTrackingUsageDescription</key>
-    <string>We use this information to improve the app's user experience.</string>
+    <string>We use tracking to deliver personalized content and advertising, and to improve your experience by analyzing app usage data.</string>
+
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
 

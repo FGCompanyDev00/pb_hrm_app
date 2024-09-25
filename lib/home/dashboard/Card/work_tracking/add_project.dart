@@ -120,26 +120,40 @@ class AddProjectPageState extends State<AddProjectPage> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        flexibleSpace: Image.asset(
-          'assets/background.png',
-          fit: BoxFit.cover,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/background.png'),
+              fit: BoxFit.cover,
+            ),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
+            ),
+          ),
         ),
-        title: Text(
-          'Create New Project',
+        centerTitle: true,
+        title: const Text(
+          'Create Project',
           style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
+            color: Colors.black,
+            fontSize: 22,
+            fontWeight: FontWeight.w500,
           ),
         ),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black,
+            size: 20,
+          ),
           onPressed: () {
             Navigator.pop(context);
           },
         ),
+        toolbarHeight: 80,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
       ),
       body: Stack(
         children: [
