@@ -6,6 +6,7 @@ import 'package:flutter_timetable/flutter_timetable.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
+import 'package:pb_hrsystem/login/date.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -685,7 +686,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                   _buildCalendarHeader(isDarkMode),
                   if (_showFiltersAndSearchBar) _buildFilters(),
                   if (_showFiltersAndSearchBar) _buildSearchBar(),
-                  _buildCalendar(isDarkMode),
+                  _buildCalendar(context,isDarkMode),
                   _buildSectionSeparator(),
                   SizedBox(
                     height: MediaQuery.of(context).size.height * 0.6,
@@ -795,106 +796,239 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
-  Widget _buildCalendar(bool isDarkMode) {
-    return Container(
-      height: 270,
-      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.black : Colors.white,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: TableCalendar<Event>(
-        rowHeight: 35,
-        firstDay: DateTime.utc(2010, 10, 16),
-        lastDay: DateTime.utc(2030, 3, 14),
-        focusedDay: _focusedDay,
-        calendarFormat: _calendarFormat,
-        availableCalendarFormats: const {CalendarFormat.month: 'Month'},
-        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-        onDaySelected: (selectedDay, focusedDay) {
-          if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
-            _showDayView(selectedDay);
-            _singleTapSelectedDay = null;
-          } else {
-            setState(() {
-              _singleTapSelectedDay = selectedDay;
-              _selectedDay = selectedDay;
-              _focusedDay = focusedDay;
-              _filterAndSearchEvents();
-            });
-          }
-        },
-        onFormatChanged: (format) {
-          if (format != CalendarFormat.month) {
-            setState(() => _calendarFormat = CalendarFormat.month);
-          }
-        },
-        onPageChanged: (focusedDay) => setState(() => _focusedDay = focusedDay),
-        eventLoader: _getEventsForDay,
-        calendarStyle: CalendarStyle(
-          todayDecoration: BoxDecoration(
-            color: Colors.orangeAccent.withOpacity(0.5),
-            shape: BoxShape.circle,
-          ),
-          selectedDecoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.7),
-            shape: BoxShape.circle,
-          ),
-          outsideDaysVisible: false,
-          weekendTextStyle: TextStyle(
-            color: isDarkMode ? Colors.white54 : Colors.black54,
-          ),
-          defaultTextStyle: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black,
-          ),
-        ),
-        headerStyle: HeaderStyle(
-          titleCentered: true,
-          formatButtonVisible: false,
-          titleTextStyle: TextStyle(
-            fontSize: 18.0,
-            fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : Colors.black,
-          ),
-          leftChevronIcon: Icon(
-            Icons.chevron_left,
-            size: 14,
-            color: isDarkMode ? Colors.white : Colors.black,
-          ),
-          rightChevronIcon: Icon(
-            Icons.chevron_right,
-            size: 14,
-            color: isDarkMode ? Colors.white : Colors.black,
-          ),
-        ),
-        calendarBuilders: CalendarBuilders(
-          markerBuilder: (context, date, events) {
-            if (events.isNotEmpty) {
-              final eventSpans = events.take(3).toList();
-              return Align(
-                alignment: Alignment.bottomCenter,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: eventSpans.map((event) {
-                    return Container(
-                      width: 5,
-                      height: 5,
-                      margin: const EdgeInsets.symmetric(horizontal: 1),
-                      decoration: BoxDecoration(
-                        color: getEventColor(event),
-                        shape: BoxShape.circle,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              );
-            }
-            return null;
+  // Widget _buildCalendar(bool isDarkMode) {
+  //   return Container(
+  //     height: 270,
+  //     margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
+  //     decoration: BoxDecoration(
+  //       color: isDarkMode ? Colors.black : Colors.white,
+  //       borderRadius: BorderRadius.circular(6),
+  //     ),
+  //     child: TableCalendar<Event>(
+  //       rowHeight: 35,
+  //       firstDay: DateTime.utc(2010, 10, 16),
+  //       lastDay: DateTime.utc(2030, 3, 14),
+  //       focusedDay: _focusedDay,
+  //       calendarFormat: _calendarFormat,
+  //       availableCalendarFormats: const {CalendarFormat.month: 'Month'},
+  //       selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+  //       onDaySelected: (selectedDay, focusedDay) {
+  //         if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
+  //           _showDayView(selectedDay);
+  //           _singleTapSelectedDay = null;
+  //         } else {
+  //           setState(() {
+  //             _singleTapSelectedDay = selectedDay;
+  //             _selectedDay = selectedDay;
+  //             _focusedDay = focusedDay;
+  //             _filterAndSearchEvents();
+  //           });
+  //         }
+  //       },
+  //       onFormatChanged: (format) {
+  //         if (format != CalendarFormat.month) {
+  //           setState(() => _calendarFormat = CalendarFormat.month);
+  //         }
+  //       },
+  //       onPageChanged: (focusedDay) => setState(() => _focusedDay = focusedDay),
+  //       eventLoader: _getEventsForDay,
+  //       calendarStyle: CalendarStyle(
+  //         todayDecoration: BoxDecoration(
+  //           color: Colors.orangeAccent.withOpacity(0.5),
+  //           shape: BoxShape.circle,
+  //         ),
+  //         selectedDecoration: BoxDecoration(
+  //           color: Colors.green.withOpacity(0.7),
+  //           shape: BoxShape.circle,
+  //         ),
+  //         outsideDaysVisible: false,
+  //         weekendTextStyle: TextStyle(
+  //           color: isDarkMode ? Colors.white54 : Colors.black54,
+  //         ),
+  //         defaultTextStyle: TextStyle(
+  //           color: isDarkMode ? Colors.white : Colors.black,
+  //         ),
+  //       ),
+  //       headerStyle: HeaderStyle(
+  //         titleCentered: true,
+  //         formatButtonVisible: false,
+  //         titleTextStyle: TextStyle(
+  //           fontSize: 18.0,
+  //           fontWeight: FontWeight.bold,
+  //           color: isDarkMode ? Colors.white : Colors.black,
+  //         ),
+  //         leftChevronIcon: Icon(
+  //           Icons.chevron_left,
+  //           size: 14,
+  //           color: isDarkMode ? Colors.white : Colors.black,
+  //         ),
+  //         rightChevronIcon: Icon(
+  //           Icons.chevron_right,
+  //           size: 14,
+  //           color: isDarkMode ? Colors.white : Colors.black,
+  //         ),
+  //       ),
+  //       calendarBuilders: CalendarBuilders(
+  //         markerBuilder: (context, date, events) {
+  //           if (events.isNotEmpty) {
+  //             final eventSpans = events.take(3).toList();
+  //             return Align(
+  //               alignment: Alignment.bottomCenter,
+  //               child: Row(
+  //                 mainAxisAlignment: MainAxisAlignment.center,
+  //                 children: eventSpans.map((event) {
+  //                   return Container(
+  //                     width: 5,
+  //                     height: 5,
+  //                     margin: const EdgeInsets.symmetric(horizontal: 1),
+  //                     decoration: BoxDecoration(
+  //                       color: getEventColor(event),
+  //                       shape: BoxShape.circle,
+  //                     ),
+  //                   );
+  //                 }).toList(),
+  //               ),
+  //             );
+  //           }
+  //           return null;
+  //         },
+  //       ),
+  //     ),
+  //   );
+  // }
+
+  Widget _buildCalendar(BuildContext context, bool isDarkMode) {
+  return Container(
+    height: 300, // Retaining the height from the first function
+    margin: const EdgeInsets.all(10.0), // Keeping the margin and design consistent
+    decoration: BoxDecoration(
+      color: isDarkMode ? Colors.black : Colors.white,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Consumer<DateProvider>(
+      builder: (context, dateProvider, child) {
+        return TableCalendar<Event>(
+          rowHeight: 38, // Retaining row height from the first function
+          firstDay: DateTime.utc(2010, 10, 16),
+          lastDay: DateTime.utc(2030, 3, 14),
+          focusedDay: dateProvider.selectedDate, // DateProvider integration
+          calendarFormat: _calendarFormat,
+          availableCalendarFormats: const {
+            CalendarFormat.month: 'Month',
           },
-        ),
-      ),
-    );
-  }
+          selectedDayPredicate: (day) {
+            // Determines if the day is selected from either DateProvider or local state
+            return isSameDay(dateProvider.selectedDate, day);
+          },
+          onDaySelected: (selectedDay, focusedDay) {
+            if (_singleTapSelectedDay != null &&
+                isSameDay(_singleTapSelectedDay, selectedDay)) {
+              _showDayView(selectedDay); // Custom method for showing day view
+              _singleTapSelectedDay = null;
+            } else {
+              dateProvider.updateSelectedDate(selectedDay); // Update DateProvider
+              setState(() {
+                _singleTapSelectedDay = selectedDay;
+                _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+                _filterAndSearchEvents(); // Filtering events for selected day
+              });
+            }
+          },
+          onFormatChanged: (format) {
+            if (format != CalendarFormat.month) {
+              setState(() {
+                _calendarFormat = CalendarFormat.month;
+              });
+            }
+          },
+          onPageChanged: (focusedDay) {
+            // Updates the focused day in both local state and DateProvider
+            setState(() {
+              _focusedDay = focusedDay;
+              dateProvider.updateSelectedDate(focusedDay); // Sync the DateProvider with the current month
+            });
+          },
+          eventLoader: _getEventsForDay, // Load events for the day
+          calendarStyle: CalendarStyle(
+            todayDecoration: BoxDecoration(
+              color: Colors.orangeAccent.withOpacity(0.5),
+              shape: BoxShape.circle,
+            ),
+            selectedDecoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.7),
+              shape: BoxShape.circle,
+            ),
+            outsideDaysVisible: false,
+            weekendTextStyle: TextStyle(
+              color: isDarkMode ? Colors.white54 : Colors.black54,
+            ),
+            defaultTextStyle: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+            markerDecoration: const BoxDecoration(
+              color: Colors.transparent,
+            ),
+          ),
+          headerStyle: HeaderStyle(
+            titleCentered: true,
+            formatButtonVisible: false,
+            titleTextStyle: TextStyle(
+              fontSize: 18.0, // Smaller font size (taken from the second function)
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+            leftChevronIcon: Icon(
+              Icons.chevron_left,
+              size: 14, // Chevron size from second function
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+            rightChevronIcon: Icon(
+              Icons.chevron_right,
+              size: 14, // Chevron size from second function
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+          ),
+          calendarBuilders: CalendarBuilders(
+            markerBuilder: (context, date, events) {
+              // This section handles the rendering of event markers in the calendar
+              if (events.isNotEmpty) {
+                final sortedEvents = events..sort((a, b) => b.startDateTime.compareTo(a.startDateTime));
+                final latestEvents = sortedEvents.take(3).toList();
+                final eventSpans = latestEvents.where((event) {
+                  return date.isAfter(event.startDateTime.subtract(const Duration(days: 1))) &&
+                      date.isBefore(event.endDateTime.add(const Duration(days: 1)));
+                }).toList();
+
+                return Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: eventSpans.map((event) {
+                      return Container(
+                        width: 5, // Smaller size for event markers (from the second function)
+                        height: 5, // Smaller size for event markers (from the second function)
+                        margin: const EdgeInsets.symmetric(horizontal: 1),
+                        decoration: BoxDecoration(
+                          color: getEventColor(event), // Custom method for getting event color
+                          shape: BoxShape.circle,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                );
+              }
+              return null;
+            },
+          ),
+        );
+      },
+    ),
+  );
+}
+
+
+
 
   Widget _buildSectionSeparator() {
     return const Column(
