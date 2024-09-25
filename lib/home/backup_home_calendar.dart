@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
@@ -12,8 +15,8 @@ import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:http/http.dart' as http;
-import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:dotted_border/dotted_border.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -23,21 +26,21 @@ class HomeCalendar extends StatefulWidget {
 }
 
 class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin {
+  final String baseUrl = 'https://demo-application-api.flexiflows.co';
   late final ValueNotifier<Map<DateTime, List<Event>>> _events;
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
   List<Event> _eventsForDay = [];
-  late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
-
-  // Filtering and Search
+  late final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+  bool _showFiltersAndSearchBar = false;
   String _selectedCategory = 'All';
-  final List<String> _categories = ['All', 'Meetings', 'Leave Requests'];
+  final List<String> _categories = ['All', 'Meetings', 'Leave Requests', 'Meeting Room Bookings', 'Car Bookings'];
   String _searchQuery = '';
-
-  // Animation Controller
-  late AnimationController _animationController;
+  late final AnimationController _animationController;
+  Timer? _doubleTapTimer;
+  static const int doubleTapDelay = 300;
 
   @override
   void initState() {
@@ -47,14 +50,14 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     _eventsForDay = [];
     _fetchMeetingData();
     _fetchLeaveRequests();
-
+    _fetchMeetingRoomBookings();
+    _fetchCarBookings();
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
     AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
     InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
-
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -65,6 +68,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
   void dispose() {
     _events.dispose();
     _animationController.dispose();
+    _doubleTapTimer?.cancel();
     super.dispose();
   }
 
@@ -83,7 +87,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
     try {
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests'),
+        Uri.parse('$baseUrl/api/leave_requests'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -95,22 +99,34 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
         for (var item in leaveRequests) {
           final DateTime startDate = _normalizeDate(DateTime.parse(item['take_leave_from']));
           final DateTime endDate = _normalizeDate(DateTime.parse(item['take_leave_to']));
-          final String uid = 'leave_${item['id'] ?? UniqueKey().toString()}'; // Ensure unique UID
-
+          final String uid = 'leave_${item['id']}';
+          String status;
+          switch (item['is_approve']) {
+            case 'Approved':
+              status = 'Approved';
+              break;
+            case 'Waiting':
+            case 'Processing':
+              status = 'Pending';
+              break;
+            case 'Cancel':
+              status = 'Cancelled';
+              break;
+            default:
+              status = 'Pending';
+          }
+          if (status == 'Cancelled') continue;
           final event = Event(
             item['name'],
             startDate,
             endDate,
             item['take_leave_reason'] ?? 'Approval Pending',
-            status: item['is_approve'] == 1 ? 'Approved' : 'Waiting',
+            status: status,
             isMeeting: false,
             category: 'Leave Requests',
             uid: uid,
           );
-
-          for (var day = startDate;
-          day.isBefore(endDate.add(const Duration(days: 1)));
-          day = day.add(const Duration(days: 1))) {
+          for (var day = startDate; day.isBefore(endDate.add(const Duration(days: 1))); day = day.add(const Duration(days: 1))) {
             final normalizedDay = _normalizeDate(day);
             if (approvalEvents.containsKey(normalizedDay)) {
               if (!approvalEvents[normalizedDay]!.any((e) => e.uid == event.uid)) {
@@ -127,8 +143,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           _filterAndSearchEvents();
         });
       } else {
-        _showErrorDialog('Failed to Load Leave Requests',
-            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Leave Requests', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Leave Requests', 'An unexpected error occurred: $e');
@@ -146,8 +161,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
     try {
       final response = await http.get(
-        Uri.parse(
-            'https://demo-application-api.flexiflows.co/api/work-tracking/out-meeting/outmeeting/my-members'),
+        Uri.parse('$baseUrl/api/work-tracking/out-meeting/outmeeting/my-members'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -166,17 +180,31 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           final DateTime startDate = DateTime.parse(item['fromdate']);
           final DateTime endDate = DateTime.parse(item['todate']);
           final Color eventColor = _parseColor(item['backgroundColor']);
-          final String uid = item['outmeeting_uid'] ?? UniqueKey().toString(); // Ensure unique UID
-
+          final String uid = item['outmeeting_uid'] ?? UniqueKey().toString();
+          String status;
+          switch (item['status']) {
+            case 'approved':
+              status = 'Approved';
+              break;
+            case 'waiting':
+              status = 'Pending';
+              break;
+            case 'disapproved':
+              status = 'Cancelled';
+              break;
+            default:
+              status = 'Pending';
+          }
+          if (status == 'Cancelled') continue;
           final event = Event(
             item['title'],
             startDate,
             endDate,
             item['description'] ?? '',
-            status: item['status'] ?? '',
+            status: status,
             isMeeting: true,
             location: item['location'] ?? '',
-            createdBy: item['created_by_name'] ?? '',
+            createdBy: item['created_by'] ?? '',
             imgName: item['img_name'] ?? '',
             createdAt: item['created_at'] ?? '',
             uid: uid,
@@ -186,10 +214,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             outmeetingUid: item['outmeeting_uid'] ?? '',
             category: 'Meetings',
           );
-
-          for (var day = startDate;
-          day.isBefore(endDate.add(const Duration(days: 1)));
-          day = day.add(const Duration(days: 1))) {
+          for (var day = startDate; day.isBefore(endDate.add(const Duration(days: 1))); day = day.add(const Duration(days: 1))) {
             final normalizedDay = _normalizeDate(day);
             if (meetingEvents.containsKey(normalizedDay)) {
               if (!meetingEvents[normalizedDay]!.any((e) => e.uid == event.uid)) {
@@ -206,12 +231,197 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           _filterAndSearchEvents();
         });
       } else {
-        _showErrorDialog('Failed to Load Meetings',
-            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Meetings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Meetings', 'An unexpected error occurred: $e');
     }
+  }
+
+  Future<void> _fetchMeetingRoomBookings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/office-administration/book_meeting_room/my-requests'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> results = json.decode(response.body)['results'];
+        final meetingRoomBookings = List<Map<String, dynamic>>.from(results);
+
+        final Map<DateTime, List<Event>> bookingEvents = {};
+        for (var item in meetingRoomBookings) {
+          final DateTime startDate = _normalizeDate(DateTime.parse(item['from_date_time']));
+          final DateTime endDate = _normalizeDate(DateTime.parse(item['to_date_time']));
+          final String uid = 'booking_${item['uid']}';
+          String status;
+          switch (item['status']) {
+            case 'approved':
+              status = 'Approved';
+              break;
+            case 'waiting':
+              status = 'Pending';
+              break;
+            case 'disapproved':
+              status = 'Cancelled';
+              break;
+            default:
+              status = 'Pending';
+          }
+          if (status == 'Cancelled') continue;
+          final event = Event(
+            item['title'],
+            startDate,
+            endDate,
+            item['remark'] ?? 'Booking Pending',
+            status: status,
+            isMeeting: true,
+            category: 'Meeting Room Bookings',
+            uid: uid,
+          );
+          for (var day = startDate; day.isBefore(endDate.add(const Duration(days: 1))); day = day.add(const Duration(days: 1))) {
+            final normalizedDay = _normalizeDate(day);
+            if (bookingEvents.containsKey(normalizedDay)) {
+              if (!bookingEvents[normalizedDay]!.any((e) => e.uid == event.uid)) {
+                bookingEvents[normalizedDay]!.add(event);
+              }
+            } else {
+              bookingEvents[normalizedDay] = [event];
+            }
+          }
+        }
+
+        setState(() {
+          _events.value = {..._events.value, ...bookingEvents};
+          _filterAndSearchEvents();
+        });
+      } else {
+        _showErrorDialog('Failed to Load Meeting Room Bookings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      _showErrorDialog('Error Fetching Meeting Room Bookings', 'An unexpected error occurred: $e');
+    }
+  }
+
+  Future<void> _fetchCarBookings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/office-administration/car_permits/me'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> results = json.decode(response.body)['results'];
+        final carBookings = List<Map<String, dynamic>>.from(results);
+
+        final Map<DateTime, List<Event>> carEvents = {};
+        for (var item in carBookings) {
+          final DateTime startDate = _normalizeDate(DateTime.parse(item['date_out']));
+          final DateTime endDate = _normalizeDate(DateTime.parse(item['date_in']));
+          final String uid = 'car_${item['uid']}';
+          String status;
+          switch (item['status']) {
+            case 'approved':
+              status = 'Approved';
+              break;
+            case 'waiting':
+              status = 'Pending';
+              break;
+            case 'cancel':
+              status = 'Cancelled';
+              break;
+            default:
+              status = 'Pending';
+          }
+          if (status == 'Cancelled') continue;
+          final event = Event(
+            item['purpose'],
+            startDate,
+            endDate,
+            item['purpose'] ?? 'Car Booking Pending',
+            status: status,
+            isMeeting: false,
+            category: 'Car Bookings',
+            uid: uid,
+          );
+          for (var day = startDate; day.isBefore(endDate.add(const Duration(days: 1))); day = day.add(const Duration(days: 1))) {
+            final normalizedDay = _normalizeDate(day);
+            if (carEvents.containsKey(normalizedDay)) {
+              if (!carEvents[normalizedDay]!.any((e) => e.uid == event.uid)) {
+                carEvents[normalizedDay]!.add(event);
+              }
+            } else {
+              carEvents[normalizedDay] = [event];
+            }
+          }
+        }
+
+        setState(() {
+          _events.value = {..._events.value, ...carEvents};
+          _filterAndSearchEvents();
+        });
+      } else {
+        _showErrorDialog('Failed to Load Car Bookings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      _showErrorDialog('Error Fetching Car Bookings', 'An unexpected error occurred: $e');
+    }
+  }
+
+  void _showEventDetailModal(Event event) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(event.title, semanticsLabel: event.title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Description: ${event.description}', semanticsLabel: 'Description: ${event.description}'),
+              Text('Status: ${event.status}', semanticsLabel: 'Status: ${event.status}'),
+              if (event.isMeeting && event.location != null)
+                Text('Location: ${event.location}', semanticsLabel: 'Location: ${event.location}'),
+              if (event.isMeeting && event.createdBy != null)
+                Text('Created By: ${event.createdBy}', semanticsLabel: 'Created By: ${event.createdBy}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Close', semanticsLabel: 'Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _onRefresh() async {
+    setState(() {
+      _showFiltersAndSearchBar = !_showFiltersAndSearchBar;
+    });
+    await _fetchMeetingData();
+    await _fetchLeaveRequests();
+    await _fetchMeetingRoomBookings();
+    await _fetchCarBookings();
   }
 
   Color _parseColor(String colorString) {
@@ -230,27 +440,29 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
   void _filterAndSearchEvents() {
     if (_selectedDay == null) return;
     List<Event> dayEvents = _getEventsForDay(_selectedDay!);
-
     if (_selectedCategory != 'All') {
-      dayEvents = dayEvents.where((event) => event.category == _selectedCategory).toList();
+      dayEvents = dayEvents.where((event) {
+        return event.category == _selectedCategory;
+      }).toList();
     }
-
     if (_searchQuery.isNotEmpty) {
-      dayEvents = dayEvents
-          .where((event) =>
-      event.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          event.description.toLowerCase().contains(_searchQuery.toLowerCase()))
-          .toList();
+      dayEvents = dayEvents.where((event) {
+        final eventTitle = event.title.toLowerCase();
+        final eventDescription = event.description.toLowerCase();
+        return eventTitle.contains(_searchQuery.toLowerCase()) ||
+            eventDescription.contains(_searchQuery.toLowerCase());
+      }).toList();
     }
-
     setState(() {
       _eventsForDay = dayEvents;
     });
+    if (kDebugMode) {
+      print('Filtered Events: $_eventsForDay');
+    }
   }
 
   void _showDayView(DateTime selectedDay) {
     final List<Event> dayEvents = _getEventsForDay(selectedDay);
-
     final List<TimetableItem<String>> timetableItems = dayEvents.map((event) {
       return TimetableItem<String>(
         event.startDateTime,
@@ -258,7 +470,6 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
         data: event.title,
       );
     }).toList();
-
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -290,19 +501,15 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
-  final List<Color> colors = [
-    Colors.blueAccent,
-    Colors.greenAccent,
-    Colors.purpleAccent,
-    Colors.orangeAccent,
-    Colors.tealAccent,
-  ];
+  final Map<String, Color> categoryColors = {
+    'Meetings': Colors.blue,
+    'Leave Requests': Colors.red,
+    'Meeting Room Bookings': Colors.green,
+    'Car Bookings': Colors.orange,
+  };
 
   Color getEventColor(Event event) {
-    if (event.isMeeting && event.backgroundColor != null) {
-      return event.backgroundColor!;
-    }
-    return colors[event.hashCode % colors.length];
+    return categoryColors[event.category] ?? Colors.grey;
   }
 
   void _showAddEventOptionsPopup() {
@@ -461,17 +668,24 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     return Scaffold(
       body: Stack(
         children: [
-          Column(
-            children: [
-              _buildCalendarHeader(isDarkMode),
-              _buildFilters(),
-              _buildSearchBar(),
-              _buildCalendar(isDarkMode),
-              _buildSectionSeparator(),
-              Expanded(
-                child: _buildCalendarView(context, _eventsForDay),
+          RefreshIndicator(
+            onRefresh: _onRefresh,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                children: [
+                  _buildCalendarHeader(isDarkMode),
+                  if (_showFiltersAndSearchBar) _buildFilters(),
+                  if (_showFiltersAndSearchBar) _buildSearchBar(),
+                  _buildCalendar(isDarkMode),
+                  _buildSectionSeparator(),
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    child: _buildCalendarView(context, _eventsForDay),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -543,7 +757,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                 _filterAndSearchEvents();
               });
             },
-            selectedColor: Colors.blueAccent,
+            selectedColor: getEventColor(Event('', DateTime.now(), DateTime.now(), '', status: '', isMeeting: false, category: category, uid: '')),
             checkmarkColor: Colors.white,
             labelStyle: TextStyle(
               color: _selectedCategory == category ? Colors.white : Colors.black,
@@ -575,27 +789,22 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
   Widget _buildCalendar(bool isDarkMode) {
     return Container(
-      height: 300,
-      margin: const EdgeInsets.all(10.0),
+      height: 250,
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.black : Colors.white,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: TableCalendar<Event>(
-        rowHeight: 38,
+        rowHeight: 35,
         firstDay: DateTime.utc(2010, 10, 16),
         lastDay: DateTime.utc(2030, 3, 14),
         focusedDay: _focusedDay,
         calendarFormat: _calendarFormat,
-        availableCalendarFormats: const {
-          CalendarFormat.month: 'Month',
-        },
-        selectedDayPredicate: (day) {
-          return isSameDay(_selectedDay, day);
-        },
+        availableCalendarFormats: const {CalendarFormat.month: 'Month'},
+        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
         onDaySelected: (selectedDay, focusedDay) {
-          if (_singleTapSelectedDay != null &&
-              isSameDay(_singleTapSelectedDay, selectedDay)) {
+          if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
             _showDayView(selectedDay);
             _singleTapSelectedDay = null;
           } else {
@@ -608,18 +817,11 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           }
         },
         onFormatChanged: (format) {
-          // Ensure that the calendar format remains within available formats
           if (format != CalendarFormat.month) {
-            setState(() {
-              _calendarFormat = CalendarFormat.month;
-            });
+            setState(() => _calendarFormat = CalendarFormat.month);
           }
         },
-        onPageChanged: (focusedDay) {
-          setState(() {
-            _focusedDay = focusedDay;
-          });
-        },
+        onPageChanged: (focusedDay) => setState(() => _focusedDay = focusedDay),
         eventLoader: _getEventsForDay,
         calendarStyle: CalendarStyle(
           todayDecoration: BoxDecoration(
@@ -631,54 +833,44 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             shape: BoxShape.circle,
           ),
           outsideDaysVisible: false,
-          weekendTextStyle:
-          TextStyle(color: isDarkMode ? Colors.white54 : Colors.black54),
-          defaultTextStyle:
-          TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-          markerDecoration: const BoxDecoration(
-            color: Colors.transparent,
+          weekendTextStyle: TextStyle(
+            color: isDarkMode ? Colors.white54 : Colors.black54,
+          ),
+          defaultTextStyle: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
         headerStyle: HeaderStyle(
           titleCentered: true,
           formatButtonVisible: false,
           titleTextStyle: TextStyle(
-            fontSize: 20.0,
+            fontSize: 18.0,
             fontWeight: FontWeight.bold,
             color: isDarkMode ? Colors.white : Colors.black,
           ),
           leftChevronIcon: Icon(
             Icons.chevron_left,
-            size: 16,
+            size: 14,
             color: isDarkMode ? Colors.white : Colors.black,
-            semanticLabel: 'Previous Month',
           ),
           rightChevronIcon: Icon(
             Icons.chevron_right,
-            size: 16,
+            size: 14,
             color: isDarkMode ? Colors.white : Colors.black,
-            semanticLabel: 'Next Month',
           ),
         ),
         calendarBuilders: CalendarBuilders(
           markerBuilder: (context, date, events) {
             if (events.isNotEmpty) {
-              final sortedEvents = events
-                ..sort((a, b) => b.startDateTime.compareTo(a.startDateTime));
-              final latestEvents = sortedEvents.take(3).toList();
-              final eventSpans = latestEvents.where((event) {
-                return date.isAfter(event.startDateTime.subtract(const Duration(days: 1))) &&
-                    date.isBefore(event.endDateTime.add(const Duration(days: 1)));
-              }).toList();
-
+              final eventSpans = events.take(3).toList();
               return Align(
                 alignment: Alignment.bottomCenter,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: eventSpans.map((event) {
                     return Container(
-                      width: 6,
-                      height: 6,
+                      width: 5,
+                      height: 5,
                       margin: const EdgeInsets.symmetric(horizontal: 1),
                       decoration: BoxDecoration(
                         color: getEventColor(event),
@@ -701,261 +893,96 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
       children: [
         GradientAnimationLine(),
         SizedBox(
-          height: 5,
+          height: 18,
         ),
       ],
     );
   }
 
   Widget _buildCalendarView(BuildContext context, List<Event> events) {
-    final List<String> timeSlots = List.generate(12, (index) {
-      final hour = index + 7;
-      final formattedHour = hour > 12 ? hour - 12 : hour;
-      final period = hour >= 12 ? 'PM' : 'AM';
-      return '${formattedHour.toString().padLeft(2, '0')} $period';
-    });
-
     String selectedDateString = DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!);
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.vertical,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Center(
-              child: Text(
-                selectedDateString,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                ),
-                textAlign: TextAlign.center,
-              ),
+    return Column(
+      children: [
+        Center(
+          child: Text(
+            selectedDateString,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Colors.black,
             ),
+            textAlign: TextAlign.center,
           ),
-          if (events.isEmpty)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.only(top: 20),
-                child: Text(
-                  "There are no events this day",
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey,
-                  ),
-                ),
-              ),
-            )
-          else
-            Column(
-              children: timeSlots.map((timeSlot) {
-                int timeSlotHour = int.parse(timeSlot.split(" ")[0]);
-                String period = timeSlot.split(" ")[1];
-                if (period == "PM" && timeSlotHour != 12) {
-                  timeSlotHour += 12;
-                }
-
-                final List<Event> eventsForThisHour = events.where((event) {
-                  int eventStartHour = event.startDateTime.hour;
-                  int eventEndHour = event.endDateTime.hour;
-                  return timeSlotHour == eventStartHour ||
-                      (timeSlotHour > eventStartHour && timeSlotHour < eventEndHour);
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: Scrollbar(
+            child: ListView.builder(
+              itemCount: 11,
+              itemBuilder: (context, index) {
+                final hour = 7 + index;
+                final startTime = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day, hour, 0);
+                final endTime = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day, hour + 1, 0);
+                final hourEvents = events.where((event) {
+                  return (event.startDateTime.hour <= hour && event.endDateTime.hour > hour) ||
+                      (!event.isMeeting && event.startDateTime.hour == 0 && event.endDateTime.hour == 0);
                 }).toList();
-
-                return Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: MediaQuery.of(context).size.width > 800 ? 24.0 : 18.0,
-                      vertical: MediaQuery.of(context).size.width > 800 ? 6.0 : 2.0,
-                    ),
-                    child: Column(
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(right: 12.0),
-                                child: SizedBox(
-                                  width: MediaQuery.of(context).size.width > 800
-                                      ? MediaQuery.of(context).size.width * 0.12
-                                      : MediaQuery.of(context).size.width * 0.10,
-                                  height: 24,
-                                  child: Text(
-                                    timeSlot,
-                                    style: TextStyle(
-                                      fontSize: MediaQuery.of(context).size.width > 800
-                                          ? MediaQuery.of(context).size.width * 0.025
-                                          : MediaQuery.of(context).size.width * 0.03,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
+                return Column(
+                  children: [
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 60,
+                          child: Text(
+                            DateFormat.j().format(startTime),
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ),
+                        Expanded(
+                          child: Container(
+                            height: 60,
+                            decoration: BoxDecoration(
+                              border: Border(
+                                bottom: BorderSide(color: Colors.grey.shade300, width: 0.5),
+                              ),
+                            ),
+                            child: hourEvents.isEmpty
+                                ? const SizedBox()
+                                : Wrap(
+                              spacing: 4,
+                              runSpacing: 4,
+                              children: hourEvents.map((event) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    _showEventDetailModal(event);
+                                  },
+                                  child: Container(
+                                    width: MediaQuery.of(context).size.width - 80,
+                                    padding: const EdgeInsets.all(8.0),
+                                    decoration: BoxDecoration(
+                                      color: getEventColor(event).withOpacity(0.7),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      event.title,
+                                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                ),
-                              ),
-                              Expanded(
-                                child: Column(
-                                  children: eventsForThisHour.map((event) {
-                                    final eventColor = getEventColor(event);
-
-                                    return InkWell(
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => EventDetailView(
-                                              event: {
-                                                'title': event.title,
-                                                'time':
-                                                '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
-                                                'location': event.location ?? '',
-                                                'status': event.status,
-                                                'description': event.description,
-                                                'createdBy': event.createdBy ?? '',
-                                                'isRepeat': event.isRepeat ?? '',
-                                                'videoConference': event.videoConference ?? '',
-                                                'uid': event.uid ?? '',
-                                                'img_name': event.imgName ?? '',
-                                                'created_at': event.createdAt ?? '',
-                                                'isMeeting': event.isMeeting,
-                                              },
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 300),
-                                        padding: const EdgeInsets.all(16.0),
-                                        margin: const EdgeInsets.only(bottom: 12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(15),
-                                          boxShadow: const [
-                                            BoxShadow(
-                                              color: Colors.black12,
-                                              blurRadius: 8,
-                                              offset: Offset(0, 4),
-                                            ),
-                                          ],
-                                          border: Border(
-                                            right: BorderSide(
-                                              color: eventColor,
-                                              width: 6,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              event.title,
-                                              style: TextStyle(
-                                                fontSize: MediaQuery.of(context).size.width * 0.04,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.black87,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Row(
-                                              children: [
-                                                const Icon(Icons.access_time,
-                                                    size: 16, color: Colors.green, semanticLabel: 'Time'),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  '${DateFormat.jm().format(event.startDateTime)} - ${DateFormat.jm().format(event.endDateTime)}',
-                                                  style: const TextStyle(color: Colors.black54),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 8),
-                                            if (event.location != null && event.location!.isNotEmpty) ...[
-                                              Row(
-                                                children: [
-                                                  const Icon(Icons.location_on,
-                                                      size: 16, color: Colors.red, semanticLabel: 'Location'),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    event.location!,
-                                                    style: const TextStyle(color: Colors.black54),
-                                                    overflow: TextOverflow.ellipsis,
-                                                    maxLines: 1,
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
-                                            ],
-                                            if (event.createdBy != null && event.createdBy!.isNotEmpty) ...[
-                                              Row(
-                                                children: [
-                                                  const Icon(Icons.person,
-                                                      size: 16, color: Colors.blue, semanticLabel: 'Created By'),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    'Created by: ${event.createdBy}',
-                                                    style: const TextStyle(color: Colors.black54),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
-                                            ],
-                                            if (event.description.isNotEmpty) ...[
-                                              Row(
-                                                children: [
-                                                  const Icon(Icons.description,
-                                                      size: 16, color: Colors.grey, semanticLabel: 'Description'),
-                                                  const SizedBox(width: 8),
-                                                  Expanded(
-                                                    child: Text(
-                                                      event.description,
-                                                      style: const TextStyle(color: Colors.black54),
-                                                      overflow: TextOverflow.ellipsis,
-                                                      maxLines: 2,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
-                                            ],
-                                            Row(
-                                              children: [
-                                                const Icon(Icons.check_circle,
-                                                    size: 16, color: Colors.green, semanticLabel: 'Status'),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  'Status: ${event.status}',
-                                                  style: const TextStyle(color: Colors.black54),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Row(
-                                              children: [
-                                                const Icon(Icons.event,
-                                                    size: 16, color: Colors.orange, semanticLabel: 'Category'),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  event.category,
-                                                  style: const TextStyle(color: Colors.black54),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                            ],
+                                );
+                              }).toList(),
+                            ),
                           ),
-                        ]));
-              }).toList(),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              },
             ),
-        ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -969,9 +996,9 @@ class GradientAnimationLine extends StatefulWidget {
 
 class _GradientAnimationLineState extends State<GradientAnimationLine>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<Color?> _colorAnimation1;
-  late Animation<Color?> _colorAnimation2;
+  late final AnimationController _controller;
+  late final Animation<Color?> _colorAnimation1;
+  late final Animation<Color?> _colorAnimation2;
 
   @override
   void initState() {
@@ -980,12 +1007,10 @@ class _GradientAnimationLineState extends State<GradientAnimationLine>
       duration: const Duration(seconds: 3),
       vsync: this,
     )..repeat(reverse: true);
-
     _colorAnimation1 = ColorTween(
       begin: Colors.yellow,
       end: Colors.orange,
     ).animate(_controller);
-
     _colorAnimation2 = ColorTween(
       begin: Colors.orange,
       end: Colors.yellow,
@@ -1088,6 +1113,11 @@ class MeetingDataSource extends CalendarDataSource {
   @override
   String getSubject(int index) {
     return appointments![index].title;
+  }
+
+  @override
+  Color getColor(int index) {
+    return appointments![index].backgroundColor ?? Colors.blueAccent;
   }
 
   @override

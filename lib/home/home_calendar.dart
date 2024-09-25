@@ -1,12 +1,13 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
-import 'package:pb_hrsystem/login/date.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
@@ -14,8 +15,8 @@ import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:http/http.dart' as http;
-import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:dotted_border/dotted_border.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -25,22 +26,21 @@ class HomeCalendar extends StatefulWidget {
 }
 
 class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin {
+  final String baseUrl = 'https://demo-application-api.flexiflows.co';
   late final ValueNotifier<Map<DateTime, List<Event>>> _events;
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
   List<Event> _eventsForDay = [];
-  late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+  late final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   bool _showFiltersAndSearchBar = false;
-
-  // Filtering and Search
   String _selectedCategory = 'All';
-  final List<String> _categories = ['All', 'Meetings', 'Leave Requests'];
+  final List<String> _categories = ['All', 'Meetings', 'Leave Requests', 'Meeting Room Bookings', 'Car Bookings'];
   String _searchQuery = '';
-
-  // Animation Controller
-  late AnimationController _animationController;
+  late final AnimationController _animationController;
+  Timer? _doubleTapTimer;
+  static const int doubleTapDelay = 300;
 
   @override
   void initState() {
@@ -50,14 +50,14 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     _eventsForDay = [];
     _fetchMeetingData();
     _fetchLeaveRequests();
-
+    _fetchMeetingRoomBookings();
+    _fetchCarBookings();
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
     AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
     InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
-
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -68,6 +68,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
   void dispose() {
     _events.dispose();
     _animationController.dispose();
+    _doubleTapTimer?.cancel();
     super.dispose();
   }
 
@@ -86,7 +87,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
     try {
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_requests'),
+        Uri.parse('$baseUrl/api/leave_requests'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -98,22 +99,34 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
         for (var item in leaveRequests) {
           final DateTime startDate = _normalizeDate(DateTime.parse(item['take_leave_from']));
           final DateTime endDate = _normalizeDate(DateTime.parse(item['take_leave_to']));
-          final String uid = 'leave_${item['id'] ?? UniqueKey().toString()}'; // Ensure unique UID
-
+          final String uid = 'leave_${item['id']}';
+          String status;
+          switch (item['is_approve']) {
+            case 'Approved':
+              status = 'Approved';
+              break;
+            case 'Waiting':
+            case 'Processing':
+              status = 'Pending';
+              break;
+            case 'Cancel':
+              status = 'Cancelled';
+              break;
+            default:
+              status = 'Pending';
+          }
+          if (status == 'Cancelled') continue;
           final event = Event(
             item['name'],
             startDate,
             endDate,
             item['take_leave_reason'] ?? 'Approval Pending',
-            status: item['is_approve'] == 1 ? 'Approved' : 'Waiting',
+            status: status,
             isMeeting: false,
             category: 'Leave Requests',
             uid: uid,
           );
-
-          for (var day = startDate;
-          day.isBefore(endDate.add(const Duration(days: 1)));
-          day = day.add(const Duration(days: 1))) {
+          for (var day = startDate; day.isBefore(endDate.add(const Duration(days: 1))); day = day.add(const Duration(days: 1))) {
             final normalizedDay = _normalizeDate(day);
             if (approvalEvents.containsKey(normalizedDay)) {
               if (!approvalEvents[normalizedDay]!.any((e) => e.uid == event.uid)) {
@@ -130,18 +143,11 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           _filterAndSearchEvents();
         });
       } else {
-        _showErrorDialog('Failed to Load Leave Requests',
-            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Leave Requests', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Leave Requests', 'An unexpected error occurred: $e');
     }
-  }
-
-  Future<void> _onRefresh() async {
-    setState(() {
-      _showFiltersAndSearchBar = true; // Show filters and search bar on refresh
-    });
   }
 
   Future<void> _fetchMeetingData() async {
@@ -155,8 +161,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
     try {
       final response = await http.get(
-        Uri.parse(
-            'https://demo-application-api.flexiflows.co/api/work-tracking/out-meeting/outmeeting/my-members'),
+        Uri.parse('$baseUrl/api/work-tracking/out-meeting/outmeeting/my-members'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -175,17 +180,31 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           final DateTime startDate = DateTime.parse(item['fromdate']);
           final DateTime endDate = DateTime.parse(item['todate']);
           final Color eventColor = _parseColor(item['backgroundColor']);
-          final String uid = item['outmeeting_uid'] ?? UniqueKey().toString(); // Ensure unique UID
-
+          final String uid = item['outmeeting_uid'] ?? UniqueKey().toString();
+          String status;
+          switch (item['status']) {
+            case 'approved':
+              status = 'Approved';
+              break;
+            case 'waiting':
+              status = 'Pending';
+              break;
+            case 'disapproved':
+              status = 'Cancelled';
+              break;
+            default:
+              status = 'Pending';
+          }
+          if (status == 'Cancelled') continue;
           final event = Event(
             item['title'],
             startDate,
             endDate,
             item['description'] ?? '',
-            status: item['status'] ?? '',
+            status: status,
             isMeeting: true,
             location: item['location'] ?? '',
-            createdBy: item['created_by_name'] ?? '',
+            createdBy: item['created_by'] ?? '',
             imgName: item['img_name'] ?? '',
             createdAt: item['created_at'] ?? '',
             uid: uid,
@@ -195,17 +214,13 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             outmeetingUid: item['outmeeting_uid'] ?? '',
             category: 'Meetings',
           );
-
-          for (var day = startDate;
-          day.isBefore(endDate.add(const Duration(days: 1)));
-          day = day.add(const Duration(days: 1))) {
-            final normalizedDay = _normalizeDate(day);
-            if (meetingEvents.containsKey(normalizedDay)) {
-              if (!meetingEvents[normalizedDay]!.any((e) => e.uid == event.uid)) {
-                meetingEvents[normalizedDay]!.add(event);
+          for (var day = _normalizeDate(startDate); !day.isAfter(_normalizeDate(endDate)); day = day.add(const Duration(days: 1))) {
+            if (meetingEvents.containsKey(day)) {
+              if (!meetingEvents[day]!.any((e) => e.uid == event.uid)) {
+                meetingEvents[day]!.add(event);
               }
             } else {
-              meetingEvents[normalizedDay] = [event];
+              meetingEvents[day] = [event];
             }
           }
         }
@@ -215,12 +230,209 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           _filterAndSearchEvents();
         });
       } else {
-        _showErrorDialog('Failed to Load Meetings',
-            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Meetings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Meetings', 'An unexpected error occurred: $e');
     }
+  }
+
+  Future<void> _fetchMeetingRoomBookings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/office-administration/book_meeting_room/my-requests'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> results = json.decode(response.body)['results'];
+        final meetingRoomBookings = List<Map<String, dynamic>>.from(results);
+
+        final Map<DateTime, List<Event>> bookingEvents = {};
+        for (var item in meetingRoomBookings) {
+          final DateTime startDate = DateTime.parse(item['from_date_time']);
+          final DateTime endDate = DateTime.parse(item['to_date_time']);
+          final String uid = 'booking_${item['uid']}';
+          String status;
+          switch (item['status']) {
+            case 'approved':
+              status = 'Approved';
+              break;
+            case 'waiting':
+              status = 'Pending';
+              break;
+            case 'disapproved':
+              status = 'Cancelled';
+              break;
+            default:
+              status = 'Pending';
+          }
+          if (status == 'Cancelled') continue;
+          final event = Event(
+            item['title'],
+            startDate,
+            endDate,
+            item['remark'] ?? 'Booking Pending',
+            status: status,
+            isMeeting: true,
+            category: 'Meeting Room Bookings',
+            uid: uid,
+          );
+          for (var day = _normalizeDate(startDate); !day.isAfter(_normalizeDate(endDate)); day = day.add(const Duration(days: 1))) {
+            if (bookingEvents.containsKey(day)) {
+              if (!bookingEvents[day]!.any((e) => e.uid == event.uid)) {
+                bookingEvents[day]!.add(event);
+              }
+            } else {
+              bookingEvents[day] = [event];
+            }
+          }
+        }
+
+        setState(() {
+          _events.value = {..._events.value, ...bookingEvents};
+          _filterAndSearchEvents();
+        });
+      } else {
+        _showErrorDialog('Failed to Load Meeting Room Bookings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      _showErrorDialog('Error Fetching Meeting Room Bookings', 'An unexpected error occurred: $e');
+    }
+  }
+
+  Future<void> _fetchCarBookings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');
+      return;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/office-administration/car_permits/me'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> results = json.decode(response.body)['results'];
+        final carBookings = List<Map<String, dynamic>>.from(results);
+
+        final Map<DateTime, List<Event>> carEvents = {};
+        for (var item in carBookings) {
+          String dateOutStr = item['date_out'];
+          String timeOutStr = item['time_out'] ?? '00:00';
+          String dateInStr = item['date_in'];
+          String timeInStr = item['time_in'] ?? '00:00';
+          DateTime startDateTime;
+          DateTime endDateTime;
+          try {
+            startDateTime = DateTime.parse('$dateOutStr ${timeOutStr.padLeft(5, '0')}:00');
+          } catch (_) {
+            startDateTime = DateTime.parse('$dateOutStr 00:00:00');
+          }
+          try {
+            endDateTime = DateTime.parse('$dateInStr ${timeInStr.padLeft(5, '0')}:00');
+          } catch (_) {
+            endDateTime = DateTime.parse('$dateInStr 00:00:00');
+          }
+          final String uid = 'car_${item['uid']}';
+          String status;
+          switch (item['status']) {
+            case 'approved':
+              status = 'Approved';
+              break;
+            case 'waiting':
+              status = 'Pending';
+              break;
+            case 'cancel':
+              status = 'Cancelled';
+              break;
+            default:
+              status = 'Pending';
+          }
+          if (status == 'Cancelled') continue;
+          final event = Event(
+            item['purpose'],
+            startDateTime,
+            endDateTime,
+            item['purpose'] ?? 'Car Booking Pending',
+            status: status,
+            isMeeting: false,
+            category: 'Car Bookings',
+            uid: uid,
+          );
+          for (var day = _normalizeDate(startDateTime); !day.isAfter(_normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+            if (carEvents.containsKey(day)) {
+              if (!carEvents[day]!.any((e) => e.uid == event.uid)) {
+                carEvents[day]!.add(event);
+              }
+            } else {
+              carEvents[day] = [event];
+            }
+          }
+        }
+
+        setState(() {
+          _events.value = {..._events.value, ...carEvents};
+          _filterAndSearchEvents();
+        });
+      } else {
+        _showErrorDialog('Failed to Load Car Bookings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      _showErrorDialog('Error Fetching Car Bookings', 'An unexpected error occurred: $e');
+    }
+  }
+
+  void _showEventDetailModal(Event event) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(event.title, semanticsLabel: event.title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Description: ${event.description}', semanticsLabel: 'Description: ${event.description}'),
+              Text('Status: ${event.status}', semanticsLabel: 'Status: ${event.status}'),
+              if (event.isMeeting && event.location != null)
+                Text('Location: ${event.location}', semanticsLabel: 'Location: ${event.location}'),
+              if (event.isMeeting && event.createdBy != null)
+                Text('Created By: ${event.createdBy}', semanticsLabel: 'Created By: ${event.createdBy}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Close', semanticsLabel: 'Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _onRefresh() async {
+    setState(() {
+      _showFiltersAndSearchBar = !_showFiltersAndSearchBar;
+    });
+    await _fetchMeetingData();
+    await _fetchLeaveRequests();
+    await _fetchMeetingRoomBookings();
+    await _fetchCarBookings();
   }
 
   Color _parseColor(String colorString) {
@@ -238,45 +450,26 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
   void _filterAndSearchEvents() {
     if (_selectedDay == null) return;
-
-    // Get the events for the selected day
     List<Event> dayEvents = _getEventsForDay(_selectedDay!);
-
-    // Apply category filter if it's not 'All'
     if (_selectedCategory != 'All') {
       dayEvents = dayEvents.where((event) {
-        // Check for null category values before comparing
         return event.category == _selectedCategory;
       }).toList();
     }
-
-    // Apply search query filter
     if (_searchQuery.isNotEmpty) {
       dayEvents = dayEvents.where((event) {
-        // Ensure title and description are not null, and check for search query
         final eventTitle = event.title.toLowerCase();
         final eventDescription = event.description.toLowerCase();
-        return eventTitle.contains(_searchQuery.toLowerCase()) || eventDescription.contains(_searchQuery.toLowerCase());
+        return eventTitle.contains(_searchQuery.toLowerCase()) ||
+            eventDescription.contains(_searchQuery.toLowerCase());
       }).toList();
     }
-
-    // Update the state with the filtered events
     setState(() {
       _eventsForDay = dayEvents;
     });
-
-    // Debugging: Print filtered events for verification
-    if (kDebugMode) {
-      print('Filtered Events: $_eventsForDay');
-    }
   }
 
   void _showDayView(DateTime selectedDay) {
-    // Debugging: Print selected day
-    if (kDebugMode) {
-      print('Selected Day: $selectedDay');
-    }
-
     final List<Event> dayEvents = _getEventsForDay(selectedDay);
     final List<TimetableItem<String>> timetableItems = dayEvents.map((event) {
       return TimetableItem<String>(
@@ -285,7 +478,6 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
         data: event.title,
       );
     }).toList();
-
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -317,19 +509,15 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
-  final List<Color> colors = [
-    Colors.blueAccent,
-    Colors.greenAccent,
-    Colors.purpleAccent,
-    Colors.orangeAccent,
-    Colors.tealAccent,
-  ];
+  final Map<String, Color> categoryColors = {
+    'Meetings': Colors.blue,
+    'Leave Requests': Colors.red,
+    'Meeting Room Bookings': Colors.green,
+    'Car Bookings': Colors.orange,
+  };
 
   Color getEventColor(Event event) {
-    if (event.isMeeting && event.backgroundColor != null) {
-      return event.backgroundColor!;
-    }
-    return colors[event.hashCode % colors.length];
+    return categoryColors[event.category] ?? Colors.grey;
   }
 
   void _showAddEventOptionsPopup() {
@@ -488,17 +676,24 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     return Scaffold(
       body: Stack(
         children: [
-          Column(
-            children: [
-              _buildCalendarHeader(isDarkMode),
-              _buildFilters(),
-              _buildSearchBar(),
-              _buildCalendar(context,isDarkMode),
-              _buildSectionSeparator(),
-              Expanded(
-                child: _buildCalendarView(context, _eventsForDay),
+          RefreshIndicator(
+            onRefresh: _onRefresh,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                children: [
+                  _buildCalendarHeader(isDarkMode),
+                  if (_showFiltersAndSearchBar) _buildFilters(),
+                  if (_showFiltersAndSearchBar) _buildSearchBar(),
+                  _buildCalendar(isDarkMode),
+                  _buildSectionSeparator(),
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    child: _buildCalendarView(context, _eventsForDay),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -570,7 +765,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                 _filterAndSearchEvents();
               });
             },
-            selectedColor: Colors.blueAccent,
+            selectedColor: getEventColor(Event('', DateTime.now(), DateTime.now(), '', status: '', isMeeting: false, category: category, uid: '')),
             checkmarkColor: Colors.white,
             labelStyle: TextStyle(
               color: _selectedCategory == category ? Colors.white : Colors.black,
@@ -600,128 +795,106 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
- Widget _buildCalendar(BuildContext context, bool isDarkMode) {
-  return Container(
-    height: 300,
-    margin: const EdgeInsets.all(10.0),
-    decoration: BoxDecoration(
-      color: isDarkMode ? Colors.black : Colors.white,
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Consumer<DateProvider>(
-      builder: (context, dateProvider, child) {
-        return TableCalendar<Event>(
-          rowHeight: 38,
-          firstDay: DateTime.utc(2010, 10, 16),
-          lastDay: DateTime.utc(2030, 3, 14),
-          focusedDay: dateProvider.selectedDate, // Use the date from DateProvider
-          calendarFormat: _calendarFormat,
-          availableCalendarFormats: const {
-            CalendarFormat.month: 'Month',
-          },
-          selectedDayPredicate: (day) {
-            return isSameDay(dateProvider.selectedDate, day); // Check if the day is selected
-          },
-          onDaySelected: (selectedDay, focusedDay) {
-            if (_singleTapSelectedDay != null &&
-                isSameDay(_singleTapSelectedDay, selectedDay)) {
-              _showDayView(selectedDay);
-              _singleTapSelectedDay = null;
-            } else {
-              dateProvider.updateSelectedDate(selectedDay); // Update DateProvider when a new day is selected
-              setState(() {
-                _singleTapSelectedDay = selectedDay;
-                _focusedDay = focusedDay;
-                _filterAndSearchEvents(); // Call filter and search events if necessary
-              });
-            }
-          },
-          onFormatChanged: (format) {
-            if (format != CalendarFormat.month) {
-              setState(() {
-                _calendarFormat = CalendarFormat.month;
-              });
-            }
-          },
-          onPageChanged: (focusedDay) {
+  Widget _buildCalendar(bool isDarkMode) {
+    return Container(
+      height: 270,
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.black : Colors.white,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: TableCalendar<Event>(
+        rowHeight: 35,
+        firstDay: DateTime.utc(2010, 10, 16),
+        lastDay: DateTime.utc(2030, 3, 14),
+        focusedDay: _focusedDay,
+        calendarFormat: _calendarFormat,
+        availableCalendarFormats: const {CalendarFormat.month: 'Month'},
+        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+        onDaySelected: (selectedDay, focusedDay) {
+          if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
+            _showDayView(selectedDay);
+            _singleTapSelectedDay = null;
+          } else {
             setState(() {
-              _focusedDay = focusedDay; // Update the focused day
+              _singleTapSelectedDay = selectedDay;
+              _selectedDay = selectedDay;
+              _focusedDay = focusedDay;
+              _filterAndSearchEvents();
             });
+          }
+        },
+        onFormatChanged: (format) {
+          if (format != CalendarFormat.month) {
+            setState(() => _calendarFormat = CalendarFormat.month);
+          }
+        },
+        onPageChanged: (focusedDay) => setState(() => _focusedDay = focusedDay),
+        eventLoader: _getEventsForDay,
+        calendarStyle: CalendarStyle(
+          todayDecoration: BoxDecoration(
+            color: Colors.orangeAccent.withOpacity(0.5),
+            shape: BoxShape.circle,
+          ),
+          selectedDecoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.7),
+            shape: BoxShape.circle,
+          ),
+          outsideDaysVisible: false,
+          weekendTextStyle: TextStyle(
+            color: isDarkMode ? Colors.white54 : Colors.black54,
+          ),
+          defaultTextStyle: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
+        headerStyle: HeaderStyle(
+          titleCentered: true,
+          formatButtonVisible: false,
+          titleTextStyle: TextStyle(
+            fontSize: 18.0,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+          leftChevronIcon: Icon(
+            Icons.chevron_left,
+            size: 14,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+          rightChevronIcon: Icon(
+            Icons.chevron_right,
+            size: 14,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
+        calendarBuilders: CalendarBuilders(
+          markerBuilder: (context, date, events) {
+            if (events.isNotEmpty) {
+              final eventSpans = events.take(3).toList();
+              return Align(
+                alignment: Alignment.bottomCenter,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: eventSpans.map((event) {
+                    return Container(
+                      width: 5,
+                      height: 5,
+                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                      decoration: BoxDecoration(
+                        color: getEventColor(event),
+                        shape: BoxShape.circle,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              );
+            }
+            return null;
           },
-          eventLoader: _getEventsForDay,
-          calendarStyle: CalendarStyle(
-            todayDecoration: BoxDecoration(
-              color: Colors.orangeAccent.withOpacity(0.5),
-              shape: BoxShape.circle,
-            ),
-            selectedDecoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.7),
-              shape: BoxShape.circle,
-            ),
-            outsideDaysVisible: false,
-            weekendTextStyle: TextStyle(color: isDarkMode ? Colors.white54 : Colors.black54),
-            defaultTextStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-            markerDecoration: const BoxDecoration(
-              color: Colors.transparent,
-            ),
-          ),
-          headerStyle: HeaderStyle(
-            titleCentered: true,
-            formatButtonVisible: false,
-            titleTextStyle: TextStyle(
-              fontSize: 20.0,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : Colors.black,
-            ),
-            leftChevronIcon: Icon(
-              Icons.chevron_left,
-              size: 16,
-              color: isDarkMode ? Colors.white : Colors.black,
-              semanticLabel: 'Previous Month',
-            ),
-            rightChevronIcon: Icon(
-              Icons.chevron_right,
-              size: 16,
-              color: isDarkMode ? Colors.white : Colors.black,
-              semanticLabel: 'Next Month',
-            ),
-          ),
-          calendarBuilders: CalendarBuilders(
-            markerBuilder: (context, date, events) {
-              if (events.isNotEmpty) {
-                final sortedEvents = events..sort((a, b) => b.startDateTime.compareTo(a.startDateTime));
-                final latestEvents = sortedEvents.take(3).toList();
-                final eventSpans = latestEvents.where((event) {
-                  return date.isAfter(event.startDateTime.subtract(const Duration(days: 1))) &&
-                      date.isBefore(event.endDateTime.add(const Duration(days: 1)));
-                }).toList();
-
-                return Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: eventSpans.map((event) {
-                      return Container(
-                        width: 6,
-                        height: 6,
-                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                        decoration: BoxDecoration(
-                          color: getEventColor(event),
-                          shape: BoxShape.circle,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                );
-              }
-              return null;
-            },
-          ),
-        );
-      },
-    ),
-  );
-}
+        ),
+      ),
+    );
+  }
 
   Widget _buildSectionSeparator() {
     return const Column(
@@ -736,10 +909,6 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
   Widget _buildCalendarView(BuildContext context, List<Event> events) {
     String selectedDateString = DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!);
-
-    // Create a MeetingDataSource with events for the selected day
-    final dataSource = MeetingDataSource(events);
-
     return Column(
       children: [
         Center(
@@ -755,30 +924,45 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
         ),
         const SizedBox(height: 10),
         Expanded(
-          child: SfCalendar(
-            view: CalendarView.day,
-            initialDisplayDate: _selectedDay,
-            dataSource: dataSource,
-            timeSlotViewSettings: const TimeSlotViewSettings(
-              startHour: 8,
-              endHour: 18,
-              timeInterval: Duration(minutes: 30),
+          child: Scrollbar(
+            child: SingleChildScrollView(
+              child: Column(
+                children: events.map((event) {
+                  return GestureDetector(
+                    onTap: () {
+                      _showEventDetailModal(event);
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: getEventColor(event).withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              '${DateFormat.Hm().format(event.startDateTime)} - ${DateFormat.Hm().format(event.endDateTime)}',
+                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 5,
+                            child: Text(
+                              event.title,
+                              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
-            appointmentBuilder: (BuildContext context, CalendarAppointmentDetails details) {
-              final Event event = details.appointments.first;
-              return Container(
-                decoration: BoxDecoration(
-                  color: getEventColor(event),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Center(
-                  child: Text(
-                    event.title,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              );
-            },
           ),
         ),
       ],
@@ -795,9 +979,9 @@ class GradientAnimationLine extends StatefulWidget {
 
 class _GradientAnimationLineState extends State<GradientAnimationLine>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<Color?> _colorAnimation1;
-  late Animation<Color?> _colorAnimation2;
+  late final AnimationController _controller;
+  late final Animation<Color?> _colorAnimation1;
+  late final Animation<Color?> _colorAnimation2;
 
   @override
   void initState() {
@@ -806,12 +990,10 @@ class _GradientAnimationLineState extends State<GradientAnimationLine>
       duration: const Duration(seconds: 3),
       vsync: this,
     )..repeat(reverse: true);
-
     _colorAnimation1 = ColorTween(
       begin: Colors.yellow,
       end: Colors.orange,
     ).animate(_controller);
-
     _colorAnimation2 = ColorTween(
       begin: Colors.orange,
       end: Colors.yellow,
