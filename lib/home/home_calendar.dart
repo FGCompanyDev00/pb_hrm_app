@@ -331,22 +331,15 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
         final Map<DateTime, List<Event>> carEvents = {};
         for (var item in carBookings) {
-          String dateOutStr = item['date_out'];
+          // Format the date strings to ensure correct parsing
+          String dateOutStr = _formatDateString(item['date_out']);
+          String dateInStr = _formatDateString(item['date_in']);
           String timeOutStr = item['time_out'] ?? '00:00';
-          String dateInStr = item['date_in'];
           String timeInStr = item['time_in'] ?? '00:00';
-          DateTime startDateTime;
-          DateTime endDateTime;
-          try {
-            startDateTime = DateTime.parse('$dateOutStr ${timeOutStr.padLeft(5, '0')}:00');
-          } catch (_) {
-            startDateTime = DateTime.parse('$dateOutStr 00:00:00');
-          }
-          try {
-            endDateTime = DateTime.parse('$dateInStr ${timeInStr.padLeft(5, '0')}:00');
-          } catch (_) {
-            endDateTime = DateTime.parse('$dateInStr 00:00:00');
-          }
+
+          DateTime startDateTime = DateTime.parse('$dateOutStr $timeOutStr:00');
+          DateTime endDateTime = DateTime.parse('$dateInStr $timeInStr:00');
+
           final String uid = 'car_${item['uid']}';
           String status;
           switch (item['status']) {
@@ -363,6 +356,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
               status = 'Pending';
           }
           if (status == 'Cancelled') continue;
+
           final event = Event(
             item['purpose'],
             startDateTime,
@@ -373,6 +367,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             category: 'Car Bookings',
             uid: uid,
           );
+
           for (var day = _normalizeDate(startDateTime); !day.isAfter(_normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
             if (carEvents.containsKey(day)) {
               if (!carEvents[day]!.any((e) => e.uid == event.uid)) {
@@ -394,6 +389,15 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     } catch (e) {
       _showErrorDialog('Error Fetching Car Bookings', 'An unexpected error occurred: $e');
     }
+  }
+
+// Helper function to format date strings correctly
+  String _formatDateString(String dateStr) {
+    List<String> parts = dateStr.split('-');
+    String year = parts[0];
+    String month = parts[1].padLeft(2, '0');
+    String day = parts[2].padLeft(2, '0');
+    return '$year-$month-$day';
   }
 
   void _showEventDetailModal(Event event) {
@@ -514,7 +518,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     'Meetings': Colors.blue,
     'Leave Requests': Colors.red,
     'Meeting Room Bookings': Colors.green,
-    'Car Bookings': Colors.orange,
+    'Car Bookings': Colors.purple,
   };
 
   Color getEventColor(Event event) {
@@ -899,8 +903,8 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
   Widget _buildCalendar(BuildContext context, bool isDarkMode) {
   return Container(
-    height: 300, // Retaining the height from the first function
-    margin: const EdgeInsets.all(10.0), // Keeping the margin and design consistent
+    height: 300,
+    margin: const EdgeInsets.all(12.0),
     decoration: BoxDecoration(
       color: isDarkMode ? Colors.black : Colors.white,
       borderRadius: BorderRadius.circular(8),
@@ -908,30 +912,30 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     child: Consumer<DateProvider>(
       builder: (context, dateProvider, child) {
         return TableCalendar<Event>(
-          rowHeight: 38, // Retaining row height from the first function
+          rowHeight: 38,
           firstDay: DateTime.utc(2010, 10, 16),
           lastDay: DateTime.utc(2030, 3, 14),
-          focusedDay: dateProvider.selectedDate, // DateProvider integration
+          focusedDay: dateProvider.selectedDate,
           calendarFormat: _calendarFormat,
           availableCalendarFormats: const {
             CalendarFormat.month: 'Month',
           },
           selectedDayPredicate: (day) {
-            // Determines if the day is selected from either DateProvider or local state
+
             return isSameDay(dateProvider.selectedDate, day);
           },
           onDaySelected: (selectedDay, focusedDay) {
             if (_singleTapSelectedDay != null &&
                 isSameDay(_singleTapSelectedDay, selectedDay)) {
-              _showDayView(selectedDay); // Custom method for showing day view
+              _showDayView(selectedDay);
               _singleTapSelectedDay = null;
             } else {
-              dateProvider.updateSelectedDate(selectedDay); // Update DateProvider
+              dateProvider.updateSelectedDate(selectedDay);
               setState(() {
                 _singleTapSelectedDay = selectedDay;
                 _selectedDay = selectedDay;
                 _focusedDay = focusedDay;
-                _filterAndSearchEvents(); // Filtering events for selected day
+                _filterAndSearchEvents();
               });
             }
           },
@@ -943,13 +947,13 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             }
           },
           onPageChanged: (focusedDay) {
-            // Updates the focused day in both local state and DateProvider
+
             setState(() {
               _focusedDay = focusedDay;
-              dateProvider.updateSelectedDate(focusedDay); // Sync the DateProvider with the current month
+              dateProvider.updateSelectedDate(focusedDay);
             });
           },
-          eventLoader: _getEventsForDay, // Load events for the day
+          eventLoader: _getEventsForDay,
           calendarStyle: CalendarStyle(
             todayDecoration: BoxDecoration(
               color: Colors.orangeAccent.withOpacity(0.5),
@@ -974,24 +978,24 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             titleCentered: true,
             formatButtonVisible: false,
             titleTextStyle: TextStyle(
-              fontSize: 18.0, // Smaller font size (taken from the second function)
+              fontSize: 18.0,
               fontWeight: FontWeight.bold,
               color: isDarkMode ? Colors.white : Colors.black,
             ),
             leftChevronIcon: Icon(
               Icons.chevron_left,
-              size: 14, // Chevron size from second function
+              size: 14,
               color: isDarkMode ? Colors.white : Colors.black,
             ),
             rightChevronIcon: Icon(
               Icons.chevron_right,
-              size: 14, // Chevron size from second function
+              size: 14,
               color: isDarkMode ? Colors.white : Colors.black,
             ),
           ),
           calendarBuilders: CalendarBuilders(
             markerBuilder: (context, date, events) {
-              // This section handles the rendering of event markers in the calendar
+
               if (events.isNotEmpty) {
                 final sortedEvents = events..sort((a, b) => b.startDateTime.compareTo(a.startDateTime));
                 final latestEvents = sortedEvents.take(3).toList();
@@ -1006,11 +1010,11 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: eventSpans.map((event) {
                       return Container(
-                        width: 5, // Smaller size for event markers (from the second function)
-                        height: 5, // Smaller size for event markers (from the second function)
+                        width: 5,
+                        height: 5,
                         margin: const EdgeInsets.symmetric(horizontal: 1),
                         decoration: BoxDecoration(
-                          color: getEventColor(event), // Custom method for getting event color
+                          color: getEventColor(event),
                           shape: BoxShape.circle,
                         ),
                       );
@@ -1027,9 +1031,6 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
   );
 }
 
-
-
-
   Widget _buildSectionSeparator() {
     return const Column(
       children: [
@@ -1043,6 +1044,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
   Widget _buildCalendarView(BuildContext context, List<Event> events) {
     String selectedDateString = DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!);
+
     return Column(
       children: [
         Center(
@@ -1064,7 +1066,30 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                 children: events.map((event) {
                   return GestureDetector(
                     onTap: () {
-                      _showEventDetailModal(event);
+                      // Navigate to EventDetailView with the event data
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EventDetailView(
+                            event: {
+                              'title': event.title,
+                              'description': event.description,
+                              'startDateTime': event.startDateTime.toString(),
+                              'endDateTime': event.endDateTime.toString(),
+                              'isMeeting': event.isMeeting,
+                              'createdBy': event.createdBy,
+                              'location': event.location,
+                              'status': event.status,
+                              'img_name': event.imgName,
+                              'created_at': event.createdAt,
+                              'is_repeat': event.isRepeat,
+                              'video_conference': event.videoConference,
+                              'uid': event.uid,
+                              'members': [], // Include any additional details
+                            },
+                          ),
+                        ),
+                      );
                     },
                     child: Container(
                       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
