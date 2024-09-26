@@ -135,7 +135,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           ? item['take_leave_to']
           : 'N/A';
 
-      formattedItem['room'] = 'Leave Type';
+      formattedItem['room'] =  item['room_name'] ?? 'No Place Info';
       formattedItem['details'] = item['take_leave_reason'] ?? 'No Details Provided';
       formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
     }
@@ -303,7 +303,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                     child: Padding(
                       padding: EdgeInsets.only(top: 65.0),
                       child: Text(
-                        'Approvals',
+                        'Approvals ',
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 24,
@@ -511,7 +511,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                           const SizedBox(height: 4),
                           // Room or Place
                           Text(
-                            'Info: $room',
+                            'Room: $room',
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.orange,
