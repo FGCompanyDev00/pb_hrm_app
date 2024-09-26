@@ -441,10 +441,10 @@ Widget _buildCommentInputSection() {
     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     children: [
      Text(
-                '${widget.item['status']} - ${widget.item['status_date'] ?? 'N/A'}',
-                style: TextStyle(color: statusColor, fontSize: 14),
-                textAlign: TextAlign.center,
-              ),
+        '${widget.item['status']} - ${widget.item['status_date'] ?? 'N/A'}',
+        style: TextStyle(color: statusColor, fontSize: 14),
+        textAlign: TextAlign.center,
+      ),
     ],
   );
 }

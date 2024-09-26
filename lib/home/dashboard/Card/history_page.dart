@@ -373,6 +373,22 @@ class _HistoryPageState extends State<HistoryPage> {
       }
     }
 
+     Widget getTypeText(String type) {
+      switch (type) {
+        case 'meeting':
+          return Text('Room');
+        case 'leave':
+          return Text('Leave');
+        case 'car':
+          return Text('Car');
+        default:
+          return const Icon(Icons.info_outline,
+              size: 40, color: Colors.grey);
+      }
+    }
+
+    
+
     // Safe date formatting method
     String formatDate(String? dateStr) {
       try {
@@ -415,6 +431,8 @@ class _HistoryPageState extends State<HistoryPage> {
           return Colors.grey;
       }
     }
+
+    
 
     final String title = item['title'] ?? 'No Title';
     final String status = item['status'] ?? 'Pending';
@@ -487,6 +505,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       MainAxisAlignment.center,
                       children: [
                         getIconForType(types),
+                        getTypeText(types),
                       ],
                     ),
                     const SizedBox(width: 16),
@@ -546,7 +565,7 @@ class _HistoryPageState extends State<HistoryPage> {
                                 child: Text(
                                   status,
                                   style: const TextStyle(
-                                      color: Colors.black,
+                                      color: Colors.white,
                                       fontWeight: FontWeight.bold),
                                 ),
                               ),
