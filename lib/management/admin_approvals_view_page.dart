@@ -92,7 +92,6 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _buildRequestorSection(),
-              const SizedBox(height: 12),
               _buildBlueSection(),
               const SizedBox(height: 12),
               _buildDetailsSection(),
@@ -100,7 +99,7 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
               _buildWorkflowSection(),
               const SizedBox(height: 12),
               _buildCommentInputSection(),
-              const Spacer(),
+              const SizedBox(height: 20),
               _buildActionButtons(context),
               const SizedBox(height: 16),
             ],
@@ -136,11 +135,11 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
   }
 
   Widget _buildRequestorSection() {
+  
     String requestorName = widget.item['requestor_name'] ?? 'No Name';
     String submittedOn = formatDate(widget.item['created_at']);
 
     print('Requestor Info: ${widget.item}');
-
     final String types = widget.item['types'] ?? 'Unknown';
     if (types == 'leave') {
       submittedOn = widget.item['created_at']?.split("T")[0] ?? 'N/A';
@@ -150,38 +149,66 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
       submittedOn = widget.item['created_date']?.split("T")[0] ?? 'N/A';
     }
 
-    return Column(
-      children: [
-        CircleAvatar(
-          backgroundImage: NetworkImage(widget.item['img_name'] ??
-              'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-          radius: 40,
+   return Padding(
+     padding: const EdgeInsets.only(bottom:50.0),
+     child: Column(
+       crossAxisAlignment: CrossAxisAlignment.center, // Align the content in the center
+       children: [
+      // Requestor Text
+      const Text(
+        'Requestor',
+        style: TextStyle(
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+          fontSize: 18, // Increase font size for better visibility
         ),
-        const SizedBox(height: 8),
-        Text(
-          requestorName,
-          style: const TextStyle(
-              color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Submitted on $submittedOn',
-          style: const TextStyle(fontSize: 14, color: Colors.black54),
-        ),
-      ],
-    );
+      ),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center, 
+        children: [
+          CircleAvatar(
+            backgroundImage: NetworkImage(widget.item['img_name'] ??
+                'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
+            radius: 40, // Adjust the size of the avatar
+          ),
+          const SizedBox(width: 12), // Space between avatar and text
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                requestorName,
+                style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 16),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Submitted on $submittedOn',
+                style: const TextStyle(fontSize: 14, color: Colors.black54),
+              ),
+            ],
+          ),
+        ],
+      ),
+       ],
+     ),
+   );
+
   }
 
   Widget _buildBlueSection() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.lightBlueAccent.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Text(
-        'Leave',
-        style: TextStyle(color: Colors.white, fontSize: 16),
+    return Padding(
+      padding: const EdgeInsets.only(bottom:20.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.lightBlueAccent.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: const Text(
+          'Meeting and Booking Meeting Room',
+          style: TextStyle(color: Colors.black, fontSize: 16),
+        ),
       ),
     );
   }
@@ -214,25 +241,30 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
           _buildInfoRow(Icons.calendar_today, 'Date',
               '${widget.item['startDate'] ?? 'N/A'} - ${widget.item['endDate'] ?? 'N/A'}', Colors.blue),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.description, 'Reason', widget.item['details'] ?? 'No Reason Provided', Colors.purple),
+          _buildInfoRow(Icons.time_to_leave, 'Reason', widget.item['details'] ?? 'No Reason Provided', Colors.purple),
           const SizedBox(height: 8),
           _buildInfoRow(Icons.person, 'Employee', widget.item['employee_name'] ?? 'N/A', Colors.red),
         ],
       );
     } else if (types == 'car') {
+    
       return Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildInfoRow(Icons.bookmark, 'Purpose', widget.item['title'] ?? 'No Title', Colors.green),
+          _buildInfoRow(Icons.bookmark, 'Title', widget.item['title'] ?? 'No Title', Colors.green),
           const SizedBox(height: 8),
           _buildInfoRow(Icons.calendar_today, 'Date',
               '${widget.item['startDate'] ?? 'N/A'} - ${widget.item['endDate'] ?? 'N/A'}', Colors.blue),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.place, 'Place', widget.item['room'] ?? 'No Place Info', Colors.orange),
+          _buildInfoRow(Icons.access_time_rounded, 'Time','${widget.item['time'] ?? 'N/A'} - ${widget.item['time_end']?? 'N/A'}', Colors.blue),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.description, 'Details', widget.item['details'] ?? 'No Details Provided', Colors.purple),
-          const SizedBox(height: 8),
-          _buildInfoRow(Icons.person, 'Employee', widget.item['employee_name'] ?? 'N/A', Colors.red),
+          // _buildInfoRow(Icons.place, 'Place', widget.item['room'] ?? 'No Place Info', Colors.orange),
+          // const SizedBox(height: 8),
+          // _buildInfoRow(Icons.description, 'Details', widget.item['details'] ?? 'No Details Provided', Colors.purple),
+          // const SizedBox(height: 8),
+          // _buildInfoRow(Icons.person, 'Employee', widget.item['employee_name'] ?? 'N/A', Colors.red),
+          // const SizedBox(height: 8),
+          _buildInfoRowBelow('Room',widget.item['room']?? 'N/A'),
         ],
       );
     } else {
@@ -268,31 +300,81 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String title, String content, Color color) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 4),
-        Text(
-          '$title: $content',
-          style: const TextStyle(fontSize: 14, color: Colors.black),
-        ),
-      ],
-    );
-  }
+// Widget _buildInfoRow(IconData icon, String title, String content, Color color) {
+//   return Center(
+//     child: Row(
+//       mainAxisSize: MainAxisSize.min, // Shrinks the row to fit its content
+//       children: [
+//         Icon(icon, size: 18, color: color),
+//         const SizedBox(width: 4),
+//         Text(
+//           '$title: $content',
+//           style: const TextStyle(fontSize: 14, color: Colors.black),
+//         ),
+//       ],
+//     ),
+//   );
+// }
+
+Widget _buildInfoRow(IconData icon, String title, String content, Color color) {
+  return Center(
+    child: SizedBox(
+      width:300.0, // Make the row take the full available width
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start, // Aligns the content inside the row to the start
+        crossAxisAlignment: CrossAxisAlignment.start, // Ensures content is vertically centered
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              '$title: $content',
+              style: const TextStyle(fontSize: 14, color: Colors.black),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildInfoRowBelow(String title, String content) {
+  return Center(
+    child: SizedBox(
+      width:180.0, // Make the row take the full available width
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start, // Aligns the content inside the row to the start
+        crossAxisAlignment: CrossAxisAlignment.start, // Ensures content is vertically centered
+        children: [
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              '$title: $content',
+              style: const TextStyle(fontSize: 20, color: Colors.orange),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+
 
   Widget _buildCommentInputSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text('Description', style: TextStyle(fontSize: 14, color: Colors.black)),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: 
+        Text('Description', style: TextStyle(fontSize: 14, color: Colors.black))),
         const SizedBox(height: 4),
         TextField(
           controller: _descriptionController,
           decoration: InputDecoration(
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(20),
             ),
             hintText: 'Enter approval/rejection comments',
           ),
@@ -303,28 +385,63 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
   }
 
   Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _buildButton(
-          'Reject',
-          Colors.grey.shade300,
-          Colors.black,
-          onPressed: isLineManagerApproved
-              ? null
-              : () => _submitLineManagerDecision(context, 'Reject'),
-        ),
-        _buildButton(
-          'Approve',
-          Colors.green,
-          Colors.white,
-          onPressed: isLineManagerApproved
-              ? null
-              : () => _submitLineManagerDecision(context, 'Approve'),
-        ),
-      ],
-    );
-  }
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    children: [
+      _buildStyledButton(
+        label: 'Reject',
+        icon: Icons.close,
+        backgroundColor: Colors.grey.shade300,
+        textColor: Colors.black,
+        onPressed: isLineManagerApproved
+            ? null
+            : () => _submitLineManagerDecision(context, 'Reject'),
+      ),
+      _buildStyledButton(
+        label: 'Approve',
+        icon: Icons.check_circle_outline,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+        onPressed: isLineManagerApproved
+            ? null
+            : () => _submitLineManagerDecision(context, 'Approve'),
+      ),
+    ],
+  );
+}
+
+Widget _buildStyledButton({
+  required String label,
+  required IconData icon,
+  required Color backgroundColor,
+  required Color textColor,
+  required VoidCallback? onPressed,
+}) {
+  return ElevatedButton.icon(
+    onPressed: onPressed,
+    style: ElevatedButton.styleFrom(
+      backgroundColor: backgroundColor,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(30), // Rounded corners like in the Figma
+      ),
+    ),
+    icon: Icon(
+      icon,
+      color: textColor,
+      size: 18, // Adjust size to match the design
+    ),
+    label: Text(
+      label,
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: textColor,
+      ),
+    ),
+  );
+}
+
 
   Widget _buildButton(String label, Color color, Color textColor,
       {required VoidCallback? onPressed}) {

@@ -146,6 +146,14 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           ? item['date_out']
           : 'N/A';
 
+      formattedItem['time'] = (item['time_in'] != null && item['time_in'].isNotEmpty)
+          ? item['time_in']
+          : 'N/A';
+      
+      formattedItem['time_end'] = (item['time_out'] != null && item['time_out'].isNotEmpty)
+          ? item['time_out']
+          : 'N/A';
+     
       formattedItem['endDate'] = (item['date_in'] != null && item['date_in'].isNotEmpty)
           ? item['date_in']
           : 'N/A';
