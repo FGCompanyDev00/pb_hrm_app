@@ -136,7 +136,7 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
 
   Widget _buildRequestorSection() {
   
-    String requestorName = widget.item['requestor_name'] ?? 'No Name';
+    String requestorName = widget.item['employee_name'] ?? 'No Name';
     String submittedOn = formatDate(widget.item['created_at']);
 
     print('Requestor Info: ${widget.item}');
@@ -193,7 +193,6 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
        ],
      ),
    );
-
   }
 
   Widget _buildBlueSection() {

@@ -150,6 +150,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           ? item['time_in']
           : 'N/A';
       
+      
       formattedItem['time_end'] = (item['time_out'] != null && item['time_out'].isNotEmpty)
           ? item['time_out']
           : 'N/A';
@@ -161,6 +162,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       formattedItem['room'] = item['place'] ?? 'No Place Info';
       formattedItem['details'] = item['purpose'] ?? 'No Details Provided';
       formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
+     
     }
     else {
       // Default processing
