@@ -242,7 +242,6 @@ class TaskModalState extends State<TaskModal> {
 
 @override
 Widget build(BuildContext context) {
-  Provider.of<ThemeNotifier>(context);
 
   return AlertDialog(
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -472,4 +471,6 @@ Widget build(BuildContext context) {
     }
   }
 }
+
+
 

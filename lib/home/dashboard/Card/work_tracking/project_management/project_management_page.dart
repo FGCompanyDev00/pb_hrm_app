@@ -1,9 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/addpeoplepageworktracking.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/appbarclipper.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/backup_project_management_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/pdfviewer.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/taskmodal.dart';
 import 'package:pb_hrsystem/services/assignment_service.dart';
@@ -12,7 +17,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
-
+import 'package:flutter_pdfview/flutter_pdfview.dart';
 
 class ProjectManagementPage extends StatefulWidget {
   final String projectId;
@@ -35,6 +40,8 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Tick
   final WorkTrackingService _workTrackingService = WorkTrackingService();
   final AssignmentService _assignmentService = AssignmentService();
   final ScrollController _scrollController = ScrollController();
+
+  
 
   @override
   void initState() {
@@ -527,7 +534,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Tick
       ),
 
      body: Column(
-    children: [
+  children: [
     TabBar(
        isScrollable: true,
       controller: _tabController,
