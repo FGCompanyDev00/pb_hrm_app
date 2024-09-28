@@ -1472,7 +1472,7 @@ Widget _buildIconTextRow({required IconData icon, required String label, require
         'status_id': taskData['status_id'],
         'title': taskData['title'],
         'descriptions': taskData['descriptions'],
-        'memberDetails': taskData['memberDetails'], // If members are part of initial task creation
+        'memberDetails': taskData['memberDetails'],
       });
 
       if (asId != null) {
@@ -1483,7 +1483,6 @@ Widget _buildIconTextRow({required IconData icon, required String label, require
           }
         }
 
-        // Step 3: Add members (Optional - depending on your flow)
         if (taskData['members'] != null && taskData['members'].isNotEmpty) {
           await _workTrackingService.addMembersToAssignment(asId, taskData['members']);
         }
