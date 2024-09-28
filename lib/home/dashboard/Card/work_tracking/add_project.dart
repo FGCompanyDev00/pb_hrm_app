@@ -77,7 +77,6 @@ class AddProjectPageState extends State<AddProjectPage> {
             print('Navigating to AddPeoplePage with project ID: $projectId');
           }
 
-          // Pass the newly created project ID to the AddPeoplePage
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(

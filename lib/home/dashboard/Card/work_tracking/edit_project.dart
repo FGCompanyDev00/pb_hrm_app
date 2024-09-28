@@ -160,8 +160,12 @@ class _EditProjectPageState extends State<EditProjectPage> {
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/ready_bg.png'), // Add your image path here
+              image: AssetImage('assets/ready_bg.png'),
               fit: BoxFit.cover,
+            ),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
             ),
           ),
         ),

@@ -104,14 +104,13 @@ class WorkTrackingService {
     if (response.statusCode == 201 || response.statusCode == 200) {
       final responseBody = jsonDecode(response.body);
 
-      // Debugging: print the full response to check what is being returned
       if (kDebugMode) {
         print('API Response: $responseBody');
       }
 
       // Check if project_id exists in response
-      if (responseBody != null && responseBody['project_id'] != null) {
-        final String projectId = responseBody['project_id'];
+      if (responseBody != null && responseBody['id'] != null) {
+        final String projectId = responseBody['id'];
         if (kDebugMode) {
           print('Project successfully created with ID: $projectId');
         }
