@@ -268,8 +268,8 @@ String formatDate(String? dateStr) {
     if (parts.length == 3) {
       // Pad the month and day with a leading zero if needed
       String year = parts[0];
-      String month = parts[1].padLeft(2, '0'); // Ensure month has 2 digits
-      String day = parts[2].padLeft(2, '0');   // Ensure day has 2 digits
+      String month = parts[1].padLeft(2, '0'); 
+      String day = parts[2].padLeft(2, '0');   
 
       // Rebuild the date string in the format YYYY-MM-DD
       String formattedDateStr = '$year-$month-$day';
