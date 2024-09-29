@@ -1018,9 +1018,9 @@ Widget _buildProcessingTaskCard(Map<String, dynamic> task, int index) {
           RichText(
             text: TextSpan(
               children: [
-                TextSpan(
+                const TextSpan(
                   text: 'Title: ', // Add the "Title:" label
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.black87,
                     fontSize: 20,
@@ -1472,7 +1472,7 @@ Widget _buildIconTextRow({required IconData icon, required String label, require
         'status_id': taskData['status_id'],
         'title': taskData['title'],
         'descriptions': taskData['descriptions'],
-        'memberDetails': taskData['memberDetails'],
+        'memberDetails': taskData['memberDetails'], // If members are part of initial task creation
       });
 
       if (asId != null) {
@@ -1483,6 +1483,7 @@ Widget _buildIconTextRow({required IconData icon, required String label, require
           }
         }
 
+        // Step 3: Add members (Optional - depending on your flow)
         if (taskData['members'] != null && taskData['members'].isNotEmpty) {
           await _workTrackingService.addMembersToAssignment(asId, taskData['members']);
         }
