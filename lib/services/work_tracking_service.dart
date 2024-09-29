@@ -233,6 +233,42 @@ class WorkTrackingService {
     }
   }
 
+  Future<String?> addProcessing(Map<String, dynamic> processingData) async {
+    final headers = await _getHeaders();
+
+    // Prepare the request
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/api/work-tracking/meeting/insert'),
+    );
+    request.headers.addAll(headers);
+
+    // Add fields to the request
+    processingData.forEach((key, value) {
+      if (value != null && value is! List<File>) {
+        request.fields[key] = value.toString();
+      }
+    });
+
+    // Add files to the request
+    if (processingData['file_name'] != null && processingData['file_name'] is List<File>) {
+      for (var file in processingData['file_name']) {
+        request.files.add(await http.MultipartFile.fromPath('file_name', file.path));
+      }
+    }
+
+    // Send the request
+    var response = await request.send();
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      var responseBody = await response.stream.bytesToString();
+      var decodedResponse = jsonDecode(responseBody);
+      return decodedResponse['meeting_id'];
+    } else {
+      throw Exception('Failed to add processing: ${response.reasonPhrase}');
+    }
+  }
+
   // Fetch chat messages for a project
   Future<List<Map<String, dynamic>>> fetchChatMessages(String projectId) async {
     final headers = await _getHeaders();
@@ -322,33 +358,40 @@ class WorkTrackingService {
   }
 
   // Add a new assignment to a project
-  Future<String?> addAssignment(String projectId,
-      Map<String, dynamic> assignmentData) async {
+  Future<String?> addAssignment(String projectId, Map<String, dynamic> assignmentData) async {
     final headers = await _getHeaders();
-    final payload = jsonEncode({
-      'project_id': projectId,
-      ...assignmentData,
+
+    // Prepare the request
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/api/work-tracking/ass/insert'),
+    );
+    request.headers.addAll(headers);
+
+    // Add fields to the request
+    request.fields['project_id'] = projectId;
+    assignmentData.forEach((key, value) {
+      if (value != null && value is! List<File>) {
+        request.fields[key] = value.toString();
+      }
     });
 
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/ass/insert'),
-      headers: headers,
-      body: payload,
-    );
-
-    if (response.statusCode == 201) {
-      final responseBody = jsonDecode(response.body);
-      if (responseBody != null && responseBody['as_id'] != null) {
-        return responseBody['as_id']; // Return as_id
-      } else {
-        throw Exception('Assignment created but no assignment ID returned.');
+    // Add files to the request
+    if (assignmentData['file_name'] != null && assignmentData['file_name'] is List<File>) {
+      for (var file in assignmentData['file_name']) {
+        request.files.add(await http.MultipartFile.fromPath('file_name', file.path));
       }
-    } else if (response.statusCode == 403) {
-      throw Exception(
-          'You do not have permission to add this assignment. Please check your access rights.');
+    }
+
+    // Send the request
+    var response = await request.send();
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      var responseBody = await response.stream.bytesToString();
+      var decodedResponse = jsonDecode(responseBody);
+      return decodedResponse['as_id'];
     } else {
-      throw Exception('Failed to add assignment: ${response
-          .reasonPhrase}. Details: ${response.body}');
+      throw Exception('Failed to add assignment: ${response.reasonPhrase}');
     }
   }
 
