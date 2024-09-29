@@ -142,8 +142,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     else if (types == 'car') {
       formattedItem['title'] = item['purpose'] ?? 'No Title';
 
-      formattedItem['startDate'] = (item['date_out'] != null && item['date_out'].isNotEmpty)
-          ? item['date_out']
+      formattedItem['startDate'] = (item['date_in'] != null && item['date_in'].isNotEmpty)
+          ? item['date_in']
           : 'N/A';
 
       formattedItem['time'] = (item['time_in'] != null && item['time_in'].isNotEmpty)
@@ -155,7 +155,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           ? item['time_out']
           : 'N/A';
      
-      formattedItem['endDate'] = (item['date_in'] != null && item['date_in'].isNotEmpty)
+      formattedItem['endDate'] = (item['date_out'] != null && item['date_out'].isNotEmpty)
           ? item['date_in']
           : 'N/A';
 
@@ -257,17 +257,34 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     );
   }
 
-  String formatDate(String? dateStr) {
-    try {
-      if (dateStr == null || dateStr.isEmpty) {
-        return 'N/A';
-      }
-      final DateTime parsedDate = DateTime.parse(dateStr);
+String formatDate(String? dateStr) {
+  try {
+    if (dateStr == null || dateStr.isEmpty) {
+      return 'N/A';
+    }
+
+    // Split the date string by "-"
+    List<String> parts = dateStr.split('-');
+    if (parts.length == 3) {
+      // Pad the month and day with a leading zero if needed
+      String year = parts[0];
+      String month = parts[1].padLeft(2, '0'); 
+      String day = parts[2].padLeft(2, '0');   
+
+      // Rebuild the date string in the format YYYY-MM-DD
+      String formattedDateStr = '$year-$month-$day';
+
+      // Parse and format the date
+      final DateTime parsedDate = DateTime.parse(formattedDateStr);
       return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);
-    } catch (e) {
+    } else {
       return 'Invalid Date';
     }
+  } catch (e) {
+    return 'Invalid Date';
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -454,6 +471,10 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
 
     Color statusColor = _getStatusColor(status);
     Color typeColor = getTypeColor(types);
+ print('title: $title');
+    print('Start Date: $startDate');
+  print('End Date: $endDate');
+  print('room: $room');
 
     return GestureDetector(
       onTap: () {

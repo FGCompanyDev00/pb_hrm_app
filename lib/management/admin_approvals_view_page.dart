@@ -318,10 +318,10 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
 Widget _buildInfoRow(IconData icon, String title, String content, Color color) {
   return Center(
     child: SizedBox(
-      width:300.0, // Make the row take the full available width
+      width:300.0, 
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.start, // Aligns the content inside the row to the start
-        crossAxisAlignment: CrossAxisAlignment.start, // Ensures content is vertically centered
+        mainAxisAlignment: MainAxisAlignment.start, 
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 18, color: color),
           const SizedBox(width: 8),
@@ -340,10 +340,10 @@ Widget _buildInfoRow(IconData icon, String title, String content, Color color) {
 Widget _buildInfoRowBelow(String title, String content) {
   return Center(
     child: SizedBox(
-      width:180.0, // Make the row take the full available width
+      width:180.0, 
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.start, // Aligns the content inside the row to the start
-        crossAxisAlignment: CrossAxisAlignment.start, // Ensures content is vertically centered
+        mainAxisAlignment: MainAxisAlignment.start, 
+        crossAxisAlignment: CrossAxisAlignment.start, 
         children: [
           const SizedBox(width: 8),
           Flexible(

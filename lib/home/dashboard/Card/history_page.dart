@@ -373,19 +373,29 @@ class _HistoryPageState extends State<HistoryPage> {
       }
     }
 
-     Widget getTypeText(String type) {
-      switch (type) {
-        case 'meeting':
-          return Text('Room');
-        case 'leave':
-          return Text('Leave');
-        case 'car':
-          return Text('Car');
-        default:
-          return const Icon(Icons.info_outline,
-              size: 40, color: Colors.grey);
-      }
-    }
+Widget getTypeText(String type) {
+  switch (type) {
+    case 'meeting':
+      return const Text(
+        'Room',
+        style: TextStyle(color: Colors.green), // Green color for meeting/room
+      );
+    case 'leave':
+      return const Text(
+        'Leave',
+        style: TextStyle(color: Colors.yellow), // Yellow color for leave
+      );
+    case 'car':
+      return const Text(
+        'Car',
+        style: TextStyle(color: Colors.blue), // Blue color for car
+      );
+    default:
+      return const Icon(Icons.info_outline,
+          size: 40, color: Colors.grey); // Default case for unknown types
+  }
+}
+
 
     
 
