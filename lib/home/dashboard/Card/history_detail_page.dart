@@ -76,6 +76,8 @@ class _DetailsPageState extends State<DetailsPage> {
     final textColor = isDarkMode ? Colors.white : Colors.black;
 
     return Scaffold(
+      backgroundColor: Colors.white,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(
