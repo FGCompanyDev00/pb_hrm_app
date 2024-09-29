@@ -41,7 +41,8 @@ class _AssignmentSectionState extends State<AssignmentSection> {
     try {
       final assignments = await _workTrackingService.fetchAssignments(widget.projectId);
       setState(() {
-        _assignments = assignments;
+        // Filter assignments to only include those with matching proj_id
+        _assignments = assignments.where((assignment) => assignment['proj_id'] == widget.projectId).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -178,13 +179,13 @@ class _AssignmentSectionState extends State<AssignmentSection> {
             ],
           ),
         ),
-        Positioned(
+        const Positioned(
           left: 20.0,
           right: 20.0,
           child: CircleAvatar(
             backgroundColor: Colors.deepPurple,
             radius: 45.0,
-            child: const Icon(Icons.edit, size: 50.0, color: Colors.white),
+            child: Icon(Icons.edit, size: 50.0, color: Colors.white),
           ),
         ),
       ],
@@ -321,13 +322,13 @@ class _AssignmentSectionState extends State<AssignmentSection> {
             ),
           ),
         ),
-        Positioned(
+        const Positioned(
           left: 20.0,
           right: 20.0,
           child: CircleAvatar(
             backgroundColor: Colors.deepPurple,
             radius: 45.0,
-            child: const Icon(Icons.assignment, size: 50.0, color: Colors.white),
+            child: Icon(Icons.assignment, size: 50.0, color: Colors.white),
           ),
         ),
       ],
@@ -413,7 +414,9 @@ class _AssignmentSectionState extends State<AssignmentSection> {
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     List<Map<String, dynamic>> filteredAssignments = _assignments.where((assignment) {
-      return _selectedStatus == 'All Status' || assignment['s_name'] == _selectedStatus;
+      final matchesStatus = _selectedStatus == 'All Status' || assignment['s_name'] == _selectedStatus;
+      final matchesProject = assignment['proj_id'] == widget.projectId;
+      return matchesStatus && matchesProject;
     }).toList();
 
     return Column(
