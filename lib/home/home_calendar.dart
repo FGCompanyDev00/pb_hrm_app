@@ -169,10 +169,10 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        if (data == null || data['results'] == null || data['results'] is! List) {
-          _showErrorDialog('Error Fetching Meetings', 'No meeting data available.');
-          return;
-        }
+        // if (data == null || data['results'] == null || data['results'] is! List) {
+        //   _showErrorDialog('Error Fetching Meetings', 'No meeting data available.');
+        //   return;
+        // }
 
         final List<dynamic> results = data['results'];
         final Map<DateTime, List<Event>> meetingEvents = {};
@@ -306,7 +306,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
         _showErrorDialog('Failed to Load Meeting Room Bookings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
-      _showErrorDialog('Error Fetching Meeting Room Bookings', 'An unexpected error occurred: $e');
+      // _showErrorDialog('Error Fetching Meeting Room Bookings', 'An unexpected error occurred: $e');
     }
   }
 

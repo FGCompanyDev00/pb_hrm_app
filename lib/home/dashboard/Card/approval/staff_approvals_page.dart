@@ -129,7 +129,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
       body: Column(
         children: [
           Container(
-            height: size.height * 0.13,
+            height: size.height * 0.15,
             decoration: BoxDecoration(
               image: DecorationImage(
                 image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),

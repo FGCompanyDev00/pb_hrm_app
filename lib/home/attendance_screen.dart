@@ -588,7 +588,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   Navigator.of(context).pop();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
+                  backgroundColor: Colors.green,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
@@ -707,7 +707,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             _showCustomDialog(
               context,
               'Check-In Not Allowed',
-              'You cannot check in outside working hours (8:00 AM - 1:00 PM). Please try again during the allowed time.',
+              'Check in time can not be late by 13:00.',
             );
           } else if (isCheckInEnabled) {
             bool isAuthenticated = await _authenticateWithBiometrics();
