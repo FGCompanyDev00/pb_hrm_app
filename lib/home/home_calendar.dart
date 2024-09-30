@@ -1,5 +1,3 @@
-// home_calendar.dart
-
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -375,7 +373,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
         final Map<DateTime, List<Event>> carEvents = {};
         for (var item in carBookings) {
           if (item['date_out'] == null || item['date_in'] == null) {
-            continue; // Skip if date_out or date_in is null
+            continue;
           }
 
           String dateOutStr = _formatDateString(item['date_out']);
@@ -390,7 +388,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             startDateTime = DateTime.parse('$dateOutStr $timeOutStr:00');
             endDateTime = DateTime.parse('$dateInStr $timeInStr:00');
           } catch (e) {
-            continue; // Skip if date parsing fails
+            continue;
           }
 
           final String uid = 'car_${item['uid']}';
@@ -455,12 +453,15 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
       DateTime parsedDate = DateFormat('yyyy-M-d').parse(dateStr);
       return DateFormat('yyyy-MM-dd').format(parsedDate);
     } catch (e) {
-      return dateStr; // Return as is if format is unexpected
+      return dateStr;
     }
   }
 
   Future<void> _onRefresh() async {
     await _fetchData();
+    setState(() {
+      _showFiltersAndSearchBar = !_showFiltersAndSearchBar;
+    });
   }
 
   Color _parseColor(String colorString) {
@@ -974,8 +975,8 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
-  // Updated _buildCalendarView() method
   Widget _buildCalendarView(BuildContext context, List<Event> events) {
+    if (_selectedDay == null) return const SizedBox.shrink();
     String selectedDateString = DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!);
 
     return Column(
@@ -993,7 +994,14 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
         ),
         const SizedBox(height: 10),
         Expanded(
-          child: ListView.separated(
+          child: events.isEmpty
+              ? const Center(
+            child: Text(
+              'No events for this day.',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          )
+              : ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: events.length,
             separatorBuilder: (context, index) => const SizedBox(height: 12),

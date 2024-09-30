@@ -264,21 +264,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildForgotPasswordButton(BuildContext context) {
-    return TextButton(
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
-        );
-      },
-      child: Text(
-        AppLocalizations.of(context)!.forgotPassword,
-        style: const TextStyle(color: Colors.green),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     var languageNotifier = Provider.of<LanguageNotifier>(context);
@@ -318,7 +303,7 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 20),
                       _buildLoginAndBiometricButton(context),
                       const SizedBox(height: 10),
-                      _buildForgotPasswordButton(context),
+
                       const Spacer(),
                     ],
                   ),
