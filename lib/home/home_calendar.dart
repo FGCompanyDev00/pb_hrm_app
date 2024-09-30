@@ -1,3 +1,5 @@
+// home_calendar.dart
+
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -18,7 +20,7 @@ import 'package:http/http.dart' as http;
 import 'package:fluttertoast/fluttertoast.dart';
 
 class HomeCalendar extends StatefulWidget {
-  const HomeCalendar({super.key});
+  const HomeCalendar({Key? key}) : super(key: key);
 
   @override
   _HomeCalendarState createState() => _HomeCalendarState();
@@ -26,18 +28,30 @@ class HomeCalendar extends StatefulWidget {
 
 class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin {
   final String baseUrl = 'https://demo-application-api.flexiflows.co';
+
   late final ValueNotifier<Map<DateTime, List<Event>>> _events;
+
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
   List<Event> _eventsForDay = [];
+
   late final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+
   bool _showFiltersAndSearchBar = false;
   String _selectedCategory = 'All';
-  final List<String> _categories = ['All', 'Meetings', 'Leave Requests', 'Meeting Room Bookings', 'Car Bookings'];
+  final List<String> _categories = [
+    'All',
+    'Meetings',
+    'Leave Requests',
+    'Meeting Room Bookings',
+    'Car Bookings'
+  ];
   String _searchQuery = '';
+
   late final AnimationController _animationController;
+
   Timer? _doubleTapTimer;
   static const int doubleTapDelay = 300;
 
@@ -47,20 +61,20 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     _selectedDay = _focusedDay;
     _events = ValueNotifier({});
     _eventsForDay = [];
-    _fetchMeetingData();
-    _fetchLeaveRequests();
-    _fetchMeetingRoomBookings();
-    _fetchCarBookings();
+
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
     AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
     InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+
+    _fetchData();
   }
 
   @override
@@ -69,6 +83,15 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     _animationController.dispose();
     _doubleTapTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _fetchData() async {
+    await Future.wait([
+      _fetchMeetingData(),
+      _fetchLeaveRequests(),
+      _fetchMeetingRoomBookings(),
+      _fetchCarBookings(),
+    ]);
   }
 
   DateTime _normalizeDate(DateTime date) {
@@ -99,22 +122,11 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           final DateTime startDate = _normalizeDate(DateTime.parse(item['take_leave_from']));
           final DateTime endDate = _normalizeDate(DateTime.parse(item['take_leave_to']));
           final String uid = 'leave_${item['id']}';
-          String status;
-          switch (item['is_approve']) {
-            case 'Approved':
-              status = 'Approved';
-              break;
-            case 'Waiting':
-            case 'Processing':
-              status = 'Pending';
-              break;
-            case 'Cancel':
-              status = 'Cancelled';
-              break;
-            default:
-              status = 'Pending';
-          }
+
+          String status = _mapLeaveStatus(item['is_approve']);
+
           if (status == 'Cancelled') continue;
+
           final event = Event(
             item['name'],
             startDate,
@@ -125,7 +137,10 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             category: 'Leave Requests',
             uid: uid,
           );
-          for (var day = startDate; day.isBefore(endDate.add(const Duration(days: 1))); day = day.add(const Duration(days: 1))) {
+
+          for (var day = startDate;
+          day.isBefore(endDate.add(const Duration(days: 1)));
+          day = day.add(const Duration(days: 1))) {
             final normalizedDay = _normalizeDate(day);
             if (approvalEvents.containsKey(normalizedDay)) {
               if (!approvalEvents[normalizedDay]!.any((e) => e.uid == event.uid)) {
@@ -142,10 +157,25 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           _filterAndSearchEvents();
         });
       } else {
-        _showErrorDialog('Failed to Load Leave Requests', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Leave Requests',
+            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Leave Requests', 'An unexpected error occurred: $e');
+    }
+  }
+
+  String _mapLeaveStatus(String apiStatus) {
+    switch (apiStatus.toLowerCase()) {
+      case 'approved':
+        return 'Approved';
+      case 'waiting':
+      case 'processing':
+        return 'Pending';
+      case 'cancel':
+        return 'Cancelled';
+      default:
+        return 'Pending';
     }
   }
 
@@ -167,10 +197,10 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        // if (data == null || data['results'] == null || data['results'] is! List) {
-        //   _showErrorDialog('Error Fetching Meetings', 'No meeting data available.');
-        //   return;
-        // }
+        if (data == null || data['results'] == null || data['results'] is! List) {
+          _showErrorDialog('Error Fetching Meetings', 'No meeting data available.');
+          return;
+        }
 
         final List<dynamic> results = data['results'];
         final Map<DateTime, List<Event>> meetingEvents = {};
@@ -180,21 +210,11 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           final DateTime endDate = DateTime.parse(item['todate']);
           final Color eventColor = _parseColor(item['backgroundColor']);
           final String uid = item['outmeeting_uid'] ?? UniqueKey().toString();
-          String status;
-          switch (item['status']) {
-            case 'approved':
-              status = 'Approved';
-              break;
-            case 'waiting':
-              status = 'Pending';
-              break;
-            case 'disapproved':
-              status = 'Cancelled';
-              break;
-            default:
-              status = 'Pending';
-          }
+
+          String status = _mapMeetingStatus(item['status']);
+
           if (status == 'Cancelled') continue;
+
           final event = Event(
             item['title'],
             startDate,
@@ -213,7 +233,10 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             outmeetingUid: item['outmeeting_uid'] ?? '',
             category: 'Meetings',
           );
-          for (var day = _normalizeDate(startDate); !day.isAfter(_normalizeDate(endDate)); day = day.add(const Duration(days: 1))) {
+
+          for (var day = _normalizeDate(startDate);
+          !day.isAfter(_normalizeDate(endDate));
+          day = day.add(const Duration(days: 1))) {
             if (meetingEvents.containsKey(day)) {
               if (!meetingEvents[day]!.any((e) => e.uid == event.uid)) {
                 meetingEvents[day]!.add(event);
@@ -229,10 +252,24 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           _filterAndSearchEvents();
         });
       } else {
-        _showErrorDialog('Failed to Load Meetings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Meetings',
+            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Meetings', 'An unexpected error occurred: $e');
+    }
+  }
+
+  String _mapMeetingStatus(String apiStatus) {
+    switch (apiStatus.toLowerCase()) {
+      case 'approved':
+        return 'Approved';
+      case 'waiting':
+        return 'Pending';
+      case 'disapproved':
+        return 'Cancelled';
+      default:
+        return 'Pending';
     }
   }
 
@@ -260,21 +297,11 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           final DateTime startDate = DateTime.parse(item['from_date_time']);
           final DateTime endDate = DateTime.parse(item['to_date_time']);
           final String uid = 'booking_${item['uid']}';
-          String status;
-          switch (item['status']) {
-            case 'approved':
-              status = 'Approved';
-              break;
-            case 'waiting':
-              status = 'Pending';
-              break;
-            case 'disapproved':
-              status = 'Cancelled';
-              break;
-            default:
-              status = 'Pending';
-          }
+
+          String status = _mapBookingStatus(item['status']);
+
           if (status == 'Cancelled') continue;
+
           final event = Event(
             item['title'],
             startDate,
@@ -284,8 +311,12 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             isMeeting: true,
             category: 'Meeting Room Bookings',
             uid: uid,
+            location: item['room_name'] ?? 'Meeting Room',
           );
-          for (var day = _normalizeDate(startDate); !day.isAfter(_normalizeDate(endDate)); day = day.add(const Duration(days: 1))) {
+
+          for (var day = _normalizeDate(startDate);
+          !day.isAfter(_normalizeDate(endDate));
+          day = day.add(const Duration(days: 1))) {
             if (bookingEvents.containsKey(day)) {
               if (!bookingEvents[day]!.any((e) => e.uid == event.uid)) {
                 bookingEvents[day]!.add(event);
@@ -301,10 +332,24 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           _filterAndSearchEvents();
         });
       } else {
-        _showErrorDialog('Failed to Load Meeting Room Bookings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Meeting Room Bookings',
+            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
-      // _showErrorDialog('Error Fetching Meeting Room Bookings', 'An unexpected error occurred: $e');
+      _showErrorDialog('Error Fetching Meeting Room Bookings', 'An unexpected error occurred: $e');
+    }
+  }
+
+  String _mapBookingStatus(String apiStatus) {
+    switch (apiStatus.toLowerCase()) {
+      case 'approved':
+        return 'Approved';
+      case 'waiting':
+        return 'Pending';
+      case 'disapproved':
+        return 'Cancelled';
+      default:
+        return 'Pending';
     }
   }
 
@@ -329,44 +374,46 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
         final Map<DateTime, List<Event>> carEvents = {};
         for (var item in carBookings) {
-          // Format the date strings to ensure correct parsing
+          if (item['date_out'] == null || item['date_in'] == null) {
+            continue; // Skip if date_out or date_in is null
+          }
+
           String dateOutStr = _formatDateString(item['date_out']);
           String dateInStr = _formatDateString(item['date_in']);
           String timeOutStr = item['time_out'] ?? '00:00';
-          String timeInStr = item['time_in'] ?? '00:00';
+          String timeInStr = item['time_in'] ?? '23:59';
 
-          DateTime startDateTime = DateTime.parse('$dateOutStr $timeOutStr:00');
-          DateTime endDateTime = DateTime.parse('$dateInStr $timeInStr:00');
+          DateTime startDateTime;
+          DateTime endDateTime;
+
+          try {
+            startDateTime = DateTime.parse('$dateOutStr $timeOutStr:00');
+            endDateTime = DateTime.parse('$dateInStr $timeInStr:00');
+          } catch (e) {
+            continue; // Skip if date parsing fails
+          }
 
           final String uid = 'car_${item['uid']}';
-          String status;
-          switch (item['status']) {
-            case 'approved':
-              status = 'Approved';
-              break;
-            case 'waiting':
-              status = 'Pending';
-              break;
-            case 'cancel':
-              status = 'Cancelled';
-              break;
-            default:
-              status = 'Pending';
-          }
+
+          String status = _mapCarStatus(item['status']);
+
           if (status == 'Cancelled') continue;
 
           final event = Event(
-            item['purpose'],
+            item['purpose'] ?? 'No Title',
             startDateTime,
             endDateTime,
-            item['purpose'] ?? 'Car Booking Pending',
+            item['place'] ?? 'Car Booking Pending',
             status: status,
             isMeeting: false,
             category: 'Car Bookings',
             uid: uid,
+            location: item['place'] ?? '',
           );
 
-          for (var day = _normalizeDate(startDateTime); !day.isAfter(_normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+          for (var day = _normalizeDate(startDateTime);
+          !day.isAfter(_normalizeDate(endDateTime));
+          day = day.add(const Duration(days: 1))) {
             if (carEvents.containsKey(day)) {
               if (!carEvents[day]!.any((e) => e.uid == event.uid)) {
                 carEvents[day]!.add(event);
@@ -382,31 +429,38 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           _filterAndSearchEvents();
         });
       } else {
-        _showErrorDialog('Failed to Load Car Bookings', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Car Bookings',
+            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Car Bookings', 'An unexpected error occurred: $e');
     }
   }
 
-// Helper function to format date strings correctly
-  String _formatDateString(String dateStr) {
-    List<String> parts = dateStr.split('-');
-    String year = parts[0];
-    String month = parts[1].padLeft(2, '0');
-    String day = parts[2].padLeft(2, '0');
-    return '$year-$month-$day';
+  String _mapCarStatus(String apiStatus) {
+    switch (apiStatus.toLowerCase()) {
+      case 'approved':
+        return 'Approved';
+      case 'waiting':
+        return 'Pending';
+      case 'cancel':
+        return 'Cancelled';
+      default:
+        return 'Pending';
+    }
   }
 
+  String _formatDateString(String dateStr) {
+    try {
+      DateTime parsedDate = DateFormat('yyyy-M-d').parse(dateStr);
+      return DateFormat('yyyy-MM-dd').format(parsedDate);
+    } catch (e) {
+      return dateStr; // Return as is if format is unexpected
+    }
+  }
 
   Future<void> _onRefresh() async {
-    setState(() {
-      _showFiltersAndSearchBar = !_showFiltersAndSearchBar;
-    });
-    await _fetchMeetingData();
-    await _fetchLeaveRequests();
-    await _fetchMeetingRoomBookings();
-    await _fetchCarBookings();
+    await _fetchData();
   }
 
   Color _parseColor(String colorString) {
@@ -659,7 +713,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                   _buildCalendarHeader(isDarkMode),
                   if (_showFiltersAndSearchBar) _buildFilters(),
                   if (_showFiltersAndSearchBar) _buildSearchBar(),
-                  _buildCalendar(context,isDarkMode),
+                  _buildCalendar(context, isDarkMode),
                   _buildSectionSeparator(),
                   SizedBox(
                     height: MediaQuery.of(context).size.height * 0.6,
@@ -739,7 +793,18 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                 _filterAndSearchEvents();
               });
             },
-            selectedColor: getEventColor(Event('', DateTime.now(), DateTime.now(), '', status: '', isMeeting: false, category: category, uid: '')),
+            selectedColor: getEventColor(
+              Event(
+                '',
+                DateTime.now(),
+                DateTime.now(),
+                '',
+                status: '',
+                isMeeting: false,
+                category: category,
+                uid: '',
+              ),
+            ),
             checkmarkColor: Colors.white,
             labelStyle: TextStyle(
               color: _selectedCategory == category ? Colors.white : Colors.black,
@@ -769,236 +834,134 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
-  // Widget _buildCalendar(bool isDarkMode) {
-  //   return Container(
-  //     height: 270,
-  //     margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 5.0),
-  //     decoration: BoxDecoration(
-  //       color: isDarkMode ? Colors.black : Colors.white,
-  //       borderRadius: BorderRadius.circular(6),
-  //     ),
-  //     child: TableCalendar<Event>(
-  //       rowHeight: 35,
-  //       firstDay: DateTime.utc(2010, 10, 16),
-  //       lastDay: DateTime.utc(2030, 3, 14),
-  //       focusedDay: _focusedDay,
-  //       calendarFormat: _calendarFormat,
-  //       availableCalendarFormats: const {CalendarFormat.month: 'Month'},
-  //       selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-  //       onDaySelected: (selectedDay, focusedDay) {
-  //         if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
-  //           _showDayView(selectedDay);
-  //           _singleTapSelectedDay = null;
-  //         } else {
-  //           setState(() {
-  //             _singleTapSelectedDay = selectedDay;
-  //             _selectedDay = selectedDay;
-  //             _focusedDay = focusedDay;
-  //             _filterAndSearchEvents();
-  //           });
-  //         }
-  //       },
-  //       onFormatChanged: (format) {
-  //         if (format != CalendarFormat.month) {
-  //           setState(() => _calendarFormat = CalendarFormat.month);
-  //         }
-  //       },
-  //       onPageChanged: (focusedDay) => setState(() => _focusedDay = focusedDay),
-  //       eventLoader: _getEventsForDay,
-  //       calendarStyle: CalendarStyle(
-  //         todayDecoration: BoxDecoration(
-  //           color: Colors.orangeAccent.withOpacity(0.5),
-  //           shape: BoxShape.circle,
-  //         ),
-  //         selectedDecoration: BoxDecoration(
-  //           color: Colors.green.withOpacity(0.7),
-  //           shape: BoxShape.circle,
-  //         ),
-  //         outsideDaysVisible: false,
-  //         weekendTextStyle: TextStyle(
-  //           color: isDarkMode ? Colors.white54 : Colors.black54,
-  //         ),
-  //         defaultTextStyle: TextStyle(
-  //           color: isDarkMode ? Colors.white : Colors.black,
-  //         ),
-  //       ),
-  //       headerStyle: HeaderStyle(
-  //         titleCentered: true,
-  //         formatButtonVisible: false,
-  //         titleTextStyle: TextStyle(
-  //           fontSize: 18.0,
-  //           fontWeight: FontWeight.bold,
-  //           color: isDarkMode ? Colors.white : Colors.black,
-  //         ),
-  //         leftChevronIcon: Icon(
-  //           Icons.chevron_left,
-  //           size: 14,
-  //           color: isDarkMode ? Colors.white : Colors.black,
-  //         ),
-  //         rightChevronIcon: Icon(
-  //           Icons.chevron_right,
-  //           size: 14,
-  //           color: isDarkMode ? Colors.white : Colors.black,
-  //         ),
-  //       ),
-  //       calendarBuilders: CalendarBuilders(
-  //         markerBuilder: (context, date, events) {
-  //           if (events.isNotEmpty) {
-  //             final eventSpans = events.take(3).toList();
-  //             return Align(
-  //               alignment: Alignment.bottomCenter,
-  //               child: Row(
-  //                 mainAxisAlignment: MainAxisAlignment.center,
-  //                 children: eventSpans.map((event) {
-  //                   return Container(
-  //                     width: 5,
-  //                     height: 5,
-  //                     margin: const EdgeInsets.symmetric(horizontal: 1),
-  //                     decoration: BoxDecoration(
-  //                       color: getEventColor(event),
-  //                       shape: BoxShape.circle,
-  //                     ),
-  //                   );
-  //                 }).toList(),
-  //               ),
-  //             );
-  //           }
-  //           return null;
-  //         },
-  //       ),
-  //     ),
-  //   );
-  // }
-
   Widget _buildCalendar(BuildContext context, bool isDarkMode) {
-  return Container(
-    height: 300,
-    margin: const EdgeInsets.all(12.0),
-    decoration: BoxDecoration(
-      color: isDarkMode ? Colors.black : Colors.white,
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Consumer<DateProvider>(
-      builder: (context, dateProvider, child) {
-        return TableCalendar<Event>(
-          rowHeight: 38,
-          firstDay: DateTime.utc(2010, 10, 16),
-          lastDay: DateTime.utc(2030, 3, 14),
-          focusedDay: dateProvider.selectedDate,
-          calendarFormat: _calendarFormat,
-          availableCalendarFormats: const {
-            CalendarFormat.month: 'Month',
-          },
-          selectedDayPredicate: (day) {
-
-            return isSameDay(dateProvider.selectedDate, day);
-          },
-          onDaySelected: (selectedDay, focusedDay) {
-            if (_singleTapSelectedDay != null &&
-                isSameDay(_singleTapSelectedDay, selectedDay)) {
-              _showDayView(selectedDay);
-              _singleTapSelectedDay = null;
-            } else {
-              dateProvider.updateSelectedDate(selectedDay);
-              setState(() {
-                _singleTapSelectedDay = selectedDay;
-                _selectedDay = selectedDay;
-                _focusedDay = focusedDay;
-                _filterAndSearchEvents();
-              });
-            }
-          },
-          onFormatChanged: (format) {
-            if (format != CalendarFormat.month) {
-              setState(() {
-                _calendarFormat = CalendarFormat.month;
-              });
-            }
-          },
-          onPageChanged: (focusedDay) {
-
-            setState(() {
-              _focusedDay = focusedDay;
-              dateProvider.updateSelectedDate(focusedDay);
-            });
-          },
-          eventLoader: _getEventsForDay,
-          calendarStyle: CalendarStyle(
-            todayDecoration: BoxDecoration(
-              color: Colors.orangeAccent.withOpacity(0.5),
-              shape: BoxShape.circle,
-            ),
-            selectedDecoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.7),
-              shape: BoxShape.circle,
-            ),
-            outsideDaysVisible: false,
-            weekendTextStyle: TextStyle(
-              color: isDarkMode ? Colors.white54 : Colors.black54,
-            ),
-            defaultTextStyle: TextStyle(
-              color: isDarkMode ? Colors.white : Colors.black,
-            ),
-            markerDecoration: const BoxDecoration(
-              color: Colors.transparent,
-            ),
-          ),
-          headerStyle: HeaderStyle(
-            titleCentered: true,
-            formatButtonVisible: false,
-            titleTextStyle: TextStyle(
-              fontSize: 18.0,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : Colors.black,
-            ),
-            leftChevronIcon: Icon(
-              Icons.chevron_left,
-              size: 14,
-              color: isDarkMode ? Colors.white : Colors.black,
-            ),
-            rightChevronIcon: Icon(
-              Icons.chevron_right,
-              size: 14,
-              color: isDarkMode ? Colors.white : Colors.black,
-            ),
-          ),
-          calendarBuilders: CalendarBuilders(
-            markerBuilder: (context, date, events) {
-
-              if (events.isNotEmpty) {
-                final sortedEvents = events..sort((a, b) => b.startDateTime.compareTo(a.startDateTime));
-                final latestEvents = sortedEvents.take(3).toList();
-                final eventSpans = latestEvents.where((event) {
-                  return date.isAfter(event.startDateTime.subtract(const Duration(days: 1))) &&
-                      date.isBefore(event.endDateTime.add(const Duration(days: 1)));
-                }).toList();
-
-                return Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: eventSpans.map((event) {
-                      return Container(
-                        width: 5,
-                        height: 5,
-                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                        decoration: BoxDecoration(
-                          color: getEventColor(event),
-                          shape: BoxShape.circle,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                );
-              }
-              return null;
+    return Container(
+      height: 300,
+      margin: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.black : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Consumer<DateProvider>(
+        builder: (context, dateProvider, child) {
+          return TableCalendar<Event>(
+            rowHeight: 38,
+            firstDay: DateTime.utc(2010, 10, 16),
+            lastDay: DateTime.utc(2030, 3, 14),
+            focusedDay: dateProvider.selectedDate,
+            calendarFormat: _calendarFormat,
+            availableCalendarFormats: const {
+              CalendarFormat.month: 'Month',
             },
-          ),
-        );
-      },
-    ),
-  );
-}
+            selectedDayPredicate: (day) {
+              return isSameDay(dateProvider.selectedDate, day);
+            },
+            onDaySelected: (selectedDay, focusedDay) {
+              if (_singleTapSelectedDay != null &&
+                  isSameDay(_singleTapSelectedDay, selectedDay)) {
+                _showDayView(selectedDay);
+                _singleTapSelectedDay = null;
+              } else {
+                dateProvider.updateSelectedDate(selectedDay);
+                setState(() {
+                  _singleTapSelectedDay = selectedDay;
+                  _selectedDay = selectedDay;
+                  _focusedDay = focusedDay;
+                  _filterAndSearchEvents();
+                });
+              }
+            },
+            onFormatChanged: (format) {
+              if (format != CalendarFormat.month) {
+                setState(() {
+                  _calendarFormat = CalendarFormat.month;
+                });
+              }
+            },
+            onPageChanged: (focusedDay) {
+              setState(() {
+                _focusedDay = focusedDay;
+                dateProvider.updateSelectedDate(focusedDay);
+              });
+            },
+            eventLoader: _getEventsForDay,
+            calendarStyle: CalendarStyle(
+              todayDecoration: BoxDecoration(
+                color: Colors.orangeAccent.withOpacity(0.5),
+                shape: BoxShape.circle,
+              ),
+              selectedDecoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.7),
+                shape: BoxShape.circle,
+              ),
+              outsideDaysVisible: false,
+              weekendTextStyle: TextStyle(
+                color: isDarkMode ? Colors.white54 : Colors.black54,
+              ),
+              defaultTextStyle: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+              markerDecoration: const BoxDecoration(
+                color: Colors.transparent,
+              ),
+            ),
+            headerStyle: HeaderStyle(
+              titleCentered: true,
+              formatButtonVisible: false,
+              titleTextStyle: TextStyle(
+                fontSize: 18.0,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+              leftChevronIcon: Icon(
+                Icons.chevron_left,
+                size: 14,
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+              rightChevronIcon: Icon(
+                Icons.chevron_right,
+                size: 14,
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
+            calendarBuilders: CalendarBuilders(
+              markerBuilder: (context, date, events) {
+                if (events.isNotEmpty) {
+                  final sortedEvents = events
+                    ..sort((a, b) => b.startDateTime.compareTo(a.startDateTime));
+                  final latestEvents = sortedEvents.take(3).toList();
+                  final eventSpans = latestEvents.where((event) {
+                    return date.isAfter(
+                        event.startDateTime.subtract(const Duration(days: 1))) &&
+                        date.isBefore(event.endDateTime.add(const Duration(days: 1)));
+                  }).toList();
+
+                  return Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: eventSpans.map((event) {
+                        return Container(
+                          width: 5,
+                          height: 5,
+                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                          decoration: BoxDecoration(
+                            color: getEventColor(event),
+                            shape: BoxShape.circle,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  );
+                }
+                return null;
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildSectionSeparator() {
     return const Column(
@@ -1011,6 +974,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
+  // Updated _buildCalendarView() method
   Widget _buildCalendarView(BuildContext context, List<Event> events) {
     String selectedDateString = DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!);
 
@@ -1021,126 +985,120 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             selectedDateString,
             style: const TextStyle(
               fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Colors.black,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
             ),
             textAlign: TextAlign.center,
           ),
         ),
         const SizedBox(height: 10),
         Expanded(
-          child: Scrollbar(
-            child: SingleChildScrollView(
-              child: Column(
-                children: events.map((event) {
-                  return GestureDetector(
-                    onTap: () {
-                      // Navigate to EventDetailView with the event data
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EventDetailView(
-                            event: {
-                              'title': event.title,
-                              'description': event.description,
-                              'startDateTime': event.startDateTime.toString(),
-                              'endDateTime': event.endDateTime.toString(),
-                              'isMeeting': event.isMeeting,
-                              'createdBy': event.createdBy,
-                              'location': event.location,
-                              'status': event.status,
-                              'img_name': event.imgName,
-                              'created_at': event.createdAt,
-                              'is_repeat': event.isRepeat,
-                              'video_conference': event.videoConference,
-                              'uid': event.uid,
-                              'members': const [],
-                            },
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: events.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final event = events[index];
+
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => EventDetailView(
+                        event: {
+                          'title': event.title,
+                          'description': event.description,
+                          'startDateTime': event.startDateTime.toString(),
+                          'endDateTime': event.endDateTime.toString(),
+                          'isMeeting': event.isMeeting,
+                          'createdBy': event.createdBy,
+                          'location': event.location,
+                          'status': event.status,
+                          'img_name': event.imgName,
+                          'created_at': event.createdAt,
+                          'is_repeat': event.isRepeat,
+                          'video_conference': event.videoConference,
+                          'uid': event.uid,
+                          'members': event.members ?? [],
+                          'category': event.category,
+                        },
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: getEventColor(event).withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: getEventColor(event).withOpacity(0.3),
+                        offset: const Offset(0, 4),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: ListTile(
+                    contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    title: Text(
+                      event.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          '${DateFormat.Hm().format(event.startDateTime)} - ${DateFormat.Hm().format(event.endDateTime)}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
                           ),
                         ),
-                      );
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 20),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: getEventColor(event).withOpacity(0.85),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black26,
-                            offset: Offset(0, 4),
-                            blurRadius: 12,
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              '${DateFormat.Hm().format(event.startDateTime)} - ${DateFormat.Hm().format(event.endDateTime)}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  event.title,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  event.status,
+                        if (event.location != null && event.location!.isNotEmpty)
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on,
+                                  color: Colors.white70, size: 16),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  event.location!,
                                   style: const TextStyle(
                                     color: Colors.white70,
                                     fontSize: 14,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  event.description,
-                                  style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 12,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  event.location ?? 'No Location',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        const SizedBox(height: 4),
+                        Text(
+                          event.description,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-
-                  );
-                }).toList(),
-              ),
-            ),
+                    trailing: Icon(
+                      Icons.chevron_right,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -1149,7 +1107,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 }
 
 class GradientAnimationLine extends StatefulWidget {
-  const GradientAnimationLine({super.key});
+  const GradientAnimationLine({Key? key}) : super(key: key);
 
   @override
   _GradientAnimationLineState createState() => _GradientAnimationLineState();
@@ -1229,6 +1187,7 @@ class Event {
   final Color? backgroundColor;
   final String? outmeetingUid;
   final String category;
+  final List<Map<String, dynamic>>? members;
 
   Event(
       this.title,
@@ -1247,6 +1206,7 @@ class Event {
         this.backgroundColor,
         this.outmeetingUid,
         required this.category,
+        this.members,
       });
 
   String get formattedTime => DateFormat.jm().format(startDateTime);

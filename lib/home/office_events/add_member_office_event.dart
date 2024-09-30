@@ -21,59 +21,84 @@ class _AddMemberPageState extends State<AddMemberPage> {
     _fetchMembers();
   }
 
-  Future<void> _fetchMembers() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('token');
-    final response = await http.get(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
+  /// Fetches the stored token from SharedPreferences
+  Future<String> _fetchToken() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token') ?? '';
+  }
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(response.body)['results'];
-      setState(() {
-        _members = data.map((item) => {
-          'id': item['id'],
-          'name': item['name'],
-          'surname': item['surname'],
-          'email': item['email'],
-          'employee_id': item['employee_id'],
-        }).toList();
-        _filteredMembers = _members;
-      });
-    } else {
-      throw Exception('Failed to load members');
+  /// Fetches the list of members from the API
+  Future<void> _fetchMembers() async {
+    try {
+      String token = await _fetchToken();
+      final response = await http.get(
+        Uri.parse(
+            'https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body)['results'];
+        setState(() {
+          _members = data.map((item) => {
+            'id': item['id'],
+            'name': item['name'],
+            'surname': item['surname'],
+            'email': item['email'],
+            'employee_id': item['employee_id'],
+          }).toList();
+          _filteredMembers = _members;
+        });
+      } else {
+        throw Exception('Failed to load members');
+      }
+    } catch (e) {
+      _showErrorMessage('Error fetching members: $e');
     }
   }
 
+  /// Fetches the profile image URL for the given employee ID
   Future<String?> _fetchProfileImage(String employeeId) async {
-    final response = await http.get(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
-    );
+    try {
+      String token = await _fetchToken();
+      final response = await http.get(
+        Uri.parse(
+            'https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body)['results'];
-      return data['images'];
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body)['results'];
+        return data['images'];
+      }
+    } catch (e) {
+      // Handle errors if necessary
     }
     return null;
   }
 
+  /// Handles member selection
   void _onMemberSelected(bool? selected, Map<String, dynamic> member) {
     setState(() {
       if (selected == true) {
         _selectedMembers.add(member);
       } else {
-        _selectedMembers.remove(member);
+        _selectedMembers
+            .removeWhere((m) => m['employee_id'] == member['employee_id']);
       }
     });
   }
 
+  /// Returns to the previous screen with the selected members
   void _onAddButtonPressed() {
     Navigator.pop(context, _selectedMembers);
   }
 
+  /// Filters the members based on the search query
   void _filterMembers(String query) {
     List<Map<String, dynamic>> filteredList = _members
         .where((member) =>
@@ -85,6 +110,17 @@ class _AddMemberPageState extends State<AddMemberPage> {
     });
   }
 
+  /// Shows an error message using a SnackBar
+  void _showErrorMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  /// Builds the main UI of the page
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -135,19 +171,26 @@ class _AddMemberPageState extends State<AddMemberPage> {
                   Expanded(
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      itemCount: _selectedMembers.length > 3 ? 3 : _selectedMembers.length,
+                      itemCount: _selectedMembers.length > 3
+                          ? 3
+                          : _selectedMembers.length,
                       itemBuilder: (context, index) {
                         final member = _selectedMembers[index];
                         return FutureBuilder<String?>(
                           future: _fetchProfileImage(member['employee_id']),
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.done &&
+                                snapshot.hasData) {
                               return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                                padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
                                 child: CircleAvatar(
                                   backgroundImage: snapshot.data != null
                                       ? NetworkImage(snapshot.data!)
-                                      : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                                      : const AssetImage(
+                                      'assets/default_avatar.png')
+                                  as ImageProvider,
                                   radius: 25,
                                 ),
                               );
@@ -169,7 +212,8 @@ class _AddMemberPageState extends State<AddMemberPage> {
                       child: CircleAvatar(
                         radius: 25,
                         backgroundColor: Colors.grey[300],
-                        child: Text('+${_selectedMembers.length - 3}', style: const TextStyle(color: Colors.black)),
+                        child: Text('+${_selectedMembers.length - 3}',
+                            style: const TextStyle(color: Colors.black)),
                       ),
                     ),
                   Padding(
@@ -178,7 +222,8 @@ class _AddMemberPageState extends State<AddMemberPage> {
                       onPressed: _onAddButtonPressed,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.yellow[700],
-                        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 15.0),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 40.0, vertical: 15.0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20.0),
                         ),
@@ -216,11 +261,13 @@ class _AddMemberPageState extends State<AddMemberPage> {
                   leading: FutureBuilder<String?>(
                     future: _fetchProfileImage(member['employee_id']),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                      if (snapshot.connectionState == ConnectionState.done &&
+                          snapshot.hasData) {
                         return CircleAvatar(
                           backgroundImage: snapshot.data != null
                               ? NetworkImage(snapshot.data!)
-                              : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                              : const AssetImage('assets/default_avatar.png')
+                          as ImageProvider,
                           radius: 25,
                         );
                       } else {
@@ -235,7 +282,8 @@ class _AddMemberPageState extends State<AddMemberPage> {
                   title: Text('${member['name']} ${member['surname']}'),
                   subtitle: Text(member['email']),
                   trailing: Checkbox(
-                    value: _selectedMembers.contains(member),
+                    value: _selectedMembers.any(
+                            (m) => m['employee_id'] == member['employee_id']),
                     activeColor: Colors.green,
                     onChanged: (bool? selected) {
                       _onMemberSelected(selected, member);

@@ -1,3 +1,5 @@
+// event_detail_view.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,16 +16,19 @@ class EventDetailView extends StatefulWidget {
 
 class _EventDetailViewState extends State<EventDetailView>
     with SingleTickerProviderStateMixin {
+  // State variables
   bool _isLoading = false;
   bool _hasResponded = false;
   String _userResponse = '';
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
+  late String _eventType;
 
   @override
   void initState() {
     super.initState();
+    _determineEventType();
     _checkUserResponse();
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
@@ -47,21 +52,51 @@ class _EventDetailViewState extends State<EventDetailView>
     super.dispose();
   }
 
-  Future<void> _checkUserResponse() async {
-    setState(() {
-      _hasResponded = widget.event['userHasResponded'] ?? false;
-      _userResponse = widget.event['userResponse'] ?? '';
-    });
+  // Determine the event type based on the data available
+  void _determineEventType() {
+    if (widget.event['category'] == 'Meetings') {
+      _eventType = 'Meeting';
+    } else {
+      _eventType = 'Other';
+    }
   }
 
+  // Check if the user has already responded to the event
+  Future<void> _checkUserResponse() async {
+    // Fetch stored responses from SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final responses = prefs.getStringList('eventResponses') ?? [];
+
+    final uid = widget.event['uid'] ?? widget.event['outmeeting_uid'] ?? '';
+
+    for (var response in responses) {
+      final parts = response.split(':');
+      if (parts.length == 2 && parts[0] == uid) {
+        setState(() {
+          _hasResponded = true;
+          _userResponse = parts[1];
+        });
+        break;
+      }
+    }
+  }
+
+  // Respond to the event with the selected response type
   Future<void> _respondToMeeting(String responseType) async {
     if (_hasResponded) return;
+
+    // Show confirmation dialog for "Reject" and "Maybe"
+    if (responseType == 'no' || responseType == 'maybe') {
+      bool confirmed = await _showConfirmationDialog(responseType);
+      if (!confirmed) return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
-    final uid = widget.event['uid'] ?? widget.event['outmeeting_uid'];
-    final baseUrl = 'https://demo-application-api.flexiflows.co';
+    final uid = widget.event['uid'] ?? widget.event['outmeeting_uid'] ?? '';
+    const baseUrl = 'https://demo-application-api.flexiflows.co';
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -77,29 +112,38 @@ class _EventDetailViewState extends State<EventDetailView>
     String endpoint;
     String successMessage;
 
-    switch (responseType) {
-      case 'yes':
-        endpoint = 'yes';
-        successMessage = 'Successfully joined the meeting.';
-        break;
-      case 'no':
-        endpoint = 'no';
-        successMessage = 'Successfully rejected the meeting.';
-        break;
-      case 'maybe':
-        endpoint = 'maybe';
-        successMessage = 'You have marked your response as Maybe.';
-        break;
-      default:
-        _showSnackBar('Invalid response type.', Colors.red);
-        setState(() {
-          _isLoading = false;
-        });
-        return;
+    // Only 'Meeting' events have response functionality
+    if (_eventType == 'Meeting') {
+      switch (responseType) {
+        case 'yes':
+          endpoint = '/api/work-tracking/out-meeting/outmeeting/yes/$uid';
+          successMessage = 'Successfully joined the meeting.';
+          break;
+        case 'no':
+          endpoint = '/api/work-tracking/out-meeting/outmeeting/no/$uid';
+          successMessage = 'You have rejected the meeting.';
+          break;
+        case 'maybe':
+          endpoint = '/api/work-tracking/out-meeting/outmeeting/maybe/$uid';
+          successMessage = 'You have marked your response as Maybe.';
+          break;
+        default:
+          _showSnackBar('Invalid response type.', Colors.red);
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+      }
+    } else {
+      // For other event types, responding is not supported
+      _showSnackBar('Responding to this event type is not supported.', Colors.red);
+      setState(() {
+        _isLoading = false;
+      });
+      return;
     }
 
-    final url = Uri.parse(
-        '$baseUrl/api/work-tracking/out-meeting/outmeeting/$endpoint/$uid');
+    final url = Uri.parse('$baseUrl$endpoint');
 
     try {
       final response = await http.put(
@@ -114,6 +158,10 @@ class _EventDetailViewState extends State<EventDetailView>
           _hasResponded = true;
           _userResponse = responseType;
         });
+        // Store the user's response locally
+        final responses = prefs.getStringList('eventResponses') ?? [];
+        responses.add('$uid:$responseType');
+        await prefs.setStringList('eventResponses', responses);
         _showSnackBar(successMessage, Colors.green);
       } else {
         _showSnackBar(
@@ -128,6 +176,66 @@ class _EventDetailViewState extends State<EventDetailView>
     }
   }
 
+  // Show confirmation dialog with color based on response type
+  Future<bool> _showConfirmationDialog(String responseType) async {
+    String title;
+    String content;
+    Color dialogColor;
+
+    switch (responseType) {
+      case 'no':
+        title = 'Reject Meeting';
+        content = 'Are you sure you want to reject this meeting?';
+        dialogColor = Colors.red;
+        break;
+      case 'maybe':
+        title = 'Maybe Attend Meeting';
+        content = 'Are you unsure about attending this meeting?';
+        dialogColor = Colors.orange;
+        break;
+      default:
+        return true;
+    }
+
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: dialogColor.withOpacity(0.1),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              color: dialogColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            content,
+            style: TextStyle(color: Colors.black),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: Text(
+                'Confirm',
+                style: TextStyle(color: dialogColor),
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    ) ??
+        false;
+  }
+
+  // Show a SnackBar with a custom message and color
   void _showSnackBar(String message, Color color) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -139,6 +247,7 @@ class _EventDetailViewState extends State<EventDetailView>
     );
   }
 
+  // Build a detail item with an icon, title, and content
   Widget _buildDetailItem(
       IconData icon, String title, String content, Color iconColor) {
     return FadeTransition(
@@ -165,6 +274,7 @@ class _EventDetailViewState extends State<EventDetailView>
     );
   }
 
+  // Build animated content with slide and fade transitions
   Widget _buildAnimatedContent(Widget child) {
     return SlideTransition(
       position: _slideAnimation,
@@ -179,38 +289,48 @@ class _EventDetailViewState extends State<EventDetailView>
   Widget build(BuildContext context) {
     double horizontalPadding = MediaQuery.of(context).size.width * 0.05;
 
-    final isMeeting = widget.event['isMeeting'] == true;
+    final isMeeting = _eventType == 'Meeting';
     final String creatorName = widget.event['createdBy'] ??
         widget.event['created_by_name'] ??
         'Unknown';
     final String imageUrl = widget.event['img_name'] ?? '';
     final String createdAt = widget.event['created_at'] ?? '';
 
-    String formattedDate = '';
+    String formattedCreatedAt = '';
     if (createdAt.isNotEmpty) {
-      DateTime parsedDate = DateTime.parse(createdAt);
-      formattedDate = DateFormat('MMM dd, yyyy').format(parsedDate);
+      try {
+        DateTime parsedDate = DateTime.parse(createdAt);
+        formattedCreatedAt = DateFormat('MMM dd, yyyy').format(parsedDate);
+      } catch (e) {
+        formattedCreatedAt = createdAt;
+      }
     }
 
     String formattedStartDate = '';
     String formattedEndDate = '';
-    if (isMeeting) {
-      if (widget.event['fromdate'] != null && widget.event['todate'] != null) {
-        DateTime startDate = DateTime.parse(widget.event['fromdate']);
-        DateTime endDate = DateTime.parse(widget.event['todate']);
+    if (widget.event['startDateTime'] != null &&
+        widget.event['endDateTime'] != null) {
+      try {
+        // Parse the date strings into DateTime objects
+        DateTime startDate = widget.event['startDateTime'] is DateTime
+            ? widget.event['startDateTime']
+            : DateTime.parse(widget.event['startDateTime']);
+        DateTime endDate = widget.event['endDateTime'] is DateTime
+            ? widget.event['endDateTime']
+            : DateTime.parse(widget.event['endDateTime']);
+
         formattedStartDate =
             DateFormat('MMM dd, yyyy hh:mm a').format(startDate);
         formattedEndDate = DateFormat('MMM dd, yyyy hh:mm a').format(endDate);
-      }
-    } else {
-      if (widget.event['take_leave_from'] != null &&
-          widget.event['take_leave_to'] != null) {
-        DateTime startDate = DateTime.parse(widget.event['take_leave_from']);
-        DateTime endDate = DateTime.parse(widget.event['take_leave_to']);
-        formattedStartDate = DateFormat('MMM dd, yyyy').format(startDate);
-        formattedEndDate = DateFormat('MMM dd, yyyy').format(endDate);
+      } catch (e) {
+        // Handle parsing errors
+        formattedStartDate = widget.event['startDateTime'].toString();
+        formattedEndDate = widget.event['endDateTime'].toString();
       }
     }
+
+    // Get members list
+    List<dynamic> members = widget.event['members'] ?? [];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -253,6 +373,7 @@ class _EventDetailViewState extends State<EventDetailView>
       ),
       body: Stack(
         children: [
+          // Wrap content in SingleChildScrollView to prevent overflow
           Padding(
             padding: EdgeInsets.symmetric(
                 horizontal: horizontalPadding, vertical: 150.0),
@@ -279,9 +400,9 @@ class _EventDetailViewState extends State<EventDetailView>
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          if (formattedDate.isNotEmpty)
+                          if (formattedCreatedAt.isNotEmpty)
                             Text(
-                              'Submitted on $formattedDate',
+                              'Submitted on $formattedCreatedAt',
                               style: const TextStyle(
                                   fontSize: 14, color: Colors.grey),
                             ),
@@ -293,6 +414,14 @@ class _EventDetailViewState extends State<EventDetailView>
                       style: const TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _eventType,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        color: Colors.blueAccent,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -326,22 +455,6 @@ class _EventDetailViewState extends State<EventDetailView>
                         widget.event['location'],
                         Colors.purple,
                       ),
-                    if (widget.event['is_repeat'] != null &&
-                        widget.event['is_repeat'].isNotEmpty)
-                      _buildDetailItem(
-                        Icons.repeat,
-                        'Repeat',
-                        widget.event['is_repeat'],
-                        Colors.orange,
-                      ),
-                    if (widget.event['video_conference'] != null &&
-                        widget.event['video_conference'].isNotEmpty)
-                      _buildDetailItem(
-                        Icons.videocam,
-                        'Video Conference',
-                        widget.event['video_conference'],
-                        Colors.teal,
-                      ),
                     if (widget.event['status'] != null &&
                         widget.event['status'].isNotEmpty)
                       _buildDetailItem(
@@ -350,27 +463,11 @@ class _EventDetailViewState extends State<EventDetailView>
                         widget.event['status'],
                         Colors.cyan,
                       ),
-                    if (widget.event['allDay'] != null)
-                      _buildDetailItem(
-                        Icons.schedule,
-                        'All Day Event',
-                        widget.event['allDay'] == 1 ? 'Yes' : 'No',
-                        Colors.brown,
-                      ),
-                    if (widget.event['days_of_week'] != null &&
-                        widget.event['days_of_week'].isNotEmpty)
-                      _buildDetailItem(
-                        Icons.calendar_view_week,
-                        'Days of Week',
-                        widget.event['days_of_week'].join(', '),
-                        Colors.indigo,
-                      ),
-                    const SizedBox(height: 20),
-                    if (widget.event['members'] != null &&
-                        widget.event['members'].isNotEmpty)
+                    if (members.isNotEmpty)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          const SizedBox(height: 20),
                           const Text(
                             'Members',
                             style: TextStyle(
@@ -379,14 +476,35 @@ class _EventDetailViewState extends State<EventDetailView>
                             ),
                           ),
                           const SizedBox(height: 10),
-                          ...List<Widget>.from(widget.event['members'].map(
-                                (member) => _buildDetailItem(
-                              Icons.person,
-                              'Member',
-                              member.toString(),
-                              Colors.deepPurple,
-                            ),
-                          )),
+                          ...members.map((member) {
+                            return Card(
+                              elevation: 2,
+                              margin: const EdgeInsets.symmetric(
+                                  vertical: 4, horizontal: 0),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage: member['img_name'] != null &&
+                                      member['img_name'].isNotEmpty
+                                      ? NetworkImage(member['img_name'])
+                                      : const AssetImage('assets/default_avatar.png')
+                                  as ImageProvider,
+                                ),
+                                title: Text(
+                                  member['member_name'] ?? 'Unknown Member',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  member['department_name'] ?? '',
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            );
+                          }).toList(),
                         ],
                       ),
                     const SizedBox(height: 100),
@@ -440,8 +558,7 @@ class _EventDetailViewState extends State<EventDetailView>
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            elevation:
-                            _hasResponded ? 0 : 5,
+                            elevation: _hasResponded ? 0 : 5,
                           ),
                           child: const Text(
                             'Join',
@@ -464,8 +581,7 @@ class _EventDetailViewState extends State<EventDetailView>
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            elevation:
-                            _hasResponded ? 0 : 5,
+                            elevation: _hasResponded ? 0 : 5,
                           ),
                           child: const Text(
                             'Maybe',
@@ -488,8 +604,7 @@ class _EventDetailViewState extends State<EventDetailView>
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            elevation:
-                            _hasResponded ? 0 : 5,
+                            elevation: _hasResponded ? 0 : 5,
                           ),
                           child: const Text(
                             'Reject',
