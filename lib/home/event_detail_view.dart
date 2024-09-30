@@ -34,11 +34,15 @@ class _EventDetailViewState extends State<EventDetailView>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
-        .animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    ));
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
     _fadeAnimation = CurvedAnimation(
       parent: _animationController,
       curve: Curves.easeIn,
@@ -67,7 +71,9 @@ class _EventDetailViewState extends State<EventDetailView>
     final prefs = await SharedPreferences.getInstance();
     final responses = prefs.getStringList('eventResponses') ?? [];
 
-    final uid = widget.event['uid'] ?? widget.event['outmeeting_uid'] ?? '';
+    final uid = widget.event['uid'] ??
+        widget.event['outmeeting_uid'] ??
+        '';
 
     for (var response in responses) {
       final parts = response.split(':');
@@ -95,14 +101,19 @@ class _EventDetailViewState extends State<EventDetailView>
       _isLoading = true;
     });
 
-    final uid = widget.event['uid'] ?? widget.event['outmeeting_uid'] ?? '';
+    final uid = widget.event['uid'] ??
+        widget.event['outmeeting_uid'] ??
+        '';
     const baseUrl = 'https://demo-application-api.flexiflows.co';
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
     if (token == null) {
-      _showSnackBar('Authentication Error. Please log in again.', Colors.red);
+      _showSnackBar(
+        'Authentication Error. Please log in again.',
+        Colors.red,
+      );
       setState(() {
         _isLoading = false;
       });
@@ -136,7 +147,10 @@ class _EventDetailViewState extends State<EventDetailView>
       }
     } else {
       // For other event types, responding is not supported
-      _showSnackBar('Responding to this event type is not supported.', Colors.red);
+      _showSnackBar(
+        'Responding to this event type is not supported.',
+        Colors.red,
+      );
       setState(() {
         _isLoading = false;
       });
@@ -165,7 +179,9 @@ class _EventDetailViewState extends State<EventDetailView>
         _showSnackBar(successMessage, Colors.green);
       } else {
         _showSnackBar(
-            'Failed to respond. Status: ${response.statusCode}', Colors.red);
+          'Failed to respond. Status: ${response.statusCode}',
+          Colors.red,
+        );
       }
     } catch (_) {
       _showSnackBar('An unexpected error occurred.', Colors.red);
@@ -214,11 +230,14 @@ class _EventDetailViewState extends State<EventDetailView>
           ),
           content: Text(
             content,
-            style: TextStyle(color: Colors.black),
+            style: const TextStyle(color: Colors.black),
           ),
           actions: [
             TextButton(
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey),
+              ),
               onPressed: () => Navigator.of(context).pop(false),
             ),
             TextButton(
@@ -249,13 +268,19 @@ class _EventDetailViewState extends State<EventDetailView>
 
   // Build a detail item with an icon, title, and content
   Widget _buildDetailItem(
-      IconData icon, String title, String content, Color iconColor) {
+      IconData icon,
+      String title,
+      String content,
+      Color iconColor,
+      ) {
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Card(
         elevation: 2,
         margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: ListTile(
           leading: Icon(icon, color: iconColor, size: 28),
           title: Text(
@@ -321,7 +346,8 @@ class _EventDetailViewState extends State<EventDetailView>
 
         formattedStartDate =
             DateFormat('MMM dd, yyyy hh:mm a').format(startDate);
-        formattedEndDate = DateFormat('MMM dd, yyyy hh:mm a').format(endDate);
+        formattedEndDate =
+            DateFormat('MMM dd, yyyy hh:mm a').format(endDate);
       } catch (e) {
         // Handle parsing errors
         formattedStartDate = widget.event['startDateTime'].toString();
@@ -334,7 +360,7 @@ class _EventDetailViewState extends State<EventDetailView>
 
     return Scaffold(
       backgroundColor: Colors.white,
-      extendBodyBehindAppBar: true,
+      extendBodyBehindAppBar: false,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(
@@ -371,249 +397,252 @@ class _EventDetailViewState extends State<EventDetailView>
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
-      body: Stack(
+      body: Column(
         children: [
-          // Wrap content in SingleChildScrollView to prevent overflow
-          Padding(
-            padding: EdgeInsets.symmetric(
-                horizontal: horizontalPadding, vertical: 150.0),
-            child: _buildAnimatedContent(
-              SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (isMeeting)
-                      Column(
-                        children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundImage: imageUrl.isNotEmpty
-                                ? NetworkImage(imageUrl)
-                                : const AssetImage('assets/default_avatar.png')
-                            as ImageProvider,
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            creatorName,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              child: _buildAnimatedContent(
+                SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isMeeting)
+                        Column(
+                          children: [
+                            const SizedBox(height: 20),
+                            CircleAvatar(
+                              radius: 50,
+                              backgroundImage: imageUrl.isNotEmpty
+                                  ? NetworkImage(imageUrl)
+                                  : const AssetImage(
+                                  'assets/default_avatar.png')
+                              as ImageProvider,
                             ),
-                          ),
-                          if (formattedCreatedAt.isNotEmpty)
+                            const SizedBox(height: 10),
                             Text(
-                              'Submitted on $formattedCreatedAt',
+                              creatorName,
                               style: const TextStyle(
-                                  fontSize: 14, color: Colors.grey),
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
-                    Text(
-                      widget.event['title'] ?? 'No Title',
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      _eventType,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        color: Colors.blueAccent,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    if (widget.event['description'] != null &&
-                        widget.event['description'].isNotEmpty)
-                      _buildDetailItem(
-                        Icons.description,
-                        'Description',
-                        widget.event['description'],
-                        Colors.blueAccent,
-                      ),
-                    if (formattedStartDate.isNotEmpty)
-                      _buildDetailItem(
-                        Icons.calendar_today,
-                        'Start Date',
-                        formattedStartDate,
-                        Colors.green,
-                      ),
-                    if (formattedEndDate.isNotEmpty)
-                      _buildDetailItem(
-                        Icons.calendar_today_outlined,
-                        'End Date',
-                        formattedEndDate,
-                        Colors.redAccent,
-                      ),
-                    if (widget.event['location'] != null &&
-                        widget.event['location'].isNotEmpty)
-                      _buildDetailItem(
-                        Icons.location_on,
-                        'Location',
-                        widget.event['location'],
-                        Colors.purple,
-                      ),
-                    if (widget.event['status'] != null &&
-                        widget.event['status'].isNotEmpty)
-                      _buildDetailItem(
-                        Icons.info,
-                        'Status',
-                        widget.event['status'],
-                        Colors.cyan,
-                      ),
-                    if (members.isNotEmpty)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 20),
-                          const Text(
-                            'Members',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          ...members.map((member) {
-                            return Card(
-                              elevation: 2,
-                              margin: const EdgeInsets.symmetric(
-                                  vertical: 4, horizontal: 0),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundImage: member['img_name'] != null &&
-                                      member['img_name'].isNotEmpty
-                                      ? NetworkImage(member['img_name'])
-                                      : const AssetImage('assets/default_avatar.png')
-                                  as ImageProvider,
-                                ),
-                                title: Text(
-                                  member['member_name'] ?? 'Unknown Member',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  member['department_name'] ?? '',
-                                  style: const TextStyle(fontSize: 14),
+                            if (formattedCreatedAt.isNotEmpty)
+                              Text(
+                                'Submitted on $formattedCreatedAt',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
                                 ),
                               ),
-                            );
-                          }).toList(),
-                        ],
+                            const SizedBox(height: 20),
+                          ],
+                        ),
+                      Text(
+                        widget.event['title'] ?? 'No Title',
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    const SizedBox(height: 100),
-                  ],
+                      const SizedBox(height: 10),
+                      Text(
+                        _eventType,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          color: Colors.blueAccent,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      if (widget.event['description'] != null &&
+                          widget.event['description'].isNotEmpty)
+                        _buildDetailItem(
+                          Icons.description,
+                          'Description',
+                          widget.event['description'],
+                          Colors.blueAccent,
+                        ),
+                      if (formattedStartDate.isNotEmpty)
+                        _buildDetailItem(
+                          Icons.calendar_today,
+                          'Start Date',
+                          formattedStartDate,
+                          Colors.green,
+                        ),
+                      if (formattedEndDate.isNotEmpty)
+                        _buildDetailItem(
+                          Icons.calendar_today_outlined,
+                          'End Date',
+                          formattedEndDate,
+                          Colors.redAccent,
+                        ),
+                      if (widget.event['location'] != null &&
+                          widget.event['location'].isNotEmpty)
+                        _buildDetailItem(
+                          Icons.location_on,
+                          'Location',
+                          widget.event['location'],
+                          Colors.purple,
+                        ),
+                      if (widget.event['status'] != null &&
+                          widget.event['status'].isNotEmpty)
+                        _buildDetailItem(
+                          Icons.info,
+                          'Status',
+                          widget.event['status'],
+                          Colors.cyan,
+                        ),
+                      if (members.isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 20),
+                            const Text(
+                              'Members',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            ...members.map((member) {
+                              return Card(
+                                elevation: 2,
+                                margin: const EdgeInsets.symmetric(
+                                    vertical: 4, horizontal: 0),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundImage:
+                                    member['img_name'] != null &&
+                                        member['img_name'].isNotEmpty
+                                        ? NetworkImage(member['img_name'])
+                                        : const AssetImage(
+                                        'assets/default_avatar.png')
+                                    as ImageProvider,
+                                  ),
+                                  title: Text(
+                                    member['member_name'] ??
+                                        'Unknown Member',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    member['department_name'] ?? '',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
           if (isMeeting)
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding, vertical: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, -5),
-                      ),
-                    ],
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                    horizontal: horizontalPadding, vertical: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.95),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, -5),
                     ),
+                  ],
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
                   ),
-                  child: _isLoading
-                      ? const Center(
-                    child: CircularProgressIndicator(),
-                  )
-                      : Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _hasResponded
-                              ? null
-                              : () => _respondToMeeting('yes'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _hasResponded
-                                ? Colors.grey
-                                : Colors.green,
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: _hasResponded ? 0 : 5,
+                ),
+                child: _isLoading
+                    ? const Center(
+                  child: CircularProgressIndicator(),
+                )
+                    : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _hasResponded
+                            ? null
+                            : () => _respondToMeeting('yes'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _hasResponded
+                              ? Colors.grey
+                              : Colors.green,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Text(
-                            'Join',
-                            style: TextStyle(fontSize: 18),
-                          ),
+                          elevation: _hasResponded ? 0 : 5,
+                        ),
+                        child: const Text(
+                          'Join',
+                          style: TextStyle(fontSize: 18),
                         ),
                       ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _hasResponded
-                              ? null
-                              : () => _respondToMeeting('maybe'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _hasResponded
-                                ? Colors.grey
-                                : Colors.orange,
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: _hasResponded ? 0 : 5,
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _hasResponded
+                            ? null
+                            : () => _respondToMeeting('maybe'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _hasResponded
+                              ? Colors.grey
+                              : Colors.orange,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Text(
-                            'Maybe',
-                            style: TextStyle(fontSize: 18),
-                          ),
+                          elevation: _hasResponded ? 0 : 5,
+                        ),
+                        child: const Text(
+                          'Maybe',
+                          style: TextStyle(fontSize: 18),
                         ),
                       ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _hasResponded
-                              ? null
-                              : () => _respondToMeeting('no'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _hasResponded
-                                ? Colors.grey
-                                : Colors.red,
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: _hasResponded ? 0 : 5,
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _hasResponded
+                            ? null
+                            : () => _respondToMeeting('no'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _hasResponded
+                              ? Colors.grey
+                              : Colors.red,
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Text(
-                            'Reject',
-                            style: TextStyle(fontSize: 18),
-                          ),
+                          elevation: _hasResponded ? 0 : 5,
+                        ),
+                        child: const Text(
+                          'Reject',
+                          style: TextStyle(fontSize: 18),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),

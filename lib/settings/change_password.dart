@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:jwt_decoder/jwt_decoder.dart'; // Added for decoding JWT tokens
 
 import '../theme/theme.dart';
 
@@ -23,6 +24,51 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _isNewPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
+  String? _profileImageUrl; // Added to store profile image URL
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserProfile(); // Fetch user profile on initialization
+  }
+
+  Future<void> _fetchUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('token');
+
+    if (token == null) {
+      // Handle the case when token is null
+      return;
+    }
+
+    // Decode the JWT token to get the employee_id
+    Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+    String? employeeId = decodedToken['employee_id']; // Adjust the key as per your token's payload
+
+    if (employeeId == null) {
+      // Handle the case when employee_id is not in the token
+      return;
+    }
+
+    final response = await http.get(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      Map<String, dynamic> profileData = jsonDecode(response.body)['results'];
+      setState(() {
+        _profileImageUrl = profileData['images'];
+      });
+    } else {
+      // Handle error
+      _showDialog(context, 'Error', 'Failed to fetch profile image');
+    }
+  }
+
   Future<void> _changePassword() async {
     setState(() {
       _isLoading = true;
@@ -38,8 +84,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         'Authorization': 'Bearer $token',
       },
       body: jsonEncode({
-        'currentPassword': _currentPasswordController.text,
-        'newPassword': _newPasswordController.text,
+        'oldpassword': _currentPasswordController.text,
+        'newpassword': _newPasswordController.text,
+        'passwordConfirm': _confirmPasswordController.text,
       }),
     );
 
@@ -50,7 +97,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     if (response.statusCode == 200) {
       _showDialog(context, 'Success', 'Password changed successfully');
     } else {
-      _showDialog(context, 'Error', 'Failed to change password');
+      Map<String, dynamic> responseData = jsonDecode(response.body);
+      String errorMessage = responseData['message'] ?? 'Failed to change password';
+      _showDialog(context, 'Error', errorMessage);
     }
   }
 
@@ -63,6 +112,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           content: Text(message),
           actions: <Widget>[
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: title == 'Error' ? Colors.red : Colors.green,
+              ),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -108,7 +160,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     ),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 13.0), // Reduced vertical padding
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 13.0),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
@@ -135,9 +187,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   ),
                 ),
                 // Profile picture under the AppBar
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 60,
-                  backgroundImage: AssetImage('assets/default_avatar.jpg'),
+                  backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                      ? NetworkImage(_profileImageUrl!)
+                      : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
                   backgroundColor: Colors.white,
                 ),
                 const SizedBox(height: 20),
@@ -261,6 +315,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       obscureText: !isPasswordVisible,
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: const TextStyle(color: Colors.grey),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(
@@ -279,7 +334,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
-          return 'Please enter your $label';
+          return 'Please enter your ${label.replaceAll('*', '').trim()}';
         }
         return null;
       },
