@@ -3,8 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:jwt_decoder/jwt_decoder.dart'; // Added for decoding JWT tokens
-
 import '../theme/theme.dart';
 
 class ChangePasswordPage extends StatefulWidget {
@@ -23,13 +21,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _isCurrentPasswordVisible = false;
   bool _isNewPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
-
-  String? _profileImageUrl; // Added to store profile image URL
+  String? _profileImageUrl;
 
   @override
   void initState() {
     super.initState();
-    _fetchUserProfile(); // Fetch user profile on initialization
+    _fetchUserProfile();
   }
 
   Future<void> _fetchUserProfile() async {
@@ -37,21 +34,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     final String? token = prefs.getString('token');
 
     if (token == null) {
-      // Handle the case when token is null
-      return;
-    }
-
-    // Decode the JWT token to get the employee_id
-    Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
-    String? employeeId = decodedToken['employee_id']; // Adjust the key as per your token's payload
-
-    if (employeeId == null) {
-      // Handle the case when employee_id is not in the token
       return;
     }
 
     final response = await http.get(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
+      Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -59,12 +46,13 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     );
 
     if (response.statusCode == 200) {
-      Map<String, dynamic> profileData = jsonDecode(response.body)['results'];
-      setState(() {
-        _profileImageUrl = profileData['images'];
-      });
+      final List<dynamic> results = jsonDecode(response.body)['results'];
+      if (results.isNotEmpty) {
+        setState(() {
+          _profileImageUrl = results[0]['images'];
+        });
+      }
     } else {
-      // Handle error
       _showDialog(context, 'Error', 'Failed to fetch profile image');
     }
   }
@@ -95,7 +83,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     });
 
     if (response.statusCode == 200) {
-      _showDialog(context, 'Success', 'Password changed successfully');
+      await _showDialog(context, 'Success', 'Password changed successfully');
+      _clearInputs();
     } else {
       Map<String, dynamic> responseData = jsonDecode(response.body);
       String errorMessage = responseData['message'] ?? 'Failed to change password';
@@ -103,8 +92,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     }
   }
 
-  void _showDialog(BuildContext context, String title, String message) {
-    showDialog(
+  Future<void> _showDialog(BuildContext context, String title, String message) async {
+    return showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -126,6 +115,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     );
   }
 
+  void _clearInputs() {
+    _currentPasswordController.clear();
+    _newPasswordController.clear();
+    _confirmPasswordController.clear();
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
@@ -134,7 +129,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background image
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
@@ -146,7 +140,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           SafeArea(
             child: Column(
               children: [
-                // AppBar section with row for back button and title
                 Container(
                   height: 80,
                   decoration: const BoxDecoration(
@@ -186,7 +179,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     ),
                   ),
                 ),
-                // Profile picture under the AppBar
                 CircleAvatar(
                   radius: 60,
                   backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
@@ -195,7 +187,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   backgroundColor: Colors.white,
                 ),
                 const SizedBox(height: 20),
-                // Form fields
                 Expanded(
                   child: Container(
                     decoration: const BoxDecoration(
@@ -209,7 +200,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // Current password field
                             _buildPasswordField(
                               label: 'Current Password *',
                               controller: _currentPasswordController,
@@ -221,7 +211,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                               },
                             ),
                             const SizedBox(height: 20),
-                            // New password field
                             _buildPasswordField(
                               label: 'New Password *',
                               controller: _newPasswordController,
@@ -233,7 +222,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                               },
                             ),
                             const SizedBox(height: 20),
-                            // Confirm password field
                             _buildPasswordField(
                               label: 'Password (Confirm) *',
                               controller: _confirmPasswordController,
@@ -245,7 +233,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                               },
                             ),
                             const SizedBox(height: 30),
-                            // Change password button
                             ElevatedButton(
                               onPressed: () {
                                 if (_formKey.currentState!.validate()) {
@@ -273,8 +260,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                 ),
                               ),
                             ),
-
-                            // Cancel button
                             Center(
                               child: TextButton(
                                 onPressed: () {
@@ -303,7 +288,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     );
   }
 
-  // Build password field
   Widget _buildPasswordField({
     required String label,
     required TextEditingController controller,
@@ -319,7 +303,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(
-            color: Color(0xFFE3B200), // golden border color
+            color: Color(0xFFE3B200),
           ),
         ),
         filled: true,
