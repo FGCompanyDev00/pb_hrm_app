@@ -1,12 +1,11 @@
-// select_assignment_members.dart
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
 
 class SelectAssignmentMembersPage extends StatefulWidget {
   final String projectId;
 
-  const SelectAssignmentMembersPage({Key? key, required this.projectId}) : super(key: key);
+  const SelectAssignmentMembersPage({super.key, required this.projectId});
 
   @override
   _SelectAssignmentMembersPageState createState() => _SelectAssignmentMembersPageState();
@@ -15,7 +14,7 @@ class SelectAssignmentMembersPage extends StatefulWidget {
 class _SelectAssignmentMembersPageState extends State<SelectAssignmentMembersPage> {
   final WorkTrackingService _workTrackingService = WorkTrackingService();
   List<Map<String, dynamic>> _projectMembers = [];
-  List<Map<String, dynamic>> _selectedMembers = [];
+  final List<Map<String, dynamic>> _selectedMembers = [];
 
   @override
   void initState() {
@@ -30,7 +29,9 @@ class _SelectAssignmentMembersPageState extends State<SelectAssignmentMembersPag
         _projectMembers = members;
       });
     } catch (e) {
-      print('Error fetching project members: $e');
+      if (kDebugMode) {
+        print('Error fetching project members: $e');
+      }
     }
   }
 

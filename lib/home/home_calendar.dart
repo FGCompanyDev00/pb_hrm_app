@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
@@ -17,7 +16,6 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:dotted_border/dotted_border.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -400,35 +398,6 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     return '$year-$month-$day';
   }
 
-  void _showEventDetailModal(Event event) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(event.title, semanticsLabel: event.title),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Description: ${event.description}', semanticsLabel: 'Description: ${event.description}'),
-              Text('Status: ${event.status}', semanticsLabel: 'Status: ${event.status}'),
-              if (event.isMeeting && event.location != null)
-                Text('Location: ${event.location}', semanticsLabel: 'Location: ${event.location}'),
-              if (event.isMeeting && event.createdBy != null)
-                Text('Created By: ${event.createdBy}', semanticsLabel: 'Created By: ${event.createdBy}'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Close', semanticsLabel: 'Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   Future<void> _onRefresh() async {
     setState(() {
@@ -1085,39 +1054,89 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                               'is_repeat': event.isRepeat,
                               'video_conference': event.videoConference,
                               'uid': event.uid,
-                              'members': [], // Include any additional details
+                              'members': const [],
                             },
                           ),
                         ),
                       );
                     },
                     child: Container(
-                      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 20),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: getEventColor(event).withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(8),
+                        color: getEventColor(event).withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black26,
+                            offset: Offset(0, 4),
+                            blurRadius: 12,
+                          ),
+                        ],
                       ),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             flex: 2,
                             child: Text(
                               '${DateFormat.Hm().format(event.startDateTime)} - ${DateFormat.Hm().format(event.endDateTime)}',
-                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                           Expanded(
-                            flex: 5,
-                            child: Text(
-                              event.title,
-                              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                              overflow: TextOverflow.ellipsis,
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  event.title,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  event.status,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  event.description,
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  event.location ?? 'No Location',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
+
                   );
                 }).toList(),
               ),

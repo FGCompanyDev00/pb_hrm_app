@@ -136,7 +136,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
 
   Widget _buildHeader(bool isDarkMode) {
     return Container(
-      height: 130,
+      height: 140,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(
@@ -149,7 +149,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(top: 40.0),
+        padding: const EdgeInsets.only(top: 50.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
