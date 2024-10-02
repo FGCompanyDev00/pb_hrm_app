@@ -1,12 +1,19 @@
+// edit_profile_page.dart
+
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
 
 class EditProfilePage extends StatefulWidget {
-  const EditProfilePage({Key? key}) : super(key: key);
+  const EditProfilePage({super.key});
 
   @override
   _EditProfilePageState createState() => _EditProfilePageState();
@@ -26,33 +33,57 @@ class _EditProfilePageState extends State<EditProfilePage> {
   String? _profileImageUrl;
   bool _isLoading = false;
 
+  // Constants for API URLs
+  static const String baseUrl = 'https://demo-application-api.flexiflows.co/api';
+  static const String profileEndpoint = '$baseUrl/profile';
+  static const String displayMeEndpoint = '$baseUrl/display/me';
+  static const String requestChangeEndpoint = '$baseUrl/profile/request-change';
+
   @override
   void initState() {
     super.initState();
     _loadProfile();
   }
 
+  /// Checks internet connectivity
+  Future<bool> _isConnected() async {
+    var connectivityResult = await Connectivity().checkConnectivity();
+    return connectivityResult != ConnectivityResult.none;
+  }
+
+  /// Loads user profile data from the API
   Future<void> _loadProfile() async {
     setState(() {
       _isLoading = true;
     });
+
+    if (!await _isConnected()) {
+      _showDialog('No Internet', 'Please check your internet connection and try again.');
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
 
     try {
       final prefs = await SharedPreferences.getInstance();
       final String? token = prefs.getString('token');
 
       if (token == null) {
-        _showDialog('Error', 'Authentication token not found.');
+        _showDialog('Authentication Error', 'Authentication token not found. Please log in again.');
         return;
       }
 
-      final profileResponse = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/profile'),
+      // Fetch profile details
+      final profileResponse = await http
+          .get(
+        Uri.parse(profileEndpoint),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      )
+          .timeout(const Duration(seconds: 10));
 
       if (profileResponse.statusCode == 200) {
         final Map<String, dynamic> userProfile = jsonDecode(profileResponse.body)['results'];
@@ -66,13 +97,34 @@ class _EditProfilePageState extends State<EditProfilePage> {
           _initialPhoneNumber = userProfile['employee_tel'] ?? '';
           _phoneNumber = _initialPhoneNumber;
         });
+      } else if (profileResponse.statusCode == 401) {
+        _showDialog('Unauthorized', 'Your session has expired. Please log in again.');
       } else {
-        _showDialog('Error', 'Failed to load profile.');
+        _showDialog('Error', 'Failed to load profile. (${profileResponse.statusCode})');
       }
 
+      // Fetch profile image
       await _fetchUserProfile(token);
+    } on http.ClientException catch (e) {
+      _showDialog('Network Error', 'Failed to connect to the server. Please try again.');
+      if (kDebugMode) {
+        print('ClientException: $e');
+      }
+    } on SocketException catch (e) {
+      _showDialog('Network Error', 'No internet connection. Please check your settings.');
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+    } on TimeoutException catch (e) {
+      _showDialog('Timeout', 'The request timed out. Please try again later.');
+      if (kDebugMode) {
+        print('TimeoutException: $e');
+      }
     } catch (e) {
-      _showDialog('Error', 'An error occurred while fetching profile data.');
+      _showDialog('Error', 'An unexpected error occurred.');
+      if (kDebugMode) {
+        print('Unknown error: $e');
+      }
     } finally {
       setState(() {
         _isLoading = false;
@@ -80,15 +132,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
+  /// Fetches user profile image from the API
   Future<void> _fetchUserProfile(String token) async {
     try {
-      final imageResponse = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
+      final imageResponse = await http
+          .get(
+        Uri.parse(displayMeEndpoint),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      )
+          .timeout(const Duration(seconds: 10));
 
       if (imageResponse.statusCode == 200) {
         final List<dynamic> results = jsonDecode(imageResponse.body)['results'];
@@ -97,32 +152,109 @@ class _EditProfilePageState extends State<EditProfilePage> {
             _profileImageUrl = results[0]['images'];
           });
         }
+      } else if (imageResponse.statusCode == 401) {
+        _showDialog('Unauthorized', 'Your session has expired. Please log in again.');
       } else {
-        _showDialog('Error', 'Failed to fetch profile image');
+        _showDialog('Error', 'Failed to fetch profile image. (${imageResponse.statusCode})');
+      }
+    } on http.ClientException catch (e) {
+      _showDialog('Network Error', 'Failed to connect to the server for image.');
+      if (kDebugMode) {
+        print('ClientException: $e');
+      }
+    } on SocketException catch (e) {
+      _showDialog('Network Error', 'No internet connection while fetching image.');
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+    } on TimeoutException catch (e) {
+      _showDialog('Timeout', 'The image request timed out. Please try again later.');
+      if (kDebugMode) {
+        print('TimeoutException: $e');
       }
     } catch (e) {
-      _showDialog('Error', 'An error occurred while fetching profile image.');
-    }
-  }
-
-  Future<void> _getImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      final file = File(pickedFile.path);
-      final fileSize = await file.length();
-      if (fileSize > 5 * 1024 * 1024) {
-        _showDialog('Error', 'The selected image is too large. Please select an image under 5MB.');
-      } else {
-        setState(() {
-          _image = file;
-        });
+      _showDialog('Error', 'An unexpected error occurred while fetching image.');
+      if (kDebugMode) {
+        print('Unknown error: $e');
       }
     }
   }
 
+  /// Allows user to pick and compress an image from the gallery
+  Future<void> _getImage() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+      if (pickedFile != null) {
+        File file = File(pickedFile.path);
+        final fileSize = await file.length();
+
+        if (fileSize > 5 * 1024 * 1024) { // 5MB limit
+          // Compress the image
+          final compressedFile = await _compressImage(file);
+          if (compressedFile != null) {
+            final compressedSize = await compressedFile.length();
+            if (compressedSize > 5 * 1024 * 1024) {
+              _showDialog('File Size Error', 'The selected image is too large even after compression. Please select an image under 5MB.');
+            } else {
+              setState(() {
+                _image = compressedFile as File?;
+              });
+            }
+          } else {
+            _showDialog('Compression Error', 'Failed to compress the image. Please try another image.');
+          }
+        } else {
+          setState(() {
+            _image = file;
+          });
+        }
+      } else {
+        // User canceled the picker
+        if (kDebugMode) {
+          print('Image picker canceled by user.');
+        }
+      }
+    } catch (e) {
+      _showDialog('Error', 'An error occurred while selecting the image.');
+      if (kDebugMode) {
+        print('Image picking error: $e');
+      }
+    }
+  }
+
+  /// Compresses the given image file and returns the compressed file.
+  /// Returns null if compression fails.
+  Future<XFile?> _compressImage(File file) async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final targetPath = '${dir.absolute.path}/temp_compressed.jpg';
+
+      var result = await FlutterImageCompress.compressAndGetFile(
+        file.absolute.path,
+        targetPath,
+        quality: 70, // Adjust quality as needed
+        minWidth: 800, // Adjust dimensions as needed
+        minHeight: 800,
+      );
+
+      return result;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Image compression error: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Saves the updated profile to the API
   Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) {
+      // Form validation failed
+      return;
+    }
+
     if (_province == _initialProvince &&
         _city == _initialCity &&
         _village == _initialVillage &&
@@ -136,22 +268,31 @@ class _EditProfilePageState extends State<EditProfilePage> {
       _isLoading = true;
     });
 
+    if (!await _isConnected()) {
+      _showDialog('No Internet', 'Please check your internet connection and try again.');
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final String? token = prefs.getString('token');
 
       if (token == null) {
-        _showDialog('Error', 'Authentication token not found.');
+        _showDialog('Authentication Error', 'Authentication token not found. Please log in again.');
         return;
       }
 
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://demo-application-api.flexiflows.co/api/profile/request-change'),
+        Uri.parse(requestChangeEndpoint),
       );
 
       request.headers['Authorization'] = 'Bearer $token';
 
+      // Add fields if they have changed
       if (_province != _initialProvince) {
         request.fields['employee_province'] = _province;
       }
@@ -168,6 +309,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         request.fields['employee_tel'] = _phoneNumber;
       }
 
+      // Add image if selected
       if (_image != null) {
         request.files.add(await http.MultipartFile.fromPath('images', _image!.path));
       }
@@ -180,12 +322,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
         return;
       }
 
-      final response = await request.send();
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
+      final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 201) {
-        final responseData = await http.Response.fromStream(response);
-        final Map<String, dynamic> responseBody = jsonDecode(responseData.body);
-
+        final Map<String, dynamic> responseBody = jsonDecode(response.body);
         if (responseBody['statusCode'] == 201) {
           _showDialog('Success', 'Profile updated successfully.');
           await _loadProfile();
@@ -193,13 +334,35 @@ class _EditProfilePageState extends State<EditProfilePage> {
             _image = null;
           });
         } else {
-          _showDialog('Error', 'Failed to update profile: ${responseBody['message']}');
+          _showDialog('Error', 'Failed to update profile: ${responseBody['message'] ?? 'Unknown error.'}');
         }
+      } else if (response.statusCode == 413) {
+        _showDialog('File Size Error', 'The uploaded image is too large. Please select an image under 5MB.');
+      } else if (response.statusCode == 401) {
+        _showDialog('Unauthorized', 'Your session has expired. Please log in again.');
       } else {
-        _showDialog('Error', 'Failed to update profile.');
+        _showDialog('Error', 'Failed to update profile. (${response.statusCode})');
+      }
+    } on http.ClientException catch (e) {
+      _showDialog('Network Error', 'Failed to connect to the server. Please try again.');
+      if (kDebugMode) {
+        print('ClientException: $e');
+      }
+    } on SocketException catch (e) {
+      _showDialog('Network Error', 'No internet connection. Please check your settings.');
+      if (kDebugMode) {
+        print('SocketException: $e');
+      }
+    } on TimeoutException catch (e) {
+      _showDialog('Timeout', 'The request timed out. Please try again later.');
+      if (kDebugMode) {
+        print('TimeoutException: $e');
       }
     } catch (e) {
-      _showDialog('Error', 'An error occurred while saving profile.');
+      _showDialog('Error', 'An unexpected error occurred while saving profile.');
+      if (kDebugMode) {
+        print('Unknown error: $e');
+      }
     } finally {
       setState(() {
         _isLoading = false;
@@ -207,21 +370,40 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
+  /// Displays a dialog with a given title and message
   void _showDialog(String title, String message) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
+          title: Row(
             children: [
               Icon(
-                title == 'Success' ? Icons.check_circle : Icons.error,
-                color: title == 'Success' ? Colors.green : Colors.red,
-                size: 50,
+                title == 'Success'
+                    ? Icons.check_circle
+                    : title == 'Error' ||
+                    title == 'Network Error' ||
+                    title == 'Authentication Error' ||
+                    title == 'Timeout' ||
+                    title == 'No Internet' ||
+                    title == 'File Size Error' ||
+                    title == 'Compression Error'
+                    ? Icons.error
+                    : Icons.info,
+                color: title == 'Success'
+                    ? Colors.green
+                    : title == 'Error' ||
+                    title == 'Network Error' ||
+                    title == 'Authentication Error' ||
+                    title == 'Timeout' ||
+                    title == 'No Internet' ||
+                    title == 'File Size Error' ||
+                    title == 'Compression Error'
+                    ? Colors.red
+                    : Colors.blue,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(width: 10),
               Text(
                 title,
                 style: const TextStyle(
@@ -229,36 +411,48 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                message,
-                style: const TextStyle(fontSize: 18),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDAA520),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                ),
-                child: const Text('Close'),
-              ),
             ],
           ),
+          content: Text(
+            message,
+            style: const TextStyle(fontSize: 18),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: title == 'Success'
+                    ? Colors.green
+                    : title == 'Error' ||
+                    title == 'Network Error' ||
+                    title == 'Authentication Error' ||
+                    title == 'Timeout' ||
+                    title == 'No Internet' ||
+                    title == 'File Size Error' ||
+                    title == 'Compression Error'
+                    ? Colors.red
+                    : Colors.blue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+              ),
+              child: const Text('Close'),
+            ),
+          ],
         );
       },
     );
   }
 
+  /// Builds a customized text field
   Widget buildTextField({
     required String label,
-    required String value,
-    required Function(String) onChanged,
+    required String? value,
+    required Function(String?) onChanged,
     TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       initialValue: value,
@@ -272,6 +466,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ),
       keyboardType: keyboardType,
       onChanged: onChanged,
+      validator: validator,
     );
   }
 
@@ -283,148 +478,183 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Scaffold(
       body: Stack(
         children: [
-          Positioned.fill(
-            child: Column(
+      Positioned.fill(
+      child: Column(
+      children: [
+        // Customized AppBar
+        Container(
+        height: appBarHeight,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/background.png'),
+            fit: BoxFit.cover,
+          ),
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(40),
+            bottomRight: Radius.circular(40),
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
               children: [
-                Container(
-                  height: appBarHeight,
-                  decoration: const BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage('assets/background.png'),
-                      fit: BoxFit.cover,
-                    ),
-                    borderRadius: BorderRadius.only(
-                      bottomLeft: Radius.circular(40),
-                      bottomRight: Radius.circular(40),
-                    ),
-                  ),
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.black),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                          ),
-                          const Expanded(
-                            child: Center(
-                              child: Text(
-                                'Edit Profile',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 48),
-                        ],
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.black),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+                const Expanded(
+                  child: Center(
+                    child: Text(
+                      'Edit Profile',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : Expanded(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: mediaQuery.size.width * 0.05,
-                      vertical: mediaQuery.size.height * 0.02,
-                    ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          GestureDetector(
-                            onTap: _getImage,
-                            child: Stack(
-                              children: [
-                                CircleAvatar(
-                                  radius: 50,
-                                  backgroundImage: _image != null
-                                      ? FileImage(_image!)
-                                      : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty
-                                      ? NetworkImage(_profileImageUrl!) as ImageProvider
-                                      : const AssetImage('assets/default_avatar.jpg')),
-                                ),
-                                Positioned(
-                                  bottom: 0,
-                                  right: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8.0),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.orange,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.camera_alt,
-                                      color: Colors.white,
-                                      size: 24,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          buildTextField(
-                            label: 'Province',
-                            value: _province,
-                            onChanged: (val) => _province = val,
-                          ),
-                          const SizedBox(height: 10),
-                          buildTextField(
-                            label: 'City',
-                            value: _city,
-                            onChanged: (val) => _city = val,
-                          ),
-                          const SizedBox(height: 10),
-                          buildTextField(
-                            label: 'Village',
-                            value: _village,
-                            onChanged: (val) => _village = val,
-                          ),
-                          const SizedBox(height: 10),
-                          buildTextField(
-                            label: 'Phone Number',
-                            value: _phoneNumber,
-                            onChanged: (val) => _phoneNumber = val,
-                            keyboardType: TextInputType.phone,
-                          ),
-                          const SizedBox(height: 30),
-                          ElevatedButton(
-                            onPressed: _saveProfile,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFDAA520),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20.0),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                            ),
-                            child: const Text(
-                              'Update Profile',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
+                const SizedBox(width: 48), // To balance the back button
+              ],
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 20),
+      _isLoading
+          ? const Expanded(
+        child: Center(child: CircularProgressIndicator()),
+      )
+          : Expanded(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(
+            horizontal: mediaQuery.size.width * 0.05,
+            vertical: mediaQuery.size.height * 0.02,
+          ),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Profile Image
+                GestureDetector(
+                  onTap: _getImage,
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundImage: _image != null
+                            ? FileImage(_image!)
+                            : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                            ? NetworkImage(_profileImageUrl!) as ImageProvider
+                            : const AssetImage('assets/default_avatar.jpg')),
                       ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: const BoxDecoration(
+                            color: Colors.orange,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Province Field
+                buildTextField(
+                  label: 'Province',
+                  value: _province,
+                  onChanged: (val) => _province = val ?? '',
+                  validator: (val) {
+                    if (val == null || val.isEmpty) {
+                      return 'Please enter your province.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 10),
+                // City Field
+                buildTextField(
+                  label: 'City',
+                  value: _city,
+                  onChanged: (val) => _city = val ?? '',
+                  validator: (val) {
+                    if (val == null || val.isEmpty) {
+                      return 'Please enter your city.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 10),
+                // Village Field
+                buildTextField(
+                  label: 'Village',
+                  value: _village,
+                  onChanged: (val) => _village = val ?? '',
+                  validator: (val) {
+                    if (val == null || val.isEmpty) {
+                      return 'Please enter your village.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 10),
+                // Phone Number Field
+                buildTextField(
+                  label: 'Phone Number',
+                  value: _phoneNumber,
+                  onChanged: (val) => _phoneNumber = val ?? '',
+                  keyboardType: TextInputType.phone,
+                  validator: (val) {
+                    if (val == null || val.isEmpty) {
+                      return 'Please enter your phone number.';
+                    }
+                    final phoneRegExp = RegExp(r'^\+?[0-9]{7,15}$');
+                    if (!phoneRegExp.hasMatch(val)) {
+                      return 'Please enter a valid phone number.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 30),
+                // Update Profile Button
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _saveProfile,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDAA520),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20.0),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  ),
+                  child: const Text(
+                    'Update Profile',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
-    );
+      ],
+    ),
+    ),
+    ]));
   }
 }

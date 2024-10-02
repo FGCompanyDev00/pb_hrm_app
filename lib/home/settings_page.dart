@@ -55,7 +55,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadAppVersion() async {
     setState(() {
-      _appVersion = 'PSBV Next Demo v1.0.7'; // Ensure version is updated
+      _appVersion = 'PSBV Next Demo v1.0.7';
       // _appVersion = 'PSBV Next v${packageInfo.version}';
     });
   }
@@ -202,8 +202,8 @@ class _SettingsPageState extends State<SettingsPage> {
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
-        backgroundColor: Colors.white, // Set background color to white
-        extendBodyBehindAppBar: false, // As per requirement
+        backgroundColor: Colors.white,
+        extendBodyBehindAppBar: false,
         appBar: AppBar(
           flexibleSpace: Container(
             decoration: const BoxDecoration(
@@ -251,7 +251,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     Row(
                       children: [
                         Image.asset(
-                          'assets/account_settings.png', // Ensure this asset exists
+                          'assets/account_settings.png',
                           width: 24,
                           height: 24,
                         ),
@@ -293,8 +293,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         );
                       },
                     ),
-                    // 2. Remove profile section, so no need to handle it here
-                    // 4. Continue with biometric and notification settings
+
+                    // 4. biometric and notification settings
                     _buildSettingsTile(
                       context,
                       title: 'Enable Touch ID / Face ID',
