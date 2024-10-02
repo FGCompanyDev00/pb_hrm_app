@@ -14,12 +14,16 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
-  late String _province = '';
-  late String _city = '';
-  late String _village = '';
-  late String _phoneNumber = '';
+  String _initialProvince = '';
+  String _initialCity = '';
+  String _initialVillage = '';
+  String _initialPhoneNumber = '';
+  String _province = '';
+  String _city = '';
+  String _village = '';
+  String _phoneNumber = '';
   File? _image;
-  String _imageUrl = '';
+  String? _profileImageUrl;
   bool _isLoading = false;
 
   @override
@@ -37,8 +41,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
       final prefs = await SharedPreferences.getInstance();
       final String? token = prefs.getString('token');
 
-      // Fetch profile details
-      final response = await http.get(
+      if (token == null) {
+        _showDialog('Error', 'Authentication token not found.');
+        return;
+      }
+
+      final profileResponse = await http.get(
         Uri.parse('https://demo-application-api.flexiflows.co/api/profile'),
         headers: {
           'Content-Type': 'application/json',
@@ -46,21 +54,23 @@ class _EditProfilePageState extends State<EditProfilePage> {
         },
       );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> userProfile = jsonDecode(response.body)['results'];
-
+      if (profileResponse.statusCode == 200) {
+        final Map<String, dynamic> userProfile = jsonDecode(profileResponse.body)['results'];
         setState(() {
-          _province = userProfile['employee_province'] ?? '';
-          _city = userProfile['employee_district'] ?? '';
-          _village = userProfile['employee_village'] ?? '';
-          _phoneNumber = userProfile['employee_tel'] ?? '';
+          _initialProvince = userProfile['employee_province'] ?? '';
+          _province = _initialProvince;
+          _initialCity = userProfile['employee_district'] ?? '';
+          _city = _initialCity;
+          _initialVillage = userProfile['employee_village'] ?? '';
+          _village = _initialVillage;
+          _initialPhoneNumber = userProfile['employee_tel'] ?? '';
+          _phoneNumber = _initialPhoneNumber;
         });
-
-        // Fetch profile image
-        _fetchProfileImage(userProfile['images']);
       } else {
         _showDialog('Error', 'Failed to load profile.');
       }
+
+      await _fetchUserProfile(token);
     } catch (e) {
       _showDialog('Error', 'An error occurred while fetching profile data.');
     } finally {
@@ -70,10 +80,29 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  Future<void> _fetchProfileImage(String imagePath) async {
-    setState(() {
-      _imageUrl = 'https://demo-application-api.flexiflows.co/$imagePath';
-    });
+  Future<void> _fetchUserProfile(String token) async {
+    try {
+      final imageResponse = await http.get(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (imageResponse.statusCode == 200) {
+        final List<dynamic> results = jsonDecode(imageResponse.body)['results'];
+        if (results.isNotEmpty) {
+          setState(() {
+            _profileImageUrl = results[0]['images'];
+          });
+        }
+      } else {
+        _showDialog('Error', 'Failed to fetch profile image');
+      }
+    } catch (e) {
+      _showDialog('Error', 'An error occurred while fetching profile image.');
+    }
   }
 
   Future<void> _getImage() async {
@@ -82,8 +111,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     if (pickedFile != null) {
       final file = File(pickedFile.path);
-
-      // Check if file size exceeds 5MB
       final fileSize = await file.length();
       if (fileSize > 5 * 1024 * 1024) {
         _showDialog('Error', 'The selected image is too large. Please select an image under 5MB.');
@@ -96,52 +123,87 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _saveProfile() async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-      setState(() {
-        _isLoading = true;
-      });
+    if (_province == _initialProvince &&
+        _city == _initialCity &&
+        _village == _initialVillage &&
+        _phoneNumber == _initialPhoneNumber &&
+        _image == null) {
+      _showDialog('Info', 'No changes to update.');
+      return;
+    }
 
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        final String? token = prefs.getString('token');
+    setState(() {
+      _isLoading = true;
+    });
 
-        final request = http.MultipartRequest(
-          'POST',
-          Uri.parse('https://demo-application-api.flexiflows.co/api/profile/request-change'),
-        );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
 
-        request.headers['Authorization'] = 'Bearer $token';
+      if (token == null) {
+        _showDialog('Error', 'Authentication token not found.');
+        return;
+      }
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('https://demo-application-api.flexiflows.co/api/profile/request-change'),
+      );
+
+      request.headers['Authorization'] = 'Bearer $token';
+
+      if (_province != _initialProvince) {
         request.fields['employee_province'] = _province;
+      }
+
+      if (_city != _initialCity) {
         request.fields['employee_district'] = _city;
+      }
+
+      if (_village != _initialVillage) {
         request.fields['employee_village'] = _village;
+      }
+
+      if (_phoneNumber != _initialPhoneNumber) {
         request.fields['employee_tel'] = _phoneNumber;
+      }
 
-        if (_image != null) {
-          request.files.add(await http.MultipartFile.fromPath('images', _image!.path));
-        }
+      if (_image != null) {
+        request.files.add(await http.MultipartFile.fromPath('images', _image!.path));
+      }
 
-        final response = await request.send();
-
-        if (response.statusCode == 200) {
-          final responseData = await http.Response.fromStream(response);
-          final Map<String, dynamic> responseBody = jsonDecode(responseData.body);
-
-          if (responseBody['statusCode'] == 200) {
-            _showDialog('Success', 'Profile updated successfully.');
-          } else {
-            _showDialog('Error', 'Failed to update profile: ${responseBody['message']}');
-          }
-        } else {
-          _showDialog('Error', 'Failed to update profile.');
-        }
-      } catch (e) {
-        _showDialog('Error', 'An error occurred while saving profile.');
-      } finally {
+      if (request.fields.isEmpty && request.files.isEmpty) {
+        _showDialog('Info', 'No changes to update.');
         setState(() {
           _isLoading = false;
         });
+        return;
       }
+
+      final response = await request.send();
+
+      if (response.statusCode == 201) {
+        final responseData = await http.Response.fromStream(response);
+        final Map<String, dynamic> responseBody = jsonDecode(responseData.body);
+
+        if (responseBody['statusCode'] == 201) {
+          _showDialog('Success', 'Profile updated successfully.');
+          await _loadProfile();
+          setState(() {
+            _image = null;
+          });
+        } else {
+          _showDialog('Error', 'Failed to update profile: ${responseBody['message']}');
+        }
+      } else {
+        _showDialog('Error', 'Failed to update profile.');
+      }
+    } catch (e) {
+      _showDialog('Error', 'An error occurred while saving profile.');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -192,9 +254,31 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
+  Widget buildTextField({
+    required String label,
+    required String value,
+    required Function(String) onChanged,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextFormField(
+      initialValue: value,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.0),
+        ),
+        filled: true,
+        fillColor: Colors.grey.withOpacity(0.1),
+      ),
+      keyboardType: keyboardType,
+      onChanged: onChanged,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
+    final double appBarHeight = mediaQuery.size.height * 0.15;
 
     return Scaffold(
       body: Stack(
@@ -202,9 +286,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
           Positioned.fill(
             child: Column(
               children: [
-                // Top banner with back button and title
                 Container(
-                  height: mediaQuery.size.height * 0.15,
+                  height: appBarHeight,
                   decoration: const BoxDecoration(
                     image: DecorationImage(
                       image: AssetImage('assets/background.png'),
@@ -226,16 +309,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               Navigator.of(context).pop();
                             },
                           ),
-                          const Spacer(),
-                          const Text(
-                            'Edit Profile',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
+                          const Expanded(
+                            child: Center(
+                              child: Text(
+                                'Edit Profile',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 48),
                         ],
                       ),
                     ),
@@ -263,8 +349,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                   radius: 50,
                                   backgroundImage: _image != null
                                       ? FileImage(_image!)
-                                      : (_imageUrl.isNotEmpty
-                                      ? NetworkImage(_imageUrl) as ImageProvider
+                                      : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty
+                                      ? NetworkImage(_profileImageUrl!) as ImageProvider
                                       : const AssetImage('assets/default_avatar.jpg')),
                                 ),
                                 Positioned(
@@ -338,42 +424,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget buildTextField({
-    required String label,
-    required String value,
-    required Function(String) onChanged,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Focus(
-      onFocusChange: (hasFocus) {
-        if (hasFocus && value.isNotEmpty) {
-          setState(() {
-            onChanged('');
-          });
-        }
-      },
-      child: TextFormField(
-        initialValue: value,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-          ),
-          filled: true,
-          fillColor: Colors.grey.withOpacity(0.1),
-        ),
-        keyboardType: keyboardType,
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Please enter $label';
-          }
-          return null;
-        },
-        onChanged: onChanged,
       ),
     );
   }

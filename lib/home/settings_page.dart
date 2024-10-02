@@ -1,9 +1,10 @@
+// settings_page.dart
+
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:pb_hrsystem/notifications/test_notification_widget.dart';
 import 'package:pb_hrsystem/settings/change_password.dart';
 import 'package:pb_hrsystem/settings/edit_profile.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
@@ -25,7 +26,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _biometricEnabled = false;
   bool _notificationEnabled = false;
   late Future<UserProfile> futureUserProfile;
-  String _appVersion = 'PSBV Next Demo v1.0.3';
+  String _appVersion = 'PSBV Next Demo v1.0.7'; // Updated version
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
   FlutterLocalNotificationsPlugin();
@@ -54,7 +55,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadAppVersion() async {
     setState(() {
-      _appVersion = 'PSBV Next Demo v1.0.6';
+      _appVersion = 'PSBV Next Demo v1.0.7'; // Ensure version is updated
       // _appVersion = 'PSBV Next v${packageInfo.version}';
     });
   }
@@ -65,13 +66,6 @@ class _SettingsPageState extends State<SettingsPage> {
       _biometricEnabled = isEnabled;
     });
   }
-//
-//   Future<void> _loadBiometricSetting() async {
-//     String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
-//     setState(() {
-//         _biometricEnabled = biometricEnabled == 'true';
-//     });
-// }
 
   Future<void> _loadNotificationSetting() async {
     bool? isEnabled = await _storage.read(key: 'notificationEnabled') == 'true';
@@ -116,7 +110,7 @@ class _SettingsPageState extends State<SettingsPage> {
           setState(() {
             _biometricEnabled = true;
           });
-          await _saveBiometricSetting(true);  // Save the setting after successful authentication
+          await _saveBiometricSetting(true); // Save the setting after successful authentication
         }
       } catch (e) {
         if (kDebugMode) {
@@ -208,208 +202,157 @@ class _SettingsPageState extends State<SettingsPage> {
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
-        extendBodyBehindAppBar: true,
+        backgroundColor: Colors.white, // Set background color to white
+        extendBodyBehindAppBar: false, // As per requirement
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          title: Text(
-            'Settings',
-            style: themeNotifier.textStyle.copyWith(fontSize: 24),
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/background.png'),
+                fit: BoxFit.cover,
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
+            ),
+          ),
+          centerTitle: true,
+          title: const Text(
+            'Settings', // Fixed missing quote
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 22,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: themeNotifier.textStyle.color),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.black,
+              size: 20,
+            ),
             onPressed: () {
               Navigator.pop(context);
             },
           ),
+          toolbarHeight: 80,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
         ),
-        body: Stack(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(themeNotifier.backgroundImage),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            SafeArea(
-              child: Column(
-                children: [
-                  FutureBuilder<UserProfile>(
-                    future: futureUserProfile,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      } else if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      } else if (snapshot.hasData) {
-                        return _buildProfileHeader(
-                          isDarkMode,
-                          profileImageUrl: snapshot.data!.imgName,
-                          name: '${snapshot.data!.name} ${snapshot.data!.surname}',
-                          email: snapshot.data!.email,
-                        );
-                      } else {
-                        return const Center(child: Text('No data available'));
-                      }
-                    },
-                  ),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.all(16.0),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(16.0),
+                  children: [
+                    // 4. Add account settings icon
+                    Row(
                       children: [
-                        _buildSettingsSection(
-                            'Account Settings', themeNotifier),
-                        _buildSettingsTile(
-                          context,
-                          title: 'Change Password',
-                          icon: Icons.arrow_forward_ios,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                  const ChangePasswordPage()),
-                            );
-                          },
+                        Image.asset(
+                          'assets/account_settings.png', // Ensure this asset exists
+                          width: 24,
+                          height: 24,
                         ),
-                        _buildSettingsTile(
-                          context,
-                          title: 'Enable Touch ID / Face ID',
-                          trailing: Switch(
-                            value: _biometricEnabled,
-                            onChanged: (bool value) {
-                              _enableBiometrics(value);
-                            },
-                            activeColor: Colors.green,
-                          ),
-                        ),
-                        _buildSettingsTile(
-                          context,
-                          title: 'Notification',
-                          trailing: Switch(
-                            value: _notificationEnabled,
-                            onChanged: (bool value) {
-                              _toggleNotification(value);
-                            },
-                            activeColor: Colors.green,
-                          ),
-                        ),
-                        _buildSettingsTile(
-                          context,
-                          title: 'Test Notification',
-                          icon: Icons.arrow_forward_ios,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (context) =>
-                                  const TestNotificationWidget()),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                        Center(
-                          child: Text(
-                            _appVersion,
-                            style: themeNotifier.textStyle
-                                .copyWith(fontSize: 14, color: Colors.grey),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Account Settings',
+                          style: themeNotifier.textStyle.copyWith(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    // 3. Change Password Tile
+                    _buildSettingsTile(
+                      context,
+                      title: 'Change Password',
+                      icon: Icons.arrow_forward_ios,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const ChangePasswordPage()),
+                        );
+                      },
+                    ),
+                    // 3. Edit Profile Tile
+                    _buildSettingsTile(
+                      context,
+                      title: 'Edit Profile',
+                      icon: Icons.arrow_forward_ios,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const EditProfilePage()),
+                        );
+                      },
+                    ),
+                    // 2. Remove profile section, so no need to handle it here
+                    // 4. Continue with biometric and notification settings
+                    _buildSettingsTile(
+                      context,
+                      title: 'Enable Touch ID / Face ID',
+                      trailing: Switch(
+                        value: _biometricEnabled,
+                        onChanged: (bool value) {
+                          _enableBiometrics(value);
+                        },
+                        activeColor: Colors.green,
+                      ),
+                    ),
+                    _buildSettingsTile(
+                      context,
+                      title: 'Notification',
+                      trailing: Switch(
+                        value: _notificationEnabled,
+                        onChanged: (bool value) {
+                          _toggleNotification(value);
+                        },
+                        activeColor: Colors.green,
+                      ),
+                    ),
+                    // 5. Remove Test Notification Tile
+                    // Removed the following block:
+                    /*
+                    _buildSettingsTile(
+                      context,
+                      title: 'Test Notification',
+                      icon: Icons.arrow_forward_ios,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const TestNotificationWidget()),
+                        );
+                      },
+                    ),
+                    */
+                    const SizedBox(height: 20),
+                    Center(
+                      child: Text(
+                        _appVersion, // Updated to v1.0.7
+                        style: themeNotifier.textStyle
+                            .copyWith(fontSize: 14, color: Colors.grey),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildProfileHeader(bool isDarkMode,
-      {required String profileImageUrl,
-        required String name,
-        required String email}) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(50),
-          bottomRight: Radius.circular(50),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            spreadRadius: 5,
-            blurRadius: 15,
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 35,
-            backgroundImage: NetworkImage(profileImageUrl),
-            backgroundColor: Colors.white,
-            child: profileImageUrl.isEmpty
-                ? const Icon(Icons.person, size: 35)
-                : null,
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  email,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.black),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const EditProfilePage()),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-
-  Widget _buildSettingsSection(String title, ThemeNotifier themeNotifier) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
-      child: Text(
-        title,
-        style: themeNotifier.textStyle
-            .copyWith(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey),
-      ),
-    );
-  }
+  // Removed _buildProfileHeader as per requirement to eliminate profile section
 
   Widget _buildSettingsTile(BuildContext context,
       {required String title,
