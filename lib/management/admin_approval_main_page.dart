@@ -296,7 +296,7 @@ String formatDate(String? dateStr) {
           children: [
             Container(
               width: double.infinity,
-              height: MediaQuery.of(context).size.height * 0.15,
+              height: MediaQuery.of(context).size.height * 0.16,
               decoration: BoxDecoration(
                 image: const DecorationImage(
                   image: AssetImage('assets/ready_bg.png'),
@@ -311,7 +311,7 @@ String formatDate(String? dateStr) {
               child: Stack(
                 children: [
                   Positioned(
-                    top: 80,
+                    top: 68,
                     left: 10,
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back,
@@ -328,7 +328,7 @@ String formatDate(String? dateStr) {
                   ),
                   const Center(
                     child: Padding(
-                      padding: EdgeInsets.only(top: 65.0),
+                      padding: EdgeInsets.only(top: 55.0),
                       child: Text(
                         'Approvals ',
                         style: TextStyle(
