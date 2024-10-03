@@ -141,7 +141,7 @@ class _SelectProcessingMembersPage extends State<SelectProcessingMembersPage> {
         ),
         centerTitle: true,
         title: const Text(
-          'Office Event Add Members',
+          'Add Members',
           style: TextStyle(
             color: Colors.black,
             fontSize: 22,

@@ -352,7 +352,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // Removed _buildProfileHeader as per requirement to eliminate profile section
 
   Widget _buildSettingsTile(BuildContext context,
       {required String title,
