@@ -9,7 +9,12 @@ class DetailsPage extends StatefulWidget {
   final String types;
   final String status;
 
-  const DetailsPage({super.key, required this.id, required this.types, required this.status});
+  const DetailsPage({
+    Key? key,
+    required this.id,
+    required this.types,
+    required this.status,
+  }) : super(key: key);
 
   @override
   _DetailsPageState createState() => _DetailsPageState();
@@ -26,7 +31,8 @@ class _DetailsPageState extends State<DetailsPage> {
   }
 
   Future<void> _fetchDetails() async {
-    final String apiUrl = 'https://demo-application-api.flexiflows.co/api/app/users/history/pending/${widget.id}';
+    final String apiUrl =
+        'https://demo-application-api.flexiflows.co/api/app/users/history/pending/${widget.id}';
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -68,6 +74,39 @@ class _DetailsPageState extends State<DetailsPage> {
     }
   }
 
+  // Assign unique colors to each icon based on the label
+  Map<String, Color> _iconColors(String types) {
+    switch (types) {
+      case 'car':
+        return {
+          'Vehicle ID': Colors.blueAccent,
+          'Requestor ID': Colors.orange,
+          'Date Out': Colors.purple,
+          'Date In': Colors.green,
+          'Total Distance': Colors.redAccent,
+        };
+      case 'leave':
+        return {
+          'Requestor ID': Colors.orange,
+          'Leave From': Colors.green,
+          'Leave To': Colors.redAccent,
+          'Days': Colors.blue,
+        };
+      case 'meeting':
+        return {
+          'Room ID': Colors.teal,
+          'Employee ID': Colors.orange,
+          'From': Colors.green,
+          'To': Colors.redAccent,
+          'Created Date': Colors.blue,
+        };
+      default:
+        return {
+          'Default': Colors.grey,
+        };
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
@@ -76,14 +115,37 @@ class _DetailsPageState extends State<DetailsPage> {
     final textColor = isDarkMode ? Colors.white : Colors.black;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        toolbarHeight: 80,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 24,
+          ),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+        title: Text(
+          'Details',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background.png'),
-              fit: BoxFit.cover,
+            gradient: LinearGradient(
+              colors: [Color(0xFF3366FF), Color(0xFF00CCFF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(30),
@@ -91,159 +153,179 @@ class _DetailsPageState extends State<DetailsPage> {
             ),
           ),
         ),
-        centerTitle: true,
-        title: const Text(
-          'Details',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 22,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Colors.black,
-            size: 20,
-          ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        toolbarHeight: 80,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _itemDetails == null
-          ? const Center(child: Text('Failed to load details'))
-          : Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Title (Purpose, Name, etc.)
-            Text(
-              _itemDetails![widget.types == 'car'
-                  ? 'purpose'
-                  : widget.types == 'leave'
-                  ? 'take_leave_reason'
-                  : 'title'] ??
-                  'N/A',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: textColor,
+      body: Stack(
+        children: [
+          // Background Image or Gradient
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDarkMode
+                    ? [Colors.black, Colors.grey[850]!]
+                    : [Colors.blue[50]!, Colors.white],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
               ),
-              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
-
-            // Status Highlight
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0, vertical: 16.0),
-              decoration: BoxDecoration(
-                color: statusColor,
-                borderRadius: BorderRadius.circular(12.0),
-                gradient: LinearGradient(
-                  colors: [statusColor.withOpacity(0.7), statusColor],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    spreadRadius: 2,
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+          ),
+          // Main Content
+          _isLoading
+              ? const Center(
+            child: CircularProgressIndicator(),
+          )
+              : _itemDetails == null
+              ? const Center(
+            child: Text(
+              'Failed to load details',
+              style: TextStyle(fontSize: 18),
+            ),
+          )
+              : Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 16.0, vertical: 100.0),
+            child: ListView(
+              children: [
+                // Title (Purpose, Name, etc.)
+                Text(
+                  _itemDetails![widget.types == 'car'
+                      ? 'purpose'
+                      : widget.types == 'leave'
+                      ? 'take_leave_reason'
+                      : 'title'] ??
+                      'N/A',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
                   ),
-                ],
-              ),
-              child: Text(
-                widget.status,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
+                const SizedBox(height: 24),
+                // Status Highlight
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 12.0),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12.0),
+                    border: Border.all(color: statusColor, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: statusColor.withOpacity(0.3),
+                        spreadRadius: 1,
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.circle,
+                        color: statusColor,
+                        size: 12,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.status.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Dynamic fields based on types
+                ..._buildDetailCards(textColor),
+              ],
             ),
-            const SizedBox(height: 32),
-
-            // Dynamic fields based on types
-            if (widget.types == 'car') ...[
-              _buildDetailRow(
-                  Icons.directions_car, 'Vehicle ID', _itemDetails!['vehicle_id'] ?? 'N/A', textColor, Colors.blueAccent),
-              _buildDetailRow(
-                  Icons.person, 'Requestor ID', _itemDetails!['requestor_id'] ?? 'N/A', textColor, Colors.orange),
-              _buildDetailRow(Icons.calendar_today, 'Date Out',
-                  _itemDetails!['date_out'] ?? 'N/A', textColor, Colors.purple),
-              _buildDetailRow(Icons.calendar_today, 'Date In',
-                  _itemDetails!['date_in'] ?? 'N/A', textColor, Colors.green),
-              _buildDetailRow(Icons.speed, 'Total Distance',
-                  _itemDetails!['total_distance'].toString(), textColor, Colors.redAccent),
-            ] else if (widget.types == 'leave') ...[
-              _buildDetailRow(
-                  Icons.person, 'Requestor ID', _itemDetails!['requestor_id'] ?? 'N/A', textColor, Colors.orange),
-              _buildDetailRow(Icons.calendar_today, 'Leave From',
-                  _itemDetails!['take_leave_from'] ?? 'N/A', textColor, Colors.green),
-              _buildDetailRow(Icons.calendar_today, 'Leave To',
-                  _itemDetails!['take_leave_to'] ?? 'N/A', textColor, Colors.redAccent),
-              _buildDetailRow(Icons.timelapse, 'Days',
-                  _itemDetails!['days'].toString(), textColor, Colors.blue),
-            ] else if (widget.types == 'meeting') ...[
-              _buildDetailRow(Icons.room, 'Room ID',
-                  _itemDetails!['room_id'] ?? 'N/A', textColor, Colors.teal),
-              _buildDetailRow(Icons.person, 'Employee ID',
-                  _itemDetails!['employee_id'] ?? 'N/A', textColor, Colors.orange),
-              _buildDetailRow(Icons.calendar_today, 'From',
-                  _itemDetails!['from_date_time'] ?? 'N/A', textColor, Colors.green),
-              _buildDetailRow(Icons.calendar_today, 'To',
-                  _itemDetails!['to_date_time'] ?? 'N/A', textColor, Colors.redAccent),
-              _buildDetailRow(Icons.create, 'Created Date',
-                  _itemDetails!['date_create'] ?? 'N/A', textColor, Colors.blue),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  // Method to build each row of details with a customized icon color
-  Widget _buildDetailRow(
-      IconData icon, String label, String value, Color textColor, Color iconColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 22, color: iconColor),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
-              ),
-            ],
+  // Build a list of detail cards based on the type
+  List<Widget> _buildDetailCards(Color textColor) {
+    final type = widget.types;
+    final details = <Widget>[];
+    final iconColorMap = _iconColors(type);
+
+    if (type == 'car') {
+      details.addAll([
+        _buildDetailCard(
+            Icons.directions_car, 'Vehicle ID', _itemDetails!['vehicle_id'] ?? 'N/A', iconColorMap['Vehicle ID']!, textColor),
+        _buildDetailCard(
+            Icons.person, 'Requestor ID', _itemDetails!['requestor_id'] ?? 'N/A', iconColorMap['Requestor ID']!, textColor),
+        _buildDetailCard(
+            Icons.calendar_today, 'Date Out', _itemDetails!['date_out'] ?? 'N/A', iconColorMap['Date Out']!, textColor),
+        _buildDetailCard(
+            Icons.calendar_today, 'Date In', _itemDetails!['date_in'] ?? 'N/A', iconColorMap['Date In']!, textColor),
+        _buildDetailCard(
+            Icons.speed, 'Total Distance', _itemDetails!['total_distance']?.toString() ?? 'N/A', iconColorMap['Total Distance']!, textColor),
+      ]);
+    } else if (type == 'leave') {
+      details.addAll([
+        _buildDetailCard(
+            Icons.person, 'Requestor ID', _itemDetails!['requestor_id'] ?? 'N/A', iconColorMap['Requestor ID']!, textColor),
+        _buildDetailCard(
+            Icons.calendar_today, 'Leave From', _itemDetails!['take_leave_from'] ?? 'N/A', iconColorMap['Leave From']!, textColor),
+        _buildDetailCard(
+            Icons.calendar_today, 'Leave To', _itemDetails!['take_leave_to'] ?? 'N/A', iconColorMap['Leave To']!, textColor),
+        _buildDetailCard(
+            Icons.timelapse, 'Days', _itemDetails!['days']?.toString() ?? 'N/A', iconColorMap['Days']!, textColor),
+      ]);
+    } else if (type == 'meeting') {
+      details.addAll([
+        _buildDetailCard(
+            Icons.room, 'Room ID', _itemDetails!['room_id'] ?? 'N/A', iconColorMap['Room ID']!, textColor),
+        _buildDetailCard(
+            Icons.person, 'Employee ID', _itemDetails!['employee_id'] ?? 'N/A', iconColorMap['Employee ID']!, textColor),
+        _buildDetailCard(
+            Icons.calendar_today, 'From', _itemDetails!['from_date_time'] ?? 'N/A', iconColorMap['From']!, textColor),
+        _buildDetailCard(
+            Icons.calendar_today, 'To', _itemDetails!['to_date_time'] ?? 'N/A', iconColorMap['To']!, textColor),
+        _buildDetailCard(
+            Icons.create, 'Created Date', _itemDetails!['date_create'] ?? 'N/A', iconColorMap['Created Date']!, textColor),
+      ]);
+    }
+
+    return details;
+  }
+
+  // Method to build each detail card with a customized icon color
+  Widget _buildDetailCard(
+      IconData icon, String label, String value, Color iconColor, Color textColor) {
+    return Card(
+      elevation: 3,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: iconColor,
+          size: 28,
+        ),
+        title: Text(
+          label,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: textColor,
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              color: textColor,
-            ),
+        ),
+        trailing: Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            color: textColor,
           ),
-        ],
+        ),
       ),
     );
   }

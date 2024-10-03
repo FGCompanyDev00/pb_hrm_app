@@ -121,3 +121,7 @@ flutter:
     - assets/leave_calendar.png
     - assets/cancel.png
     - assets/account_settings.png
+    - assets/box-time.png
+    - assets/calendar-icon.png
+    - assets/title.png
+    - assets/task.png

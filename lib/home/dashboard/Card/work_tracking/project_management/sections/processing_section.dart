@@ -3,6 +3,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_processing.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/update_processing.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/view_processing.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
@@ -10,7 +12,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-
 
 class ProcessingSection extends StatefulWidget {
   final String projectId;
@@ -37,7 +38,6 @@ class _ProcessingSectionState extends State<ProcessingSection> {
     _fetchMeetingData();
   }
 
-  // Fetch meeting data from the new API endpoint
   Future<void> _fetchMeetingData() async {
     setState(() {
       _isLoading = true;
@@ -97,7 +97,6 @@ class _ProcessingSectionState extends State<ProcessingSection> {
     }
   }
 
-  // Get color based on status
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Pending':
@@ -111,7 +110,6 @@ class _ProcessingSectionState extends State<ProcessingSection> {
     }
   }
 
-  // Show add processing page
   void _showAddProcessingPage() async {
     final result = await Navigator.push(
       context,
@@ -128,42 +126,19 @@ class _ProcessingSectionState extends State<ProcessingSection> {
     }
   }
 
-  // Show view meeting modal
-  void _showViewMeetingModal(Map<String, dynamic> meeting) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(meeting['title'] ?? 'No Title'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Status: ${meeting['s_name'] ?? 'Unknown'}', style: TextStyle(color: _getStatusColor(meeting['s_name'] ?? 'Unknown'))),
-                const SizedBox(height: 10),
-                Text('Start Date: ${meeting['from_date'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(meeting['from_date'])) : 'N/A'}'),
-                const SizedBox(height: 10),
-                Text('Due Date: ${meeting['to_date'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(meeting['to_date'])) : 'N/A'}'),
-                const SizedBox(height: 10),
-                const Text('Description:', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text(meeting['description'] ?? 'No Description'),
-                const SizedBox(height: 10),
-                // Attachments and Assigned Members can be added here if available
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
+  void _showViewProcessingPage(Map<String, dynamic> meeting) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ViewProcessingPage(
+          meetingId: meeting['meeting_id'],
+          projectId: widget.projectId,
+          baseUrl: widget.baseUrl,
+        ),
+      ),
     );
   }
 
-  // Show delete confirmation dialog
   void _showDeleteConfirmation(String meetingId) {
     showDialog(
       context: context,
@@ -192,7 +167,6 @@ class _ProcessingSectionState extends State<ProcessingSection> {
     );
   }
 
-  // Delete a meeting
   Future<void> _deleteMeeting(String meetingId) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -232,92 +206,238 @@ class _ProcessingSectionState extends State<ProcessingSection> {
     }
   }
 
-  // Build processing task card UI
   Widget _buildProcessingTaskCard(Map<String, dynamic> meeting) {
-    final progressColors = {
-      'Pending': Colors.orange,
-      'Processing': Colors.blue,
-      'Finished': Colors.green,
-    };
-
     final fromDate = meeting['from_date'] != null ? DateTime.parse(meeting['from_date']) : DateTime.now();
     final toDate = meeting['to_date'] != null ? DateTime.parse(meeting['to_date']) : DateTime.now();
-    final daysRemaining = toDate.difference(DateTime.now()).inDays;
+    final now = DateTime.now();
+    final daysRemaining = toDate.difference(now).inDays;
+    Color daysColor;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 10.0),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFFE0E0F0),
-            Color(0xFFF7F7FF),
-            Color(0xFFFFFFFF),
-          ],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            spreadRadius: 1,
-            offset: const Offset(4, 4),
-          ),
-        ],
-        borderRadius: BorderRadius.circular(16.0),
-      ),
-      child: ListTile(
-        onTap: () => _showViewMeetingModal(meeting),
-        title: Text(
-          meeting['title'] ?? 'No Title',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Status: ${meeting['s_name'] ?? 'Unknown'}', style: TextStyle(color: _getStatusColor(meeting['s_name'] ?? 'Unknown'))),
-            Text('From: ${DateFormat('yyyy-MM-dd').format(fromDate)}'),
-            Text('To: ${DateFormat('yyyy-MM-dd').format(toDate)}'),
-            Text('Days Remaining: $daysRemaining'),
-          ],
-        ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'Delete') {
-              _showDeleteConfirmation(meeting['meeting_id']);
-            } else if (value == 'View') {
-              _showViewMeetingModal(meeting);
-            }
-          },
-          itemBuilder: (BuildContext context) {
-            return ['View', 'Delete'].map((String choice) {
-              return PopupMenuItem<String>(
-                value: choice,
-                child: Text(choice),
-              );
-            }).toList();
-          },
-        ),
-      ),
-    );
-  }
+    String daysText;
+    if (daysRemaining > 0) {
+      daysColor = Colors.orange;
+      daysText = '$daysRemaining day${daysRemaining > 1 ? 's' : ''} remaining';
+    } else if (daysRemaining == 0) {
+      daysColor = Colors.red;
+      daysText = 'Today is the end date';
+    } else {
+      daysColor = Colors.red;
+      daysText = 'Ended ${-daysRemaining} day${-daysRemaining > 1 ? 's' : ''} ago';
+    }
 
-  // Build icon and text row
-  Widget _buildIconTextRow({required IconData icon, required String label, required Color iconColor}) {
-    return Row(
-      children: [
-        Icon(icon, color: iconColor, size: 18),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.black87,
+    return GestureDetector(
+      onTap: () {
+        _showViewProcessingPage(meeting);
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 12.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              spreadRadius: 1,
+              offset: const Offset(4, 4),
             ),
+          ],
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Status and Update Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.access_time, color: _getStatusColor(meeting['s_name'] ?? 'Unknown')),
+                      const SizedBox(width: 8),
+                      Text(
+                        meeting['s_name'] ?? 'Unknown',
+                        style: TextStyle(
+                          color: _getStatusColor(meeting['s_name'] ?? 'Unknown'),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UpdateProcessingPage(
+                                meetingId: meeting['meeting_id'],
+                                projectId: widget.projectId,
+                                baseUrl: widget.baseUrl,
+                              ),
+                            ),
+                          ).then((value) {
+                            if (value == true) {
+                              _fetchMeetingData();
+                            }
+                          });
+                        },
+                        child: const CircleAvatar(
+                          backgroundColor: Colors.green,
+                          child: Icon(Icons.alarm, color: Colors.white, size: 16),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UpdateProcessingPage(
+                                meetingId: meeting['meeting_id'],
+                                projectId: widget.projectId,
+                                baseUrl: widget.baseUrl,
+                              ),
+                            ),
+                          ).then((value) {
+                            if (value == true) {
+                              _fetchMeetingData();
+                            }
+                          });
+                        },
+                        child: const Text(
+                          'Update',
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Title Section
+              Row(
+                children: [
+                  Image.asset('assets/title.png', width: 20, height: 20),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Title: ',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      meeting['title'] ?? 'No Title',
+                      style: const TextStyle(
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Start and End Date Section
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Image.asset('assets/calendar-icon.png', width: 20, height: 20),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Start Date:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${DateFormat('yyyy-MM-dd').format(fromDate)} ${meeting['start_time'] ?? ''}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Image.asset('assets/box-time.png', width: 20, height: 20),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'End Date:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${DateFormat('yyyy-MM-dd').format(toDate)} ${meeting['end_time'] ?? ''}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Days Remaining Section
+              Row(
+                children: [
+                  Icon(Icons.calendar_today, size: 16, color: daysColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    daysText,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: daysColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: RichText(
+                  text: TextSpan(
+                    children: [
+                      const TextSpan(
+                        text: 'Created by: ',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.green,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      TextSpan(
+                        text: meeting['create_by'] ?? 'Unknown',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black,
+                          fontStyle: FontStyle.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 
@@ -332,15 +452,13 @@ class _ProcessingSectionState extends State<ProcessingSection> {
 
     return Column(
       children: [
-        // Status filter and add button
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
+              // Status Dropdown
               Expanded(
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
+                child: Container(
                   decoration: BoxDecoration(
                     gradient: isDarkMode
                         ? const LinearGradient(
@@ -367,7 +485,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _statusOptions.contains(_selectedStatus) ? _selectedStatus : null,
-                      icon: const Icon(Icons.arrow_downward, color: Colors.amber),
+                      icon: Image.asset('assets/task.png', width: 24, height: 24),
                       iconSize: 28,
                       elevation: 16,
                       dropdownColor: isDarkMode ? const Color(0xFF424242) : Colors.white,
@@ -386,7 +504,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                           value: value,
                           child: Row(
                             children: [
-                              Icon(Icons.circle, color: _getStatusColor(value), size: 14),
+                              Icon(Icons.access_time, color: _getStatusColor(value), size: 14),
                               const SizedBox(width: 10),
                               Text(value),
                             ],
@@ -398,15 +516,12 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                 ),
               ),
               const SizedBox(width: 8),
+              // Add Button
               IconButton(
                 icon: Container(
                   decoration: BoxDecoration(
+                    color: Colors.green,
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Colors.greenAccent, Colors.teal],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.2),
@@ -428,7 +543,6 @@ class _ProcessingSectionState extends State<ProcessingSection> {
             ],
           ),
         ),
-        // Meeting list
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())

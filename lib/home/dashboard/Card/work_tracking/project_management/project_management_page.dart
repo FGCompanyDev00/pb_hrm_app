@@ -1,35 +1,66 @@
-// project_management_page.dart
-
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/assignment_section.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/processing_section.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/chat_section.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 class ProjectManagementPage extends StatefulWidget {
   final String projectId;
   final String baseUrl;
 
-  const ProjectManagementPage({super.key, required this.projectId, required this.baseUrl});
+  const ProjectManagementPage({
+    Key? key,
+    required this.projectId,
+    required this.baseUrl,
+  }) : super(key: key);
 
   @override
   _ProjectManagementPageState createState() => _ProjectManagementPageState();
 }
 
-class _ProjectManagementPageState extends State<ProjectManagementPage> with TickerProviderStateMixin {
+class _ProjectManagementPageState extends State<ProjectManagementPage>
+    with TickerProviderStateMixin, RouteAware {
   late TabController _tabController;
   String _currentUserId = '';
+  bool _isRefreshing = false;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _loadUserData().then((_) {
+      _refreshData();
+    });
     _tabController = TabController(length: 3, vsync: this);
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _refreshData();
+    });
   }
 
-  // Load current user ID from shared preferences
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)! as PageRoute);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _timer?.cancel();
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    _refreshData();
+  }
+
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -37,10 +68,14 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Tick
     });
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<void> _refreshData() async {
+    setState(() {
+      _isRefreshing = true;
+    });
+    await _loadUserData();
+    setState(() {
+      _isRefreshing = false;
+    });
   }
 
   @override
@@ -97,52 +132,52 @@ class _ProjectManagementPageState extends State<ProjectManagementPage> with Tick
           ),
         ),
       ),
-      body: Column(
-        children: [
-          TabBar(
-            isScrollable: true,
-            controller: _tabController,
-            labelColor: Colors.amber,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Colors.amber,
-            labelStyle: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.normal,
-            ),
-            tabs: const [
-              Tab(text: 'Processing or Detail'),
-              Tab(text: 'Assignment /Task'),
-              Tab(text: 'Comment/Chat'),
-            ],
-          ),
-          Expanded(
-            child: TabBarView(
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: Column(
+          children: [
+            TabBar(
+              isScrollable: true,
               controller: _tabController,
-              children: [
-                // Processing Section
-                ProcessingSection(
-                  projectId: widget.projectId,
-                  baseUrl: widget.baseUrl,
-                ),
-                // Assignment Section
-                AssignmentSection(
-                  projectId: widget.projectId,
-                  baseUrl: widget.baseUrl,
-                ),
-                // Chat Section
-                ChatSection(
-                  projectId: widget.projectId,
-                  baseUrl: widget.baseUrl,
-                  currentUserId: _currentUserId,
-                ),
+              labelColor: Colors.amber,
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: Colors.amber,
+              labelStyle: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.normal,
+              ),
+              tabs: const [
+                Tab(text: 'Processing or Detail'),
+                Tab(text: 'Assignment /Task'),
+                Tab(text: 'Comment/Chat'),
               ],
             ),
-          ),
-        ],
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  ProcessingSection(
+                    projectId: widget.projectId,
+                    baseUrl: widget.baseUrl,
+                  ),
+                  AssignmentSection(
+                    projectId: widget.projectId,
+                    baseUrl: widget.baseUrl,
+                  ),
+                  ChatSection(
+                    projectId: widget.projectId,
+                    baseUrl: widget.baseUrl,
+                    currentUserId: _currentUserId,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

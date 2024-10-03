@@ -396,9 +396,6 @@ Widget getTypeText(String type) {
   }
 }
 
-
-    
-
     // Safe date formatting method
     String formatDate(String? dateStr) {
       try {
@@ -673,7 +670,7 @@ class DetailsPage extends StatelessWidget {
               child: const Center(
                 child: Column(
                   children: [
-                    SizedBox(height: 65),
+                    SizedBox(height: 85),
                     Text(
                       'Details',
                       style: TextStyle(
@@ -687,7 +684,7 @@ class DetailsPage extends StatelessWidget {
               ),
             ),
             Positioned(
-              top: 55,
+              top: 75,
               left: 16,
               child: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.black),
