@@ -1,10 +1,16 @@
+// add_assignment.dart
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_members.dart';
-import 'package:pb_hrsystem/services/work_tracking_service.dart';
-import 'package:flutter/foundation.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_assignment_members.dart';
+import 'package:provider/provider.dart';
+import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'add_processing_members.dart'; // Ensure this path is correct based on your project structure
 
 class AddAssignmentPage extends StatefulWidget {
   final String projectId;
@@ -17,113 +23,332 @@ class AddAssignmentPage extends StatefulWidget {
   });
 
   @override
-  State<AddAssignmentPage> createState() => _AddAssignmentPageState();
+  _AddAssignmentPageState createState() => _AddAssignmentPageState();
 }
 
 class _AddAssignmentPageState extends State<AddAssignmentPage> {
   final _formKey = GlobalKey<FormState>();
-  final WorkTrackingService _workTrackingService = WorkTrackingService();
-
   String _title = '';
   String _description = '';
-  String _statusId = '';
-  List<File> _selectedFiles = [];
+  String _selectedStatus = 'Processing';
+  String _statusId = '0a8d93f0-1c05-42b2-8e56-984a578ef077';
   List<Map<String, dynamic>> _selectedMembers = [];
-  final List<Map<String, dynamic>> _statusOptions = [
-    {'id': '40d2ba5e-a978-47ce-bc48-caceca8668e9', 'name': 'Pending'},
-    {'id': '2d9cda36-8622-4517-94b8-b70dd3d26b64', 'name': 'Processing'},
-    {'id': '6e0f9350-d83f-49c8-a10c-1ec5c4b6b4a3', 'name': 'Finished'},
-  ];
+  List<PlatformFile> _newFiles = [];
+  bool _isLoading = false;
 
-  @override
-  void initState() {
-    super.initState();
+  final Map<String, String> _statusMap = {
+    'Error': '87403916-9113-4e2e-9d7d-b5ed269fe20a',
+    'Pending': '40d2ba5e-a978-47ce-bc48-caceca8668e9',
+    'Processing': '0a8d93f0-1c05-42b2-8e56-984a578ef077',
+    'Finished': 'e35569eb-75e1-4005-9232-bfb57303b8b3',
+  };
 
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'Pending':
+        return Colors.orange;
+      case 'Processing':
+        return Colors.blue;
+      case 'Finished':
+        return Colors.green;
+      case 'Error':
+        return Colors.red;
+      default:
+        return Colors.black;
+    }
   }
 
-  Future<void> _selectFiles() async {
+  /// Opens the member selection page and retrieves selected members
+  Future<void> _navigateToAddMembers() async {
+    final selected = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            SelectAssignmentMembersPage(projectId: widget.projectId, baseUrl: widget.baseUrl,),
+      ),
+    );
+    if (selected != null && selected is List<Map<String, dynamic>>) {
+      await _fetchMembersImages(selected);
+    }
+  }
+
+  Future<void> _fetchMembersImages(List<Map<String, dynamic>> members) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) {
+      _showErrorDialog('Token is null. Please log in again.');
+      return;
+    }
+
+    List<Map<String, dynamic>> membersWithImages = [];
+    for (var member in members) {
+      try {
+        final response = await http.get(
+          Uri.parse('${widget.baseUrl}/api/profile/${member['employee_id']}'),
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        );
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          membersWithImages.add({
+            'employee_id': member['employee_id'],
+            'employee_name': member['name'],
+            'employee_surname': member['surname'],
+            'images': data['images'] ?? '',
+          });
+        } else {
+          membersWithImages.add({
+            'employee_id': member['employee_id'],
+            'employee_name': member['name'],
+            'employee_surname': member['surname'],
+            'images': '',
+          });
+        }
+      } catch (e) {
+        membersWithImages.add({
+          'employee_id': member['employee_id'],
+          'employee_name': member['name'],
+          'employee_surname': member['surname'],
+          'images': '',
+        });
+      }
+    }
+
+    setState(() {
+      _selectedMembers = membersWithImages;
+    });
+  }
+
+  /// Opens the file picker for selecting multiple files
+  Future<void> _addFiles() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
     );
 
     if (result != null) {
       setState(() {
-        _selectedFiles = result.paths.map((path) => File(path!)).toList();
+        _newFiles.addAll(result.files);
       });
     }
   }
 
-  Future<void> _selectMembers() async {
-    final selectedMembers = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SelectProcessingMembersPage(projectId: widget.projectId),
-      ),
-    );
+  /// Handles the assignment creation process
+  Future<void> _createAssignment() async {
+    if (!_formKey.currentState!.validate()) {
+      _showErrorDialog('Please correct the errors in the form.');
+      return;
+    }
 
-    if (selectedMembers != null) {
+    if (_selectedMembers.isEmpty) {
+      _showErrorDialog('Please select at least one member.');
+      return;
+    }
+
+    _formKey.currentState!.save();
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      _showErrorDialog('Authentication token is missing. Please log in again.');
       setState(() {
-        _selectedMembers = List<Map<String, dynamic>>.from(selectedMembers);
+        _isLoading = false;
       });
+      return;
+    }
+
+    try {
+      // Prepare memberDetails as JSON string
+      List<Map<String, dynamic>> memberDetails = _selectedMembers
+          .map((member) => {"employee_id": member['employee_id']})
+          .toList();
+      String memberDetailsStr = jsonEncode(memberDetails);
+
+      // Create multipart request
+      var uri = Uri.parse('${widget.baseUrl}/api/work-tracking/ass/insert');
+      var request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $token';
+
+      // Add form fields
+      request.fields['project_id'] = widget.projectId;
+      request.fields['status_id'] = _statusId;
+      request.fields['title'] = _title;
+      request.fields['descriptions'] = _description;
+      request.fields['memberDetails'] = memberDetailsStr;
+
+      // Add files if any
+      for (var file in _newFiles) {
+        if (file.path != null) {
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'file_name',
+              file.path!,
+              filename: file.name,
+            ),
+          );
+        }
+      }
+
+      // Send the request
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _showSuccessDialog('Assignment created successfully.');
+        _clearForm();
+      } else {
+        String errorMessage = 'Failed to create assignment.';
+        try {
+          final responseData = jsonDecode(response.body);
+          if (responseData['message'] != null) {
+            errorMessage = responseData['message'];
+          }
+        } catch (_) {}
+        _showErrorDialog(errorMessage);
+      }
+    } catch (e) {
+      _showErrorDialog('Error creating assignment: $e');
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  /// Clears the form after successful submission
+  void _clearForm() {
+    setState(() {
+      _title = '';
+      _description = '';
+      _selectedStatus = 'Processing';
+      _statusId = _statusMap[_selectedStatus]!;
+      _selectedMembers = [];
+      _newFiles = [];
+    });
+    _formKey.currentState!.reset();
+  }
+
+  /// Displays an error dialog
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Error'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Displays a success dialog
+  void _showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Success'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Launches the file URL in the default browser or file handler
+  Future<void> _downloadFile(String url, String originalName) async {
+    final Uri fileUri = Uri.parse(url);
+
+    if (await canLaunchUrl(fileUri)) {
+      await launchUrl(fileUri, mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not launch the file URL')),
+      );
     }
   }
 
-  Future<void> _submitAssignment() async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-
-      final assignmentData = {
-        'status_id': _statusId,
-        'title': _title,
-        'descriptions': _description,
-        'memberDetails': jsonEncode(_selectedMembers),
-        'file_name': _selectedFiles, // Handle file upload separately
-      };
-
-      try {
-        // Add new assignment
-        final asId = await _workTrackingService.addAssignment(
-          widget.projectId,
-          assignmentData,
-        );
-
-        if (asId != null) {
-          // Handle file upload
-          if (_selectedFiles.isNotEmpty) {
-            await _workTrackingService.addFilesToAssignment(asId, _selectedFiles);
-          }
-
-          // Handle member addition
-          if (_selectedMembers.isNotEmpty) {
-            await _workTrackingService.addMembersToAssignment(asId, _selectedMembers);
-          }
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Assignment created successfully')),
-          );
-
-          Navigator.pop(context, true);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to create assignment')),
-          );
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('Error submitting assignment: $e');
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save assignment')),
-        );
-      }
+  /// Builds the list of selected files with options to download or remove
+  Widget _buildFileList() {
+    if (_newFiles.isEmpty) {
+      return const Center(child: Text('No files selected.'));
     }
+
+    return Column(
+      children: _newFiles.map((file) {
+        return ListTile(
+          leading: const Icon(Icons.attach_file, color: Colors.green),
+          title: Text(file.name),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Download is not applicable here since files are not uploaded yet
+              // Remove file
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.red),
+                onPressed: () {
+                  setState(() {
+                    _newFiles.remove(file);
+                  });
+                },
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Builds the list of selected members with their avatars
+  Widget _buildSelectedMembers() {
+    if (_selectedMembers.isEmpty) return const Text('No members selected.');
+
+    return Wrap(
+      spacing: 8.0,
+      children: _selectedMembers.map((member) {
+        return Chip(
+          avatar: CircleAvatar(
+            backgroundImage: member['images'] != null && member['images'] != ''
+                ? NetworkImage(member['images'])
+                : const AssetImage('assets/default_avatar.png') as ImageProvider,
+          ),
+          label: Text('${member['name']} ${member['surname']}'),
+          onDeleted: () {
+            setState(() {
+              _selectedMembers.remove(member);
+            });
+          },
+        );
+      }).toList(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: const BoxDecoration(
@@ -156,66 +381,184 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
             Navigator.pop(context);
           },
         ),
+        actions: [
+          ElevatedButton.icon(
+            onPressed: _createAssignment,
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text(
+              '+ Add',
+              style: TextStyle(color: Colors.white),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDBB342), // Hex #DBB342
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+        ],
         toolbarHeight: 80,
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              // Title
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Title'),
-                validator: (value) => value!.isEmpty ? 'Please enter a title' : null,
-                onSaved: (value) => _title = value!,
-              ),
-              const SizedBox(height: 16),
-              // Description
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Description'),
-                maxLines: 5,
-                validator: (value) => value!.isEmpty ? 'Please enter a description' : null,
-                onSaved: (value) => _description = value!,
-              ),
-              const SizedBox(height: 16),
-              // Status
-              DropdownButtonFormField<String>(
-                decoration: const InputDecoration(labelText: 'Status'),
-                items: _statusOptions.map((status) {
-                  return DropdownMenuItem<String>(
-                    value: status['id'],
-                    child: Text(status['name']),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _statusId = value!;
-                  });
-                },
-                validator: (value) => value == null ? 'Please select a status' : null,
-              ),
-              const SizedBox(height: 16),
-              // Members
-              ElevatedButton(
-                onPressed: _selectMembers,
-                child: const Text('Select Members'),
-              ),
-              const SizedBox(height: 16),
-              // Files
-              ElevatedButton(
-                onPressed: _selectFiles,
-                child: const Text('Select Files'),
-              ),
-              const SizedBox(height: 16),
-              // Submit Button
-              ElevatedButton(
-                onPressed: _submitAssignment,
-                child: const Text('Create Assignment'),
-              ),
-            ],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title Input
+                TextFormField(
+                  decoration: const InputDecoration(
+                    labelText: 'Title',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter title';
+                    }
+                    return null;
+                  },
+                  onSaved: (value) {
+                    _title = value!;
+                  },
+                ),
+                const SizedBox(height: 24),
+                // Description Input
+                TextFormField(
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 5,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter description';
+                    }
+                    return null;
+                  },
+                  onSaved: (value) {
+                    _description = value!;
+                  },
+                ),
+                const SizedBox(height: 24),
+                // Status Dropdown
+                DropdownButtonFormField<String>(
+                  value: _selectedStatus,
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                  icon: Image.asset(
+                    'assets/task.png',
+                    width: 24,
+                    height: 24,
+                  ),
+                  items: ['Processing', 'Pending', 'Finished', 'Error']
+                      .map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            color: _getStatusColor(value),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(value),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _selectedStatus = newValue!;
+                      _statusId = _statusMap[_selectedStatus]!;
+                    });
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select status';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 24),
+                // Member Selection
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Selected Members:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _navigateToAddMembers,
+                      icon: const Icon(Icons.person_add, color: Colors.white),
+                      label: const Text(
+                        'Add Members',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _buildSelectedMembers(),
+                const SizedBox(height: 24),
+                // File Upload
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Attached Files:',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _addFiles,
+                      icon: const Icon(Icons.add, color: Colors.white),
+                      label: const Text(
+                        'Add Files',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _buildFileList(),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),

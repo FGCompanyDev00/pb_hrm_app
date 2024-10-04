@@ -1,3 +1,5 @@
+// add_processing.dart
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -7,17 +9,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_members.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_processing_members.dart';
 
 class AddProcessingPage extends StatefulWidget {
   final String projectId;
   final String baseUrl;
 
   const AddProcessingPage({
-    super.key,
+    Key? key,
     required this.projectId,
     required this.baseUrl,
-  });
+  }) : super(key: key);
 
   @override
   _AddProcessingPageState createState() => _AddProcessingPageState();
@@ -130,12 +132,17 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     final selected = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            SelectProcessingMembersPage(projectId: widget.projectId),
+        builder: (context) => SelectProcessingMembersPage(
+          projectId: widget.projectId,
+          baseUrl: widget.baseUrl,
+        ),
       ),
     );
     if (selected != null && selected is List<Map<String, dynamic>>) {
       await _fetchMembersImages(selected);
+    } else {
+      // Handle the case where selected is not the expected type
+      _showErrorDialog('Failed to select members correctly.');
     }
   }
 
@@ -157,7 +164,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
           },
         );
         if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
+          final Map<String, dynamic> data = jsonDecode(response.body)['results'] ?? {};
           membersWithImages.add({
             'employee_id': member['employee_id'],
             'employee_name': member['name'],

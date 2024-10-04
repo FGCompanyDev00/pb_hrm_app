@@ -357,41 +357,56 @@ class WorkTrackingService {
     }
   }
 
-  // Add a new assignment to a project
-  Future<String?> addAssignment(String projectId, Map<String, dynamic> assignmentData) async {
-    final headers = await _getHeaders();
+  /// Add a new assignment to a project with file uploads
+  Future<String?> addAssignment(
+      String baseUrl,
+      Map<String, dynamic> assignmentData,
+      List<File> files,
+      ) async {
+    try {
+      var uri = Uri.parse('$baseUrl/api/work-tracking/ass/insert');
+      var request = http.MultipartRequest('POST', uri);
 
-    // Prepare the request
-    var request = http.MultipartRequest(
-      'POST',
-      Uri.parse('$baseUrl/api/work-tracking/ass/insert'),
-    );
-    request.headers.addAll(headers);
+      // Add headers
+      final headers = await _getHeaders();
+      request.headers.addAll(headers);
 
-    // Add fields to the request
-    request.fields['project_id'] = projectId;
-    assignmentData.forEach((key, value) {
-      if (value != null && value is! List<File>) {
-        request.fields[key] = value.toString();
+      // Add form fields
+      request.fields['project_id'] = assignmentData['project_id'];
+      request.fields['status_id'] = assignmentData['status_id'];
+      request.fields['title'] = assignmentData['title'];
+      request.fields['descriptions'] = assignmentData['descriptions'];
+      request.fields['memberDetails'] = assignmentData['memberDetails'];
+
+      // Add files
+      for (var file in files) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'file_name',
+            file.path,
+            filename: file.path.split('/').last,
+          ),
+        );
+            }
+
+      // Send the request
+      var streamedResponse = await request.send();
+
+      // Parse the response
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        // The API returns 'id' as 'as_id'
+        return data['id'];
+      } else {
+        throw Exception('Failed to add assignment: ${response.reasonPhrase}');
       }
-    });
-
-    // Add files to the request
-    if (assignmentData['file_name'] != null && assignmentData['file_name'] is List<File>) {
-      for (var file in assignmentData['file_name']) {
-        request.files.add(await http.MultipartFile.fromPath('file_name', file.path));
+    } catch (e) {
+      if (kDebugMode) {
+        print('Exception in addAssignment: $e');
       }
-    }
-
-    // Send the request
-    var response = await request.send();
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      var responseBody = await response.stream.bytesToString();
-      var decodedResponse = jsonDecode(responseBody);
-      return decodedResponse['as_id'];
-    } else {
-      throw Exception('Failed to add assignment: ${response.reasonPhrase}');
+      throw Exception('Failed to add assignment: $e');
     }
   }
 
@@ -442,28 +457,47 @@ class WorkTrackingService {
     }
   }
 
-  // Add files to an assignment
-  Future<void> addFilesToAssignment(String asId, List<File> files) async {
-    final headers = await _getHeaders();
+  /// Upload files to an existing assignment
+  Future<bool> addFilesToAssignment(
+      String baseUrl,
+      String assignmentId,
+      List<File> files,
+      ) async {
+    try {
+      var uri = Uri.parse('$baseUrl/api/work-tracking/ass/add-files/$assignmentId');
+      var request = http.MultipartRequest('PUT', uri);
 
-    for (var file in files) {
-      var request = http.MultipartRequest(
-        'PUT',
-        Uri.parse('$baseUrl/api/work-tracking/ass/add-files/$asId'),
-      );
-
+      // Add headers
+      final headers = await _getHeaders();
       request.headers.addAll(headers);
-      request.files.add(await http.MultipartFile.fromPath('file_name', file.path));
 
-      var response = await request.send();
+      // Add files
+      for (var file in files) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'file_name',
+            file.path,
+            filename: file.path.split('/').last,
+          ),
+        );
+            }
 
-      if (response.statusCode == 200) {
-        if (kDebugMode) {
-          print('File uploaded successfully.');
-        }
+      // Send the request
+      var streamedResponse = await request.send();
+
+      // Parse the response
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
       } else {
-        throw Exception('Failed to upload file: ${response.reasonPhrase}');
+        throw Exception('Failed to upload files: ${response.reasonPhrase}');
       }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Exception in addFilesToAssignment: $e');
+      }
+      throw Exception('Failed to upload files: $e');
     }
   }
 
