@@ -1,5 +1,3 @@
-// add_processing.dart
-
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -9,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_processing_members.dart';
 
 class AddProcessingPage extends StatefulWidget {
@@ -16,10 +15,10 @@ class AddProcessingPage extends StatefulWidget {
   final String baseUrl;
 
   const AddProcessingPage({
-    Key? key,
+    super.key,
     required this.projectId,
     required this.baseUrl,
-  }) : super(key: key);
+  });
 
   @override
   _AddProcessingPageState createState() => _AddProcessingPageState();
@@ -35,7 +34,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
   TimeOfDay? _startTime;
   DateTime? _endDate;
   TimeOfDay? _endTime;
-  File? _selectedImage;
+  List<File> _selectedImages = [];
   List<Map<String, dynamic>> _selectedMembers = [];
   bool _isLoading = false;
 
@@ -113,18 +112,26 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     }
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _pickImages() async {
     try {
       final picker = ImagePicker();
-      final XFile? image =
-      await picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
-      if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-        });
+      final List<XFile>? images = await picker.pickMultiImage();
+      if (images != null && images.isNotEmpty) {
+        for (var image in images) {
+          var compressedImage = await FlutterImageCompress.compressAndGetFile(
+            image.path,
+            image.path + '_compressed.jpg',
+            quality: 50,
+          );
+          if (compressedImage != null) {
+            setState(() {
+              _selectedImages.add(compressedImage as File);
+            });
+          }
+        }
       }
     } catch (e) {
-      _showErrorDialog('Error picking image: $e');
+      _showErrorDialog('Error picking images: $e');
     }
   }
 
@@ -141,7 +148,6 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     if (selected != null && selected is List<Map<String, dynamic>>) {
       await _fetchMembersImages(selected);
     } else {
-      // Handle the case where selected is not the expected type
       _showErrorDialog('Failed to select members correctly.');
     }
   }
@@ -164,7 +170,8 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
           },
         );
         if (response.statusCode == 200) {
-          final Map<String, dynamic> data = jsonDecode(response.body)['results'] ?? {};
+          final Map<String, dynamic> data =
+              jsonDecode(response.body)['results'] ?? {};
           membersWithImages.add({
             'employee_id': member['employee_id'],
             'employee_name': member['name'],
@@ -207,10 +214,12 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       _showErrorDialog('End date cannot be before start date.');
       return;
     }
+
     _formKey.currentState!.save();
     setState(() {
       _isLoading = true;
     });
+
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     if (token == null) {
@@ -220,6 +229,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       });
       return;
     }
+
     try {
       final fromDateStr = DateFormat('yyyy-MM-dd').format(_startDate!);
       final toDateStr = DateFormat('yyyy-MM-dd').format(_endDate!);
@@ -231,18 +241,15 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
           ? '${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}'
           : '';
 
-      // Prepare membersDetails as JSON string
       List<Map<String, dynamic>> membersDetails = _selectedMembers
           .map((member) => {"employee_id": member['employee_id']})
           .toList();
       String membersDetailsStr = jsonEncode(membersDetails);
 
-      // Create multipart request
       var uri = Uri.parse('${widget.baseUrl}/api/work-tracking/meeting/insert');
       var request = http.MultipartRequest('POST', uri);
       request.headers['Authorization'] = 'Bearer $token';
 
-      // Add fields
       request.fields['project_id'] = widget.projectId;
       request.fields['title'] = _title;
       request.fields['descriptions'] = _description;
@@ -253,37 +260,42 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       request.fields['end_time'] = endTimeStr;
       request.fields['membersDetails'] = membersDetailsStr;
 
-      // Add file if selected
-      if (_selectedImage != null) {
-        var stream = http.ByteStream(_selectedImage!.openRead());
-        var length = await _selectedImage!.length();
-        var multipartFile = http.MultipartFile(
-          'file_name',
-          stream,
-          length,
-          filename: _selectedImage!.path.split('/').last,
-        );
-        request.files.add(multipartFile);
+      if (_selectedImages.isNotEmpty) {
+        for (var image in _selectedImages) {
+          var stream = http.ByteStream(image.openRead());
+          var length = await image.length();
+          var multipartFile = http.MultipartFile(
+            'file_name',
+            stream,
+            length,
+            filename: image.path.split('/').last,
+          );
+          request.files.add(multipartFile);
+        }
       }
 
-      // Send request
       var response = await request.send();
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         _showSuccessDialog('Processing item added successfully.');
         Navigator.pop(context, true);
       } else {
         String errorMessage = 'Failed to add processing item.';
         try {
-          final responseBody = await response.stream.bytesToString();
-          final responseData = jsonDecode(responseBody);
-          errorMessage = responseData['message'] ?? errorMessage;
-        } catch (_) {}
+          final contentType = response.headers['content-type'];
+          if (contentType != null && contentType.contains('application/json')) {
+            final responseBody = await response.stream.bytesToString();
+            final responseData = jsonDecode(responseBody);
+            errorMessage = responseData['message'] ?? errorMessage;
+          } else {
+            errorMessage = 'Server error: ${response.statusCode}';
+          }
+        } catch (e) {}
         _showErrorDialog(errorMessage);
       }
     } catch (e) {
       _showErrorDialog('Error adding processing item: $e');
     }
+
     setState(() {
       _isLoading = false;
     });
@@ -320,7 +332,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
             TextButton(
               child: const Text('OK'),
               onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
+                Navigator.of(context).pop();
               },
             ),
           ],
@@ -329,43 +341,87 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     );
   }
 
+  Widget _buildSelectedImages() {
+    if (_selectedImages.isEmpty) return Container();
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 8.0,
+      children: _selectedImages.map((image) {
+        return Stack(
+          children: [
+            Image.file(
+              image,
+              width: 100,
+              height: 100,
+              fit: BoxFit.cover,
+            ),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedImages.remove(image);
+                  });
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
   Widget _buildSelectedMembers() {
     if (_selectedMembers.isEmpty) return Container();
-    int displayCount = _selectedMembers.length > 5 ? 5 : _selectedMembers.length;
-    List<Widget> avatars = [];
-    for (int i = 0; i < displayCount; i++) {
-      avatars.add(
-        Padding(
-          padding: const EdgeInsets.only(right: 4.0),
-          child: CircleAvatar(
-            backgroundImage: _selectedMembers[i]['images'] != null &&
-                _selectedMembers[i]['images'] != ''
-                ? NetworkImage(_selectedMembers[i]['images'])
-                : const AssetImage('assets/default_avatar.png') as ImageProvider,
-            radius: 20,
-          ),
-        ),
-      );
-    }
-    if (_selectedMembers.length > 5) {
-      avatars.add(
-        CircleAvatar(
-          backgroundColor: Colors.grey[300],
-          radius: 20,
-          child: Text(
-            '+${_selectedMembers.length - 5}',
-            style: const TextStyle(color: Colors.black),
-          ),
-        ),
-      );
-    }
-    return Expanded(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: avatars,
-        ),
-      ),
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 8.0,
+      children: _selectedMembers.map((member) {
+        return Stack(
+          children: [
+            CircleAvatar(
+              backgroundImage: member['images'] != null && member['images'] != ''
+                  ? NetworkImage(member['images'])
+                  : const AssetImage('assets/default_avatar.png') as ImageProvider,
+              radius: 20,
+            ),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedMembers.remove(member);
+                  });
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      }).toList(),
     );
   }
 
@@ -421,7 +477,6 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Add Button aligned to the right
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -433,18 +488,17 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                         style: TextStyle(color: Colors.white),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange, // Orange button
+                        backgroundColor: Colors.orange,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 30, vertical: 14),
+                            horizontal: 25, vertical: 14),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
+                          borderRadius: BorderRadius.circular(18.0),
                         ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
-                // Title Input
                 TextFormField(
                   decoration: const InputDecoration(
                     labelText: 'Title',
@@ -461,7 +515,6 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                   },
                 ),
                 const SizedBox(height: 24),
-                // Status Dropdown and Upload Image
                 Row(
                   children: [
                     Expanded(
@@ -509,14 +562,14 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                     ),
                     const SizedBox(width: 16),
                     ElevatedButton.icon(
-                      onPressed: _pickImage,
+                      onPressed: _pickImages,
                       icon: const Icon(Icons.upload, color: Colors.white),
                       label: const Text(
-                        'Upload Image',
+                        'Upload Images',
                         style: TextStyle(color: Colors.white),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green, // Green button
+                        backgroundColor: Colors.green,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -526,8 +579,9 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                _buildSelectedImages(),
                 const SizedBox(height: 24),
-                // Start Date-Time and End Date-Time
                 Row(
                   children: [
                     Expanded(
@@ -585,7 +639,6 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                // End Date-Time
                 Row(
                   children: [
                     Expanded(
@@ -647,7 +700,6 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                // Add People Button and Selected Members
                 Row(
                   children: [
                     ElevatedButton.icon(
@@ -658,7 +710,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                         style: TextStyle(color: Colors.white),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green, // Green button
+                        backgroundColor: Colors.green,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -667,11 +719,12 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    _buildSelectedMembers(),
+                    Expanded(
+                      child: _buildSelectedMembers(),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
-                // Description Input
                 TextFormField(
                   decoration: const InputDecoration(
                     labelText: 'Description',
@@ -689,44 +742,6 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                   },
                 ),
                 const SizedBox(height: 24),
-                // Display Selected Image
-                if (_selectedImage != null)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Selected Image:',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      Image.file(
-                        _selectedImage!,
-                        height: 200,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _selectedImage = null;
-                          });
-                        },
-                        icon: const Icon(Icons.delete, color: Colors.white),
-                        label: const Text(
-                          'Remove Image',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
               ],
             ),
           ),

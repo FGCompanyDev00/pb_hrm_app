@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -17,11 +16,11 @@ class UpdateAssignmentPage extends StatefulWidget {
   final String baseUrl;
 
   const UpdateAssignmentPage({
-    Key? key,
+    super.key,
     required this.assignmentId,
     required this.projectId,
     required this.baseUrl,
-  }) : super(key: key);
+  });
 
   @override
   _UpdateAssignmentPageState createState() => _UpdateAssignmentPageState();
@@ -48,7 +47,7 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
   bool isStatusEdited = false;
 
   // File Handling
-  List<Map<String, dynamic>> _files = [];
+  List<Map<String, dynamic>> _existingFiles = [];
   List<Map<String, dynamic>> _filesToDelete = [];
   List<PlatformFile> _newFiles = [];
 
@@ -75,6 +74,8 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
         return Colors.blue;
       case 'Finished':
         return Colors.green;
+      case 'Error':
+        return Colors.red;
       default:
         return Colors.black;
     }
@@ -108,11 +109,11 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
         final data = jsonDecode(response.body);
         setState(() {
           originalTitle = data['title'] ?? '';
-          originalDescription = data['description'] ?? '';
+          originalDescription = data['descriptions'] ?? '';
           originalStatus = data['s_name'] ?? 'Processing';
           originalStatusId = _statusMap[originalStatus] ??
               '0a8d93f0-1c05-42b2-8e56-984a578ef077';
-          _files = List<Map<String, dynamic>>.from(data['files'] ?? []);
+          _existingFiles = List<Map<String, dynamic>>.from(data['files'] ?? []);
           _isLoading = false;
         });
       } else {
@@ -218,6 +219,63 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
     }
   }
 
+  Future<void> _deleteFile(Map<String, dynamic> file) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) {
+      _showAlertDialog(
+        title: 'Authentication Error',
+        content: 'Token is null. Please log in again.',
+        isError: true,
+      );
+      return;
+    }
+
+    try {
+      final response = await http.put(
+        Uri.parse('${widget.baseUrl}/api/work-tracking/ass/delete-file/${widget.assignmentId}'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'file_id': file['file_id'], // Assuming 'file_id' is the identifier
+        }),
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        setState(() {
+          _existingFiles.remove(file);
+          _filesToDelete.remove(file);
+        });
+        _showAlertDialog(
+          title: 'Success',
+          content: 'File deleted successfully.',
+          isError: false,
+        );
+      } else {
+        String errorMessage = 'Failed to delete file.';
+        try {
+          final responseData = jsonDecode(response.body);
+          if (responseData['message'] != null) {
+            errorMessage = responseData['message'];
+          }
+        } catch (_) {}
+        _showAlertDialog(
+          title: 'Error',
+          content: errorMessage,
+          isError: true,
+        );
+      }
+    } catch (e) {
+      _showAlertDialog(
+        title: 'Error',
+        content: 'Error deleting file: $e',
+        isError: true,
+      );
+    }
+  }
+
   Future<void> _updateAssignment() async {
     // Check if any field has been edited or files have been marked for deletion
     if (!isTitleEdited &&
@@ -259,9 +317,13 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
     try {
       // Prepare the request body with updated or original data
       Map<String, dynamic> body = {
-        'title': isTitleEdited ? updatedTitle : originalTitle,
-        'descriptions': isDescriptionEdited ? updatedDescription : originalDescription,
-        'status_id': isStatusEdited ? updatedStatusId : originalStatusId,
+        "status_id": isStatusEdited
+            ? (_statusMap[updatedStatus!] ?? originalStatusId)
+            : originalStatusId,
+        "title": isTitleEdited ? (updatedTitle ?? originalTitle) : originalTitle,
+        "descriptions": isDescriptionEdited
+            ? (updatedDescription ?? originalDescription)
+            : originalDescription,
       };
 
       final response = await http.put(
@@ -279,21 +341,15 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
           await _uploadNewFiles();
         }
 
-        // Handle file deletions if API is available
-        // Since the delete files API is not yet implemented, we'll just clear the _filesToDelete list
-        // In the future, integrate the delete files API here
+        // Delete files if any
         if (_filesToDelete.isNotEmpty) {
-          // TODO: Implement API call to delete files
-          // For now, just clear the list
-          setState(() {
-            _filesToDelete.clear();
-          });
-          await _showAlertDialog(
-            title: 'Note',
-            content: 'File deletions will be handled in future updates.',
-            isError: false,
-          );
+          for (var file in _filesToDelete) {
+            await _deleteFile(file);
+          }
         }
+
+        // Refresh assignment details
+        await _fetchAssignmentDetails();
 
         // Show success dialog without navigating back
         await _showAlertDialog(
@@ -377,6 +433,7 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
         Uri.parse('${widget.baseUrl}/api/work-tracking/ass/delete/${widget.assignmentId}'),
         headers: {
           'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
         },
       );
 
@@ -387,6 +444,9 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
           content: 'Assignment deleted successfully.',
           isError: false,
         );
+
+        // Optionally, navigate back or to another page
+        Navigator.of(context).pop(); // Navigate back after deletion
       } else {
         String errorMessage = 'Failed to delete assignment.';
         try {
@@ -456,46 +516,64 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
   }
 
   Widget _buildFileList() {
-    if (_files.isEmpty && _newFiles.isEmpty) {
+    if (_existingFiles.isEmpty && _newFiles.isEmpty) {
       return const Center(child: Text('No files attached.'));
     }
 
     return Column(
       children: [
-        ..._files.map((file) {
-          final fileUrl = file['images'] != null && file['images'].isNotEmpty
+        // Existing Files
+        ..._existingFiles.map((file) {
+          final fileUrl = file['images'] != null &&
+              file['images'] is List &&
+              file['images'].isNotEmpty
               ? file['images'][0]
               : null;
           final originalName = file['originalname'] ?? 'No Name';
           final fileId = file['file_id'] ?? '';
 
-          return ListTile(
-            leading: const Icon(Icons.attach_file, color: Colors.green),
-            title: Text(originalName),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.download, color: Colors.blue),
-                  onPressed: fileUrl != null
-                      ? () => _downloadFile(fileUrl, originalName)
-                      : null,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.red),
-                  onPressed: () {
-                    setState(() {
-                      _filesToDelete.add(file);
-                    });
-                  },
-                ),
-              ],
+          final isMarkedForDeletion = _filesToDelete.contains(file);
+
+          return Opacity(
+            opacity: isMarkedForDeletion ? 0.5 : 1.0,
+            child: ListTile(
+              leading: const Icon(Icons.attach_file, color: Colors.green),
+              title: Text(originalName),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      Icons.download,
+                      color: fileUrl != null ? Colors.blue : Colors.grey,
+                    ),
+                    onPressed: fileUrl != null
+                        ? () => _downloadFile(fileUrl, originalName)
+                        : null,
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      isMarkedForDeletion ? Icons.undo : Icons.delete,
+                      color: isMarkedForDeletion ? Colors.orange : Colors.red,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        if (isMarkedForDeletion) {
+                          _filesToDelete.remove(file);
+                        } else {
+                          _filesToDelete.add(file);
+                        }
+                      });
+                    },
+                  ),
+                ],
+              ),
+              tileColor:
+              isMarkedForDeletion ? Colors.red.withOpacity(0.1) : null,
             ),
-            tileColor: _filesToDelete.contains(file)
-                ? Colors.red.withOpacity(0.1)
-                : null,
           );
         }).toList(),
+        // New Files
         ..._newFiles.map((file) {
           return ListTile(
             leading: const Icon(Icons.attach_file, color: Colors.green),
@@ -562,196 +640,192 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
         onTap: () => FocusScope.of(context).unfocus(),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Delete and Update Buttons
-                Row(
+          child: Stack(
+            children: [
+              Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _deleteAssignment,
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        label: const Text(
-                          'Delete',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey, // Grey button as per request
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 12.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
+                    // Delete and Update Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _deleteAssignment,
+                            icon: const Icon(Icons.close, color: Colors.white),
+                            label: const Text(
+                              'Delete',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey, // Grey button as per request
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 12.0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: _updateAssignment,
-                        icon: const Icon(Icons.check, color: Colors.black),
-                        label: const Text(
-                          'Update',
-                          style: TextStyle(color: Colors.black),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                          const Color(0xFFDBB342), // Hex #DBB342
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 12.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _updateAssignment,
+                            icon: const Icon(Icons.check, color: Colors.black),
+                            label: const Text(
+                              'Update',
+                              style: TextStyle(color: Colors.black),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                              const Color(0xFFDBB342), // Hex #DBB342
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 12.0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.0),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
+                    const SizedBox(height: 24),
+                    // Title Input
+                    TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'Title',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Title cannot be empty';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) {
+                        setState(() {
+                          updatedTitle = value;
+                          isTitleEdited = true;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    // Status Dropdown
+                    DropdownButtonFormField<String>(
+                      value: isStatusEdited
+                          ? updatedStatus
+                          : originalStatus,
+                      decoration: const InputDecoration(
+                        labelText: 'Status',
+                        border: OutlineInputBorder(),
+                      ),
+                      icon: Image.asset(
+                        'assets/task.png',
+                        width: 24,
+                        height: 24,
+                      ),
+                      items: ['Processing', 'Pending', 'Finished', 'Error']
+                          .map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                color: _getStatusColor(value),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(value),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            updatedStatus = newValue;
+                            updatedStatusId = _statusMap[newValue] ?? originalStatusId;
+                            isStatusEdited = true;
+                          });
+                        }
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please select a status';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    // Description Input
+                    TextFormField(
+                      initialValue: isDescriptionEdited
+                          ? updatedDescription
+                          : originalDescription,
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 5,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Description cannot be empty';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) {
+                        setState(() {
+                          updatedDescription = value;
+                          isDescriptionEdited = true;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    // Files Section
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Attached Files:',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: _addFiles,
+                          icon: const Icon(Icons.add, color: Colors.white),
+                          label: const Text(
+                            'Add Files',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 8.0, horizontal: 12.0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _buildFileList(),
+                    const SizedBox(height: 24),
                   ],
                 ),
-                const SizedBox(height: 24),
-                // Title Input
-                TextFormField(
-                  initialValue:
-                  isTitleEdited ? updatedTitle : originalTitle,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Title cannot be empty';
-                    }
-                    return null;
-                  },
-                  onChanged: (value) {
-                    setState(() {
-                      updatedTitle = value;
-                      isTitleEdited = true;
-                    });
-                  },
-                ),
-                const SizedBox(height: 24),
-                // Status Dropdown
-                DropdownButtonFormField<String>(
-                  value: isStatusEdited
-                      ? updatedStatus
-                      : originalStatus,
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    border: OutlineInputBorder(),
-                  ),
-                  icon: Image.asset(
-                    'assets/task.png',
-                    width: 24,
-                    height: 24,
-                  ),
-                  items: ['Processing', 'Pending', 'Finished', 'Error']
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            color: _getStatusColor(value),
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(value),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: isStatusEdited
-                      ? (String? newValue) {
-                    setState(() {
-                      updatedStatus = newValue!;
-                      updatedStatusId =
-                      _statusMap[updatedStatus!]!;
-                    });
-                  }
-                      : (String? newValue) {
-                    setState(() {
-                      updatedStatus = newValue!;
-                      updatedStatusId =
-                      _statusMap[updatedStatus!]!;
-                      isStatusEdited = true;
-                    });
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please select a status';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-                // Description Input
-                TextFormField(
-                  initialValue: isDescriptionEdited
-                      ? updatedDescription
-                      : originalDescription,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 5,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Description cannot be empty';
-                    }
-                    return null;
-                  },
-                  onChanged: (value) {
-                    setState(() {
-                      updatedDescription = value;
-                      isDescriptionEdited = true;
-                    });
-                  },
-                ),
-                const SizedBox(height: 24),
-                // Files Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Attached Files:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: _addFiles,
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: const Text(
-                        'Add Files',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 8.0, horizontal: 12.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                _buildFileList(),
-                const SizedBox(height: 24),
-              ],
-            ),
+              ),
+              // Positioned Delete and Update Buttons to handle opacity overlay if needed
+            ],
           ),
         ),
       ),
-      floatingActionButton: _isLoading
-          ? null
-          : null, // You can add FABs here if needed in the future
+    // floatingActionButton: _isLoading
+    //     ? null
+    //     : null, // You can add FABs here if needed in the future
     );
   }
 }

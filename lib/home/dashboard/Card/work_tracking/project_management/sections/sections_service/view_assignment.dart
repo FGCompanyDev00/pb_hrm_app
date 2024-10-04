@@ -71,16 +71,29 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        setState(() {
-          _assignmentDetails = data;
-          _files = List<Map<String, dynamic>>.from(data['files'] ?? []);
-          _members = List<Map<String, dynamic>>.from(data['members'] ?? []);
-          _isLoading = false;
-        });
+        if (data['statusCode'] == 200 && data['result'] != null && data['result'] is List && data['result'].isNotEmpty) {
+          final assignment = data['result'][0];
+
+          setState(() {
+            _assignmentDetails = assignment;
+            _files = List<Map<String, dynamic>>.from(data['files'] ?? []);
+            _members = List<Map<String, dynamic>>.from(data['members'] ?? []);
+            _isLoading = false;
+          });
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(data['message'] ?? 'Failed to load assignment details')),
+          );
+          setState(() {
+            _isLoading = false;
+            _hasError = true;
+          });
+        }
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load assignment details')),
+          SnackBar(content: Text('Failed to load assignment details: ${response.statusCode}')),
         );
         setState(() {
           _isLoading = false;
@@ -91,6 +104,10 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
       if (kDebugMode) {
         print('Failed to load assignment details: $e');
       }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching assignment details: $e')),
+      );
       setState(() {
         _isLoading = false;
         _hasError = true;
@@ -106,14 +123,18 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
         return Colors.blue;
       case 'Finished':
         return Colors.green;
+      case 'Error':
+        return Colors.red;
       default:
         return Colors.black;
     }
   }
 
   Future<void> _downloadFile(String url, String originalName) async {
-    if (await canLaunch(url)) {
-      await launch(url);
+    final Uri fileUri = Uri.parse(url);
+
+    if (await canLaunchUrl(fileUri)) {
+      await launchUrl(fileUri, mode: LaunchMode.externalApplication);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not launch the file URL')),
@@ -132,9 +153,8 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
       itemCount: _files.length,
       itemBuilder: (context, index) {
         final file = _files[index];
-        final fileUrl = file['images'] != null && file['images'].isNotEmpty
-            ? file['images'][0]
-            : null;
+        final images = file['images'];
+        final fileUrl = (images != null && images is List && images.isNotEmpty) ? images[0] : null;
         final originalName = file['originalname'] ?? 'No Name';
 
         return ListTile(
@@ -162,12 +182,12 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
       itemCount: _members.length,
       itemBuilder: (context, index) {
         final member = _members[index];
-        final fullName = '${member['name'] ?? ''} ${member['surname'] ?? ''}';
+        final fullName = '${member['name'] ?? ''} ${member['surname'] ?? ''}'.trim();
         final email = member['email'] ?? 'No Email';
 
         return ListTile(
           leading: const Icon(Icons.person, color: Colors.blue),
-          title: Text(fullName),
+          title: Text(fullName.isNotEmpty ? fullName : 'No Name'),
           subtitle: Text(email),
         );
       },
@@ -186,70 +206,62 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
         ? DateTime.parse(_assignmentDetails!['updated_at'])
         : DateTime.now();
     final status = _assignmentDetails!['s_name'] ?? 'Unknown';
+    final assignmentId = _assignmentDetails!['as_id'] ?? 'N/A';
+    final title = _assignmentDetails!['title'] ?? 'No Title';
+    final description = _assignmentDetails!['description'] ?? 'No Description';
+    final createdBy = _assignmentDetails!['create_by'] ?? 'Unknown';
+    final updatedBy = _assignmentDetails!['update_by'] ?? 'Unknown';
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Status and Title
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.access_time, color: _getStatusColor(status)),
-                  const SizedBox(width: 8),
-                  Text(
-                    status,
-                    style: TextStyle(
-                      color: _getStatusColor(status),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
+          // Status
+          Center(
+            child: Column(
+              children: [
+                Icon(Icons.access_time, color: _getStatusColor(status), size: 30),
+                const SizedBox(height: 8),
+                Text(
+                  status,
+                  style: TextStyle(
+                    color: _getStatusColor(status),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
                   ),
-                ],
-              ),
-              Text(
-                'ID: ${_assignmentDetails!['as_id'] ?? 'N/A'}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 16),
+          // Assignment ID
+          Center(
+            child: Text(
+              'ID: $assignmentId',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           // Title
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Image.asset('assets/title.png', width: 20, height: 20),
+              const Icon(Icons.title, color: Colors.purple),
               const SizedBox(width: 8),
               const Text(
                 'Title: ',
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+
                 ),
               ),
               Expanded(
                 child: Text(
-                  _assignmentDetails!['title'] ?? 'No Title',
-                  style: const TextStyle(
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Description
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  _assignmentDetails!['description'] ?? 'No Description',
+                  title,
                   style: const TextStyle(
                     fontSize: 14,
                   ),
@@ -257,25 +269,49 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          // Created By and Created At
+          const SizedBox(height: 8),
+          // Description
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.person, size: 20, color: Colors.green),
+              const Icon(Icons.description, color: Colors.orange),
               const SizedBox(width: 8),
-              Text(
-                'Created by: ${_assignmentDetails!['create_by'] ?? 'Unknown'}',
-                style: const TextStyle(
+              const Text(
+                'Description: ',
+                style: TextStyle(
                   fontSize: 14,
-                  fontStyle: FontStyle.italic,
+
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
+          // Created By
           Row(
             children: [
-              const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
+              const Icon(Icons.person, color: Colors.teal),
+              const SizedBox(width: 8),
+              Text(
+                'Created by: $createdBy',
+                style: const TextStyle(
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Created At
+          Row(
+            children: [
+              const Icon(Icons.calendar_today, color: Colors.cyan),
               const SizedBox(width: 8),
               Text(
                 'Created at: ${DateFormat('yyyy-MM-dd – kk:mm').format(createdAt)}',
@@ -286,9 +322,24 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
             ],
           ),
           const SizedBox(height: 8),
+          // Updated By
           Row(
             children: [
-              const Icon(Icons.update, size: 20, color: Colors.grey),
+              const Icon(Icons.update, color: Colors.pink),
+              const SizedBox(width: 8),
+              Text(
+                'Updated by: ${updatedBy != 'Unknown' ? updatedBy : 'N/A'}',
+                style: const TextStyle(
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Updated At
+          Row(
+            children: [
+              const Icon(Icons.update, color: Colors.lime),
               const SizedBox(width: 8),
               Text(
                 'Updated at: ${DateFormat('yyyy-MM-dd – kk:mm').format(updatedAt)}',
@@ -298,17 +349,6 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          // Files Section
-          const Text(
-            'Attached Files:',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildFileList(),
           const SizedBox(height: 24),
           // Members Section
           const Text(
@@ -320,6 +360,17 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
           ),
           const SizedBox(height: 8),
           _buildMembersList(),
+          const SizedBox(height: 24),
+          // Files Section
+          const Text(
+            'Attached Files:',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildFileList(),
         ],
       ),
     );
@@ -371,7 +422,10 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
           ? const Center(child: CircularProgressIndicator())
           : _hasError
           ? const Center(child: Text('Failed to load assignment details'))
-          : _buildAssignmentDetails(),
+          : Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: _buildAssignmentDetails(),
+      ),
     );
   }
 }

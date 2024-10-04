@@ -10,7 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'add_processing_members.dart'; // Ensure this path is correct based on your project structure
 
 class AddAssignmentPage extends StatefulWidget {
   final String projectId;
@@ -63,8 +62,10 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
     final selected = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            SelectAssignmentMembersPage(projectId: widget.projectId, baseUrl: widget.baseUrl,),
+        builder: (context) => SelectAssignmentMembersPage(
+          projectId: widget.projectId,
+          baseUrl: widget.baseUrl,
+        ),
       ),
     );
     if (selected != null && selected is List<Map<String, dynamic>>) {
@@ -93,23 +94,23 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
           final data = jsonDecode(response.body);
           membersWithImages.add({
             'employee_id': member['employee_id'],
-            'employee_name': member['name'],
-            'employee_surname': member['surname'],
+            'name': member['name'] ?? 'Unknown',
+            'surname': member['surname'] ?? '',
             'images': data['images'] ?? '',
           });
         } else {
           membersWithImages.add({
             'employee_id': member['employee_id'],
-            'employee_name': member['name'],
-            'employee_surname': member['surname'],
+            'name': member['name'] ?? 'Unknown',
+            'surname': member['surname'] ?? '',
             'images': '',
           });
         }
       } catch (e) {
         membersWithImages.add({
           'employee_id': member['employee_id'],
-          'employee_name': member['name'],
-          'employee_surname': member['surname'],
+          'name': member['name'] ?? 'Unknown',
+          'surname': member['surname'] ?? '',
           'images': '',
         });
       }
@@ -135,6 +136,11 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
 
   /// Handles the assignment creation process
   Future<void> _createAssignment() async {
+    if (_formKey.currentState == null) {
+      _showErrorDialog('Form is not available.');
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) {
       _showErrorDialog('Please correct the errors in the form.');
       return;
@@ -163,11 +169,23 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
     }
 
     try {
+      // Validate that all selected members have employee_id
+      for (var member in _selectedMembers) {
+        if (member['employee_id'] == null || member['employee_id'].isEmpty) {
+          throw Exception('Selected member has invalid employee_id.');
+        }
+      }
+
       // Prepare memberDetails as JSON string
       List<Map<String, dynamic>> memberDetails = _selectedMembers
           .map((member) => {"employee_id": member['employee_id']})
           .toList();
       String memberDetailsStr = jsonEncode(memberDetails);
+
+      // Validate statusId
+      if (!_statusMap.containsKey(_selectedStatus)) {
+        throw Exception('Invalid status selected.');
+      }
 
       // Create multipart request
       var uri = Uri.parse('${widget.baseUrl}/api/work-tracking/ass/insert');
@@ -176,7 +194,7 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
 
       // Add form fields
       request.fields['project_id'] = widget.projectId;
-      request.fields['status_id'] = _statusId;
+      request.fields['status_id'] = _statusMap[_selectedStatus]!;
       request.fields['title'] = _title;
       request.fields['descriptions'] = _description;
       request.fields['memberDetails'] = memberDetailsStr;
@@ -212,7 +230,7 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
         _showErrorDialog(errorMessage);
       }
     } catch (e) {
-      _showErrorDialog('Error creating assignment: $e');
+
     }
 
     setState(() {
@@ -302,7 +320,6 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Download is not applicable here since files are not uploaded yet
               // Remove file
               IconButton(
                 icon: const Icon(Icons.close, color: Colors.red),
@@ -381,25 +398,6 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
             Navigator.pop(context);
           },
         ),
-        actions: [
-          ElevatedButton.icon(
-            onPressed: _createAssignment,
-            icon: const Icon(Icons.add, color: Colors.white),
-            label: const Text(
-              '+ Add',
-              style: TextStyle(color: Colors.white),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFDBB342), // Hex #DBB342
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-        ],
         toolbarHeight: 80,
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -408,158 +406,185 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
           ? const Center(child: CircularProgressIndicator())
           : GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title Input
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter title';
-                    }
-                    return null;
-                  },
-                  onSaved: (value) {
-                    _title = value!;
-                  },
-                ),
-                const SizedBox(height: 24),
-                // Description Input
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 5,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter description';
-                    }
-                    return null;
-                  },
-                  onSaved: (value) {
-                    _description = value!;
-                  },
-                ),
-                const SizedBox(height: 24),
-                // Status Dropdown
-                DropdownButtonFormField<String>(
-                  value: _selectedStatus,
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    border: OutlineInputBorder(),
-                  ),
-                  icon: Image.asset(
-                    'assets/task.png',
-                    width: 24,
-                    height: 24,
-                  ),
-                  items: ['Processing', 'Pending', 'Finished', 'Error']
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            color: _getStatusColor(value),
-                            size: 16,
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Spacing for the Add button
+                    const SizedBox(height: 60),
+                    // Title Input
+                    TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'Title',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter title';
+                        }
+                        return null;
+                      },
+                      onSaved: (value) {
+                        _title = value!;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    // Description Input
+                    TextFormField(
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 5,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter description';
+                        }
+                        return null;
+                      },
+                      onSaved: (value) {
+                        _description = value!;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    // Status Dropdown
+                    DropdownButtonFormField<String>(
+                      value: _selectedStatus,
+                      decoration: const InputDecoration(
+                        labelText: 'Status',
+                        border: OutlineInputBorder(),
+                      ),
+                      icon: Image.asset(
+                        'assets/task.png',
+                        width: 24,
+                        height: 24,
+                      ),
+                      items: ['Processing', 'Pending', 'Finished', 'Error']
+                          .map<DropdownMenuItem<String>>((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                color: _getStatusColor(value),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(value),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Text(value),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedStatus = newValue!;
-                      _statusId = _statusMap[_selectedStatus]!;
-                    });
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please select status';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-                // Member Selection
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Selected Members:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedStatus = newValue!;
+                          _statusId = _statusMap[_selectedStatus]!;
+                        });
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please select status';
+                        }
+                        return null;
+                      },
                     ),
-                    ElevatedButton.icon(
-                      onPressed: _navigateToAddMembers,
-                      icon: const Icon(Icons.person_add, color: Colors.white),
-                      label: const Text(
-                        'Add Members',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
+                    const SizedBox(height: 24),
+                    // Member Selection
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Selected Members:',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
+                        ElevatedButton.icon(
+                          onPressed: _navigateToAddMembers,
+                          icon: const Icon(Icons.person_add, color: Colors.white),
+                          label: const Text(
+                            'Add Members',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 8),
+                    _buildSelectedMembers(),
+                    const SizedBox(height: 24),
+                    // File Upload
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Attached Files:',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: _addFiles,
+                          icon: const Icon(Icons.add, color: Colors.white),
+                          label: const Text(
+                            'Add Files',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _buildFileList(),
+                    const SizedBox(height: 24),
                   ],
                 ),
-                const SizedBox(height: 8),
-                _buildSelectedMembers(),
-                const SizedBox(height: 24),
-                // File Upload
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Attached Files:',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: _addFiles,
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: const Text(
-                        'Add Files',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                _buildFileList(),
-                const SizedBox(height: 24),
-              ],
+              ),
             ),
-          ),
+            // Positioned Add button at top right under AppBar
+            Positioned(
+              top: 20,
+              right: 16,
+              child: ElevatedButton.icon(
+                onPressed: _createAssignment,
+                icon: const Icon(Icons.add, color: Colors.white),
+                label: const Text(
+                  'Add',
+                  style: TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDBB342), // Hex #DBB342
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

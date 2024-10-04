@@ -1,8 +1,8 @@
 // add_processing_members.dart
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SelectProcessingMembersPage extends StatefulWidget {
@@ -33,15 +33,12 @@ class _SelectProcessingMembersPageState
     _fetchMembers();
   }
 
-  /// Fetches the stored token from SharedPreferences
   Future<String> _fetchToken() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
-    print('Using Token: $token'); // Debugging line
     return token ?? '';
   }
 
-  /// Fetches the list of members from the API
   Future<void> _fetchMembers() async {
     setState(() {
       _isLoading = true;
@@ -57,49 +54,38 @@ class _SelectProcessingMembersPageState
             '${widget.baseUrl}/api/work-tracking/proj/find-Member-By-ProjectId/${widget.projectId}'),
         headers: {
           'Authorization': 'Bearer $token',
-          // Add other headers if required by the API
         },
       );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseBody = jsonDecode(response.body);
-        print('API Response: ${response.body}'); // Debugging line
-
-        // **Update the key from 'results' to 'Members'**
         final List<dynamic> data = responseBody['Members'] ?? [];
 
-        if (data.isEmpty) {
-          print('No members found in the API response.');
-        }
-
-        // Remove duplicates based on 'employee_id'
         final uniqueMembers = <String, Map<String, dynamic>>{};
         for (var item in data) {
-          if (item == null) continue; // Skip null items
+          if (item == null) continue;
           String? employeeId = item['employee_id']?.toString();
-          if (employeeId == null || employeeId.isEmpty) continue; // Skip if employee_id is null
+          if (employeeId == null || employeeId.isEmpty) continue;
 
           if (!uniqueMembers.containsKey(employeeId)) {
             uniqueMembers[employeeId] = {
               'id': item['id']?.toString() ?? '',
               'employee_id': employeeId,
-              // Initialize other fields; we'll populate them later
-              'name': '',
-              'surname': '',
-              'email': '',
-              'images': '',
+              'name': item['name']?.toString() ?? 'Unknown',
+              'surname': item['surname']?.toString() ?? 'Unknown',
+              'email': item['email']?.toString() ?? 'No Email',
+              'images': item['images']?.toString() ?? '',
             };
           }
         }
-
-        // Fetch member details in parallel
-        List<String> employeeIds = uniqueMembers.keys.toList();
-        await _fetchMemberDetailsBatch(employeeIds, uniqueMembers, token);
 
         setState(() {
           _members = uniqueMembers.values.toList();
           _filteredMembers = _members;
         });
+
+        // Fetch images for each member
+        await _fetchMembersImages(token);
       } else {
         throw Exception('Failed to load members: ${response.body}');
       }
@@ -111,32 +97,19 @@ class _SelectProcessingMembersPageState
     });
   }
 
-  /// Fetches member details in batch
-  Future<void> _fetchMemberDetailsBatch(List<String> employeeIds,
-      Map<String, Map<String, dynamic>> uniqueMembers, String token) async {
-    if (employeeIds.isEmpty) return;
+  Future<void> _fetchMembersImages(String token) async {
+    List<Future<void>> imageFetchFutures = _members.map((member) async {
+      String employeeId = member['employee_id'];
+      String? imageUrl = await _fetchMemberImage(employeeId, token);
+      setState(() {
+        member['image_url'] = imageUrl;
+      });
+    }).toList();
 
-    try {
-      // Example batch API call; adjust based on your backend's capabilities
-      // If your backend doesn't support batch, you need to fetch individually
-      // For demonstration, we'll fetch individually using Future.wait
-
-      List<Future<void>> fetchDetailsFutures = [];
-      for (String employeeId in employeeIds) {
-        fetchDetailsFutures.add(
-            _fetchMemberDetails(employeeId, uniqueMembers, token));
-      }
-
-      await Future.wait(fetchDetailsFutures);
-    } catch (e) {
-      print('Error fetching member details batch: $e');
-      // Optionally, set default values or handle errors as needed
-    }
+    await Future.wait(imageFetchFutures);
   }
 
-  /// Fetches the profile image URL and other details for a given employee ID
-  Future<void> _fetchMemberDetails(String employeeId,
-      Map<String, Map<String, dynamic>> uniqueMembers, String token) async {
+  Future<String?> _fetchMemberImage(String employeeId, String token) async {
     try {
       final response = await http.get(
         Uri.parse('${widget.baseUrl}/api/profile/$employeeId'),
@@ -146,45 +119,20 @@ class _SelectProcessingMembersPageState
       );
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> responseBody = jsonDecode(response.body);
-        print('Profile API Response for employee_id $employeeId: ${response.body}'); // Debugging line
-
-        // Adjust the key based on your actual API response
-        final Map<String, dynamic>? profileData = responseBody['profile'];
-
-        if (profileData != null) {
-          uniqueMembers[employeeId]!['name'] = profileData['name']?.toString() ?? '';
-          uniqueMembers[employeeId]!['surname'] =
-              profileData['surname']?.toString() ?? '';
-          uniqueMembers[employeeId]!['email'] = profileData['email']?.toString() ?? '';
-          uniqueMembers[employeeId]!['images'] = profileData['images']?.toString() ?? '';
-        } else {
-          // Handle cases where 'profile' key is missing
-          uniqueMembers[employeeId]!['name'] = 'Unknown';
-          uniqueMembers[employeeId]!['surname'] = 'Unknown';
-          uniqueMembers[employeeId]!['email'] = 'Unknown';
-          uniqueMembers[employeeId]!['images'] = '';
-          print('Profile data is null for employee_id $employeeId');
+        final data = jsonDecode(response.body);
+        if (data['results'] != null && data['results']['images'] != null) {
+          return data['results']['images'];
         }
       } else {
-        // Handle non-200 responses
-        uniqueMembers[employeeId]!['name'] = 'Unknown';
-        uniqueMembers[employeeId]!['surname'] = 'Unknown';
-        uniqueMembers[employeeId]!['email'] = 'Unknown';
-        uniqueMembers[employeeId]!['images'] = '';
-        print('Failed to fetch profile for employee_id $employeeId: ${response.body}');
+        print(
+            'Failed to fetch image for $employeeId: ${response.statusCode}');
       }
     } catch (e) {
-      // Handle errors
-      uniqueMembers[employeeId]!['name'] = 'Error';
-      uniqueMembers[employeeId]!['surname'] = 'Error';
-      uniqueMembers[employeeId]!['email'] = 'Error';
-      uniqueMembers[employeeId]!['images'] = '';
-      print('Error fetching details for employee_id $employeeId: $e');
+      print('Exception while fetching image for $employeeId: $e');
     }
+    return null;
   }
 
-  /// Handles member selection
   void _onMemberSelected(bool? selected, Map<String, dynamic> member) {
     setState(() {
       if (selected == true) {
@@ -199,12 +147,10 @@ class _SelectProcessingMembersPageState
     });
   }
 
-  /// Returns to the previous screen with the selected members
   void _onAddButtonPressed() {
     Navigator.pop(context, _selectedMembers);
   }
 
-  /// Filters the members based on the search query
   void _filterMembers(String query) {
     List<Map<String, dynamic>> filteredList = _members.where((member) {
       String name = member['name']?.toLowerCase() ?? '';
@@ -217,7 +163,6 @@ class _SelectProcessingMembersPageState
     });
   }
 
-  /// Shows an error message using a SnackBar
   void _showErrorMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -228,7 +173,6 @@ class _SelectProcessingMembersPageState
     );
   }
 
-  /// Builds the selected members' avatars
   Widget _buildSelectedMembers() {
     if (_selectedMembers.isEmpty) return Container();
     int displayCount = _selectedMembers.length > 5 ? 5 : _selectedMembers.length;
@@ -238,11 +182,12 @@ class _SelectProcessingMembersPageState
         Padding(
           padding: const EdgeInsets.only(right: 4.0),
           child: CircleAvatar(
-            backgroundImage: _selectedMembers[i]['images'] != null &&
-                _selectedMembers[i]['images'] != ''
-                ? NetworkImage(_selectedMembers[i]['images'])
+            backgroundImage: _selectedMembers[i]['image_url'] != null &&
+                _selectedMembers[i]['image_url'].isNotEmpty
+                ? NetworkImage(_selectedMembers[i]['image_url'])
                 : const AssetImage('assets/default_avatar.png') as ImageProvider,
             radius: 20,
+            backgroundColor: Colors.grey[200],
           ),
         ),
       );
@@ -269,45 +214,60 @@ class _SelectProcessingMembersPageState
     );
   }
 
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      flexibleSpace: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/background.png'),
+            fit: BoxFit.cover,
+          ),
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(30),
+            bottomRight: Radius.circular(30),
+          ),
+        ),
+      ),
+      centerTitle: true,
+      title: const Text(
+        'Add Processing Members',
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 22,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      leading: IconButton(
+        icon: const Icon(
+          Icons.arrow_back_ios_new,
+          color: Colors.black,
+          size: 20,
+        ),
+        onPressed: () {
+          Navigator.pop(context);
+        },
+      ),
+      toolbarHeight: 80,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+    );
+  }
+
+  String _constructFullName(Map<String, dynamic> member) {
+    String name = member['name']?.toString() ?? '';
+    String surname = member['surname']?.toString() ?? '';
+
+    if (surname.isEmpty || surname.toLowerCase() == name.toLowerCase()) {
+      return name;
+    } else {
+      return '$name $surname';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background.png'),
-              fit: BoxFit.cover,
-            ),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
-            ),
-          ),
-        ),
-        centerTitle: true,
-        title: const Text(
-          'Add Processing Members',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 22,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Colors.black,
-            size: 20,
-          ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        toolbarHeight: 80,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
+      appBar: _buildAppBar(),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
@@ -333,8 +293,10 @@ class _SelectProcessingMembersPageState
                       ),
                       child: const Text(
                         '+ Add',
-                        style:
-                        TextStyle(color: Colors.black, fontSize: 18),
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 18,
+                        ),
                       ),
                     ),
                   ),
@@ -363,21 +325,22 @@ class _SelectProcessingMembersPageState
               itemCount: _filteredMembers.length,
               itemBuilder: (context, index) {
                 final member = _filteredMembers[index];
-                String fullName =
-                    '${member['name'].isNotEmpty ? member['name'] : 'Unknown'} '
-                    '${member['surname'].isNotEmpty ? member['surname'] : 'Unknown'}';
-                String email =
-                member['email'].isNotEmpty ? member['email'] : 'No Email';
-                String imageUrl =
-                member['images'].isNotEmpty ? member['images'] : '';
+                String fullName = _constructFullName(member);
+                String email = member['email']?.isNotEmpty == true
+                    ? member['email']
+                    : 'No Email';
+                String? imageUrl = member['image_url'];
 
                 return ListTile(
                   leading: CircleAvatar(
-                    backgroundImage: imageUrl.isNotEmpty
+                    backgroundImage: imageUrl != null &&
+                        imageUrl.isNotEmpty
                         ? NetworkImage(imageUrl)
-                        : const AssetImage('assets/default_avatar.png')
+                        : const AssetImage(
+                        'assets/default_avatar.png')
                     as ImageProvider,
                     radius: 25,
+                    backgroundColor: Colors.grey[200],
                   ),
                   title: Text(
                     fullName,
@@ -391,7 +354,8 @@ class _SelectProcessingMembersPageState
                   subtitle: Text(email),
                   trailing: Checkbox(
                     value: _selectedMembers.any((m) =>
-                    m['employee_id'] == member['employee_id']),
+                    m['employee_id'] ==
+                        member['employee_id']),
                     activeColor: Colors.green,
                     onChanged: (bool? selected) {
                       _onMemberSelected(selected, member);

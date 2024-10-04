@@ -557,7 +557,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
         ),
         centerTitle: true,
         title: const Text(
-          'Event Details',
+          'Edit Processing Item',
           style: TextStyle(
             color: Colors.black,
             fontSize: 22,
