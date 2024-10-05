@@ -1,3 +1,4 @@
+// view_project.dart
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -17,75 +18,127 @@ class ViewProjectPage extends StatefulWidget {
 
 class _ViewProjectPageState extends State<ViewProjectPage> {
   List<Map<String, dynamic>> projectMembers = [];
+  String? token; // Store the token once
 
   @override
   void initState() {
     super.initState();
-    _fetchProjectMembers();
+    _initialize();
   }
 
-Future<void> _fetchProjectMembers() async {
-  final projectId = widget.project['project_id'];
-  final url = 'https://demo-application-api.flexiflows.co/api/work-tracking/proj/find-Member-By-ProjectId/$projectId';
+  Future<void> _initialize() async {
+    await _retrieveToken();
+    await _fetchProjectMembers();
+  }
 
-  try {
-    // Retrieve the token from SharedPreferences
+  Future<void> _retrieveToken() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('token');
+    token = prefs.getString('token');
 
     if (token == null) {
-      print('No token found.');
+      if (kDebugMode) {
+        print('No token found.');
+      }
+      // You might want to navigate to login or show an error message
+    }
+  }
+
+  Future<void> _fetchProjectMembers() async {
+    if (token == null) {
+      if (kDebugMode) {
+        print('Cannot fetch members without a token.');
+      }
       return;
     }
 
-    // Set up headers with Authorization token
-    final headers = {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    };
+    final projectId = widget.project['project_id'];
+    final url =
+        'https://demo-application-api.flexiflows.co/api/work-tracking/proj/find-Member-By-ProjectId/$projectId';
 
-    // Make the GET request with headers
-    final response = await http.get(Uri.parse(url), headers: headers);
+    try {
+      // Set up headers with Authorization token
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      };
 
-    if (response.statusCode == 200) {
-      final responseBody = json.decode(response.body);
-      print('API Response: $responseBody');  // Log the API response to check
+      // Make the GET request with headers
+      final response = await http.get(Uri.parse(url), headers: headers);
 
-      final data = responseBody['Members'] as List;
-      print('Members Data: $data');
-
-      // Check if data is not empty
-      if (data.isNotEmpty) {
-        for (var member in data) {
-          final profileImageUrl = await _fetchMemberProfileImage(member['employee_id']);
-          setState(() {
-            projectMembers.add({
-              'name': member['employee_name'],
-              'images': profileImageUrl,
-            });
-          });
+      if (response.statusCode == 200) {
+        final responseBody = json.decode(response.body);
+        if (kDebugMode) {
+          print('API Response: $responseBody');
         }
+
+        final data = responseBody['Members'] as List;
+        if (kDebugMode) {
+          print('Members Data: $data');
+        }
+
+        // Check if data is not empty
+        if (data.isNotEmpty) {
+          for (var member in data) {
+            final employeeId = member['employee_id'].toString();
+
+            // Ensure employee_id is in the expected format
+            // If not, handle accordingly
+            // For example, if the API expects 'PSV-00-137852' but you have '1',
+            // you might need to map or adjust accordingly.
+
+            final profileImageUrl =
+            await _fetchMemberProfileImage(employeeId, headers);
+
+            // Construct the name by combining available fields
+            String name = '';
+
+            if (member['name'] != null && member['surname'] != null) {
+              name = '${member['name']} ${member['surname']}';
+            } else if (member['name'] != null) {
+              name = member['name'];
+            } else if (member['surname'] != null) {
+              name = member['surname'];
+            } else if (member['created_by'] != null) {
+              // To avoid duplication, append employee_id or member_id
+              name = '${member['created_by']} (${member['employee_id']})';
+            } else {
+              name = 'Unknown (${member['employee_id']})';
+            }
+
+            setState(() {
+              projectMembers.add({
+                'name': name,
+                'profileImage': profileImageUrl, // Use consistent key
+              });
+            });
+          }
+        }
+      } else {
+        if (kDebugMode) {
+          print('Failed to load project members: ${response.statusCode}');
+        }
+        // Optionally, handle different status codes here
       }
-    } else {
+    } catch (e) {
       if (kDebugMode) {
-        print('Failed to load project members: ${response.statusCode}');
+        print('Failed to load project members: $e');
       }
-    }
-  } catch (e) {
-    if (kDebugMode) {
-      print('Failed to load project members: $e');
+      // Optionally, show a user-friendly error message
     }
   }
-}
 
-  // Fetching profile images for each member
-  Future<String> _fetchMemberProfileImage(String employeeId) async {
-    final url = 'https://demo-application-api.flexiflows.co/api/profile/$employeeId';
+  // Fetching profile images for each member with Authorization headers
+  Future<String> _fetchMemberProfileImage(
+      String employeeId, Map<String, String> headers) async {
+    final url =
+        'https://demo-application-api.flexiflows.co/api/profile/$employeeId';
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(url), headers: headers);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['images'] ?? 'https://via.placeholder.com/150';
+        // Adjust according to actual API response structure
+        return data['results']?['images'] ??
+            'https://via.placeholder.com/150'; // Use null-aware operator
       } else {
         if (kDebugMode) {
           print('Failed to load profile image: ${response.statusCode}');
@@ -124,7 +177,8 @@ Future<void> _fetchProjectMembers() async {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTextField('Created by', widget.project['create_project_by']),
+              _buildTextField(
+                  'Created by', widget.project['create_project_by']),
               const SizedBox(height: 10),
               _buildTextField('Name of Project', widget.project['p_name']),
               const SizedBox(height: 10),
@@ -152,9 +206,10 @@ Future<void> _fetchProjectMembers() async {
               const SizedBox(height: 10),
               projectMembers.isEmpty
                   ? const Text(
-                      'No project members found',
-                      style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
-                    )
+                'No project members found',
+                style: TextStyle(
+                    fontSize: 14, fontStyle: FontStyle.italic),
+              )
                   : _buildProjectMembersGrid(projectMembers),
             ],
           ),
@@ -169,7 +224,8 @@ Future<void> _fetchProjectMembers() async {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style:
+          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 5),
         TextField(
@@ -191,7 +247,8 @@ Future<void> _fetchProjectMembers() async {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style:
+          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 5),
         TextField(
