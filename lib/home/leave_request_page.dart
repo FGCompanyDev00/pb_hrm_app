@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +23,9 @@ class LeaveManagementPage extends HookWidget {
     final daysController = useTextEditingController(text: '0');
     final leaveTypeId = useState<int?>(null);
     final searchController = useTextEditingController();
-    final leaveTypes = useState<List<Map<String, dynamic>>>([]);
+    final allLeaveTypes = useState<List<Map<String, dynamic>>>([]);
+    final filteredLeaveTypes = useState<List<Map<String, dynamic>>>([]);
+    final isLoadingLeaveTypes = useState<bool>(false);
 
     void showCustomDialog(BuildContext context, String title, String content) {
       showDialog(
@@ -52,7 +53,7 @@ class LeaveManagementPage extends HookWidget {
       );
     }
 
-     void showLeaveTypeBottomSheet(BuildContext context) {
+    void showLeaveTypeBottomSheet(BuildContext context) {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
@@ -82,20 +83,25 @@ class LeaveManagementPage extends HookWidget {
                         ),
                       ),
                       onChanged: (value) {
-                        // Filter the leave types based on search input
-                        leaveTypes.value = leaveTypes.value.where((type) {
+                        // Filter based on allLeaveTypes
+                        filteredLeaveTypes.value = allLeaveTypes.value.where((type) {
                           final typeName = type['name'].toString().toLowerCase();
                           return typeName.contains(value.toLowerCase());
                         }).toList();
+                        print('Filtered Leave Types: ${filteredLeaveTypes.value}'); // Debug
                       },
                     ),
                     const SizedBox(height: 10),
                     Expanded(
-                      child: ListView.builder(
+                      child: isLoadingLeaveTypes.value
+                          ? const Center(child: CircularProgressIndicator())
+                          : filteredLeaveTypes.value.isEmpty
+                          ? const Center(child: Text('No leave types available'))
+                          : ListView.builder(
                         controller: scrollController,
-                        itemCount: leaveTypes.value.length,
+                        itemCount: filteredLeaveTypes.value.length,
                         itemBuilder: (context, index) {
-                          final leaveType = leaveTypes.value[index];
+                          final leaveType = filteredLeaveTypes.value[index];
                           return ListTile(
                             title: Text(
                               leaveType['name'],
@@ -104,6 +110,7 @@ class LeaveManagementPage extends HookWidget {
                             onTap: () {
                               typeController.text = leaveType['name'];
                               leaveTypeId.value = leaveType['leave_type_id'];
+                              print('Selected Leave Type ID: ${leaveTypeId.value}'); // Debug
                               Navigator.pop(context); // Close the bottom sheet
                             },
                           );
@@ -120,11 +127,13 @@ class LeaveManagementPage extends HookWidget {
     }
 
     Future<List<Map<String, dynamic>>> fetchLeaveTypes() async {
+      isLoadingLeaveTypes.value = true;
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
       if (token == null) {
         showCustomDialog(context, 'Error', 'User not authenticated');
+        isLoadingLeaveTypes.value = false;
         return [];
       }
 
@@ -138,16 +147,30 @@ class LeaveManagementPage extends HookWidget {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['data']);  // Ensure correct path to data
+        print('API Response: $data'); // Debug statement
+
+        if (data.containsKey('results')) {
+          List<Map<String, dynamic>> types = List<Map<String, dynamic>>.from(data['results']);
+          print('Fetched Leave Types: $types'); // Debug
+          isLoadingLeaveTypes.value = false;
+          return types;
+        } else {
+          showCustomDialog(context, 'Error', 'Unexpected API response structure.');
+          isLoadingLeaveTypes.value = false;
+          return [];
+        }
       } else {
         showCustomDialog(context, 'Error', 'Failed to load leave types');
+        isLoadingLeaveTypes.value = false;
         return [];
       }
     }
 
     useEffect(() {
       fetchLeaveTypes().then((types) {
-        leaveTypes.value = types;
+        allLeaveTypes.value = types;
+        filteredLeaveTypes.value = types;
+        print('All Leave Types: ${allLeaveTypes.value}'); // Debug
       });
       return null;
     }, []);
@@ -432,6 +455,7 @@ class LeaveManagementPage extends HookWidget {
                             onPressed: () {
                               int currentDays = int.tryParse(daysController.text) ?? 0;
                               daysController.text = (currentDays + 1).toString();
+                              print('Days Incremented: ${daysController.text}'); // Debug
                             },
                             icon: const Icon(Icons.add),
                           ),
@@ -440,6 +464,7 @@ class LeaveManagementPage extends HookWidget {
                               int currentDays = int.tryParse(daysController.text) ?? 0;
                               if (currentDays > 0) {
                                 daysController.text = (currentDays - 1).toString();
+                                print('Days Decremented: ${daysController.text}'); // Debug
                               }
                             },
                             icon: const Icon(Icons.remove),

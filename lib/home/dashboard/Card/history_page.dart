@@ -1,3 +1,5 @@
+// history_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
@@ -40,7 +42,6 @@ class _HistoryPageState extends State<HistoryPage> {
         throw Exception('User not authenticated');
       }
 
-      // Fetch pending items
       final pendingResponse = await http.get(
         Uri.parse(pendingApiUrl),
         headers: {
@@ -49,7 +50,6 @@ class _HistoryPageState extends State<HistoryPage> {
         },
       );
 
-      // Fetch history items
       final historyResponse = await http.get(
         Uri.parse(historyApiUrl),
         headers: {
@@ -76,7 +76,6 @@ class _HistoryPageState extends State<HistoryPage> {
         throw Exception('Failed to load data');
       }
     } catch (e) {
-      print('Error fetching history data: $e');
       setState(() {
         _isLoading = false;
       });
@@ -84,54 +83,42 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Map<String, dynamic> _formatItem(Map<String, dynamic> item) {
-    String types = item['types'] ?? 'Unknown';
-
+    String type = item['types'] ?? 'unknown';
     Map<String, dynamic> formattedItem = {
-      'types': types,
-      'status': item['status'] ?? 'Unknown',
+      'type': type,
+      'status': item['status'] ?? 'pending',
       'statusColor': _getStatusColor(item['status']),
-      'icon': _getIconForType(types, item['status']),
-      'iconColor': _getStatusColor(item['status']),
+      'icon': _getIconForType(type),
+      'iconColor': _getTypeColor(type),
       'timestamp':
       DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now(),
       'img_name': item['img_name'] ?? 'https://via.placeholder.com/150',
     };
 
-    if (types == 'meeting') {
-      formattedItem['title'] = item['title'] ?? 'No Title';
-      formattedItem['startDate'] = item['from_date_time'] ?? 'N/A';
-      formattedItem['endDate'] = item['to_date_time'] ?? 'N/A';
-      formattedItem['room'] = item['room_name'] ?? 'No Room Info';
-      formattedItem['details'] = item['remark'] ?? 'No Details Provided';
-      formattedItem['employee_name'] = item['employee_name'] ?? 'N/A';
-      formattedItem['from_date_time'] = item['from_date_time'] ?? '';
-      formattedItem['to_date_time'] = item['to_date_time'] ?? '';
-      formattedItem['room_floor'] = item['room_floor'] ?? '';
-    } else if (types == 'leave') {
-      formattedItem['title'] = item['name'] ?? 'No Title';
-      formattedItem['startDate'] = item['take_leave_from'] ?? 'N/A';
-      formattedItem['endDate'] = item['take_leave_to'] ?? 'N/A';
-      formattedItem['room'] = 'Leave Type';
-      formattedItem['details'] =
-          item['take_leave_reason'] ?? 'No Details Provided';
-      formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
-      formattedItem['take_leave_from'] = item['take_leave_from'] ?? '';
-      formattedItem['take_leave_to'] = item['take_leave_to'] ?? '';
-    } else if (types == 'car') {
-      formattedItem['title'] = item['purpose'] ?? 'No Title';
-      formattedItem['startDate'] = item['date_out'] ?? 'N/A';
-      formattedItem['endDate'] = item['date_in'] ?? 'N/A';
-      formattedItem['room'] = item['place'] ?? 'No Place Info';
-      formattedItem['details'] = item['purpose'] ?? 'No Details Provided';
-      formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
-      formattedItem['date_out'] = item['date_out'] ?? '';
-      formattedItem['date_in'] = item['date_in'] ?? '';
-      formattedItem['time_out'] = item['time_out'] ?? '';
-      formattedItem['time_in'] = item['time_in'] ?? '';
-      formattedItem['place'] = item['place'] ?? '';
-    } else {
-      // Default processing
-      formattedItem['title'] = 'Unknown Type';
+    if (type == 'meeting') {
+      formattedItem.addAll({
+        'title': item['title'] ?? 'No Title',
+        'startDate': item['from_date_time'] ?? '',
+        'endDate': item['to_date_time'] ?? '',
+        'room': item['room_name'] ?? 'No Room Info',
+        'employee_name': item['employee_name'] ?? 'N/A',
+      });
+    } else if (type == 'leave') {
+      formattedItem.addAll({
+        'title': item['name'] ?? 'No Title',
+        'startDate': item['take_leave_from'] ?? '',
+        'endDate': item['take_leave_to'] ?? '',
+        'leave_type': item['leave_type'] ?? 'N/A',
+        'employee_name': item['requestor_name'] ?? 'N/A',
+      });
+    } else if (type == 'car') {
+      formattedItem.addAll({
+        'title': item['purpose'] ?? 'No Title',
+        'startDate': item['date_out'] ?? '',
+        'endDate': item['date_in'] ?? '',
+        'telephone': item['telephone'] ?? 'N/A',
+        'employee_name': item['requestor_name'] ?? 'N/A',
+      });
     }
 
     return formattedItem;
@@ -155,8 +142,21 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
-  IconData _getIconForType(String? type, String? status) {
-    switch (type?.toLowerCase()) {
+  Color _getTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'meeting':
+        return Colors.green;
+      case 'leave':
+        return Colors.orange;
+      case 'car':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getIconForType(String type) {
+    switch (type.toLowerCase()) {
       case 'meeting':
         return Icons.meeting_room;
       case 'leave':
@@ -175,29 +175,29 @@ class _HistoryPageState extends State<HistoryPage> {
 
     return Scaffold(
       backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
-      body: Stack(
+      body: Column(
         children: [
-          Column(
-            children: [
-              _buildHeader(isDarkMode),
-              const SizedBox(height: 10),
-              _buildTabBar(),
-              const SizedBox(height: 8),
-              _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(16.0),
-                  children: _isPendingSelected
-                      ? _pendingItems
-                      .map((item) => _buildHistoryCard(context, item))
-                      .toList()
-                      : _historyItems
-                      .map((item) => _buildHistoryCard(context, item))
-                      .toList(),
-                ),
-              ),
-            ],
+          _buildHeader(isDarkMode),
+          const SizedBox(height: 10),
+          _buildTabBar(),
+          const SizedBox(height: 8),
+          _isLoading
+              ? const Expanded(
+            child: Center(child: CircularProgressIndicator()),
+          )
+              : Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: _isPendingSelected
+                  ? _pendingItems.length
+                  : _historyItems.length,
+              itemBuilder: (context, index) {
+                final item = _isPendingSelected
+                    ? _pendingItems[index]
+                    : _historyItems[index];
+                return _buildHistoryCard(context, item);
+              },
+            ),
           ),
         ],
       ),
@@ -220,8 +220,8 @@ class _HistoryPageState extends State<HistoryPage> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(
-            top: 60.0, left: 16.0, right: 16.0),
+        padding:
+        const EdgeInsets.only(top: 60.0, left: 16.0, right: 16.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -231,8 +231,7 @@ class _HistoryPageState extends State<HistoryPage> {
               onPressed: () {
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(
-                      builder: (context) => const Dashboard()),
+                  MaterialPageRoute(builder: (context) => const Dashboard()),
                       (Route<dynamic> route) => false,
                 );
               },
@@ -353,50 +352,33 @@ class _HistoryPageState extends State<HistoryPage> {
     final themeNotifier =
     Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
-    final String types = item['types'] ?? 'Unknown';
+    final String type = item['type'] ?? 'unknown';
 
-    // Dynamic icon based on the 'types' field
-    Widget getIconForType(String type) {
-      switch (type) {
-        case 'meeting':
-          return Image.asset('assets/calendar.png',
-              width: 40, height: 40);
-        case 'leave':
-          return Image.asset('assets/leave_calendar.png',
-              width: 40, height: 40);
-        case 'car':
-          return Image.asset('assets/car.png',
-              width: 40, height: 40);
-        default:
-          return const Icon(Icons.info_outline,
-              size: 40, color: Colors.grey);
-      }
+    String title = item['title'] ?? 'No Title';
+    String status = item['status'] ?? 'Pending';
+    String employeeName = item['employee_name'] ?? 'N/A';
+    String employeeImage =
+        item['img_name'] ?? 'https://via.placeholder.com/150';
+    Color typeColor = _getTypeColor(type);
+    Color statusColor = _getStatusColor(status);
+
+    String startDate = item['startDate'] ?? '';
+    String endDate = item['endDate'] ?? '';
+
+    String detailLabel = '';
+    String detailValue = '';
+
+    if (type == 'meeting') {
+      detailLabel = 'Room';
+      detailValue = item['room'] ?? 'No Room Info';
+    } else if (type == 'leave') {
+      detailLabel = 'Type';
+      detailValue = item['leave_type'] ?? 'N/A';
+    } else if (type == 'car') {
+      detailLabel = 'Telephone';
+      detailValue = item['telephone'] ?? 'N/A';
     }
 
-Widget getTypeText(String type) {
-  switch (type) {
-    case 'meeting':
-      return const Text(
-        'Room',
-        style: TextStyle(color: Colors.green), // Green color for meeting/room
-      );
-    case 'leave':
-      return const Text(
-        'Leave',
-        style: TextStyle(color: Colors.yellow), // Yellow color for leave
-      );
-    case 'car':
-      return const Text(
-        'Car',
-        style: TextStyle(color: Colors.blue), // Blue color for car
-      );
-    default:
-      return const Icon(Icons.info_outline,
-          size: 40, color: Colors.grey); // Default case for unknown types
-  }
-}
-
-    // Safe date formatting method
     String formatDate(String? dateStr) {
       try {
         if (dateStr == null || dateStr.isEmpty) {
@@ -407,65 +389,6 @@ Widget getTypeText(String type) {
       } catch (e) {
         return 'Invalid Date';
       }
-    }
-
-    // Color for the status
-    Color getStatusColor(String status) {
-      switch (status.toLowerCase()) {
-        case 'approved':
-          return Colors.green;
-        case 'rejected':
-        case 'disapproved':
-          return Colors.red;
-        case 'pending':
-        case 'waiting':
-          return Colors.amber;
-        default:
-          return Colors.grey;
-      }
-    }
-
-    // Color for the left vertical line based on 'types'
-    Color getTypeColor(String type) {
-      switch (type.toLowerCase()) {
-        case 'meeting':
-          return Colors.green;
-        case 'leave':
-          return Colors.orange;
-        case 'car':
-          return Colors.blue;
-        default:
-          return Colors.grey;
-      }
-    }
-
-    
-
-    final String title = item['title'] ?? 'No Title';
-    final String status = item['status'] ?? 'Pending';
-    final String employeeName = item['employee_name'] ?? 'N/A';
-    final String employeeImage =
-        item['img_name'] ?? 'https://via.placeholder.com/150';
-
-    final Color statusColor = getStatusColor(status);
-    final Color typeColor = getTypeColor(types);
-
-    String startDate = '';
-    String endDate = '';
-    String room = '';
-
-    if (types == 'meeting') {
-      startDate = item['from_date_time'] ?? '';
-      endDate = item['to_date_time'] ?? '';
-      room = item['room_name'] ?? 'No Room Info';
-    } else if (types == 'leave') {
-      startDate = item['take_leave_from'] ?? '';
-      endDate = item['take_leave_to'] ?? '';
-      room = 'Leave Type';
-    } else if (types == 'car') {
-      startDate = item['date_out'] ?? '';
-      endDate = item['date_in'] ?? '';
-      room = item['place'] ?? 'No Place Info';
     }
 
     return GestureDetector(
@@ -479,16 +402,15 @@ Widget getTypeText(String type) {
       child: Card(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15.0),
-          side: BorderSide(color: statusColor, width: 1.5),
+          side: BorderSide(color: typeColor, width: 2),
         ),
-        elevation: 6,
-        margin: const EdgeInsets.symmetric(vertical: 10.0),
+        elevation: 4,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
         child: Row(
           children: [
-            // Left vertical colored line
             Container(
               width: 5,
-              height: 130,
+              height: 100,
               decoration: BoxDecoration(
                 color: typeColor,
                 borderRadius: const BorderRadius.only(
@@ -497,105 +419,105 @@ Widget getTypeText(String type) {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            // Card content
+            const SizedBox(width: 12),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.center,
+                padding: const EdgeInsets.symmetric(
+                    vertical: 12.0, horizontal: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Left section for icon
-                    Column(
-                      mainAxisAlignment:
-                      MainAxisAlignment.center,
+                    Row(
                       children: [
-                        getIconForType(types),
-                        getTypeText(types),
+                        Icon(
+                          item['icon'],
+                          color: typeColor,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          type[0].toUpperCase() + type.substring(1),
+                          style: TextStyle(
+                            color: typeColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(width: 16),
-                    // Center section for details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                        children: [
-                          // Title
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          // Date range
-                          Text(
-                            'Date: ${formatDate(startDate)} To ${formatDate(endDate)}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          // Room or Place
-                          Text(
-                            'Info: $room',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.orange,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // Status row
-                          Row(
-                            children: [
-                              const Text(
-                                'Status: ',
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              Container(
-                                padding:
-                                const EdgeInsets.symmetric(
-                                    horizontal: 8.0,
-                                    vertical: 4.0),
-                                decoration: BoxDecoration(
-                                  color: statusColor,
-                                  borderRadius:
-                                  BorderRadius.circular(12.0),
-                                ),
-                                child: Text(
-                                  status,
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                    const SizedBox(height: 8),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    // Right section for employee image
-                    Column(
-                      mainAxisAlignment:
-                      MainAxisAlignment.center,
+                    const SizedBox(height: 4),
+                    Text(
+                      'From: ${formatDate(startDate)}',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      'To: ${formatDate(endDate)}',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$detailLabel: $detailValue',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
                       children: [
-                        CircleAvatar(
-                          backgroundImage:
-                          NetworkImage(employeeImage),
-                          radius: 30,
+                        Text(
+                          'Status: ',
+                          style: TextStyle(
+                            color: isDarkMode
+                                ? Colors.white
+                                : Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0, vertical: 4.0),
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            borderRadius:
+                            BorderRadius.circular(12.0),
+                          ),
+                          child: Text(
+                            status,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12),
+                          ),
                         ),
                       ],
                     ),
                   ],
                 ),
+              ),
+            ),
+            Padding(
+              padding:
+              const EdgeInsets.symmetric(horizontal: 8.0),
+              child: CircleAvatar(
+                backgroundImage: NetworkImage(employeeImage),
+                radius: 24,
               ),
             ),
           ],
@@ -647,8 +569,57 @@ class DetailsPage extends StatelessWidget {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
     final statusColor = _getStatusColor(item['status']);
-    final textColor = isDarkMode ? Colors.white : Colors.black;
-    final String types = item['types'] ?? 'Unknown';
+    final String type = item['type'] ?? 'unknown';
+
+    String title = item['title'] ?? 'N/A';
+    String status = item['status'] ?? 'Unknown';
+    String employeeName = item['employee_name'] ?? 'N/A';
+
+    String detailLabel1 = '';
+    String detailValue1 = '';
+    String detailLabel2 = '';
+    String detailValue2 = '';
+    String detailLabel3 = '';
+    String detailValue3 = '';
+    String detailLabel4 = '';
+    String detailValue4 = '';
+    String detailLabel5 = '';
+    String detailValue5 = '';
+
+    if (type == 'meeting') {
+      detailLabel1 = 'From';
+      detailValue1 = item['from_date_time'] ?? 'N/A';
+      detailLabel2 = 'To';
+      detailValue2 = item['to_date_time'] ?? 'N/A';
+      detailLabel3 = 'Room';
+      detailValue3 = item['room'] ?? 'N/A';
+      detailLabel4 = 'Employee';
+      detailValue4 = employeeName;
+      detailLabel5 = 'Details';
+      detailValue5 = item['details'] ?? 'No Details';
+    } else if (type == 'leave') {
+      detailLabel1 = 'From';
+      detailValue1 = item['take_leave_from'] ?? 'N/A';
+      detailLabel2 = 'To';
+      detailValue2 = item['take_leave_to'] ?? 'N/A';
+      detailLabel3 = 'Type';
+      detailValue3 = item['leave_type'] ?? 'N/A';
+      detailLabel4 = 'Employee';
+      detailValue4 = employeeName;
+      detailLabel5 = 'Reason';
+      detailValue5 = item['take_leave_reason'] ?? 'N/A';
+    } else if (type == 'car') {
+      detailLabel1 = 'From';
+      detailValue1 = item['date_out'] ?? 'N/A';
+      detailLabel2 = 'To';
+      detailValue2 = item['date_in'] ?? 'N/A';
+      detailLabel3 = 'Telephone';
+      detailValue3 = item['telephone'] ?? 'N/A';
+      detailLabel4 = 'Employee';
+      detailValue4 = employeeName;
+      detailLabel5 = 'Purpose';
+      detailValue5 = item['purpose'] ?? 'N/A';
+    }
 
     return Scaffold(
       appBar: PreferredSize(
@@ -687,7 +658,8 @@ class DetailsPage extends StatelessWidget {
               top: 75,
               left: 16,
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                icon:
+                const Icon(Icons.arrow_back, color: Colors.black),
                 onPressed: () {
                   Navigator.pop(context);
                 },
@@ -697,28 +669,28 @@ class DetailsPage extends StatelessWidget {
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title
             Center(
               child: Text(
-                item['title'] ?? 'N/A',
+                title,
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: textColor,
+                  color:
+                  isDarkMode ? Colors.white : Colors.black,
                 ),
                 textAlign: TextAlign.center,
               ),
             ),
-            const SizedBox(height: 32),
-
-            // Status Highlight
+            const SizedBox(height: 24),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0, vertical: 16.0),
               decoration: BoxDecoration(
                 color: statusColor,
                 borderRadius: BorderRadius.circular(12.0),
@@ -732,8 +704,8 @@ class DetailsPage extends StatelessWidget {
                 ],
               ),
               child: Text(
-                item['status'] ?? "Unknown",
-                style: TextStyle(
+                status,
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
@@ -741,42 +713,17 @@ class DetailsPage extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
             ),
-            const SizedBox(height: 32),
-
-            // Conditionally display details based on 'types'
-            if (types == 'meeting') ...[
-              _buildInfoRow(Icons.title, 'Title', item['title'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.calendar_today, 'From', item['from_date_time'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.calendar_today, 'To', item['to_date_time'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.room, 'Room', item['room_name'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.person, 'Employee', item['employee_name'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.notes, 'Details', item['details'] ?? 'No Details', _getIconColor(item['status'])),
-            ] else if (types == 'leave') ...[
-              _buildInfoRow(Icons.title, 'Leave Type', item['title'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.calendar_today, 'From', item['take_leave_from'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.calendar_today, 'To', item['take_leave_to'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.person, 'Employee', item['requestor_name'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.notes, 'Reason', item['take_leave_reason'] ?? 'N/A', _getIconColor(item['status'])),
-            ] else if (types == 'car') ...[
-              _buildInfoRow(Icons.title, 'Purpose', item['title'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.calendar_today, 'Date Out', item['date_out'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.calendar_today, 'Date In', item['date_in'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.access_time, 'Time Out', item['time_out'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.access_time, 'Time In', item['time_in'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.place, 'Place', item['place'] ?? 'N/A', _getIconColor(item['status'])),
-              _buildInfoRow(Icons.person, 'Requestor', item['requestor_name'] ?? 'N/A', _getIconColor(item['status'])),
-            ] else ...[
-              // Default details
-              Center(
-                child: Text(
-                  'No additional details available.',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: textColor,
-                  ),
-                ),
-              ),
-            ],
+            const SizedBox(height: 24),
+            _buildInfoRow(
+                Icons.calendar_today, detailLabel1, detailValue1, _getIconColor(status)),
+            _buildInfoRow(
+                Icons.calendar_today, detailLabel2, detailValue2, _getIconColor(status)),
+            _buildInfoRow(
+                Icons.info_outline, detailLabel3, detailValue3, _getIconColor(status)),
+            _buildInfoRow(
+                Icons.person, detailLabel4, detailValue4, _getIconColor(status)),
+            _buildInfoRow(
+                Icons.notes, detailLabel5, detailValue5, _getIconColor(status)),
             const Spacer(),
           ],
         ),
@@ -784,33 +731,8 @@ class DetailsPage extends StatelessWidget {
     );
   }
 
-  // Build the info row with custom icon color and improved design
-  Widget _buildInfoRow(IconData icon, String title, String content, Color iconColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Icon(icon, size: 24, color: iconColor),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              '$title: $content',
-              style: const TextStyle(
-                fontSize: 16,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-  Widget _buildInfoRow(IconData icon, String label, String value,
-      bool isDarkMode,
-      {Color iconColor = Colors.black54}) {
-    final textColor = isDarkMode ? Colors.white : Colors.black;
-
+  Widget _buildInfoRow(
+      IconData icon, String label, String value, Color iconColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -820,9 +742,9 @@ class DetailsPage extends StatelessWidget {
           Expanded(
             child: Text(
               '$label: $value',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 20,
-                color: textColor,
+                color: Colors.black87,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -831,3 +753,4 @@ class DetailsPage extends StatelessWidget {
       ),
     );
   }
+}

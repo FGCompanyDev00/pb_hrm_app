@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/history_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_approvals_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_approvals_main_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/qr_profile_page.dart';
 import 'package:pb_hrsystem/roles.dart';
@@ -302,11 +302,16 @@ class _DashboardState extends State<Dashboard> {
                                   color: isDarkMode ? Colors.white : Colors.black,
                                 ),
                               ),
-                              const SizedBox(width: 5),
+                              const SizedBox(width: 1),
                               Stack(
                                 children: [
                                   IconButton(
-                                    icon: Icon(Icons.notifications, color: isDarkMode ? Colors.white : Colors.black),
+                                    icon: Image.asset(
+                                      'assets/notification-status.png',
+                                      width: 24,
+                                      height: 24,
+                                      color: isDarkMode ? Colors.white : Colors.black,
+                                    ),
                                     onPressed: () {
                                       Navigator.push(
                                         context,

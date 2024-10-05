@@ -1,13 +1,16 @@
+// staff_approvals_main_page.dart
+
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/finish_staff_approvals_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_request_approvals_result.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_approvals_view_page.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:intl/intl.dart';
 
 class StaffApprovalsPage extends StatefulWidget {
   const StaffApprovalsPage({super.key});
@@ -20,6 +23,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
   bool _isApprovalSelected = true;
   List<Map<String, dynamic>> _approvalItems = [];
   List<Map<String, dynamic>> _historyItems = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -32,14 +36,10 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
     final token = prefs.getString('token');
 
     if (token == null) {
-      if (kDebugMode) {
-        print('Token is null');
-      }
+      setState(() {
+        _isLoading = false;
+      });
       return;
-    } else {
-      if (kDebugMode) {
-        print('Token is available: $token');
-      }
     }
 
     try {
@@ -58,23 +58,65 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
         final List<dynamic> historyResults = json.decode(historyResponse.body)['results'];
 
         setState(() {
-          _approvalItems = List<Map<String, dynamic>>.from(approvalResults);
-          _historyItems = List<Map<String, dynamic>>.from(historyResults);
+          _approvalItems = approvalResults.map((item) => _formatItem(item)).toList();
+          _historyItems = historyResults.map((item) => _formatItem(item)).toList();
+          _isLoading = false;
         });
       } else {
-        if (kDebugMode) {
-          print('Failed to load data: Approvals - ${approvalResponse.statusCode}, History - ${historyResponse.statusCode}');
-        }
+        setState(() {
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error: $e');
-      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
+  Map<String, dynamic> _formatItem(Map<String, dynamic> item) {
+    String type = item['types'] ?? 'unknown';
+    Map<String, dynamic> formattedItem = {
+      'type': type,
+      'status': item['status'] ?? 'pending',
+      'statusColor': _getStatusColor(item['status']),
+      'icon': _getIconForType(type),
+      'typeColor': _getTypeColor(type),
+      'timestamp': DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now(),
+      'img_name': item['img_name'] ?? 'https://via.placeholder.com/150',
+    };
+
+    if (type == 'meeting') {
+      formattedItem.addAll({
+        'title': item['title'] ?? 'No Title',
+        'startDate': item['from_date_time'] ?? '',
+        'endDate': item['to_date_time'] ?? '',
+        'room': item['room_name'] ?? 'No Room Info',
+        'employee_name': item['employee_name'] ?? 'N/A',
+      });
+    } else if (type == 'leave') {
+      formattedItem.addAll({
+        'title': item['name'] ?? 'No Title',
+        'startDate': item['take_leave_from'] ?? '',
+        'endDate': item['take_leave_to'] ?? '',
+        'leave_type': item['leave_type'] ?? 'N/A',
+        'employee_name': item['requestor_name'] ?? 'N/A',
+      });
+    } else if (type == 'car') {
+      formattedItem.addAll({
+        'title': item['purpose'] ?? 'No Title',
+        'startDate': item['date_out'] ?? '',
+        'endDate': item['date_in'] ?? '',
+        'telephone': item['telephone'] ?? 'N/A',
+        'employee_name': item['requestor_name'] ?? 'N/A',
+      });
+    }
+
+    return formattedItem;
+  }
+
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
       case 'approved':
         return Colors.green;
       case 'rejected':
@@ -87,6 +129,19 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
     }
   }
 
+  Color _getTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'meeting':
+        return Colors.green;
+      case 'leave':
+        return Colors.orange;
+      case 'car':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
   String _getIconForType(String type) {
     switch (type.toLowerCase()) {
       case 'leave':
@@ -96,7 +151,7 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
       case 'meeting':
         return 'assets/calendar.png';
       default:
-        return 'assets/default_icon.png'; // Fallback icon
+        return 'assets/default_icon.png';
     }
   }
 
@@ -148,7 +203,11 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                   IconButton(
                     icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
                     onPressed: () {
-                      Navigator.pop(context);
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (context) => const Dashboard()),
+                            (Route<dynamic> route) => false,
+                      );
                     },
                   ),
                   Text(
@@ -243,7 +302,9 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: RefreshIndicator(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(
               onRefresh: _fetchApprovalsData,
               child: ListView.builder(
                 padding: const EdgeInsets.all(16.0),
@@ -261,57 +322,121 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
   }
 
   Widget _buildApprovalCard(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
+    String type = item['type'] ?? 'unknown';
+    String title = item['title'] ?? 'No Title';
+    String status = item['status'] ?? 'Pending';
+    String employeeName = item['employee_name'] ?? 'N/A';
+    String employeeImage = item['img_name'] ?? 'https://via.placeholder.com/150';
+    Color typeColor = _getTypeColor(type);
+    Color statusColor = _getStatusColor(status);
+
+    String startDate = item['startDate'] ?? '';
+    String endDate = item['endDate'] ?? '';
+
+    String detailLabel = '';
+    String detailValue = '';
+
+    if (type == 'meeting') {
+      detailLabel = 'Room';
+      detailValue = item['room'] ?? 'No Room Info';
+    } else if (type == 'leave') {
+      detailLabel = 'Type';
+      detailValue = item['leave_type'] ?? 'N/A';
+    } else if (type == 'car') {
+      detailLabel = 'Telephone';
+      detailValue = item['telephone'] ?? 'N/A';
+    }
+
+    String formatDate(String? dateStr) {
+      try {
+        if (dateStr == null || dateStr.isEmpty) {
+          return 'N/A';
+        }
+        final DateTime parsedDate = DateTime.parse(dateStr);
+        return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);
+      } catch (e) {
+        return 'Invalid Date';
+      }
+    }
+
     return GestureDetector(
       onTap: () => _showApprovalDetail(context, item),
       child: Card(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          side: BorderSide(color: _getStatusColor(item['status'] ?? 'Unknown')),
+          borderRadius: BorderRadius.circular(15.0),
+          side: BorderSide(color: typeColor, width: 2),
         ),
-        elevation: 5,
+        elevation: 4,
         margin: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Image.asset(
-                _getIconForType(item['types'] ?? 'default'),
-                width: 40,
-                height: 40,
+        child: Row(
+          children: [
+            Container(
+              width: 5,
+              height: 100,
+              decoration: BoxDecoration(
+                color: typeColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(15.0),
+                  bottomLeft: Radius.circular(15.0),
+                ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Image.asset(
+                          item['icon'],
+                          width: 24,
+                          height: 24,
+                          color: typeColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          type[0].toUpperCase() + type.substring(1),
+                          style: TextStyle(
+                            color: typeColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     Text(
-                      item['requestor_name'] ?? 'No Title',
+                      title,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
-                      'From: ${item['take_leave_from'] ?? 'N/A'} To: ${item['take_leave_to'] ?? 'N/A'}',
+                      'From: ${formatDate(startDate)}',
                       style: TextStyle(
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                        color: Colors.grey[700],
+                        fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 8),
                     Text(
-                      'Days: ${item['days']?.toString() ?? 'N/A'}',
+                      'To: ${formatDate(endDate)}',
                       style: TextStyle(
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                        color: Colors.grey[700],
+                        fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
-                      item['take_leave_reason'] ?? 'No Reason',
+                      '$detailLabel: $detailValue',
                       style: TextStyle(
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                        color: Colors.grey[700],
+                        fontSize: 14,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -321,19 +446,22 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                           'Status: ',
                           style: TextStyle(
                             color: isDarkMode ? Colors.white : Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
                           ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
                           decoration: BoxDecoration(
-                            color: _getStatusColor(item['status'] ?? 'Unknown'),
-                            borderRadius: BorderRadius.circular(4.0),
+                            color: statusColor,
+                            borderRadius: BorderRadius.circular(12.0),
                           ),
                           child: Text(
-                            item['is_approve'] ?? item['status'] ?? 'Unknown',
+                            status,
                             style: const TextStyle(
-                              color: Colors.black,
+                              color: Colors.white,
                               fontWeight: FontWeight.bold,
+                              fontSize: 12,
                             ),
                           ),
                         ),
@@ -342,14 +470,15 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
-              CircleAvatar(
-                backgroundImage: NetworkImage(item['img_name'] ??
-                    'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-                radius: 30,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: CircleAvatar(
+                backgroundImage: NetworkImage(employeeImage),
+                radius: 24,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:pb_hrsystem/home/notification_settings_page.dart';
 import 'package:pb_hrsystem/settings/change_password.dart';
 import 'package:pb_hrsystem/settings/edit_profile.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
@@ -309,13 +310,14 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildSettingsTile(
                       context,
                       title: 'Notification',
-                      trailing: Switch(
-                        value: _notificationEnabled,
-                        onChanged: (bool value) {
-                          _toggleNotification(value);
-                        },
-                        activeColor: Colors.green,
-                      ),
+                      icon: Icons.arrow_forward_ios,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => NotificationSettingsPage()),
+                        );
+                      },
                     ),
                     // 5. Remove Test Notification Tile
                     // Removed the following block:

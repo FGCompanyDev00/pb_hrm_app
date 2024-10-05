@@ -127,3 +127,6 @@ flutter:
     - assets/calendar-icon.png
     - assets/title.png
     - assets/task.png
+    - assets/android_device.png
+    - assets/ios_device.png
+    - assets/notification-status.png

@@ -1,8 +1,12 @@
+// admin_approval_main_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/management/admin_approvals_view_page.dart';
 import 'package:pb_hrsystem/management/admin_history_view_page.dart';
+import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -33,6 +37,11 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     await retrieveToken();
     if (token != null) {
       fetchData();
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
     }
   }
 
@@ -42,6 +51,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       token = prefs.getString('token');
     } catch (e) {
       print('Error retrieving token: $e');
+      _showErrorDialog('Error', 'Failed to retrieve token.');
     }
   }
 
@@ -70,6 +80,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
               .map((item) => _formatItem(item))
               .toList();
         }
+      } else {
+        _showErrorDialog('Error', 'Failed to fetch approvals: ${approvalResponse.reasonPhrase}');
       }
 
       // Fetch History data
@@ -95,14 +107,37 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
               .map((item) => _formatItem(item))
               .toList();
         }
+      } else {
+        _showErrorDialog('Error', 'Failed to fetch history: ${historyResponse.reasonPhrase}');
       }
     } catch (e) {
       print('Error fetching data: $e');
+      _showErrorDialog('Error', 'An unexpected error occurred while fetching data.');
     } finally {
       setState(() {
         isLoading = false;
       });
     }
+  }
+
+  // Show error dialog
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              // Optionally, navigate back or take other actions
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   Map<String, dynamic> _formatItem(Map<String, dynamic> item) {
@@ -112,9 +147,10 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       'types': types,
       'status': item['status'] ?? 'Unknown',
       'statusColor': _getStatusColor(item['status']),
-      'icon': _getStatusIcon(item['status']),
+      'icon': _getStatusIcon(item['status']), // IconData
       'iconColor': _getStatusColor(item['status']),
-      'img_name': item['img_name'] ?? 'https://via.placeholder.com/150',
+      'img_name': item['img_name'] ??
+          'https://via.placeholder.com/150', // Default image if not provided
     };
 
     if (types == 'meeting') {
@@ -124,51 +160,83 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       formattedItem['room'] = item['room_name'] ?? 'No Room Info';
       formattedItem['details'] = item['remark'] ?? 'No Details Provided';
       formattedItem['employee_name'] = item['employee_name'] ?? 'N/A';
+      formattedItem['uid'] = item['uid'] ?? ''; // Unique ID for meeting
+      formattedItem['line_manager_img'] = item['line_manager_img'] ??
+          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+      formattedItem['hr_img'] = item['hr_img'] ??
+          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
     } else if (types == 'leave') {
-      formattedItem['title'] = item['take_leave_name'] ?? 'No Title';
+      formattedItem['title'] = item['take_leave_reason'] ?? 'No Title';
 
-      formattedItem['startDate'] = (item['take_leave_from'] != null && item['take_leave_from'].isNotEmpty)
+      formattedItem['startDate'] =
+      (item['take_leave_from'] != null && item['take_leave_from'].isNotEmpty)
           ? item['take_leave_from']
           : 'N/A';
 
-      formattedItem['endDate'] = (item['take_leave_to'] != null && item['take_leave_to'].isNotEmpty)
+      formattedItem['endDate'] =
+      (item['take_leave_to'] != null && item['take_leave_to'].isNotEmpty)
           ? item['take_leave_to']
           : 'N/A';
 
-      formattedItem['room'] =  item['room_name'] ?? 'No Place Info';
+      formattedItem['room'] = item['room_name'] ?? 'No Place Info';
       formattedItem['details'] = item['take_leave_reason'] ?? 'No Details Provided';
       formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
-    }
-    else if (types == 'car') {
+      formattedItem['take_leave_request_id'] =
+          item['take_leave_request_id']?.toString() ?? ''; // ID for leave
+      formattedItem['line_manager_img'] = item['line_manager_img'] ??
+          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+      formattedItem['hr_img'] = item['hr_img'] ??
+          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+    } else if (types == 'car') {
       formattedItem['title'] = item['purpose'] ?? 'No Title';
 
-      formattedItem['startDate'] = (item['date_in'] != null && item['date_in'].isNotEmpty)
+      formattedItem['startDate'] =
+      (item['date_in'] != null && item['date_in'].isNotEmpty)
           ? item['date_in']
           : 'N/A';
 
-      formattedItem['time'] = (item['time_in'] != null && item['time_in'].isNotEmpty)
+      formattedItem['time'] =
+      (item['time_in'] != null && item['time_in'].isNotEmpty)
           ? item['time_in']
           : 'N/A';
-      
-      
-      formattedItem['time_end'] = (item['time_out'] != null && item['time_out'].isNotEmpty)
+
+      formattedItem['time_end'] =
+      (item['time_out'] != null && item['time_out'].isNotEmpty)
           ? item['time_out']
           : 'N/A';
-     
-      formattedItem['endDate'] = (item['date_out'] != null && item['date_out'].isNotEmpty)
-          ? item['date_in']
+
+      formattedItem['endDate'] =
+      (item['date_out'] != null && item['date_out'].isNotEmpty)
+          ? item['date_out'] // Corrected from 'date_in' to 'date_out'
           : 'N/A';
 
       formattedItem['room'] = item['place'] ?? 'No Place Info';
       formattedItem['details'] = item['purpose'] ?? 'No Details Provided';
       formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
-     
-    }
-    else {
+      formattedItem['car_permit_id'] = item['uid']?.toString() ?? ''; // ID for car permit
+      formattedItem['line_manager_img'] = item['line_manager_img'] ??
+          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+      formattedItem['hr_img'] = item['hr_img'] ??
+          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+    } else {
       // Default processing
       formattedItem['title'] = 'Unknown Type';
     }
+
     return formattedItem;
+  }
+
+  Color _getTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'meeting':
+        return Colors.green;
+      case 'leave':
+        return Colors.orange;
+      case 'car':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
   }
 
   Color _getStatusColor(String? status) {
@@ -240,10 +308,37 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
   }
 
   void _openApprovalDetail(Map<String, dynamic> item) {
+    // Determine the unique ID based on the type
+    String type = item['types'];
+    String? id;
+
+    switch (type) {
+      case 'meeting':
+        id = item['uid'];
+        break;
+      case 'leave':
+        id = item['take_leave_request_id'];
+        break;
+      case 'car':
+        id = item['car_permit_id'];
+        break;
+      default:
+        id = null;
+    }
+
+    if (id == null || id.isEmpty) {
+      _showErrorDialog('Invalid Data', 'The selected item has invalid or missing ID.');
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AdminApprovalsViewPage(item: item),
+        builder: (context) => AdminApprovalsViewPage(
+          item: item,
+          type: type,
+          id: id as String,
+        ),
       ),
     );
   }
@@ -257,34 +352,28 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     );
   }
 
-String formatDate(String? dateStr) {
-  try {
-    if (dateStr == null || dateStr.isEmpty) {
-      return 'N/A';
-    }
+  String formatDate(String? dateStr) {
+    try {
+      if (dateStr == null || dateStr.isEmpty) {
+        return 'N/A';
+      }
 
-    // Split the date string by "-"
-    List<String> parts = dateStr.split('-');
-    if (parts.length == 3) {
-      // Pad the month and day with a leading zero if needed
-      String year = parts[0];
-      String month = parts[1].padLeft(2, '0'); 
-      String day = parts[2].padLeft(2, '0');   
+      // Handle different date formats based on type
+      DateTime parsedDate;
 
-      // Rebuild the date string in the format YYYY-MM-DD
-      String formattedDateStr = '$year-$month-$day';
+      // Attempt to parse the date string
+      try {
+        parsedDate = DateTime.parse(dateStr);
+      } catch (_) {
+        // If parsing fails, return the original string
+        return dateStr;
+      }
 
-      // Parse and format the date
-      final DateTime parsedDate = DateTime.parse(formattedDateStr);
       return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);
-    } else {
+    } catch (e) {
       return 'Invalid Date';
     }
-  } catch (e) {
-    return 'Invalid Date';
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -330,7 +419,7 @@ String formatDate(String? dateStr) {
                     child: Padding(
                       padding: EdgeInsets.only(top: 55.0),
                       child: Text(
-                        'Approvals ',
+                        'Approvals',
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 24,
@@ -356,7 +445,8 @@ String formatDate(String? dateStr) {
                         });
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10.0),
+                        padding:
+                        const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
                           color: _isApprovalSelected
                               ? Colors.amber
@@ -398,7 +488,8 @@ String formatDate(String? dateStr) {
                         });
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10.0),
+                        padding:
+                        const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
                           color: !_isApprovalSelected
                               ? Colors.amber
@@ -458,23 +549,31 @@ String formatDate(String? dateStr) {
   }
 
   Widget _buildCard(Map<String, dynamic> item) {
-    final String types = item['types'] ?? 'Unknown';
-
-    String title = item['title'] ?? 'No Title';
-    String startDate = item['startDate'] ?? 'N/A';
-    String endDate = item['endDate'] ?? 'N/A';
-    String room = item['room'] ?? 'No Info';
-    String status = item['status'] ?? 'Pending';
-    String employeeName = item['employee_name'] ?? 'N/A';
-    String employeeImage =
+    final String type = item['types'] ?? 'unknown';
+    final String title = item['title'] ?? 'No Title';
+    final String status = item['status'] ?? 'Pending';
+    final String employeeName = item['employee_name'] ?? 'N/A';
+    final String employeeImage =
         item['img_name'] ?? 'https://via.placeholder.com/150';
+    final Color typeColor = _getTypeColor(type);
+    final Color statusColor = _getStatusColor(status);
 
-    Color statusColor = _getStatusColor(status);
-    Color typeColor = getTypeColor(types);
- print('title: $title');
-    print('Start Date: $startDate');
-  print('End Date: $endDate');
-  print('room: $room');
+    final String startDate = item['startDate'] ?? 'N/A';
+    final String endDate = item['endDate'] ?? 'N/A';
+
+    String detailLabel = '';
+    String detailValue = '';
+
+    if (type == 'meeting') {
+      detailLabel = 'Room';
+      detailValue = item['room'] ?? 'No Room Info';
+    } else if (type == 'leave') {
+      detailLabel = 'Created at';
+      detailValue = item['created_at'] ?? 'N/A';
+    } else if (type == 'car') {
+      detailLabel = 'Requestor ID';
+      detailValue = item['requestor_id'] ?? 'N/A';
+    }
 
     return GestureDetector(
       onTap: () {
@@ -487,16 +586,15 @@ String formatDate(String? dateStr) {
       child: Card(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15.0),
-          side: BorderSide(color: statusColor, width: 1.5),
+          side: BorderSide(color: typeColor, width: 2),
         ),
-        elevation: 6,
-        margin: const EdgeInsets.symmetric(vertical: 10.0),
+        elevation: 4,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
         child: Row(
           children: [
-            // Left vertical colored line
             Container(
               width: 5,
-              height: 130,
+              height: 100,
               decoration: BoxDecoration(
                 color: typeColor,
                 borderRadius: const BorderRadius.only(
@@ -505,86 +603,111 @@ String formatDate(String? dateStr) {
                 ),
               ),
             ),
+            const SizedBox(width: 12),
+            // Use getIconForType to display type-specific icon
+            getIconForType(type),
             const SizedBox(width: 8),
-            // Card content
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                padding:
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Left section for icon
-                    getIconForType(types),
-                    const SizedBox(width: 16),
-                    // Center section for details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Title
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
+                    Row(
+                      children: [
+                        Icon(
+                          item['icon'], // Use Icon widget for status
+                          size: 24,
+                          color: item['iconColor'] ?? typeColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          type[0].toUpperCase() + type.substring(1),
+                          style: TextStyle(
+                            color: typeColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(height: 4),
-                          // Date range
-                          Text(
-                            'Date: ${formatDate(startDate)} To ${formatDate(endDate)}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          // Room or Place
-                          Text(
-                            'Room: $room',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.orange,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // Status row
-                          Row(
-                            children: [
-                              const Text(
-                                'Status: ',
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8.0, vertical: 4.0),
-                                decoration: BoxDecoration(
-                                  color: statusColor,
-                                  borderRadius: BorderRadius.circular(12.0),
-                                ),
-                                child: Text(
-                                  status,
-                                  style: const TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color:
+                        Provider.of<ThemeNotifier>(context).isDarkMode
+                            ? Colors.white
+                            : Colors.black,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    // Right section for employee image
-                    CircleAvatar(
-                      backgroundImage: NetworkImage(employeeImage),
-                      radius: 30,
+                    const SizedBox(height: 4),
+                    Text(
+                      'From: ${formatDate(startDate)}',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      'To: ${formatDate(endDate)}',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$detailLabel: $detailValue',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          'Status: ',
+                          style: TextStyle(
+                            color:
+                            Provider.of<ThemeNotifier>(context).isDarkMode
+                                ? Colors.white
+                                : Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0, vertical: 4.0),
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          child: Text(
+                            status,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: CircleAvatar(
+                backgroundImage: NetworkImage(employeeImage),
+                radius: 24,
               ),
             ),
           ],

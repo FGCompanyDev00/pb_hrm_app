@@ -18,25 +18,31 @@ import 'package:http/http.dart' as http;
 import 'package:fluttertoast/fluttertoast.dart';
 
 class HomeCalendar extends StatefulWidget {
-  const HomeCalendar({Key? key}) : super(key: key);
+  const HomeCalendar({super.key});
 
   @override
   _HomeCalendarState createState() => _HomeCalendarState();
 }
 
-class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin {
+class _HomeCalendarState extends State<HomeCalendar>
+    with TickerProviderStateMixin {
+  // Base URL for API endpoints
   final String baseUrl = 'https://demo-application-api.flexiflows.co';
 
+  // ValueNotifier to hold events mapped by date
   late final ValueNotifier<Map<DateTime, List<Event>>> _events;
 
+  // Calendar properties
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
   List<Event> _eventsForDay = [];
 
+  // Notifications
   late final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
+  // Filters and Search
   bool _showFiltersAndSearchBar = false;
   String _selectedCategory = 'All';
   final List<String> _categories = [
@@ -48,10 +54,15 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
   ];
   String _searchQuery = '';
 
+  // Animation Controller
   late final AnimationController _animationController;
 
+  // Double Tap Timer
   Timer? _doubleTapTimer;
   static const int doubleTapDelay = 300;
+
+  // Loading State
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -60,6 +71,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     _events = ValueNotifier({});
     _eventsForDay = [];
 
+    // Initialize local notifications
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     const AndroidInitializationSettings initializationSettingsAndroid =
     AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -67,11 +79,13 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
+    // Initialize Animation Controller
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
 
+    // Fetch initial data
     _fetchData();
   }
 
@@ -83,86 +97,138 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     super.dispose();
   }
 
+  /// Fetches all required data concurrently
   Future<void> _fetchData() async {
-    await Future.wait([
-      _fetchMeetingData(),
-      _fetchLeaveRequests(),
-      _fetchMeetingRoomBookings(),
-      _fetchCarBookings(),
-    ]);
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      await Future.wait([
+        _fetchMeetingData(),
+        _fetchLeaveRequests(),
+        _fetchMeetingRoomBookings(),
+        _fetchCarBookings(),
+      ]);
+    } catch (e) {
+      _showSnackBar('Error fetching data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
-  DateTime _normalizeDate(DateTime date) {
-    return DateTime(date.year, date.month, date.day);
-  }
-
-  Future<void> _fetchLeaveRequests() async {
+  /// Retrieves the authentication token from SharedPreferences
+  Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    return prefs.getString('token');
+  }
 
+  /// Helper method to handle HTTP GET requests with error handling
+  Future<http.Response?> _getRequest(String endpoint) async {
+    final token = await _getToken();
     if (token == null) {
-      _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');
-      return;
+      _showSnackBar(
+          'Authentication Error: Token is null. Please log in again.');
+      return null;
     }
 
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/api/leave_requests'),
+        Uri.parse('$baseUrl$endpoint'),
         headers: {'Authorization': 'Bearer $token'},
       );
-
       if (response.statusCode == 200) {
-        final List<dynamic> results = json.decode(response.body)['results'];
-        final leaveRequests = List<Map<String, dynamic>>.from(results);
-
-        final Map<DateTime, List<Event>> approvalEvents = {};
-        for (var item in leaveRequests) {
-          final DateTime startDate = _normalizeDate(DateTime.parse(item['take_leave_from']));
-          final DateTime endDate = _normalizeDate(DateTime.parse(item['take_leave_to']));
-          final String uid = 'leave_${item['id']}';
-
-          String status = _mapLeaveStatus(item['is_approve']);
-
-          if (status == 'Cancelled') continue;
-
-          final event = Event(
-            item['name'],
-            startDate,
-            endDate,
-            item['take_leave_reason'] ?? 'Approval Pending',
-            status: status,
-            isMeeting: false,
-            category: 'Leave Requests',
-            uid: uid,
-          );
-
-          for (var day = startDate;
-          day.isBefore(endDate.add(const Duration(days: 1)));
-          day = day.add(const Duration(days: 1))) {
-            final normalizedDay = _normalizeDate(day);
-            if (approvalEvents.containsKey(normalizedDay)) {
-              if (!approvalEvents[normalizedDay]!.any((e) => e.uid == event.uid)) {
-                approvalEvents[normalizedDay]!.add(event);
-              }
-            } else {
-              approvalEvents[normalizedDay] = [event];
-            }
-          }
-        }
-
-        setState(() {
-          _events.value = {..._events.value, ...approvalEvents};
-          _filterAndSearchEvents();
-        });
+        return response;
       } else {
-        _showErrorDialog('Failed to Load Leave Requests',
-            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showSnackBar(
+            'Failed to load data. Status Code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        return null;
       }
     } catch (e) {
-      _showErrorDialog('Error Fetching Leave Requests', 'An unexpected error occurred: $e');
+      _showSnackBar('Network Error: $e');
+      return null;
     }
   }
 
+  /// Displays a SnackBar with the provided message
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
+  }
+
+  /// Normalizes the date by removing the time component
+  DateTime _normalizeDate(DateTime date) {
+    return DateTime(date.year, date.month, date.day);
+  }
+
+  /// Fetches leave requests from the API
+  Future<void> _fetchLeaveRequests() async {
+    final response = await _getRequest('/api/leave_requests');
+    if (response == null) return;
+
+    try {
+      final List<dynamic> results = json.decode(response.body)['results'];
+      final leaveRequests = List<Map<String, dynamic>>.from(results);
+
+      final Map<DateTime, List<Event>> approvalEvents = {};
+      for (var item in leaveRequests) {
+        // Adjusted field names to match API response
+        final DateTime startDate = item['take_leave_from'] != null
+            ? _normalizeDate(DateTime.parse(item['take_leave_from']))
+            : _normalizeDate(DateTime.now());
+        final DateTime endDate = item['take_leave_to'] != null
+            ? _normalizeDate(DateTime.parse(item['take_leave_to']))
+            : _normalizeDate(DateTime.now());
+        final String uid = 'leave_${item['id']}';
+
+        String status = item['is_approve'] != null
+            ? _mapLeaveStatus(item['is_approve'].toString())
+            : 'Pending';
+
+        if (status == 'Cancelled') continue;
+
+        final event = Event(
+          title: item['name'] ?? 'Leave Request',
+          startDateTime: startDate,
+          endDateTime: endDate,
+          description: item['take_leave_reason'] ?? 'Approval Pending',
+          status: status,
+          isMeeting: false,
+          category: 'Leave Requests',
+          uid: uid,
+        );
+
+        for (var day = startDate;
+        day.isBefore(endDate.add(const Duration(days: 1)));
+        day = day.add(const Duration(days: 1))) {
+          final normalizedDay = _normalizeDate(day);
+          if (approvalEvents.containsKey(normalizedDay)) {
+            if (!approvalEvents[normalizedDay]!
+                .any((e) => e.uid == event.uid)) {
+              approvalEvents[normalizedDay]!.add(event);
+            }
+          } else {
+            approvalEvents[normalizedDay] = [event];
+          }
+        }
+      }
+
+      setState(() {
+        _events.value = {..._events.value, ...approvalEvents};
+        _filterAndSearchEvents();
+      });
+    } catch (e) {
+      _showSnackBar('Error parsing leave requests: $e');
+    }
+  }
+
+  /// Maps API leave status to human-readable status
   String _mapLeaveStatus(String apiStatus) {
     switch (apiStatus.toLowerCase()) {
       case 'approved':
@@ -177,91 +243,96 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     }
   }
 
+  /// Fetches meeting data from the API
   Future<void> _fetchMeetingData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    if (token == null) {
-      _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');
-      return;
-    }
+    final response = await _getRequest(
+        '/api/work-tracking/out-meeting/outmeeting/my-members');
+    if (response == null) return;
 
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/work-tracking/out-meeting/outmeeting/my-members'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      final data = json.decode(response.body);
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (data == null ||
+          data['results'] == null ||
+          data['results'] is! List) {
+        _showSnackBar('Invalid meeting data format.');
+        return;
+      }
 
-        if (data == null || data['results'] == null || data['results'] is! List) {
-          _showErrorDialog('Error Fetching Meetings', 'No meeting data available.');
-          return;
-        }
+      final List<dynamic> results = data['results'];
+      final Map<DateTime, List<Event>> meetingEvents = {};
 
-        final List<dynamic> results = data['results'];
-        final Map<DateTime, List<Event>> meetingEvents = {};
+      for (var item in results) {
+        // Adjusted field names to match API response
+        final DateTime startDate = item['from_date'] != null
+            ? DateTime.parse(item['from_date'])
+            : DateTime.now();
+        final DateTime endDate = item['to_date'] != null
+            ? DateTime.parse(item['to_date'])
+            : DateTime.now();
 
-        for (var item in results) {
-          final DateTime startDate = DateTime.parse(item['fromdate']);
-          final DateTime endDate = DateTime.parse(item['todate']);
-          final Color eventColor = _parseColor(item['backgroundColor']);
-          final String uid = item['outmeeting_uid'] ?? UniqueKey().toString();
+        // Handle possible nulls with default values
+        final String uid =
+            item['meeting_id']?.toString() ?? UniqueKey().toString();
 
-          String status = _mapMeetingStatus(item['status']);
+        String status = item['s_name'] != null
+            ? _mapMeetingStatus(item['s_name'].toString())
+            : 'Pending';
 
-          if (status == 'Cancelled') continue;
+        if (status == 'Cancelled') continue;
 
-          final event = Event(
-            item['title'],
-            startDate,
-            endDate,
-            item['description'] ?? '',
-            status: status,
-            isMeeting: true,
-            location: item['location'] ?? '',
-            createdBy: item['created_by'] ?? '',
-            imgName: item['img_name'] ?? '',
-            createdAt: item['created_at'] ?? '',
-            uid: uid,
-            isRepeat: item['is_repeat'] ?? '',
-            videoConference: item['video_conference'] ?? '',
-            backgroundColor: eventColor,
-            outmeetingUid: item['outmeeting_uid'] ?? '',
-            category: 'Meetings',
-          );
+        final event = Event(
+          title: item['title'] ?? 'Meeting',
+          startDateTime: startDate,
+          endDateTime: endDate,
+          description: item['description'] ?? '',
+          status: status,
+          isMeeting: true,
+          location: item['location'] ?? '',
+          createdBy: item['create_by'] ?? '',
+          imgName: item['file_name'] ?? '',
+          createdAt: item['created_at'] ?? '',
+          uid: uid,
+          isRepeat: item['is_repeat']?.toString(),
+          videoConference: item['video_conference']?.toString(),
+          backgroundColor: item['backgroundColor'] != null
+              ? _parseColor(item['backgroundColor'])
+              : Colors.blue,
+          outmeetingUid: item['meeting_id']?.toString(),
+          category: 'Meetings',
+          members: item['members'] != null
+              ? List<Map<String, dynamic>>.from(item['members'])
+              : [],
+        );
 
-          for (var day = _normalizeDate(startDate);
-          !day.isAfter(_normalizeDate(endDate));
-          day = day.add(const Duration(days: 1))) {
-            if (meetingEvents.containsKey(day)) {
-              if (!meetingEvents[day]!.any((e) => e.uid == event.uid)) {
-                meetingEvents[day]!.add(event);
-              }
-            } else {
-              meetingEvents[day] = [event];
+        for (var day = _normalizeDate(startDate);
+        !day.isAfter(_normalizeDate(endDate));
+        day = day.add(const Duration(days: 1))) {
+          if (meetingEvents.containsKey(day)) {
+            if (!meetingEvents[day]!.any((e) => e.uid == event.uid)) {
+              meetingEvents[day]!.add(event);
             }
+          } else {
+            meetingEvents[day] = [event];
           }
         }
-
-        setState(() {
-          _events.value = {..._events.value, ...meetingEvents};
-          _filterAndSearchEvents();
-        });
-      } else {
-        _showErrorDialog('Failed to Load Meetings',
-            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
+
+      setState(() {
+        _events.value = {..._events.value, ...meetingEvents};
+        _filterAndSearchEvents();
+      });
     } catch (e) {
-      _showErrorDialog('Error Fetching Meetings', 'An unexpected error occurred: $e');
+      _showSnackBar('Error parsing meeting data: $e');
     }
   }
 
+  /// Maps API meeting status to human-readable status
   String _mapMeetingStatus(String apiStatus) {
     switch (apiStatus.toLowerCase()) {
       case 'approved':
         return 'Approved';
+      case 'processing':
       case 'waiting':
         return 'Pending';
       case 'disapproved':
@@ -271,73 +342,79 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     }
   }
 
+  /// Fetches meeting room bookings from the API
   Future<void> _fetchMeetingRoomBookings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    if (token == null) {
-      _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');
-      return;
-    }
+    final response = await _getRequest(
+        '/api/office-administration/book_meeting_room/my-requests');
+    if (response == null) return;
 
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/office-administration/book_meeting_room/my-requests'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      final List<dynamic> results =
+          json.decode(response.body)['results'] ?? [];
+      final meetingRoomBookings =
+      List<Map<String, dynamic>>.from(results);
 
-      if (response.statusCode == 200) {
-        final List<dynamic> results = json.decode(response.body)['results'];
-        final meetingRoomBookings = List<Map<String, dynamic>>.from(results);
+      final Map<DateTime, List<Event>> bookingEvents = {};
+      for (var item in meetingRoomBookings) {
+        final DateTime? startDateTime = item['from_date_time'] != null
+            ? DateTime.parse(item['from_date_time'])
+            : null;
+        final DateTime? endDateTime = item['to_date_time'] != null
+            ? DateTime.parse(item['to_date_time'])
+            : null;
 
-        final Map<DateTime, List<Event>> bookingEvents = {};
-        for (var item in meetingRoomBookings) {
-          final DateTime startDate = DateTime.parse(item['from_date_time']);
-          final DateTime endDate = DateTime.parse(item['to_date_time']);
-          final String uid = 'booking_${item['uid']}';
-
-          String status = _mapBookingStatus(item['status']);
-
-          if (status == 'Cancelled') continue;
-
-          final event = Event(
-            item['title'],
-            startDate,
-            endDate,
-            item['remark'] ?? 'Booking Pending',
-            status: status,
-            isMeeting: true,
-            category: 'Meeting Room Bookings',
-            uid: uid,
-            location: item['room_name'] ?? 'Meeting Room',
-          );
-
-          for (var day = _normalizeDate(startDate);
-          !day.isAfter(_normalizeDate(endDate));
-          day = day.add(const Duration(days: 1))) {
-            if (bookingEvents.containsKey(day)) {
-              if (!bookingEvents[day]!.any((e) => e.uid == event.uid)) {
-                bookingEvents[day]!.add(event);
-              }
-            } else {
-              bookingEvents[day] = [event];
-            }
-          }
+        if (startDateTime == null || endDateTime == null) {
+          _showSnackBar(
+              'Missing from_date_time or to_date_time in meeting room booking.');
+          continue;
         }
 
-        setState(() {
-          _events.value = {..._events.value, ...bookingEvents};
-          _filterAndSearchEvents();
-        });
-      } else {
-        _showErrorDialog('Failed to Load Meeting Room Bookings',
-            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        final String uid = item['uid']?.toString() ?? UniqueKey().toString();
+
+        String status = item['status'] != null
+            ? _mapBookingStatus(item['status'].toString())
+            : 'Pending';
+
+        if (status == 'Cancelled') continue;
+
+        final event = Event(
+          title: item['title'] ?? 'Meeting Room Booking',
+          startDateTime: startDateTime,
+          endDateTime: endDateTime,
+          description: item['remark'] ?? 'Booking Pending',
+          status: status,
+          isMeeting: true,
+          category: 'Meeting Room Bookings',
+          uid: uid,
+          location: item['room_name'] ?? 'Meeting Room',
+          members: item['members'] != null
+              ? List<Map<String, dynamic>>.from(item['members'])
+              : [],
+        );
+
+        for (var day = _normalizeDate(startDateTime);
+        !day.isAfter(_normalizeDate(endDateTime));
+        day = day.add(const Duration(days: 1))) {
+          if (bookingEvents.containsKey(day)) {
+            if (!bookingEvents[day]!.any((e) => e.uid == event.uid)) {
+              bookingEvents[day]!.add(event);
+            }
+          } else {
+            bookingEvents[day] = [event];
+          }
+        }
       }
+
+      setState(() {
+        _events.value = {..._events.value, ...bookingEvents};
+        _filterAndSearchEvents();
+      });
     } catch (e) {
-      _showErrorDialog('Error Fetching Meeting Room Bookings', 'An unexpected error occurred: $e');
+      _showSnackBar('Error parsing meeting room bookings: $e');
     }
   }
 
+  /// Maps API booking status to human-readable status
   String _mapBookingStatus(String apiStatus) {
     switch (apiStatus.toLowerCase()) {
       case 'approved':
@@ -351,90 +428,83 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     }
   }
 
+  /// Fetches car bookings from the API
   Future<void> _fetchCarBookings() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    if (token == null) {
-      _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');
-      return;
-    }
+    final response =
+    await _getRequest('/api/office-administration/car_permits/me');
+    if (response == null) return;
 
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/office-administration/car_permits/me'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      final List<dynamic> results =
+          json.decode(response.body)['results'] ?? [];
+      final carBookings = List<Map<String, dynamic>>.from(results);
 
-      if (response.statusCode == 200) {
-        final List<dynamic> results = json.decode(response.body)['results'];
-        final carBookings = List<Map<String, dynamic>>.from(results);
-
-        final Map<DateTime, List<Event>> carEvents = {};
-        for (var item in carBookings) {
-          if (item['date_out'] == null || item['date_in'] == null) {
-            continue;
-          }
-
-          String dateOutStr = _formatDateString(item['date_out']);
-          String dateInStr = _formatDateString(item['date_in']);
-          String timeOutStr = item['time_out'] ?? '00:00';
-          String timeInStr = item['time_in'] ?? '23:59';
-
-          DateTime startDateTime;
-          DateTime endDateTime;
-
-          try {
-            startDateTime = DateTime.parse('$dateOutStr $timeOutStr:00');
-            endDateTime = DateTime.parse('$dateInStr $timeInStr:00');
-          } catch (e) {
-            continue;
-          }
-
-          final String uid = 'car_${item['uid']}';
-
-          String status = _mapCarStatus(item['status']);
-
-          if (status == 'Cancelled') continue;
-
-          final event = Event(
-            item['purpose'] ?? 'No Title',
-            startDateTime,
-            endDateTime,
-            item['place'] ?? 'Car Booking Pending',
-            status: status,
-            isMeeting: false,
-            category: 'Car Bookings',
-            uid: uid,
-            location: item['place'] ?? '',
-          );
-
-          for (var day = _normalizeDate(startDateTime);
-          !day.isAfter(_normalizeDate(endDateTime));
-          day = day.add(const Duration(days: 1))) {
-            if (carEvents.containsKey(day)) {
-              if (!carEvents[day]!.any((e) => e.uid == event.uid)) {
-                carEvents[day]!.add(event);
-              }
-            } else {
-              carEvents[day] = [event];
-            }
-          }
+      final Map<DateTime, List<Event>> carEvents = {};
+      for (var item in carBookings) {
+        if (item['date_out'] == null || item['date_in'] == null) {
+          _showSnackBar('Missing date_out or date_in in car booking.');
+          continue;
         }
 
-        setState(() {
-          _events.value = {..._events.value, ...carEvents};
-          _filterAndSearchEvents();
-        });
-      } else {
-        _showErrorDialog('Failed to Load Car Bookings',
-            'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        String dateOutStr = _formatDateString(item['date_out'].toString());
+        String dateInStr = _formatDateString(item['date_in'].toString());
+        String timeOutStr = item['time_out']?.toString() ?? '00:00';
+        String timeInStr = item['time_in']?.toString() ?? '23:59';
+
+        DateTime? startDateTime;
+        DateTime? endDateTime;
+
+        try {
+          startDateTime = DateTime.parse('$dateOutStr $timeOutStr:00');
+          endDateTime = DateTime.parse('$dateInStr $timeInStr:00');
+        } catch (e) {
+          _showSnackBar('Error parsing car booking dates: $e');
+          continue;
+        }
+
+        final String uid = 'car_${item['uid']?.toString() ?? UniqueKey().toString()}';
+
+        String status = item['status'] != null
+            ? _mapCarStatus(item['status'].toString())
+            : 'Pending';
+
+        if (status == 'Cancelled') continue;
+
+        final event = Event(
+          title: item['purpose'] ?? 'No Title',
+          startDateTime: startDateTime,
+          endDateTime: endDateTime,
+          description: item['place'] ?? 'Car Booking Pending',
+          status: status,
+          isMeeting: false,
+          category: 'Car Bookings',
+          uid: uid,
+          location: item['place'] ?? '',
+        );
+
+        for (var day = _normalizeDate(startDateTime);
+        !day.isAfter(_normalizeDate(endDateTime));
+        day = day.add(const Duration(days: 1))) {
+          if (carEvents.containsKey(day)) {
+            if (!carEvents[day]!.any((e) => e.uid == event.uid)) {
+              carEvents[day]!.add(event);
+            }
+          } else {
+            carEvents[day] = [event];
+          }
+        }
       }
+
+      setState(() {
+        _events.value = {..._events.value, ...carEvents};
+        _filterAndSearchEvents();
+      });
     } catch (e) {
-      _showErrorDialog('Error Fetching Car Bookings', 'An unexpected error occurred: $e');
+      _showSnackBar('Error parsing car bookings: $e');
     }
   }
 
+  /// Maps API car status to human-readable status
   String _mapCarStatus(String apiStatus) {
     switch (apiStatus.toLowerCase()) {
       case 'approved':
@@ -448,15 +518,18 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     }
   }
 
+  /// Formats date strings to ensure consistency
   String _formatDateString(String dateStr) {
     try {
       DateTime parsedDate = DateFormat('yyyy-M-d').parse(dateStr);
       return DateFormat('yyyy-MM-dd').format(parsedDate);
     } catch (e) {
+      _showSnackBar('Error formatting date string: $e');
       return dateStr;
     }
   }
 
+  /// Handles pull-to-refresh action
   Future<void> _onRefresh() async {
     await _fetchData();
     setState(() {
@@ -464,6 +537,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     });
   }
 
+  /// Parses color from hex string
   Color _parseColor(String colorString) {
     try {
       return Color(int.parse(colorString.replaceFirst('#', '0xff')));
@@ -472,11 +546,13 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     }
   }
 
+  /// Retrieves events for a specific day
   List<Event> _getEventsForDay(DateTime day) {
     final normalizedDay = _normalizeDate(day);
     return _events.value[normalizedDay] ?? [];
   }
 
+  /// Filters and searches events based on selected category and search query
   void _filterAndSearchEvents() {
     if (_selectedDay == null) return;
     List<Event> dayEvents = _getEventsForDay(_selectedDay!);
@@ -498,6 +574,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     });
   }
 
+  /// Navigates to day view when a day is double-tapped
   void _showDayView(DateTime selectedDay) {
     final List<Event> dayEvents = _getEventsForDay(selectedDay);
     final List<TimetableItem<String>> timetableItems = dayEvents.map((event) {
@@ -518,26 +595,12 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
-  void _showErrorDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(title, semanticsLabel: title),
-          content: Text(message, semanticsLabel: message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('OK', semanticsLabel: 'OK'),
-            ),
-          ],
-        );
-      },
-    );
+  /// Retrieves the color associated with an event category
+  Color getEventColor(Event event) {
+    return categoryColors[event.category] ?? Colors.grey;
   }
 
+  // Category colors mapping
   final Map<String, Color> categoryColors = {
     'Meetings': Colors.blue,
     'Leave Requests': Colors.red,
@@ -545,10 +608,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     'Car Bookings': Colors.purple,
   };
 
-  Color getEventColor(Event event) {
-    return categoryColors[event.category] ?? Colors.grey;
-  }
-
+  /// Displays a popup to choose between adding personal or office events
   void _showAddEventOptionsPopup() {
     showDialog(
       context: context,
@@ -606,6 +666,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
+  /// Builds individual popup options
   Widget _buildPopupOption({
     required IconData icon,
     required String label,
@@ -614,10 +675,12 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: Colors.black54, semanticLabel: label),
+            Icon(icon,
+                size: 20, color: Colors.black54, semanticLabel: label),
             const SizedBox(width: 12),
             Text(label, style: const TextStyle(color: Colors.black87)),
           ],
@@ -626,6 +689,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
+  /// Navigates to the appropriate event addition page
   void _navigateToAddEvent(String eventType) async {
     if (eventType == 'Personal') {
       Navigator.push(
@@ -643,10 +707,10 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
       );
       if (newEvent != null) {
         _addEvent(
-          newEvent['title'],
-          DateTime.parse(newEvent['startDateTime']),
-          DateTime.parse(newEvent['endDateTime']),
-          newEvent['description'] ?? '',
+          title: newEvent['title'] ?? 'New Event',
+          startDateTime: DateTime.parse(newEvent['startDateTime']),
+          endDateTime: DateTime.parse(newEvent['endDateTime']),
+          description: newEvent['description'] ?? '',
           status: 'Pending',
           isMeeting: true,
           category: 'Meetings',
@@ -663,21 +727,22 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     }
   }
 
-  void _addEvent(
-      String title,
-      DateTime startDateTime,
-      DateTime endDateTime,
-      String description, {
-        required String status,
-        required bool isMeeting,
-        required String category,
-        required String uid,
-      }) {
+  /// Adds a new event to the calendar
+  void _addEvent({
+    required String title,
+    required DateTime startDateTime,
+    required DateTime endDateTime,
+    required String description,
+    required String status,
+    required bool isMeeting,
+    required String category,
+    required String uid,
+  }) {
     final newEvent = Event(
-      title,
-      startDateTime,
-      endDateTime,
-      description,
+      title: title,
+      startDateTime: startDateTime,
+      endDateTime: endDateTime,
+      description: description,
       status: status,
       isMeeting: isMeeting,
       category: category,
@@ -686,7 +751,8 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     final normalizedDay = _normalizeDate(startDateTime);
     setState(() {
       if (_events.value.containsKey(normalizedDay)) {
-        if (!_events.value[normalizedDay]!.any((e) => e.uid == uid)) {
+        if (!_events.value[normalizedDay]!
+            .any((e) => e.uid == uid)) {
           _events.value[normalizedDay]!.add(newEvent);
         }
       } else {
@@ -710,32 +776,41 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
+                // Ensures all children are centered horizontally
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   _buildCalendarHeader(isDarkMode),
                   if (_showFiltersAndSearchBar) _buildFilters(),
                   if (_showFiltersAndSearchBar) _buildSearchBar(),
                   _buildCalendar(context, isDarkMode),
                   _buildSectionSeparator(),
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.6,
-                    child: _buildCalendarView(context, _eventsForDay),
-                  ),
+                  _buildCalendarView(context, _eventsForDay), // Removed SizedBox
                 ],
               ),
             ),
           ),
+          if (_isLoading)
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: LinearProgressIndicator(),
+            ),
         ],
       ),
     );
   }
 
+  /// Builds the calendar header with background and add button
   Widget _buildCalendarHeader(bool isDarkMode) {
     return Container(
       width: double.infinity,
       height: 140,
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+          image: AssetImage(isDarkMode
+              ? 'assets/darkbg.png'
+              : 'assets/ready_bg.png'),
           fit: BoxFit.cover,
         ),
         borderRadius: const BorderRadius.only(
@@ -779,9 +854,11 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
+  /// Builds the filter chips for event categories
   Widget _buildFilters() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding:
+      const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Wrap(
         spacing: 8.0,
         children: _categories.map((category) {
@@ -796,10 +873,10 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             },
             selectedColor: getEventColor(
               Event(
-                '',
-                DateTime.now(),
-                DateTime.now(),
-                '',
+                title: '',
+                startDateTime: DateTime.now(),
+                endDateTime: DateTime.now(),
+                description: '',
                 status: '',
                 isMeeting: false,
                 category: category,
@@ -808,7 +885,8 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             ),
             checkmarkColor: Colors.white,
             labelStyle: TextStyle(
-              color: _selectedCategory == category ? Colors.white : Colors.black,
+              color:
+              _selectedCategory == category ? Colors.white : Colors.black,
             ),
           );
         }).toList(),
@@ -816,6 +894,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
+  /// Builds the search bar for filtering events
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -823,7 +902,8 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
         decoration: InputDecoration(
           labelText: 'Search Events',
           prefixIcon: const Icon(Icons.search),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
+          border:
+          OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
         ),
         onChanged: (value) {
           setState(() {
@@ -835,135 +915,208 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
+  /// Builds the TableCalendar widget with customized navigation arrows
   Widget _buildCalendar(BuildContext context, bool isDarkMode) {
     return Container(
-      height: 300,
       margin: const EdgeInsets.all(12.0),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.black : Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Consumer<DateProvider>(
-        builder: (context, dateProvider, child) {
-          return TableCalendar<Event>(
-            rowHeight: 38,
-            firstDay: DateTime.utc(2010, 10, 16),
-            lastDay: DateTime.utc(2030, 3, 14),
-            focusedDay: dateProvider.selectedDate,
-            calendarFormat: _calendarFormat,
-            availableCalendarFormats: const {
-              CalendarFormat.month: 'Month',
-            },
-            selectedDayPredicate: (day) {
-              return isSameDay(dateProvider.selectedDate, day);
-            },
-            onDaySelected: (selectedDay, focusedDay) {
-              if (_singleTapSelectedDay != null &&
-                  isSameDay(_singleTapSelectedDay, selectedDay)) {
-                _showDayView(selectedDay);
-                _singleTapSelectedDay = null;
-              } else {
-                dateProvider.updateSelectedDate(selectedDay);
-                setState(() {
-                  _singleTapSelectedDay = selectedDay;
-                  _selectedDay = selectedDay;
-                  _focusedDay = focusedDay;
-                  _filterAndSearchEvents();
-                });
-              }
-            },
-            onFormatChanged: (format) {
-              if (format != CalendarFormat.month) {
-                setState(() {
-                  _calendarFormat = CalendarFormat.month;
-                });
-              }
-            },
-            onPageChanged: (focusedDay) {
-              setState(() {
-                _focusedDay = focusedDay;
-                dateProvider.updateSelectedDate(focusedDay);
-              });
-            },
-            eventLoader: _getEventsForDay,
-            calendarStyle: CalendarStyle(
-              todayDecoration: BoxDecoration(
-                color: Colors.orangeAccent.withOpacity(0.5),
-                shape: BoxShape.circle,
-              ),
-              selectedDecoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.7),
-                shape: BoxShape.circle,
-              ),
-              outsideDaysVisible: false,
-              weekendTextStyle: TextStyle(
-                color: isDarkMode ? Colors.white54 : Colors.black54,
-              ),
-              defaultTextStyle: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
-              markerDecoration: const BoxDecoration(
-                color: Colors.transparent,
-              ),
-            ),
-            headerStyle: HeaderStyle(
-              titleCentered: true,
-              formatButtonVisible: false,
-              titleTextStyle: TextStyle(
-                fontSize: 18.0,
-                fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
-              leftChevronIcon: Icon(
-                Icons.chevron_left,
-                size: 14,
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
-              rightChevronIcon: Icon(
-                Icons.chevron_right,
-                size: 14,
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
-            ),
-            calendarBuilders: CalendarBuilders(
-              markerBuilder: (context, date, events) {
-                if (events.isNotEmpty) {
-                  final sortedEvents = events
-                    ..sort((a, b) => b.startDateTime.compareTo(a.startDateTime));
-                  final latestEvents = sortedEvents.take(3).toList();
-                  final eventSpans = latestEvents.where((event) {
-                    return date.isAfter(
-                        event.startDateTime.subtract(const Duration(days: 1))) &&
-                        date.isBefore(event.endDateTime.add(const Duration(days: 1)));
-                  }).toList();
+      child: Column(
+        children: [
+          // Custom Header
+          _buildCustomHeader(isDarkMode),
+          // TableCalendar without the default header
+          Consumer<DateProvider>(
+            builder: (context, dateProvider, child) {
+              return TableCalendar<Event>(
+                rowHeight: 38,
+                firstDay: DateTime.utc(2010, 10, 16),
+                lastDay: DateTime.utc(2030, 3, 14),
+                focusedDay: dateProvider.selectedDate,
+                calendarFormat: _calendarFormat,
+                availableCalendarFormats: const {
+                  CalendarFormat.month: 'Month',
+                },
+                headerVisible: false, // Hide the default header
+                selectedDayPredicate: (day) {
+                  return isSameDay(dateProvider.selectedDate, day);
+                },
+                onDaySelected: (selectedDay, focusedDay) {
+                  if (_singleTapSelectedDay != null &&
+                      isSameDay(_singleTapSelectedDay, selectedDay)) {
+                    _showDayView(selectedDay);
+                    _singleTapSelectedDay = null;
+                  } else {
+                    dateProvider.updateSelectedDate(selectedDay);
+                    setState(() {
+                      _singleTapSelectedDay = selectedDay;
+                      _selectedDay = selectedDay;
+                      _focusedDay = focusedDay;
+                      _filterAndSearchEvents();
+                    });
+                  }
+                },
+                onFormatChanged: (format) {
+                  if (format != CalendarFormat.month) {
+                    setState(() {
+                      _calendarFormat = CalendarFormat.month;
+                    });
+                  }
+                },
+                onPageChanged: (focusedDay) {
+                  setState(() {
+                    _focusedDay = focusedDay;
+                    dateProvider.updateSelectedDate(focusedDay);
+                  });
+                },
+                eventLoader: _getEventsForDay,
+                calendarStyle: CalendarStyle(
+                  todayDecoration: BoxDecoration(
+                    color: Colors.orangeAccent.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  selectedDecoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.7),
+                    shape: BoxShape.circle,
+                  ),
+                  outsideDaysVisible: false,
+                  weekendTextStyle: TextStyle(
+                    color: isDarkMode ? Colors.white54 : Colors.black54,
+                  ),
+                  defaultTextStyle: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                  markerDecoration: const BoxDecoration(
+                    color: Colors.transparent,
+                  ),
+                ),
+                calendarBuilders: CalendarBuilders(
+                  markerBuilder: (context, date, events) {
+                    if (events.isNotEmpty) {
+                      final sortedEvents = events
+                        ..sort((a, b) =>
+                            b.startDateTime.compareTo(a.startDateTime));
+                      final latestEvents = sortedEvents.take(3).toList();
+                      final eventSpans = latestEvents.where((event) {
+                        return date.isAfter(
+                            event.startDateTime.subtract(const Duration(days: 1))) &&
+                            date.isBefore(
+                                event.endDateTime.add(const Duration(days: 1)));
+                      }).toList();
 
-                  return Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: eventSpans.map((event) {
-                        return Container(
-                          width: 5,
-                          height: 5,
-                          margin: const EdgeInsets.symmetric(horizontal: 1),
-                          decoration: BoxDecoration(
-                            color: getEventColor(event),
-                            shape: BoxShape.circle,
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  );
-                }
-                return null;
-              },
-            ),
-          );
-        },
+                      return Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: eventSpans.map((event) {
+                            return Container(
+                              width: 5,
+                              height: 5,
+                              margin: const EdgeInsets.symmetric(horizontal: 1),
+                              decoration: BoxDecoration(
+                                color: getEventColor(event),
+                                shape: BoxShape.circle,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    }
+                    return null;
+                  },
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
 
+  /// Builds a custom header with bordered navigation arrows
+  Widget _buildCustomHeader(bool isDarkMode) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Previous Month Arrow with Border
+          GestureDetector(
+            onTap: () {
+              final previousMonth = DateTime(
+                  _focusedDay.year, _focusedDay.month - 1, _focusedDay.day);
+              _focusedDay = previousMonth;
+              Provider.of<DateProvider>(context, listen: false)
+                  .updateSelectedDate(previousMonth);
+              setState(() {
+                _selectedDay = previousMonth;
+                _filterAndSearchEvents();
+              });
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                    color: isDarkMode ? Colors.white : Colors.black),
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              padding: const EdgeInsets.all(4.0),
+              child: Icon(
+                Icons.chevron_left,
+                size: 20,
+                color: isDarkMode ? Colors.white : Colors.black,
+                semanticLabel: 'Previous Month',
+              ),
+            ),
+          ),
+          // Current Month and Year
+          Consumer<DateProvider>(
+            builder: (context, dateProvider, child) {
+              return Text(
+                DateFormat.yMMMM().format(dateProvider.selectedDate),
+                style: TextStyle(
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
+              );
+            },
+          ),
+          // Next Month Arrow with Border
+          GestureDetector(
+            onTap: () {
+              final nextMonth = DateTime(
+                  _focusedDay.year, _focusedDay.month + 1, _focusedDay.day);
+              _focusedDay = nextMonth;
+              Provider.of<DateProvider>(context, listen: false)
+                  .updateSelectedDate(nextMonth);
+              setState(() {
+                _selectedDay = nextMonth;
+                _filterAndSearchEvents();
+              });
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                    color: isDarkMode ? Colors.white : Colors.black),
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              padding: const EdgeInsets.all(4.0),
+              child: Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: isDarkMode ? Colors.white : Colors.black,
+                semanticLabel: 'Next Month',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds a gradient animated line as a section separator
   Widget _buildSectionSeparator() {
     return const Column(
       children: [
@@ -975,36 +1128,44 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     );
   }
 
+  /// Builds the list view for events on the selected day
   Widget _buildCalendarView(BuildContext context, List<Event> events) {
     if (_selectedDay == null) return const SizedBox.shrink();
-    String selectedDateString = DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!);
+    String selectedDateString =
+    DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!);
 
-    return Column(
-      children: [
-        Center(
-          child: Text(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center, // Centered alignment
+        children: [
+          Text(
             selectedDateString,
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Colors.black87,
             ),
-            textAlign: TextAlign.center,
+            textAlign: TextAlign.center, // Centered text
           ),
-        ),
-        const SizedBox(height: 10),
-        Expanded(
-          child: events.isEmpty
-              ? const Center(
-            child: Text(
-              'No events for this day.',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+          const SizedBox(height: 10),
+          events.isEmpty
+              ? const Text(
+            'No events for this day.',
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey,
+              fontWeight: FontWeight.w500,
             ),
+            textAlign: TextAlign.center, // Centered text
           )
               : ListView.separated(
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: events.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            separatorBuilder: (context, index) =>
+            const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final event = events[index];
 
@@ -1017,16 +1178,17 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                         event: {
                           'title': event.title,
                           'description': event.description,
-                          'startDateTime': event.startDateTime.toString(),
+                          'startDateTime':
+                          event.startDateTime.toString(),
                           'endDateTime': event.endDateTime.toString(),
                           'isMeeting': event.isMeeting,
-                          'createdBy': event.createdBy,
-                          'location': event.location,
+                          'createdBy': event.createdBy ?? '',
+                          'location': event.location ?? '',
                           'status': event.status,
-                          'img_name': event.imgName,
-                          'created_at': event.createdAt,
-                          'is_repeat': event.isRepeat,
-                          'video_conference': event.videoConference,
+                          'img_name': event.imgName ?? '',
+                          'created_at': event.createdAt ?? '',
+                          'is_repeat': event.isRepeat ?? '',
+                          'video_conference': event.videoConference ?? '',
                           'uid': event.uid,
                           'members': event.members ?? [],
                           'category': event.category,
@@ -1041,15 +1203,16 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: getEventColor(event).withOpacity(0.3),
+                        color:
+                        getEventColor(event).withOpacity(0.3),
                         offset: const Offset(0, 4),
                         blurRadius: 8,
                       ),
                     ],
                   ),
                   child: ListTile(
-                    contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
                     title: Text(
                       event.title,
                       style: const TextStyle(
@@ -1059,7 +1222,8 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                       ),
                     ),
                     subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 4),
                         Text(
@@ -1069,7 +1233,8 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                             fontSize: 14,
                           ),
                         ),
-                        if (event.location != null && event.location!.isNotEmpty)
+                        if (event.location != null &&
+                            event.location!.isNotEmpty)
                           Row(
                             children: [
                               const Icon(Icons.location_on,
@@ -1099,7 +1264,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                         ),
                       ],
                     ),
-                    trailing: Icon(
+                    trailing: const Icon(
                       Icons.chevron_right,
                       color: Colors.white70,
                     ),
@@ -1108,17 +1273,19 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
               );
             },
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
+/// Gradient animated line widget
 class GradientAnimationLine extends StatefulWidget {
-  const GradientAnimationLine({Key? key}) : super(key: key);
+  const GradientAnimationLine({super.key});
 
   @override
-  _GradientAnimationLineState createState() => _GradientAnimationLineState();
+  _GradientAnimationLineState createState() =>
+      _GradientAnimationLineState();
 }
 
 class _GradientAnimationLineState extends State<GradientAnimationLine>
@@ -1150,6 +1317,7 @@ class _GradientAnimationLineState extends State<GradientAnimationLine>
     super.dispose();
   }
 
+  /// Builds the animated gradient line
   Widget _buildSectionSeparator() {
     return AnimatedBuilder(
       animation: _controller,
@@ -1166,7 +1334,8 @@ class _GradientAnimationLineState extends State<GradientAnimationLine>
               ],
             ),
           ),
-          margin: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 2.0),
+          margin:
+          const EdgeInsets.symmetric(horizontal: 15.0, vertical: 2.0),
         );
       },
     );
@@ -1178,6 +1347,7 @@ class _GradientAnimationLineState extends State<GradientAnimationLine>
   }
 }
 
+/// Event model class
 class Event {
   final String title;
   final DateTime startDateTime;
@@ -1197,26 +1367,27 @@ class Event {
   final String category;
   final List<Map<String, dynamic>>? members;
 
-  Event(
-      this.title,
-      this.startDateTime,
-      this.endDateTime,
-      this.description, {
-        required this.status,
-        required this.isMeeting,
-        this.location,
-        this.createdBy,
-        this.imgName,
-        this.createdAt,
-        required this.uid,
-        this.isRepeat,
-        this.videoConference,
-        this.backgroundColor,
-        this.outmeetingUid,
-        required this.category,
-        this.members,
-      });
+  Event({
+    required this.title,
+    required this.startDateTime,
+    required this.endDateTime,
+    required this.description,
+    required this.status,
+    required this.isMeeting,
+    this.location,
+    this.createdBy,
+    this.imgName,
+    this.createdAt,
+    required this.uid,
+    this.isRepeat,
+    this.videoConference,
+    this.backgroundColor,
+    this.outmeetingUid,
+    required this.category,
+    this.members,
+  });
 
+  /// Returns formatted time for display
   String get formattedTime => DateFormat.jm().format(startDateTime);
 
   @override
@@ -1224,6 +1395,7 @@ class Event {
       '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
 }
 
+/// Data source for Syncfusion Calendar
 class MeetingDataSource extends CalendarDataSource {
   MeetingDataSource(List<Event> source) {
     appointments = source;
