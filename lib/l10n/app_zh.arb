@@ -1,7 +1,13 @@
 {
+  "@@locale": "zh",
   "appTitle": "PSBV Next",
   "welcomeToPSBV": "欢迎来到 PSBV Next",
-  "notJustAnotherCustomer": "你不仅仅是另一个客户。\n我们不仅仅是另一家银行...",
+  "welcomeSubtitle": "您不仅仅是另一个客户。\n我们不仅仅是另一家银行...",
+  "emptyCredentialsMessage": "请输入您的用户名和密码。",
+  "networkErrorMessage": "网络错误。请稍后再试。",
+  "authenticationFailed": "身份验证失败",
+  "pleaseTryAgain": "请再试一次。",
+  "close": "关闭",
   "username": "用户名",
   "password": "密码",
   "rememberMe": "记住我",
@@ -91,11 +97,10 @@
   "save": "保存",
   "editProfile": "编辑档案",
   "loginFailed": "登录失败",
-  "loginFailedMessage": "登录失败:",
+  "loginFailedMessage": "登录失败: ",
   "biometricDisabled": "生物识别已禁用",
   "enableBiometric": "请在设置中启用生物识别身份验证。",
   "authenticateToLogin": "请进行身份验证以登录",
   "authFailed": "身份验证失败",
-  "tryAgain": "生物识别身份验证失败。请再试一次。",
-  "forgotPassword": "忘记密码？"
+  "tryAgain": "生物识别身份验证失败。请再试一次。"
 }
