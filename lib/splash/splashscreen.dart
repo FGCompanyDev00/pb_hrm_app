@@ -92,7 +92,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     final double subtitleFontSize = getResponsiveFontSize(18, screenWidth);
 
     return Scaffold(
-      body: SafeArea(
+      body: Container(
         child: Stack(
           fit: StackFit.expand,
           children: [

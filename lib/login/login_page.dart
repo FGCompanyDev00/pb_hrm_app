@@ -337,7 +337,7 @@ class _LoginPageState extends State<LoginPage> {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      body: SafeArea(
+      body: Container(
         child: Container(
           width: double.infinity,
           height: double.infinity,
@@ -362,8 +362,8 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        SizedBox(height: screenHeight * 0.055),
                         _buildLanguageDropdown(languageNotifier, isDarkMode, screenWidth),
-                        SizedBox(height: screenHeight * 0.02),
                         _buildLogoAndText(
                           context,
                           logoSize,
@@ -472,8 +472,8 @@ class _LoginPageState extends State<LoginPage> {
               alignment: Alignment.center,
               children: [
                 Container(
-                  width: screenWidth * 0.15, // 15% of screen width
-                  height: screenWidth * 0.15, // Maintain square aspect ratio
+                  width: screenWidth * 0.13,
+                  height: screenWidth * 0.13,
                   decoration: BoxDecoration(
                     color: isDarkMode ? Colors.black54 : Colors.white,
                     shape: BoxShape.circle,
