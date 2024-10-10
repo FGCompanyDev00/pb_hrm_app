@@ -683,7 +683,6 @@ class _EventDetailViewState extends State<EventDetailView>
         style: TextStyle(
           color: Colors.black,
           fontSize: 22,
-          fontWeight: FontWeight.w600,
         ),
       ),
       leading: IconButton(

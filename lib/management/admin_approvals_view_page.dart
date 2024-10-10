@@ -203,19 +203,32 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
             fit: BoxFit.cover,
           ),
           borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(20),
-            bottomRight: Radius.circular(20),
+            bottomLeft: Radius.circular(30),
+            bottomRight: Radius.circular(30),
           ),
         ),
       ),
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back),
-        onPressed: () => Navigator.of(context).pop(),
-      ),
-      title: const Text('Approval Details', style: TextStyle(color: Colors.black)),
       centerTitle: true,
-      backgroundColor: Colors.transparent,
+      title: const Text(
+        'Approvals Detail',
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 22,
+        ),
+      ),
+      leading: IconButton(
+        icon: const Icon(
+          Icons.arrow_back_ios_new,
+          color: Colors.black,
+          size: 20,
+        ),
+        onPressed: () {
+          Navigator.pop(context);
+        },
+      ),
+      toolbarHeight: 80,
       elevation: 0,
+      backgroundColor: Colors.transparent,
     );
   }
 
