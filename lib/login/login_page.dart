@@ -263,7 +263,7 @@ class _LoginPageState extends State<LoginPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.info, color: Colors.red, size: 50),
+              const Icon(Icons.info, color: Colors.red, size: 50),
               const SizedBox(height: 16),
               Text(
                 title,
@@ -362,7 +362,7 @@ class _LoginPageState extends State<LoginPage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        SizedBox(height: screenHeight * 0.055),
+                        SizedBox(height: screenHeight * 0.047),
                         _buildLanguageDropdown(languageNotifier, isDarkMode, screenWidth),
                         _buildLogoAndText(
                           context,
@@ -372,7 +372,7 @@ class _LoginPageState extends State<LoginPage> {
                           isDarkMode,
                           screenWidth,
                         ),
-                        SizedBox(height: screenHeight * 0.03),
+                        SizedBox(height: screenHeight * 0.05),
                         _buildTextFields(context, screenWidth),
                         SizedBox(height: screenHeight * 0.02),
                         _buildRememberMeCheckbox(context, screenWidth),
@@ -484,31 +484,31 @@ class _LoginPageState extends State<LoginPage> {
                   child: Center(
                     child: Image.asset(
                       'assets/flags/${_selectedLanguage.toLowerCase()}.png',
-                      width: screenWidth * 0.07, // 7% of screen width
+                      width: screenWidth * 0.08, // 7% of screen width
                       height: screenWidth * 0.07,
                     ),
                   ),
                 ),
                 Positioned(
-                  bottom: screenWidth * 0.005, // Adjust based on screen width
+                  top: screenWidth * 0.08,
                   child: Icon(
                     Icons.arrow_drop_down,
                     color: isDarkMode ? Colors.white : Colors.black,
-                    size: screenWidth * 0.06, // 6% of screen width
+                    size: screenWidth * 0.06,
                   ),
                 ),
               ],
             ),
           ),
-          SizedBox(height: 7),
+          const SizedBox(height: 7),
           Text(
             _selectedLanguage,
             style: TextStyle(
               color: isDarkMode ? Colors.white : Colors.black,
-              fontSize: getResponsiveFontSize(18, screenWidth),
+              fontSize: getResponsiveFontSize(15, screenWidth),
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
         ],
       ),
     );
@@ -536,15 +536,15 @@ class _LoginPageState extends State<LoginPage> {
               height: logoSize,
               fit: BoxFit.contain,
             ),
-            SizedBox(width: screenWidth * 0.02),
+            SizedBox(width: screenWidth * 0.03),
             // Current Date
             _buildCustomDateRow(screenWidth),
           ],
         ),
-        SizedBox(height: 10),
+        const SizedBox(height: 10),
         // Welcome Text
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.02),
           child: Text(
             AppLocalizations.of(context)!.welcomeToPSBV,
             textAlign: TextAlign.center,
@@ -563,7 +563,7 @@ class _LoginPageState extends State<LoginPage> {
             AppLocalizations.of(context)!.welcomeSubtitle,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: subtitleFontSize,
+              fontSize: 15,
               color: isDarkMode ? Colors.white70 : Colors.black87,
             ),
           ),
