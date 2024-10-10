@@ -359,7 +359,6 @@ class _EventDetailViewState extends State<EventDetailView>
     };
   }
 
-  /// Builds the members list widget.
   Widget _buildMembersList(List<dynamic> members) {
     if (members.isEmpty) return const SizedBox.shrink();
 
