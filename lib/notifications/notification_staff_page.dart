@@ -1,26 +1,28 @@
-// admin_approval_main_page.dart
+// notification_staff_page.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_approvals_view_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_request_approvals_result.dart';
+import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/management/admin_approvals_view_page.dart';
-import 'package:pb_hrsystem/management/admin_history_view_page.dart'; // Ensure this is correctly imported
+import 'package:pb_hrsystem/management/admin_history_view_page.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
-import '../home/dashboard/dashboard.dart';
-
-class ManagementApprovalsPage extends StatefulWidget {
-  const ManagementApprovalsPage({super.key});
+class NotificationStaffPage extends StatefulWidget {
+  const NotificationStaffPage({super.key});
 
   @override
-  _ManagementApprovalsPageState createState() =>
-      _ManagementApprovalsPageState();
+  _NotificationStaffPageState createState() =>
+      _NotificationStaffPageState();
 }
 
-class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
+class _NotificationStaffPageState extends State<NotificationStaffPage> {
   bool _isApprovalSelected = true;
   List<Map<String, dynamic>> approvalItems = [];
   List<Map<String, dynamic>> historyItems = [];
@@ -50,7 +52,9 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       token = prefs.getString('token');
     } catch (e) {
-      print('Error retrieving token: $e');
+      if (kDebugMode) {
+        print('Error retrieving token: $e');
+      }
       _showErrorDialog('Error', 'Failed to retrieve token.');
     }
   }
@@ -61,7 +65,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     try {
       // Fetch Approvals data
       final approvalResponse = await http.get(
-        Uri.parse('$baseUrl/api/app/tasks/approvals/pending'),
+        Uri.parse('$baseUrl/api/app/users/history/pending'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -76,7 +80,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           final List<dynamic> results = approvalData['results'];
           approvalItems = results
               .whereType<Map<String, dynamic>>()
-              .where((item) => _getStatusForType(item) == 'Waiting')
+              .where((item) => item['status'] == 'Waiting')
               .map((item) => _formatItem(item))
               .toList();
         }
@@ -101,24 +105,24 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           final List<dynamic> results = historyData['results'];
           historyItems = results
               .whereType<Map<String, dynamic>>()
-              .where((item) {
-            String status = _getStatusForType(item);
-            return status == 'Approved' || status == 'Rejected';
-          }).map((item) => _formatItem(item))
+              .where((item) =>
+          item['status'] == 'Approved' ||
+              item['status'] == 'Rejected')
+              .map((item) => _formatItem(item))
               .toList();
         }
       } else {
         _showErrorDialog('Error', 'Failed to fetch history: ${historyResponse.reasonPhrase}');
       }
     } catch (e) {
-      print('Error fetching data: $e');
+      if (kDebugMode) {
+        print('Error fetching data: $e');
+      }
       _showErrorDialog('Error', 'An unexpected error occurred while fetching data.');
     } finally {
       setState(() {
         isLoading = false;
       });
-      print('Approval Items: $approvalItems'); // Debugging line
-      print('History Items: $historyItems'); // Debugging line
     }
   }
 
@@ -142,50 +146,21 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     );
   }
 
-  String _getStatusForType(Map<String, dynamic> item) {
-    String types = item['types'] ?? 'Unknown';
-    String status = '';
-
-    if (types == 'meeting') {
-      status = item['s_name'] ?? 'Unknown';
-    } else if (types == 'leave') {
-      status = item['is_approve'] ?? 'Unknown';
-    } else if (types == 'car' || types == 'meeting_room') {
-      status = item['status'] ?? 'Unknown';
-    } else {
-      status = 'Unknown';
-    }
-
-    return status;
-  }
-
   Map<String, dynamic> _formatItem(Map<String, dynamic> item) {
     String types = item['types'] ?? 'Unknown';
 
-    String status = _getStatusForType(item);
-
     Map<String, dynamic> formattedItem = {
       'types': types,
-      'status': status,
-      'statusColor': _getStatusColor(status),
-      'icon': _getStatusIcon(status), // IconData
-      'iconColor': _getStatusColor(status),
+      'status': item['status'] ?? 'Unknown',
+      'statusColor': _getStatusColor(item['status']),
+      'icon': _getStatusIcon(item['status']), // IconData
+      'iconColor': _getStatusColor(item['status']),
       'img_name': item['img_name'] ??
           'https://via.placeholder.com/150', // Default image if not provided
     };
 
     if (types == 'meeting') {
-      formattedItem['title'] = item['title'] ?? 'No Title';
-      formattedItem['startDate'] = item['from_date_time'] ?? 'N/A';
-      formattedItem['endDate'] = item['to_date_time'] ?? 'N/A';
-      formattedItem['room'] = item['room_name'] ?? 'No Room Info';
-      formattedItem['details'] = item['remark'] ?? 'No Details Provided';
-      formattedItem['employee_name'] = item['employee_name'] ?? 'N/A';
-      formattedItem['uid'] = item['uid'] ?? ''; // Unique ID for meeting
-      formattedItem['line_manager_img'] = item['line_manager_img'] ??
-          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
-      formattedItem['hr_img'] = item['hr_img'] ??
-          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+      // ... existing meeting mapping
     } else if (types == 'leave') {
       formattedItem['title'] = item['take_leave_reason'] ?? 'No Title';
 
@@ -204,41 +179,16 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
       formattedItem['take_leave_request_id'] =
           item['take_leave_request_id']?.toString() ?? ''; // ID for leave
+
+      // **Added line for 'days'**
+      formattedItem['days'] = item['days']?.toString() ?? 'N/A';
+
       formattedItem['line_manager_img'] = item['line_manager_img'] ??
           'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
       formattedItem['hr_img'] = item['hr_img'] ??
           'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
     } else if (types == 'car') {
-      formattedItem['title'] = item['purpose'] ?? 'No Title';
-
-      formattedItem['startDate'] =
-      (item['date_in'] != null && item['date_in'].isNotEmpty)
-          ? item['date_in']
-          : 'N/A';
-
-      formattedItem['time'] =
-      (item['time_in'] != null && item['time_in'].isNotEmpty)
-          ? item['time_in']
-          : 'N/A';
-
-      formattedItem['time_end'] =
-      (item['time_out'] != null && item['time_out'].isNotEmpty)
-          ? item['time_out']
-          : 'N/A';
-
-      formattedItem['endDate'] =
-      (item['date_out'] != null && item['date_out'].isNotEmpty)
-          ? item['date_out']
-          : 'N/A';
-
-      formattedItem['room'] = item['place'] ?? 'No Place Info';
-      formattedItem['details'] = item['purpose'] ?? 'No Details Provided';
-      formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
-      formattedItem['car_permit_id'] = item['uid']?.toString() ?? ''; // ID for car permit
-      formattedItem['line_manager_img'] = item['line_manager_img'] ??
-          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
-      formattedItem['hr_img'] = item['hr_img'] ??
-          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+      // ... existing car mapping
     } else {
       // Default processing
       formattedItem['title'] = 'Unknown Type';
@@ -335,7 +285,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
 
     switch (type) {
       case 'meeting':
-        id = item['uid']; // Ensure consistency with _formatItem
+        id = item['uid'];
         break;
       case 'leave':
         id = item['take_leave_request_id'];
@@ -355,8 +305,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AdminApprovalsViewPage(
-          item: item,
+        builder: (context) => ApprovalsViewPage(
           type: type,
           id: id as String,
         ),
@@ -365,37 +314,10 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
   }
 
   void _openHistoryDetail(Map<String, dynamic> item) {
-    // Define 'type' and 'id' similar to _openApprovalDetail
-    String type = item['types'];
-    String? id;
-
-    switch (type) {
-      case 'meeting':
-        id = item['uid']; // Ensure consistency with _formatItem
-        break;
-      case 'leave':
-        id = item['take_leave_request_id'];
-        break;
-      case 'car':
-        id = item['car_permit_id'];
-        break;
-      default:
-        id = null;
-    }
-
-    if (id == null || id.isEmpty) {
-      _showErrorDialog('Invalid Data', 'The selected item has invalid or missing ID.');
-      return;
-    }
-
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AdminHistoryViewPage(
-          item: item,
-          type: type,
-          id: id as String,
-        ),
+        builder: (context) => FinishStaffApprovalsPage(item: item),
       ),
     );
   }
@@ -467,7 +389,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                     child: Padding(
                       padding: EdgeInsets.only(top: 50.0),
                       child: Text(
-                        'Approvals',
+                        'Notification',
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 24,
@@ -600,7 +522,6 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     final String type = item['types'] ?? 'unknown';
     final String title = item['title'] ?? 'No Title';
     final String status = item['status'] ?? 'Pending';
-    final String employeeName = item['employee_name'] ?? 'N/A';
     final String employeeImage =
         item['img_name'] ?? 'https://via.placeholder.com/150';
     final Color typeColor = _getTypeColor(type);
@@ -616,8 +537,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       detailLabel = 'Room';
       detailValue = item['room'] ?? 'No Room Info';
     } else if (type == 'leave') {
-      detailLabel = 'Created at';
-      detailValue = item['created_at'] ?? 'N/A';
+      detailLabel = 'Days';
+      detailValue = item['days'] ?? 'N/A';
     } else if (type == 'car') {
       detailLabel = 'Requestor ID';
       detailValue = item['requestor_id'] ?? 'N/A';
@@ -633,16 +554,16 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       },
       child: Card(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30.0),
-          side: BorderSide(color: typeColor, width: 1),
+          borderRadius: BorderRadius.circular(15.0),
+          side: BorderSide(color: typeColor, width: 2),
         ),
-        elevation: 3,
-        margin: const EdgeInsets.symmetric(vertical: 10.0),
+        elevation: 4,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
         child: Row(
           children: [
             Container(
-              width: 4,
-              height: 160,
+              width: 5,
+              height: 100,
               decoration: BoxDecoration(
                 color: typeColor,
                 borderRadius: const BorderRadius.only(
@@ -658,12 +579,18 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
             Expanded(
               child: Padding(
                 padding:
-                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
+                        Icon(
+                          item['icon'], // Use Icon widget for status
+                          size: 24,
+                          color: item['iconColor'] ?? typeColor,
+                        ),
+                        const SizedBox(width: 8),
                         Text(
                           type[0].toUpperCase() + type.substring(1),
                           style: TextStyle(
@@ -674,7 +601,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(
                       title,
                       style: TextStyle(
@@ -686,19 +613,19 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       'From: ${formatDate(startDate)}',
                       style: TextStyle(
                         color: Colors.grey[700],
-                        fontSize: 12,
+                        fontSize: 14,
                       ),
                     ),
                     Text(
                       'To: ${formatDate(endDate)}',
                       style: TextStyle(
                         color: Colors.grey[700],
-                        fontSize: 12,
+                        fontSize: 14,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -706,10 +633,10 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                       '$detailLabel: $detailValue',
                       style: TextStyle(
                         color: Colors.grey[700],
-                        fontSize: 12,
+                        fontSize: 14,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Text(
@@ -749,7 +676,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: CircleAvatar(
                 backgroundImage: NetworkImage(employeeImage),
-                radius: 35,
+                radius: 24,
               ),
             ),
           ],

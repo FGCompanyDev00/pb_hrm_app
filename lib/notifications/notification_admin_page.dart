@@ -1,4 +1,4 @@
-// admin_approval_main_page.dart
+// notification_admin_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -12,15 +12,14 @@ import 'dart:convert';
 
 import '../home/dashboard/dashboard.dart';
 
-class ManagementApprovalsPage extends StatefulWidget {
-  const ManagementApprovalsPage({super.key});
+class NotificationAdminPage extends StatefulWidget {
+  const NotificationAdminPage({super.key});
 
   @override
-  _ManagementApprovalsPageState createState() =>
-      _ManagementApprovalsPageState();
+  _NotificationAdminPageState createState() => _NotificationAdminPageState();
 }
 
-class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
+class _NotificationAdminPageState extends State<NotificationAdminPage> {
   bool _isApprovalSelected = true;
   List<Map<String, dynamic>> approvalItems = [];
   List<Map<String, dynamic>> historyItems = [];
@@ -76,7 +75,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           final List<dynamic> results = approvalData['results'];
           approvalItems = results
               .whereType<Map<String, dynamic>>()
-              .where((item) => _getStatusForType(item) == 'Waiting')
+              .where((item) => item['status'] == 'Waiting')
               .map((item) => _formatItem(item))
               .toList();
         }
@@ -101,10 +100,10 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           final List<dynamic> results = historyData['results'];
           historyItems = results
               .whereType<Map<String, dynamic>>()
-              .where((item) {
-            String status = _getStatusForType(item);
-            return status == 'Approved' || status == 'Rejected';
-          }).map((item) => _formatItem(item))
+              .where((item) =>
+          item['status'] == 'Approved' ||
+              item['status'] == 'Rejected')
+              .map((item) => _formatItem(item))
               .toList();
         }
       } else {
@@ -117,8 +116,6 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       setState(() {
         isLoading = false;
       });
-      print('Approval Items: $approvalItems'); // Debugging line
-      print('History Items: $historyItems'); // Debugging line
     }
   }
 
@@ -142,34 +139,15 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     );
   }
 
-  String _getStatusForType(Map<String, dynamic> item) {
-    String types = item['types'] ?? 'Unknown';
-    String status = '';
-
-    if (types == 'meeting') {
-      status = item['s_name'] ?? 'Unknown';
-    } else if (types == 'leave') {
-      status = item['is_approve'] ?? 'Unknown';
-    } else if (types == 'car' || types == 'meeting_room') {
-      status = item['status'] ?? 'Unknown';
-    } else {
-      status = 'Unknown';
-    }
-
-    return status;
-  }
-
   Map<String, dynamic> _formatItem(Map<String, dynamic> item) {
     String types = item['types'] ?? 'Unknown';
 
-    String status = _getStatusForType(item);
-
     Map<String, dynamic> formattedItem = {
       'types': types,
-      'status': status,
-      'statusColor': _getStatusColor(status),
-      'icon': _getStatusIcon(status), // IconData
-      'iconColor': _getStatusColor(status),
+      'status': item['status'] ?? 'Unknown',
+      'statusColor': _getStatusColor(item['status']),
+      'icon': _getStatusIcon(item['status']), // IconData
+      'iconColor': _getStatusColor(item['status']),
       'img_name': item['img_name'] ??
           'https://via.placeholder.com/150', // Default image if not provided
     };
@@ -228,7 +206,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
 
       formattedItem['endDate'] =
       (item['date_out'] != null && item['date_out'].isNotEmpty)
-          ? item['date_out']
+          ? item['date_out'] // Corrected from 'date_in' to 'date_out'
           : 'N/A';
 
       formattedItem['room'] = item['place'] ?? 'No Place Info';
@@ -467,7 +445,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                     child: Padding(
                       padding: EdgeInsets.only(top: 50.0),
                       child: Text(
-                        'Approvals',
+                        'Notification',
                         style: TextStyle(
                           color: Colors.black,
                           fontSize: 24,

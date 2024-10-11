@@ -16,6 +16,8 @@ import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
 import 'package:pb_hrsystem/management/admin_approval_main_page.dart';
 
+import '../../notifications/notification_admin_page.dart';
+import '../../notifications/notification_staff_page.dart';
 import '../../notifications/notification_page.dart';
 
 class Dashboard extends StatefulWidget {
@@ -35,7 +37,7 @@ class _DashboardState extends State<Dashboard> {
   @override
   void initState() {
     super.initState();
-     Provider.of<UserProvider>(context, listen: false).fetchAndUpdateUser();
+    Provider.of<UserProvider>(context, listen: false).fetchAndUpdateUser();
     futureUserProfile = fetchUserProfile();
     futureBanners = fetchBanners();
     _pageController = PageController(initialPage: _currentPage);
@@ -44,7 +46,7 @@ class _DashboardState extends State<Dashboard> {
     Timer.periodic(const Duration(seconds: 5), (Timer timer) {
       if (_pageController.hasClients) {
         int nextPage = _currentPage + 1;
-        if (nextPage >= _pageController.positions.length) {
+        if (nextPage >= (_pageController.position.maxScrollExtent / _pageController.position.viewportDimension).ceil()) {
           nextPage = 0;
         }
         _pageController.animateToPage(
@@ -70,9 +72,14 @@ class _DashboardState extends State<Dashboard> {
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> responseJson = jsonDecode(response.body);
-      final Map<String, dynamic> userJson = responseJson['results'][0];
-      final userProfile = UserProfile.fromJson(userJson);
-      return userProfile;
+      final List<dynamic> results = responseJson['results'];
+      if (results.isNotEmpty) {
+        final Map<String, dynamic> userJson = results[0];
+        final userProfile = UserProfile.fromJson(userJson);
+        return userProfile;
+      } else {
+        throw Exception('No user data found');
+      }
     } else {
       throw Exception('Failed to load user profile');
     }
@@ -92,7 +99,7 @@ class _DashboardState extends State<Dashboard> {
 
     if (response.statusCode == 200) {
       final List<dynamic> results = jsonDecode(response.body)['results'];
-      return results.map<String>((file) => file['files']).toList();
+      return results.map<String>((file) => file['files'] as String).toList();
     } else {
       throw Exception('Failed to load banners');
     }
@@ -108,6 +115,33 @@ class _DashboardState extends State<Dashboard> {
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  // Method to check if the user has a management role
+  bool _hasManagementRole(List<String> roles) {
+    const List<String> managementMappedRoles = [
+      UserRole.managersbh,
+      UserRole.john,
+      UserRole.adminhq1,
+    ];
+
+    const List<String> additionalManagementRoles = [
+      'HeadOfHR',
+      'HR',
+      'AdminHQ',
+    ];
+
+    for (var role in roles) {
+      String mappedRole = UserRole.mapApiRole(role);
+      if (managementMappedRoles.contains(mappedRole) ||
+          additionalManagementRoles.contains(role)) {
+        if (kDebugMode) {
+          print('User has management role: $role (mapped to: $mappedRole)');
+        }
+        return true;
+      }
+    }
+    return false;
   }
 
   @override
@@ -312,15 +346,44 @@ class _DashboardState extends State<Dashboard> {
                                       height: 24,
                                       color: isDarkMode ? Colors.white : Colors.black,
                                     ),
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => const NotificationPage()),
-                                      ).then((_) {
-                                        setState(() {
-                                          _hasUnreadNotifications = false;
+                                    onPressed: () async {
+                                      // Fetch the latest user profile to get updated roles
+                                      try {
+                                        final userProfile = await futureUserProfile;
+                                        final roles = userProfile.roles;
+                                        if (_hasManagementRole(roles)) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(builder: (context) => const NotificationAdminPage()),
+                                          ).then((_) {
+                                            setState(() {
+                                              _hasUnreadNotifications = false;
+                                            });
+                                          });
+                                        } else {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(builder: (context) => const NotificationStaffPage()),
+                                          ).then((_) {
+                                            setState(() {
+                                              _hasUnreadNotifications = false;
+                                            });
+                                          });
+                                        }
+                                      } catch (e) {
+                                        if (kDebugMode) {
+                                          print('Error fetching user roles: $e');
+                                        }
+                                        // Fallback to default NotificationPage
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => const NotificationPage()),
+                                        ).then((_) {
+                                          setState(() {
+                                            _hasUnreadNotifications = false;
+                                          });
                                         });
-                                      });
+                                      }
                                     },
                                   ),
                                   if (_hasUnreadNotifications)
@@ -335,15 +398,7 @@ class _DashboardState extends State<Dashboard> {
                                         ),
                                         constraints: const BoxConstraints(
                                           minWidth: 12,
-                                          minHeight: 5,
-                                        ),
-                                        child: const Text(
-                                          '',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 8,
-                                          ),
-                                          textAlign: TextAlign.center,
+                                          minHeight: 12,
                                         ),
                                       ),
                                     ),
@@ -453,7 +508,7 @@ class _DashboardState extends State<Dashboard> {
       elevation: 10,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Colors.yellow, width: 3),
+        side: const BorderSide(color: Colors.yellow, width: 1.5),
       ),
       child: InkWell(
         onTap: onTap,
@@ -560,7 +615,7 @@ class UserProfile {
   final String surname;
   final String email;
   final String imgName;
-  final String roles;
+  final List<String> roles;
 
   UserProfile({
     required this.id,
@@ -572,13 +627,21 @@ class UserProfile {
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
+    // Ensure that roles are parsed as a List<String>
+    List<String> rolesList = [];
+    if (json['roles'] is List) {
+      rolesList = List<String>.from(json['roles']);
+    } else if (json['roles'] is String) {
+      rolesList = (json['roles'] as String).split(',').map((role) => role.trim()).toList();
+    }
+
     return UserProfile(
-      id: json['id'],
+      id: json['id'].toString(),
       name: json['employee_name'],
       surname: json['employee_surname'],
       email: json['employee_email'],
       imgName: json['images'],
-      roles: json['roles'],
+      roles: rolesList,
     );
   }
 }

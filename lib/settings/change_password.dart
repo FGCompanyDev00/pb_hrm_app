@@ -180,7 +180,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   ),
                 ),
                 CircleAvatar(
-                  radius: 60,
+                  radius: 50,
                   backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
                       ? NetworkImage(_profileImageUrl!)
                       : const AssetImage('assets/default_avatar.jpg') as ImageProvider,

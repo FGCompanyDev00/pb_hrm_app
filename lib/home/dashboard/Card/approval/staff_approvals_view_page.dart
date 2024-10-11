@@ -29,7 +29,6 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
   bool isFinalized = false;
   bool isLoading = true;
   String? imageUrl;
-  String? label;
 
   @override
   void initState() {
@@ -37,7 +36,12 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     _fetchData();
   }
 
+  // Fetch main approval data
   Future<void> _fetchData() async {
+    setState(() {
+      isLoading = true;
+    });
+
     final String type = widget.type.toLowerCase();
     final String id = widget.id;
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
@@ -65,7 +69,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     }
 
     try {
-      final String? tokenValue = await token;
+      final String? tokenValue = await _getToken();
       if (tokenValue == null) {
         _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
         setState(() {
@@ -97,11 +101,28 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
               ? decoded['result'][0]
               : null;
         }
-        setState(() {
-          imageUrl = data?['img_path'] ??
-              'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
-          isLoading = false;
-        });
+
+        if (data != null) {
+          // Extract employee_id (pID) from the fetched data
+          String? pID = data?['employee_id']?.toString();
+
+          if (pID != null && pID.isNotEmpty) {
+            // Fetch profile image using pID
+            await _fetchProfileImage(pID);
+          } else {
+            // If pID is not available, use default avatar
+            setState(() {
+              imageUrl = _defaultAvatarUrl();
+              isLoading = false;
+            });
+          }
+        } else {
+          // If data is null, use default avatar
+          setState(() {
+            imageUrl = _defaultAvatarUrl();
+            isLoading = false;
+          });
+        }
       } else {
         _showErrorDialog('Error', 'Failed to fetch data: ${response.reasonPhrase}');
         setState(() {
@@ -117,7 +138,72 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     }
   }
 
-  Future<String?> get token async {
+  // Fetch profile image using pID
+  Future<void> _fetchProfileImage(String pID) async {
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    String profileEndpoint = '$baseUrl/api/profile/$pID';
+
+    try {
+      final String? tokenValue = await _getToken();
+      if (tokenValue == null) {
+        _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+
+      final response = await http.get(
+        Uri.parse(profileEndpoint),
+        headers: {
+          'Authorization': 'Bearer $tokenValue',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        final profileResults = decoded['results'];
+        if (profileResults != null &&
+            profileResults['images'] != null &&
+            profileResults['images'].isNotEmpty) {
+          setState(() {
+            imageUrl = profileResults['images'];
+            isLoading = false;
+          });
+        } else {
+          // If images field is missing or empty, use default avatar
+          setState(() {
+            imageUrl = _defaultAvatarUrl();
+            isLoading = false;
+          });
+        }
+      } else {
+        // If profile API fails, use default avatar
+        print('Failed to fetch profile image: ${response.reasonPhrase}');
+        setState(() {
+          imageUrl = _defaultAvatarUrl();
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching profile image: $e');
+      // In case of error, use default avatar
+      setState(() {
+        imageUrl = _defaultAvatarUrl();
+        isLoading = false;
+      });
+    }
+  }
+
+  // Helper method to get a default avatar URL
+  String _defaultAvatarUrl() {
+    // Replace with a publicly accessible image URL
+    return 'https://www.w3schools.com/howto/img_avatar.png';
+  }
+
+  // Retrieve token from SharedPreferences
+  Future<String?> _getToken() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       return prefs.getString('token');
@@ -127,6 +213,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     }
   }
 
+  // Format date string
   String formatDate(String? dateStr, {bool includeTime = false}) {
     try {
       if (dateStr == null || dateStr.isEmpty) {
@@ -142,6 +229,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     }
   }
 
+  // Build AppBar
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       flexibleSpace: Container(
@@ -180,7 +268,9 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     );
   }
 
+  // Build Requestor Section
   Widget _buildRequestorSection() {
+    // Correctly assign requestorName without duplication
     String requestorName = data?['requestor_name'] ?? data?['employee_name'] ?? 'No Name';
     String submittedOn = '';
     switch (widget.type.toLowerCase()) {
@@ -201,7 +291,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 30.0),
+      padding: const EdgeInsets.symmetric(vertical: 20.0), // Increased vertical padding
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -210,18 +300,27 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
             style: TextStyle(
               color: Colors.black,
               fontWeight: FontWeight.bold,
-              fontSize: 18,
+              fontSize: 20, // Increased font size for prominence
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircleAvatar(
-                backgroundImage: NetworkImage(imageUrl!),
-                radius: 30,
+                backgroundImage: imageUrl != null && imageUrl!.isNotEmpty
+                    ? NetworkImage(imageUrl!)
+                    : const NetworkImage('https://www.w3schools.com/howto/img_avatar.png'),
+                radius: 35, // Increased radius for better visibility
+                backgroundColor: Colors.grey[300],
+                onBackgroundImageError: (_, __) {
+                  // Handle image loading error by setting default avatar
+                  setState(() {
+                    imageUrl = _defaultAvatarUrl();
+                  });
+                },
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -229,10 +328,11 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
                     requestorName,
                     style: const TextStyle(
                       color: Colors.black,
-                      fontSize: 16,
+                      fontSize: 18, // Consistent font size
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     'Submitted on $submittedOn',
                     style: const TextStyle(fontSize: 14, color: Colors.black54),
@@ -246,23 +346,25 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     );
   }
 
+  // Build Blue Section
   Widget _buildBlueSection() {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 20.0),
+      padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
         decoration: BoxDecoration(
           color: Colors.lightBlueAccent.withOpacity(0.4),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
           _getTypeHeader(),
-          style: const TextStyle(color: Colors.black, fontSize: 16),
+          style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
+  // Get Type Header Text
   String _getTypeHeader() {
     switch (widget.type.toLowerCase()) {
       case 'meeting':
@@ -278,87 +380,85 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     }
   }
 
+  // Build Details Section
   Widget _buildDetailsSection() {
     final String type = widget.type.toLowerCase();
 
     switch (type) {
       case 'meeting':
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildInfoRow(Icons.bookmark, 'Title', data?['title'] ?? 'No Title', Colors.green),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(
               Icons.calendar_today,
               'Date',
               '${formatDate(data?['from_date_time'])} - ${formatDate(data?['to_date_time'])}',
               Colors.blue,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(Icons.room, 'Room', data?['room_name'] ?? 'No Room Info', Colors.orange),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(Icons.description, 'Details', data?['description'] ?? 'No Details Provided', Colors.purple),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.person, 'Employee', data?['employee_name'] ?? 'N/A', Colors.red),
+            // Removed 'Employee' row to prevent duplication
           ],
         );
       case 'leave':
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildInfoRow(Icons.bookmark, 'Title', data?['name'] ?? 'No Title', Colors.green),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(
               Icons.calendar_today,
               'Date',
               '${data?['take_leave_from'] ?? 'N/A'} - ${data?['take_leave_to'] ?? 'N/A'}',
               Colors.blue,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(Icons.time_to_leave, 'Reason', data?['take_leave_reason'] ?? 'No Reason Provided', Colors.purple),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.person, 'Employee', data?['requestor_name'] ?? 'N/A', Colors.red),
+            // Removed 'Employee' row to prevent duplication
           ],
         );
       case 'car':
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildInfoRow(Icons.bookmark, 'Purpose', data?['purpose'] ?? 'No Purpose', Colors.green),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(Icons.place, 'Place', data?['place'] ?? 'N/A', Colors.blue),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(Icons.directions_car, 'Vehicle ID', data?['vehicle_id'] ?? 'N/A', Colors.orange),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(Icons.calendar_today, 'Date Out', data?['date_out'] ?? 'N/A', Colors.blue),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(Icons.calendar_today, 'Date In', data?['date_in'] ?? 'N/A', Colors.blue),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(Icons.access_time, 'Time Out', data?['time_out'] ?? 'N/A', Colors.purple),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(Icons.access_time, 'Time In', data?['time_in'] ?? 'N/A', Colors.purple),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(Icons.person, 'Driver Name', data?['driver_name'] ?? 'N/A', Colors.red),
           ],
         );
       case 'meeting room':
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildInfoRow(Icons.bookmark, 'Title', data?['title'] ?? 'No Title', Colors.green),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(
               Icons.calendar_today,
               'Date',
               '${formatDate(data?['from_date_time'])} - ${formatDate(data?['to_date_time'])}',
               Colors.blue,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(Icons.room, 'Room', data?['room_name'] ?? 'No Room Info', Colors.orange),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _buildInfoRow(Icons.description, 'Remark', data?['remark'] ?? 'No Remarks', Colors.purple),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.person, 'Employee', data?['employee_name'] ?? 'N/A', Colors.red),
+            // Removed 'Employee' row to prevent duplication
           ],
         );
       default:
@@ -371,81 +471,105 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     }
   }
 
+  // Build Workflow Section
   Widget _buildWorkflowSection() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildUserAvatar(imageUrl!, label: 'Requester'),
-        const SizedBox(width: 8),
-        const Icon(Icons.arrow_forward, color: Colors.green),
-        const SizedBox(width: 8),
-        _buildUserAvatar(data?['line_manager_img'] ??
-            'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
-            label: 'Line Manager'),
-        const SizedBox(width: 8),
-        const Icon(Icons.arrow_forward, color: Colors.green),
-        const SizedBox(width: 8),
-        _buildUserAvatar(data?['hr_img'] ??
-            'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
-            label: 'HR'),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildUserAvatar(imageUrl!, label: 'Requestor'),
+          const SizedBox(width: 12),
+          const Icon(Icons.arrow_forward, color: Colors.green),
+          const SizedBox(width: 12),
+          _buildUserAvatar(
+            data?['line_manager_img'] ?? _defaultAvatarUrl(),
+            label: 'Line Manager',
+          ),
+          const SizedBox(width: 12),
+          const Icon(Icons.arrow_forward, color: Colors.green),
+          const SizedBox(width: 12),
+          _buildUserAvatar(
+            data?['hr_img'] ?? _defaultAvatarUrl(),
+            label: 'HR',
+          ),
+        ],
+      ),
     );
   }
 
+  // Build User Avatar with Label
   Widget _buildUserAvatar(String imageUrl, {String label = ''}) {
     return Column(
       children: [
         CircleAvatar(
-          backgroundImage: NetworkImage(imageUrl),
+          backgroundImage: imageUrl.isNotEmpty
+              ? NetworkImage(imageUrl)
+              : const NetworkImage('https://www.w3schools.com/howto/img_avatar.png'),
           radius: 20,
           backgroundColor: Colors.grey[300],
+          onBackgroundImageError: (_, __) {
+            // Handle image loading error by setting default avatar
+            setState(() {
+              imageUrl = _defaultAvatarUrl();
+            });
+          },
         ),
         if (label.isNotEmpty)
-          Text(
-            label,
-            style: const TextStyle(fontSize: 10),
+          Padding(
+            padding: const EdgeInsets.only(top: 6.0),
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 12),
+            ),
           ),
       ],
     );
   }
 
+  // Build Info Row
   Widget _buildInfoRow(IconData icon, String title, String content, Color color) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 8),
+        Icon(icon, size: 20, color: color),
+        const SizedBox(width: 10),
         Expanded(
           child: Text(
             '$title: $content',
-            style: const TextStyle(fontSize: 14, color: Colors.black),
+            style: const TextStyle(fontSize: 16, color: Colors.black87),
           ),
         ),
       ],
     );
   }
 
+  // Build Action Buttons
   Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _buildStyledButton(
-          label: 'Delete',
-          icon: Icons.delete,
-          backgroundColor: Colors.red.shade300,
-          textColor: Colors.white,
-          onPressed: isFinalized ? null : () => _handleDelete(),
-        ),
-        _buildStyledButton(
-          label: 'Edit',
-          icon: Icons.edit,
-          backgroundColor: Colors.blue,
-          textColor: Colors.white,
-          onPressed: isFinalized ? null : () => _handleEdit(),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildStyledButton(
+            label: 'Delete',
+            icon: Icons.delete,
+            backgroundColor: Colors.red.shade300,
+            textColor: Colors.white,
+            onPressed: isFinalized ? null : () => _handleDelete(),
+          ),
+          _buildStyledButton(
+            label: 'Edit',
+            icon: Icons.edit,
+            backgroundColor: Colors.blue,
+            textColor: Colors.white,
+            onPressed: isFinalized ? null : () => _handleEdit(),
+          ),
+        ],
+      ),
     );
   }
 
+  // Build Styled Button
   Widget _buildStyledButton({
     required String label,
     required IconData icon,
@@ -457,7 +581,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(30),
         ),
@@ -465,7 +589,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
       icon: Icon(
         icon,
         color: textColor,
-        size: 18,
+        size: 20,
       ),
       label: Text(
         label,
@@ -478,6 +602,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     );
   }
 
+  // Handle Edit Action
   Future<void> _handleEdit() async {
     setState(() {
       isFinalized = true;
@@ -485,41 +610,37 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
 
     final String type = widget.type.toLowerCase();
 
+    Widget? editPage;
+
     switch (type) {
       case 'meeting':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MeetingEditPage(item: data!),
-          ),
-        );
+        editPage = MeetingEditPage(item: data!);
         break;
       case 'leave':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => LeaveRequestEditPage(item: data!),
-          ),
-        );
+        editPage = LeaveRequestEditPage(item: data!);
         break;
       case 'car':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CarBookingEditPage(item: data!),
-          ),
-        );
+        editPage = CarBookingEditPage(item: data!);
         break;
       case 'meeting room':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MeetingRoomBookingEditPage(item: data!),
-          ),
-        );
+        editPage = MeetingRoomBookingEditPage(item: data!);
         break;
       default:
         _showErrorDialog('Error', 'Unknown request type.');
+        setState(() {
+          isFinalized = false;
+        });
+        return;
+    }
+
+    if (editPage != null) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => editPage!),
+      ).then((_) {
+        // Refresh data after returning from edit page
+        _fetchData();
+      });
     }
 
     setState(() {
@@ -527,6 +648,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     });
   }
 
+  // Handle Delete Action
   Future<void> _handleDelete() async {
     final String type = widget.type.toLowerCase();
     final String id = widget.id;
@@ -537,7 +659,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
       return;
     }
 
-    final String? tokenValue = await token;
+    final String? tokenValue = await _getToken();
     if (tokenValue == null) {
       _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
       return;
@@ -624,6 +746,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     });
   }
 
+  // Show Error Dialog
   void _showErrorDialog(String title, String message) {
     showDialog(
       context: context,
@@ -642,6 +765,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     );
   }
 
+  // Show Success Dialog
   void _showSuccessDialog(String title, String message) {
     showDialog(
       context: context,
@@ -652,7 +776,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              Navigator.of(context).pop();
+              Navigator.of(context).pop(); // Navigate back after success
             },
             child: const Text('OK'),
           ),
@@ -676,19 +800,18 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
       )
           : SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _buildRequestorSection(),
               _buildBlueSection(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
               _buildDetailsSection(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
               _buildWorkflowSection(),
               const SizedBox(height: 20),
               _buildActionButtons(context),
-              const SizedBox(height: 16),
             ],
           ),
         ),

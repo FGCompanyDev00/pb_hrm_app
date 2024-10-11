@@ -19,7 +19,8 @@ class AdminApprovalsViewPage extends StatefulWidget {
   });
 
   @override
-  _AdminApprovalsViewPageState createState() => _AdminApprovalsViewPageState();
+  _AdminApprovalsViewPageState createState() =>
+      _AdminApprovalsViewPageState();
 }
 
 class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
@@ -28,8 +29,6 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
   String? hrImage;
   String lineManagerDecision = 'Pending';
   String hrDecision = 'Pending';
-  bool isLineManagerApproved = false;
-  bool isHrApproved = false;
   bool isFinalized = false; // To prevent multiple submissions
   bool isLoading = true;
 
@@ -74,10 +73,17 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
         return;
       }
 
+      final String? tokenValue = await token;
+      if (tokenValue == null) {
+        _showErrorDialog('Authentication Error',
+            'Token not found. Please log in again.');
+        return;
+      }
+
       final response = await http.get(
         Uri.parse(endpoint),
         headers: {
-          'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $tokenValue',
           'Content-Type': 'application/json',
         },
       );
@@ -86,16 +92,20 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
         final data = jsonDecode(response.body);
         if (data['results'] != null && data['results'].isNotEmpty) {
           setState(() {
-            isLineManagerApproved = data['results'][0]['is_approve'] == 'Approved';
-            isHrApproved = data['results'][0]['hr_approve'] == 'Approved';
+            lineManagerDecision =
+                data['results'][0]['is_approve'] ?? 'Pending';
+            hrDecision = data['results'][0]['hr_approve'] ?? 'Pending';
+            isFinalized = data['results'][0]['is_finalized'] ?? false;
           });
         }
       } else {
-        _showErrorDialog('Error', 'Failed to fetch approval status: ${response.reasonPhrase}');
+        _showErrorDialog('Error',
+            'Failed to fetch approval status: ${response.reasonPhrase}');
       }
     } catch (e) {
       print('Error checking status: $e');
-      _showErrorDialog('Error', 'An unexpected error occurred while checking status.');
+      _showErrorDialog(
+          'Error', 'An unexpected error occurred while checking status.');
     }
   }
 
@@ -169,7 +179,8 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
       appBar: _buildAppBar(context),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView( // Make the page scrollable
+          : SingleChildScrollView(
+        // Make the page scrollable
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -274,14 +285,14 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
                 children: [
                   Text(
                     requestorName,
-                    style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 16),
+                    style:
+                    const TextStyle(color: Colors.black, fontSize: 16),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Submitted on $submittedOn',
-                    style: const TextStyle(fontSize: 14, color: Colors.black54),
+                    style: const TextStyle(
+                        fontSize: 14, color: Colors.black54),
                   ),
                 ],
               ),
@@ -296,7 +307,8 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+        padding:
+        const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
         decoration: BoxDecoration(
           color: Colors.lightBlueAccent.withOpacity(0.4),
           borderRadius: BorderRadius.circular(20),
@@ -329,44 +341,68 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildInfoRow(Icons.bookmark, 'Title', widget.item['title'] ?? 'No Title', Colors.green),
+          _buildInfoRow(Icons.bookmark, 'Title',
+              widget.item['title'] ?? 'No Title', Colors.green),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.calendar_today, 'Date',
-              '${widget.item['startDate'] ?? 'N/A'} - ${widget.item['endDate'] ?? 'N/A'}', Colors.blue),
+          _buildInfoRow(
+              Icons.calendar_today,
+              'Date',
+              '${widget.item['startDate'] ?? 'N/A'} - ${widget.item['endDate'] ?? 'N/A'}',
+              Colors.blue),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.meeting_room, 'Room', widget.item['room'] ?? 'No Room Info', Colors.orange),
+          _buildInfoRow(Icons.meeting_room, 'Room',
+              widget.item['room'] ?? 'No Room Info', Colors.orange),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.description, 'Details', widget.item['details'] ?? 'No Details Provided', Colors.purple),
+          _buildInfoRow(Icons.description, 'Details',
+              widget.item['details'] ?? 'No Details Provided',
+              Colors.purple),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.person, 'Employee', widget.item['employee_name'] ?? 'N/A', Colors.red),
+          _buildInfoRow(Icons.person, 'Employee',
+              widget.item['employee_name'] ?? 'N/A', Colors.red),
         ],
       );
     } else if (type == 'leave') {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildInfoRow(Icons.bookmark, 'Title', widget.item['title'] ?? 'No Title', Colors.green),
+          _buildInfoRow(Icons.bookmark, 'Title',
+              widget.item['title'] ?? 'No Title', Colors.green),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.calendar_today, 'Date',
-              '${widget.item['startDate'] ?? 'N/A'} - ${widget.item['endDate'] ?? 'N/A'}', Colors.blue),
+          _buildInfoRow(
+              Icons.calendar_today,
+              'Date',
+              '${widget.item['startDate'] ?? 'N/A'} - ${widget.item['endDate'] ?? 'N/A'}',
+              Colors.blue),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.time_to_leave, 'Reason', widget.item['details'] ?? 'No Reason Provided', Colors.purple),
+          _buildInfoRow(Icons.time_to_leave, 'Reason',
+              widget.item['details'] ?? 'No Reason Provided',
+              Colors.purple),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.person, 'Employee', widget.item['employee_name'] ?? 'N/A', Colors.red),
+          _buildInfoRow(Icons.person, 'Employee',
+              widget.item['employee_name'] ?? 'N/A', Colors.red),
         ],
       );
     } else if (type == 'car') {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildInfoRow(Icons.bookmark, 'Title', widget.item['title'] ?? 'No Title', Colors.green),
+          _buildInfoRow(Icons.bookmark, 'Title',
+              widget.item['title'] ?? 'No Title', Colors.green),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.calendar_today, 'Date',
-              '${widget.item['startDate'] ?? 'N/A'} - ${widget.item['endDate'] ?? 'N/A'}', Colors.blue),
+          _buildInfoRow(
+              Icons.calendar_today,
+              'Date',
+              '${widget.item['startDate'] ?? 'N/A'} - ${widget.item['endDate'] ?? 'N/A'}',
+              Colors.blue),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.access_time_rounded, 'Time','${widget.item['time'] ?? 'N/A'} - ${widget.item['time_end']?? 'N/A'}', Colors.blue),
+          _buildInfoRow(
+              Icons.access_time_rounded,
+              'Time',
+              '${widget.item['time'] ?? 'N/A'} - ${widget.item['time_end'] ?? 'N/A'}',
+              Colors.blue),
           const SizedBox(height: 8),
-          _buildInfoRow(Icons.place, 'Room', widget.item['room'] ?? 'N/A', Colors.orange),
+          _buildInfoRow(Icons.place, 'Room',
+              widget.item['room'] ?? 'N/A', Colors.orange),
           const SizedBox(height: 8),
         ],
       );
@@ -381,23 +417,46 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
   }
 
   Widget _buildWorkflowSection() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
       children: [
-        _buildUserAvatar(widget.item['img_name'], radius: 20, label: 'Requester'),
-        const SizedBox(width: 8),
-        const Icon(Icons.arrow_forward, color: Colors.green),
-        const SizedBox(width: 8),
-        _buildUserAvatar(lineManagerImage, radius: 20, label: 'Line Manager'),
-        const SizedBox(width: 8),
-        const Icon(Icons.arrow_forward, color: Colors.green),
-        const SizedBox(width: 8),
-        _buildUserAvatar(hrImage, radius: 20, label: 'HR'),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildUserAvatar(widget.item['img_name'],
+                radius: 20, label: 'Requester'),
+            const SizedBox(width: 8),
+            const Icon(Icons.arrow_forward, color: Colors.green),
+            const SizedBox(width: 8),
+            _buildUserAvatar(lineManagerImage,
+                radius: 20, label: 'Line Manager', status: lineManagerDecision),
+            const SizedBox(width: 8),
+            const Icon(Icons.arrow_forward, color: Colors.green),
+            const SizedBox(width: 8),
+            _buildUserAvatar(hrImage,
+                radius: 20, label: 'HR', status: hrDecision),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildStatusIndicator(),
       ],
     );
   }
 
-  Widget _buildUserAvatar(String? imageUrl, {double radius = 20, String label = ''}) {
+  Widget _buildUserAvatar(String? imageUrl,
+      {double radius = 20, String label = '', String status = 'Pending'}) {
+    Color statusColor;
+    switch (status.toLowerCase()) {
+      case 'approved':
+        statusColor = Colors.green;
+        break;
+      case 'rejected':
+        statusColor = Colors.red;
+        break;
+      case 'pending':
+      default:
+        statusColor = Colors.orange;
+    }
+
     return Column(
       children: [
         CircleAvatar(
@@ -406,16 +465,72 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
           radius: radius,
           backgroundColor: Colors.grey[300],
         ),
-        if (label.isNotEmpty)
-          Text(
-            label,
-            style: const TextStyle(fontSize: 10),
-          ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          status,
+          style: TextStyle(fontSize: 10, color: statusColor),
+        ),
       ],
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String title, String content, Color color) {
+  Widget _buildStatusIndicator() {
+    return Column(
+      children: [
+        // Overall Status
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Overall Status: ',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              _determineOverallStatus(),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: _getOverallStatusColor(),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  String _determineOverallStatus() {
+    if (lineManagerDecision.toLowerCase() == 'rejected' ||
+        hrDecision.toLowerCase() == 'rejected') {
+      return 'Rejected';
+    } else if (lineManagerDecision.toLowerCase() == 'approved' &&
+        hrDecision.toLowerCase() == 'approved') {
+      return 'Approved';
+    } else {
+      return 'Pending';
+    }
+  }
+
+  Color _getOverallStatusColor() {
+    String status = _determineOverallStatus();
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      case 'pending':
+      default:
+        return Colors.orange;
+    }
+  }
+
+  Widget _buildInfoRow(
+      IconData icon, String title, String content, Color color) {
     return Row(
       children: [
         Icon(icon, size: 18, color: color),
@@ -432,9 +547,11 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
 
   Widget _buildCommentInputSection() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start, // Align to start for better readability
+      crossAxisAlignment:
+      CrossAxisAlignment.start, // Align to start for better readability
       children: [
-        const Text('Description', style: TextStyle(fontSize: 14, color: Colors.black)),
+        const Text('Description',
+            style: TextStyle(fontSize: 14, color: Colors.black)),
         const SizedBox(height: 4),
         TextField(
           controller: _descriptionController,
@@ -483,7 +600,8 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(30),
         ),
@@ -508,7 +626,8 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
     final String comment = _descriptionController.text.trim();
 
     if (comment.isEmpty) {
-      _showErrorDialog('Validation Error', 'Please enter comments before approving.');
+      _showErrorDialog(
+          'Validation Error', 'Please enter comments before approving.');
       return;
     }
 
@@ -542,7 +661,8 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
     final String comment = _descriptionController.text.trim();
 
     if (comment.isEmpty) {
-      _showErrorDialog('Validation Error', 'Please enter comments before rejecting.');
+      _showErrorDialog(
+          'Validation Error', 'Please enter comments before rejecting.');
       return;
     }
 
@@ -573,7 +693,8 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
   }
 
   // Approve Meeting Request
-  Future<void> _approveMeeting(BuildContext context, String id, String comment) async {
+  Future<void> _approveMeeting(
+      BuildContext context, String id, String comment) async {
     final String baseUrl = 'https://demo-application-api.flexiflows.co';
 
     if (id.isEmpty) {
@@ -583,7 +704,8 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
 
     final String? tokenValue = await token;
     if (tokenValue == null) {
-      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog('Authentication Error',
+          'Token not found. Please log in again.');
       return;
     }
 
@@ -601,16 +723,18 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
     if (response.statusCode == 200 || response.statusCode == 201) {
       setState(() {
         lineManagerDecision = 'Approved';
-        isLineManagerApproved = true;
+        isFinalized = true;
       });
       _showSuccessDialog('Success', 'Meeting request approved successfully.');
     } else {
-      _showErrorDialog('Error', 'Failed to approve meeting: ${response.reasonPhrase}');
+      _showErrorDialog(
+          'Error', 'Failed to approve meeting: ${response.reasonPhrase}');
     }
   }
 
   // Reject Meeting Request
-  Future<void> _rejectMeeting(BuildContext context, String id, String comment) async {
+  Future<void> _rejectMeeting(
+      BuildContext context, String id, String comment) async {
     final String baseUrl = 'https://demo-application-api.flexiflows.co';
 
     if (id.isEmpty) {
@@ -620,7 +744,8 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
 
     final String? tokenValue = await token;
     if (tokenValue == null) {
-      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog('Authentication Error',
+          'Token not found. Please log in again.');
       return;
     }
 
@@ -638,16 +763,18 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
     if (response.statusCode == 200 || response.statusCode == 201) {
       setState(() {
         lineManagerDecision = 'Rejected';
-        isLineManagerApproved = false;
+        isFinalized = true;
       });
       _showSuccessDialog('Success', 'Meeting request rejected.');
     } else {
-      _showErrorDialog('Error', 'Failed to reject meeting: ${response.reasonPhrase}');
+      _showErrorDialog(
+          'Error', 'Failed to reject meeting: ${response.reasonPhrase}');
     }
   }
 
   // Approve Car Permit
-  Future<void> _approveCar(BuildContext context, String id, String comment) async {
+  Future<void> _approveCar(
+      BuildContext context, String id, String comment) async {
     final String baseUrl = 'https://demo-application-api.flexiflows.co';
 
     if (id.isEmpty) {
@@ -657,7 +784,8 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
 
     final String? tokenValue = await token;
     if (tokenValue == null) {
-      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog('Authentication Error',
+          'Token not found. Please log in again.');
       return;
     }
 
@@ -675,16 +803,18 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
     if (response.statusCode == 200 || response.statusCode == 201) {
       setState(() {
         lineManagerDecision = 'Approved';
-        isLineManagerApproved = true;
+        isFinalized = true;
       });
       _showSuccessDialog('Success', 'Car permit approved successfully.');
     } else {
-      _showErrorDialog('Error', 'Failed to approve car permit: ${response.reasonPhrase}');
+      _showErrorDialog(
+          'Error', 'Failed to approve car permit: ${response.reasonPhrase}');
     }
   }
 
   // Reject Car Permit
-  Future<void> _rejectCar(BuildContext context, String id, String comment) async {
+  Future<void> _rejectCar(
+      BuildContext context, String id, String comment) async {
     final String baseUrl = 'https://demo-application-api.flexiflows.co';
 
     if (id.isEmpty) {
@@ -694,7 +824,8 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
 
     final String? tokenValue = await token;
     if (tokenValue == null) {
-      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog('Authentication Error',
+          'Token not found. Please log in again.');
       return;
     }
 
@@ -712,16 +843,18 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
     if (response.statusCode == 200 || response.statusCode == 201) {
       setState(() {
         lineManagerDecision = 'Rejected';
-        isLineManagerApproved = false;
+        isFinalized = true;
       });
       _showSuccessDialog('Success', 'Car permit rejected.');
     } else {
-      _showErrorDialog('Error', 'Failed to reject car permit: ${response.reasonPhrase}');
+      _showErrorDialog(
+          'Error', 'Failed to reject car permit: ${response.reasonPhrase}');
     }
   }
 
   // Approve Leave Request (Line Manager and then HR)
-  Future<void> _approveLeave(BuildContext context, String id, String comment) async {
+  Future<void> _approveLeave(
+      BuildContext context, String id, String comment) async {
     final String baseUrl = 'https://demo-application-api.flexiflows.co';
 
     if (id.isEmpty) {
@@ -731,7 +864,8 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
 
     final String? tokenValue = await token;
     if (tokenValue == null) {
-      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog('Authentication Error',
+          'Token not found. Please log in again.');
       return;
     }
 
@@ -752,7 +886,6 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
       if (lmResponse.statusCode == 200 || lmResponse.statusCode == 201) {
         setState(() {
           lineManagerDecision = 'Approved';
-          isLineManagerApproved = true;
         });
 
         // Proceed to HR Approval
@@ -771,23 +904,28 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
         if (hrResponse.statusCode == 200 || hrResponse.statusCode == 201) {
           setState(() {
             hrDecision = 'Approved';
-            isHrApproved = true;
+            isFinalized = true;
           });
-          _showSuccessDialog('Success', 'Leave request approved successfully.');
+          _showSuccessDialog(
+              'Success', 'Leave request approved successfully.');
         } else {
-          _showErrorDialog('Error', 'HR approval failed: ${hrResponse.reasonPhrase}');
+          _showErrorDialog(
+              'Error', 'HR approval failed: ${hrResponse.reasonPhrase}');
         }
       } else {
-        _showErrorDialog('Error', 'Line Manager approval failed: ${lmResponse.reasonPhrase}');
+        _showErrorDialog(
+            'Error', 'Line Manager approval failed: ${lmResponse.reasonPhrase}');
       }
     } catch (e) {
       print('Error approving leave: $e');
-      _showErrorDialog('Error', 'An unexpected error occurred during leave approval.');
+      _showErrorDialog(
+          'Error', 'An unexpected error occurred during leave approval.');
     }
   }
 
   // Reject Leave Request
-  Future<void> _rejectLeave(BuildContext context, String id, String comment) async {
+  Future<void> _rejectLeave(
+      BuildContext context, String id, String comment) async {
     final String baseUrl = 'https://demo-application-api.flexiflows.co';
 
     if (id.isEmpty) {
@@ -797,12 +935,13 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
 
     final String? tokenValue = await token;
     if (tokenValue == null) {
-      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog('Authentication Error',
+          'Token not found. Please log in again.');
       return;
     }
 
     try {
-      if (!isLineManagerApproved) {
+      if (lineManagerDecision.toLowerCase() != 'approved') {
         // If Line Manager hasn't approved yet, reject directly
         final response = await http.put(
           Uri.parse('$baseUrl/api/leave_reject/$id'),
@@ -820,9 +959,11 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
             lineManagerDecision = 'Rejected';
             isFinalized = true;
           });
-          _showSuccessDialog('Success', 'Leave request rejected by Line Manager.');
+          _showSuccessDialog(
+              'Success', 'Leave request rejected by Line Manager.');
         } else {
-          _showErrorDialog('Error', 'Failed to reject leave request: ${response.reasonPhrase}');
+          _showErrorDialog('Error',
+              'Failed to reject leave request: ${response.reasonPhrase}');
         }
       } else {
         // If Line Manager has approved, reject via HR
@@ -841,16 +982,18 @@ class _AdminApprovalsViewPageState extends State<AdminApprovalsViewPage> {
         if (hrResponse.statusCode == 200 || hrResponse.statusCode == 201) {
           setState(() {
             hrDecision = 'Rejected';
-            isHrApproved = false;
+            isFinalized = true;
           });
           _showSuccessDialog('Success', 'Leave request rejected by HR.');
         } else {
-          _showErrorDialog('Error', 'HR rejection failed: ${hrResponse.reasonPhrase}');
+          _showErrorDialog(
+              'Error', 'HR rejection failed: ${hrResponse.reasonPhrase}');
         }
       }
     } catch (e) {
       print('Error rejecting leave: $e');
-      _showErrorDialog('Error', 'An unexpected error occurred during leave rejection.');
+      _showErrorDialog(
+          'Error', 'An unexpected error occurred during leave rejection.');
     }
   }
 }
