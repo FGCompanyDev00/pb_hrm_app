@@ -353,7 +353,7 @@ class _StaffApprovalsMainPageState extends State<StaffApprovalsMainPage> {
           children: [
             Container(
               width: double.infinity,
-              height: MediaQuery.of(context).size.height * 0.18,
+              height: MediaQuery.of(context).size.height * 0.16,
               decoration: BoxDecoration(
                 image: const DecorationImage(
                   image: AssetImage('assets/ready_bg.png'),
@@ -368,7 +368,7 @@ class _StaffApprovalsMainPageState extends State<StaffApprovalsMainPage> {
               child: Stack(
                 children: [
                   Positioned(
-                    top: 60,
+                    top: 50,
                     left: 10,
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back,
@@ -385,7 +385,7 @@ class _StaffApprovalsMainPageState extends State<StaffApprovalsMainPage> {
                   ),
                   const Center(
                     child: Padding(
-                      padding: EdgeInsets.only(top: 50.0),
+                      padding: EdgeInsets.only(top: 40.0),
                       child: Text(
                         'Approvals',
                         style: TextStyle(
