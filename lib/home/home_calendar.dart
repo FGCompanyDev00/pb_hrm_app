@@ -805,7 +805,7 @@ class _HomeCalendarState extends State<HomeCalendar>
   Widget _buildCalendarHeader(bool isDarkMode) {
     return Container(
       width: double.infinity,
-      height: 120,
+      height: 126,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(isDarkMode
@@ -824,7 +824,7 @@ class _HomeCalendarState extends State<HomeCalendar>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(height: 40),
+                const SizedBox(height: 50),
                 Text(
                   'Calendar',
                   style: TextStyle(
@@ -837,7 +837,7 @@ class _HomeCalendarState extends State<HomeCalendar>
             ),
           ),
           Positioned(
-            top: 42,
+            top: 48,
             right: 10,
             child: IconButton(
               icon: const Icon(

@@ -1,5 +1,3 @@
-// login_page.dart
-
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -27,16 +25,16 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool _gradientAnimation = false;
-  String _selectedLanguage = 'English'; // Default language
+  String _selectedLanguage = 'English';
   final List<String> _languages = ['English', 'Laos', 'Chinese'];
   final LocalAuthentication auth = LocalAuthentication();
   bool _rememberMe = false;
-  bool _isPasswordVisible = false; // State variable for password visibility
-  bool _biometricEnabled = false; // Biometric setting
+  bool _isPasswordVisible = false;
+  bool _biometricEnabled = false;
   late Timer _timer;
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final _storage = const FlutterSecureStorage(); // Secure storage instance
+  final _storage = const FlutterSecureStorage();
 
   @override
   void initState() {
@@ -49,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _timer.cancel(); // Cancel the timer when disposing the widget
+    _timer.cancel();
     _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -67,178 +65,120 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _loadBiometricSetting() async {
     String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
-    if (mounted) {
-      setState(() {
-        _biometricEnabled = biometricEnabled == 'true';
-      });
-    }
+    setState(() {
+      _biometricEnabled = biometricEnabled == 'true';
+    });
   }
 
   Future<void> _login() async {
-    final String username = _usernameController.text.trim();
-    final String password = _passwordController.text.trim();
+    final String username = _usernameController.text;
+    final String password = _passwordController.text;
 
-    // Basic input validation
-    if (username.isEmpty || password.isEmpty) {
-      _showCustomDialog(
-        context,
-        AppLocalizations.of(context)!.loginFailed,
-        AppLocalizations.of(context)!.emptyCredentialsMessage,
-      );
-      return;
-    }
+    final response = await http.post(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/login'),
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, String>{
+        'username': username,
+        'password': password,
+      }),
+    );
 
-    setState(() {
-      _isLoading = true;
-    });
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseBody = jsonDecode(response.body);
+      final String token = responseBody['token'];
 
-    try {
-      final response = await http.post(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/login'),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(<String, String>{
-          'username': username,
-          'password': password,
-        }),
-      );
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', token);
 
-      if (!mounted) return;
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseBody = jsonDecode(response.body);
-        final String token = responseBody['token'];
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token); // Save token
-
-        if (_rememberMe) {
-          await _saveCredentials();
-        } else {
-          await _clearCredentials();
-        }
-
-        // Save the credentials securely if biometric is enabled
-        if (_biometricEnabled) {
-          await _storage.write(key: 'username', value: username);
-          await _storage.write(key: 'password', value: password);
-          await _storage.write(key: 'biometricEnabled', value: 'true');
-        }
-
-        // Check if it's the first login on this device
-        bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
-        if (kDebugMode) {
-          print('isFirstLogin: $isFirstLogin');
-        } // Debug print to check the value
-
-        if (isFirstLogin) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const NotificationPermissionPage()),
-          );
-          await prefs.setBool('isFirstLogin', false);
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const MainScreen()),
-          );
-        }
+      if (_rememberMe) {
+        _saveCredentials();
       } else {
-        _showCustomDialog(
+        _clearCredentials();
+      }
+
+      if (_biometricEnabled) {
+        await _storage.write(key: 'username', value: username);
+        await _storage.write(key: 'password', value: password);
+        await _storage.write(key: 'biometricEnabled', value: 'true');
+      }
+
+      bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
+
+      if (isFirstLogin) {
+        Navigator.pushReplacement(
           context,
-          AppLocalizations.of(context)!.loginFailed,
-          '${AppLocalizations.of(context)!.loginFailedMessage} ${response.reasonPhrase}',
+          MaterialPageRoute(builder: (context) => const NotificationPermissionPage()),
+        );
+        await prefs.setBool('isFirstLogin', false);
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainScreen()),
         );
       }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Login error: $e');
-      }
-      if (!mounted) return;
+    } else {
       _showCustomDialog(
-        context,
-        AppLocalizations.of(context)!.loginFailed,
-        AppLocalizations.of(context)!.networkErrorMessage,
+          context,
+          AppLocalizations.of(context)!.loginFailed,
+          '${AppLocalizations.of(context)!.loginFailedMessage} ${response.reasonPhrase}'
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
     }
   }
 
   Future<void> _authenticate({bool useBiometric = true}) async {
     if (!_biometricEnabled) {
-      _showCustomDialog(
-        context,
-        AppLocalizations.of(context)!.biometricDisabled,
-        AppLocalizations.of(context)!.enableBiometric,
-      );
+      _showCustomDialog(context, 'Biometric Disabled',
+          'Please enable biometric authentication.');
       return;
     }
 
     bool authenticated = false;
     try {
       authenticated = await auth.authenticate(
-        localizedReason: AppLocalizations.of(context)!.authenticateToLogin,
-        options: const AuthenticationOptions(
-          biometricOnly: true,
+        localizedReason: 'Authenticate to login',
+        options: AuthenticationOptions(
+          biometricOnly: useBiometric,
           stickyAuth: true,
         ),
       );
-    } catch (e) {
-      if (kDebugMode) {
-        print('Authentication error: $e');
-      }
-    }
-
-    if (!mounted) return;
+    } catch (e) {}
 
     if (authenticated) {
       String? username = await _storage.read(key: 'username');
       String? password = await _storage.read(key: 'password');
       if (username != null && password != null) {
-        setState(() {
-          _usernameController.text = username;
-          _passwordController.text = password;
-        });
+        _usernameController.text = username;
+        _passwordController.text = password;
         _login();
       }
     } else {
-      _showCustomDialog(
-        context,
-        AppLocalizations.of(context)!.authenticationFailed,
-        AppLocalizations.of(context)!.pleaseTryAgain,
-      );
+      _showCustomDialog(context, 'Authentication Failed', 'Please try again.');
     }
   }
 
   Future<void> _saveCredentials() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('username', _usernameController.text.trim());
-    await prefs.setString('password', _passwordController.text.trim());
-    await prefs.setBool('rememberMe', _rememberMe);
+    prefs.setString('username', _usernameController.text);
+    prefs.setString('password', _passwordController.text);
+    prefs.setBool('rememberMe', _rememberMe);
   }
 
   Future<void> _loadSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
-    if (mounted) {
-      setState(() {
-        _usernameController.text = prefs.getString('username') ?? '';
-        _passwordController.text = prefs.getString('password') ?? '';
-        _rememberMe = prefs.getBool('rememberMe') ?? false;
-      });
-    }
+    setState(() {
+      _usernameController.text = prefs.getString('username') ?? '';
+      _passwordController.text = prefs.getString('password') ?? '';
+      _rememberMe = prefs.getBool('rememberMe') ?? false;
+    });
   }
 
   Future<void> _clearCredentials() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('username');
-    await prefs.remove('password');
-    await prefs.remove('rememberMe');
+    prefs.remove('username');
+    prefs.remove('password');
+    prefs.remove('rememberMe');
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -259,7 +199,8 @@ class _LoginPageState extends State<LoginPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -276,7 +217,6 @@ class _LoginPageState extends State<LoginPage> {
               Text(
                 message,
                 style: const TextStyle(fontSize: 18),
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               ElevatedButton(
@@ -284,12 +224,12 @@ class _LoginPageState extends State<LoginPage> {
                   Navigator.of(context).pop();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDAA520), // Gold color
+                  backgroundColor: const Color(0xFFDAA520),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-                child: Text(AppLocalizations.of(context)!.close),
+                child: const Text('Close'),
               ),
             ],
           ),
@@ -298,98 +238,62 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // Helper method to calculate responsive font size
-  double getResponsiveFontSize(double baseSize, double screenWidth) {
-    // Adjust the divisor to control responsiveness
-    return baseSize * (screenWidth / 375); // 375 is a base width (e.g., iPhone 8)
-  }
-
-  // Loading state for login
-  bool _isLoading = false;
-
   @override
   Widget build(BuildContext context) {
     var languageNotifier = Provider.of<LanguageNotifier>(context);
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    // Obtain screen size
     final Size screenSize = MediaQuery.of(context).size;
     final double screenWidth = screenSize.width;
     final double screenHeight = screenSize.height;
 
-    // Determine orientation
-    final bool isPortrait = screenHeight > screenWidth;
-
-    // Calculate responsive sizes
-    final double logoSize = isPortrait
-        ? screenWidth * 0.3 // 30% of screen width in portrait
-        : screenHeight * 0.3; // 30% of screen height in landscape
-
-    // Responsive font sizes
-    final double titleFontSize = getResponsiveFontSize(22, screenWidth);
-    final double subtitleFontSize = getResponsiveFontSize(16, screenWidth);
-    final double buttonFontSize = getResponsiveFontSize(18, screenWidth);
-
-    // Responsive padding
-    final double horizontalPadding = screenWidth * 0.05; // 5% of screen width
-    final double verticalPadding = screenHeight * 0.02; // 2% of screen height
-
     return Scaffold(
       extendBodyBehindAppBar: true,
       body: Container(
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background.png'),
-              fit: BoxFit.cover,
-            ),
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/background.png'),
+            fit: BoxFit.cover,
           ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding,
-                  vertical: verticalPadding,
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
                 ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - verticalPadding * 2,
-                  ),
-                  child: IntrinsicHeight(
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.05,
+                      vertical: screenHeight * 0.02,
+                    ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        SizedBox(height: screenHeight * 0.047),
+                        SizedBox(height: screenHeight * 0.045),
                         _buildLanguageDropdown(languageNotifier, isDarkMode, screenWidth),
-                        _buildLogoAndText(
-                          context,
-                          logoSize,
-                          titleFontSize,
-                          subtitleFontSize,
-                          isDarkMode,
-                          screenWidth,
-                        ),
-                        SizedBox(height: screenHeight * 0.05),
-                        _buildTextFields(context, screenWidth),
+                        SizedBox(height: screenHeight * 0.005),
+                        _buildLogoAndText(screenWidth, screenHeight),
+                        SizedBox(height: screenHeight * 0.06),
+                        _buildTextFields(screenWidth),
                         SizedBox(height: screenHeight * 0.02),
-                        _buildRememberMeCheckbox(context, screenWidth),
+                        _buildRememberMeCheckbox(screenWidth),
                         SizedBox(height: screenHeight * 0.02),
-                        _buildLoginAndBiometricButton(context, screenWidth, buttonFontSize),
+                        _buildLoginAndBiometricButton(screenWidth),
                         SizedBox(height: screenHeight * 0.01),
-                        _isLoading
-                            ? const CircularProgressIndicator()
-                            : const SizedBox.shrink(),
                         const Spacer(),
                       ],
                     ),
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -406,11 +310,12 @@ class _LoginPageState extends State<LoginPage> {
               showModalBottomSheet(
                 context: context,
                 shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30.0)),
+                  borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(30.0)),
                 ),
                 builder: (BuildContext context) {
                   return Container(
-                    padding: const EdgeInsets.all(30.0),
+                    padding: EdgeInsets.all(screenWidth * 0.075),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -418,15 +323,16 @@ class _LoginPageState extends State<LoginPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              AppLocalizations.of(context)!.chooseLanguage,
+                              "Choose Language",
                               style: TextStyle(
-                                fontSize: getResponsiveFontSize(18, screenWidth),
+                                fontSize: screenWidth * 0.045,
                                 fontWeight: FontWeight.bold,
                                 color: isDarkMode ? Colors.white : Colors.black,
                               ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.close, color: isDarkMode ? Colors.white : Colors.black),
+                              icon: Icon(Icons.close,
+                                  color: isDarkMode ? Colors.white : Colors.black),
                               onPressed: () {
                                 Navigator.pop(context);
                               },
@@ -442,14 +348,13 @@ class _LoginPageState extends State<LoginPage> {
                             return ListTile(
                               leading: Image.asset(
                                 'assets/flags/${language.toLowerCase()}.png',
-                                width: 28,
-                                height: 26,
+                                width: screenWidth * 0.07,
+                                height: screenWidth * 0.065,
                               ),
                               title: Text(
                                 language,
                                 style: TextStyle(
-                                  fontSize: getResponsiveFontSize(16, screenWidth),
-                                  color: isDarkMode ? Colors.white : Colors.black,
+                                  fontSize: screenWidth * 0.04,
                                 ),
                               ),
                               onTap: () {
@@ -457,7 +362,7 @@ class _LoginPageState extends State<LoginPage> {
                                   _selectedLanguage = language;
                                 });
                                 languageNotifier.changeLanguage(language);
-                                Navigator.pop(context); // Close the modal
+                                Navigator.pop(context);
                               },
                             );
                           },
@@ -472,25 +377,25 @@ class _LoginPageState extends State<LoginPage> {
               alignment: Alignment.center,
               children: [
                 Container(
-                  width: screenWidth * 0.13,
-                  height: screenWidth * 0.13,
+                  width: screenWidth * 0.15,
+                  height: screenWidth * 0.14,
                   decoration: BoxDecoration(
                     color: isDarkMode ? Colors.black54 : Colors.white,
                     shape: BoxShape.circle,
                     boxShadow: const [
-                      BoxShadow(color: Colors.black12, blurRadius: 8),
+                      BoxShadow(color: Colors.black12, blurRadius: 8)
                     ],
                   ),
                   child: Center(
                     child: Image.asset(
                       'assets/flags/${_selectedLanguage.toLowerCase()}.png',
-                      width: screenWidth * 0.08, // 7% of screen width
-                      height: screenWidth * 0.07,
+                      width: screenWidth * 0.08,
+                      height: screenWidth * 0.09,
                     ),
                   ),
                 ),
                 Positioned(
-                  top: screenWidth * 0.08,
+                  top: screenWidth * 0.09,
                   child: Icon(
                     Icons.arrow_drop_down,
                     color: isDarkMode ? Colors.white : Colors.black,
@@ -500,87 +405,93 @@ class _LoginPageState extends State<LoginPage> {
               ],
             ),
           ),
-          const SizedBox(height: 7),
+          SizedBox(height: screenWidth * 0.017),
           Text(
             _selectedLanguage,
             style: TextStyle(
               color: isDarkMode ? Colors.white : Colors.black,
-              fontSize: getResponsiveFontSize(15, screenWidth),
+              fontSize: screenWidth * 0.035,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: screenWidth * 0.017),
         ],
       ),
     );
   }
 
-  Widget _buildLogoAndText(
-      BuildContext context,
-      double logoSize,
-      double titleFontSize,
-      double subtitleFontSize,
-      bool isDarkMode,
-      double screenWidth,
-      ) {
+  Widget _buildLogoAndText(double screenWidth, double screenHeight) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start, // Aligns children to the start (left)
       children: [
-        // Logo and Date Row
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo
             Image.asset(
               'assets/logo.png',
-              width: logoSize,
-              height: logoSize,
+              width: screenWidth * 0.4,
+              height: screenHeight * 0.15,
               fit: BoxFit.contain,
             ),
-            SizedBox(width: screenWidth * 0.03),
-            // Current Date
+            SizedBox(width: screenWidth * 0.01),
             _buildCustomDateRow(screenWidth),
           ],
         ),
-        const SizedBox(height: 10),
-        // Welcome Text
+        SizedBox(height: screenHeight * 0.01),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.02),
-          child: Text(
-            AppLocalizations.of(context)!.welcomeToPSBV,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: titleFontSize,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : Colors.black,
-            ),
-          ),
-        ),
-        SizedBox(height: screenWidth * 0.02),
-        // Subtitle Text
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.1),
-          child: Text(
-            AppLocalizations.of(context)!.welcomeSubtitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 15,
-              color: isDarkMode ? Colors.white70 : Colors.black87,
-            ),
+          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.07),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppLocalizations.of(context)!.welcomeToPSBV, // Localized Title
+                textAlign: TextAlign.left,
+                style: const TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 15),
+              // Subtitle 1 with indentation
+              Padding(
+                padding: EdgeInsets.only(left: screenWidth * 0.04),
+                child: Text(
+                  AppLocalizations.of(context)!.welcomeSubtitle1, // Localized Subtitle 1
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 5),
+              // Subtitle 2 with further indentation
+              Padding(
+                padding: EdgeInsets.only(left: screenWidth * 0.08),
+                child: Text(
+                  AppLocalizations.of(context)!.welcomeSubtitle2, // Localized Subtitle 2
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
+
   Widget _buildCustomDateRow(double screenWidth) {
     return GestureDetector(
       onTap: () {
-        _selectDate(context); // Trigger date picker when the row is tapped
+        _selectDate(context);
       },
       child: Container(
         padding: EdgeInsets.symmetric(
-          horizontal: screenWidth * 0.04, // 4% of screen width
-          vertical: screenWidth * 0.02, // 2% of screen width
+          horizontal: screenWidth * 0.04,
+          vertical: screenWidth * 0.02,
         ),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
@@ -588,30 +499,30 @@ class _LoginPageState extends State<LoginPage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(15.0),
+          borderRadius: BorderRadius.circular(screenWidth * 0.04),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
-              offset: const Offset(2, 2),
-              blurRadius: 4,
+              offset: Offset(screenWidth * 0.005, screenWidth * 0.005),
+              blurRadius: screenWidth * 0.01,
             ),
           ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
+            const Icon(
               Icons.calendar_today,
               color: Colors.black54,
-              size: screenWidth * 0.05, // 5% of screen width
+              size: 20.0,
             ),
             SizedBox(width: screenWidth * 0.02),
             Consumer<DateProvider>(
               builder: (context, dateProvider, child) {
                 return Text(
-                  dateProvider.formattedSelectedDate, // Display formatted selected date
-                  style: TextStyle(
-                    fontSize: screenWidth * 0.04, // 4% of screen width
+                  dateProvider.formattedSelectedDate,
+                  style: const TextStyle(
+                    fontSize: 16,
                     color: Colors.black87,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 1.0,
@@ -625,15 +536,11 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildTextFields(BuildContext context, double screenWidth) {
-    // Responsive width for text fields
-    final double textFieldWidth = screenWidth * 0.8; // 80% of screen width
-
+  Widget _buildTextFields(double screenWidth) {
     return Column(
       children: [
-        // Username TextField
         SizedBox(
-          width: textFieldWidth,
+          width: screenWidth * 0.8,
           child: TextField(
             controller: _usernameController,
             style: const TextStyle(color: Colors.black),
@@ -645,16 +552,14 @@ class _LoginPageState extends State<LoginPage> {
               fillColor: Colors.white.withOpacity(0.8),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(25.0),
-                // Adjust for round corners
                 borderSide: BorderSide.none,
               ),
             ),
           ),
         ),
-        SizedBox(height: screenWidth * 0.05), // 5% of screen width
-        // Password TextField
+        SizedBox(height: screenWidth * 0.05),
         SizedBox(
-          width: textFieldWidth,
+          width: screenWidth * 0.8,
           child: TextField(
             controller: _passwordController,
             obscureText: !_isPasswordVisible,
@@ -678,7 +583,6 @@ class _LoginPageState extends State<LoginPage> {
               fillColor: Colors.white.withOpacity(0.8),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(25.0),
-                // Adjust for round corners
                 borderSide: BorderSide.none,
               ),
             ),
@@ -688,23 +592,21 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildRememberMeCheckbox(BuildContext context, double screenWidth) {
+  Widget _buildRememberMeCheckbox(double screenWidth) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
+      padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.02),
       child: Row(
         children: [
-          // Custom Checkbox
           Checkbox(
             value: _rememberMe,
             onChanged: (bool? value) {
               setState(() {
-                _rememberMe = value ?? false;
+                _rememberMe = value!;
               });
             },
             activeColor: Colors.green,
             checkColor: Colors.white,
           ),
-          // Remember Me Label
           Text(
             AppLocalizations.of(context)!.rememberMe,
             style: const TextStyle(color: Colors.black),
@@ -714,63 +616,51 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildLoginAndBiometricButton(
-      BuildContext context,
-      double screenWidth,
-      double buttonFontSize,
-      ) {
-    // Responsive button width
-    final double buttonWidth = screenWidth * 0.35; // 35% of screen width
-    final double iconSize = screenWidth * 0.08; // 8% of screen width
-
+  Widget _buildLoginAndBiometricButton(double screenWidth) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Biometric Button
           GestureDetector(
             onTap: _biometricEnabled
                 ? () => _authenticate(useBiometric: true)
                 : () {
               _showCustomDialog(
-                context,
-                AppLocalizations.of(context)!.biometricDisabled,
-                AppLocalizations.of(context)!.enableBiometric,
-              );
+                  context, AppLocalizations.of(context)!.biometricDisabled,
+                  AppLocalizations.of(context)!.enableBiometric);
             },
             child: Container(
-              width: buttonWidth,
-              height: screenWidth * 0.12, // 12% of screen width
+              width: screenWidth * 0.35,
+              height: screenWidth * 0.125,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12.0),
+                borderRadius: BorderRadius.circular(screenWidth * 0.03),
                 color: Colors.grey[300],
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.face, size: iconSize, color: Colors.orange),
-                  SizedBox(width: screenWidth * 0.02),
-                  Icon(Icons.fingerprint, size: iconSize, color: Colors.orange),
+                  Icon(Icons.face, size: screenWidth * 0.09, color: Colors.orange),
+                  SizedBox(width: screenWidth * 0.025),
+                  Icon(Icons.fingerprint, size: screenWidth * 0.1, color: Colors.orange),
                 ],
               ),
             ),
           ),
-          // Login Button
           GestureDetector(
             onTap: _login,
             child: Container(
-              width: buttonWidth,
-              height: screenWidth * 0.12, // 12% of screen width
+              width: screenWidth * 0.35,
+              height: screenWidth * 0.125,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12.0),
+                borderRadius: BorderRadius.circular(screenWidth * 0.03),
                 color: Colors.green,
               ),
               alignment: Alignment.center,
               child: Text(
                 AppLocalizations.of(context)!.login,
                 style: TextStyle(
-                  fontSize: buttonFontSize,
+                  fontSize: screenWidth * 0.045,
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),

@@ -1,5 +1,6 @@
+// leave_request_page.dart
+
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:intl/intl.dart';
@@ -26,6 +27,7 @@ class LeaveManagementPage extends HookWidget {
     final allLeaveTypes = useState<List<Map<String, dynamic>>>([]);
     final filteredLeaveTypes = useState<List<Map<String, dynamic>>>([]);
     final isLoadingLeaveTypes = useState<bool>(false);
+    final isSubmitting = useState<bool>(false);
 
     void showCustomDialog(BuildContext context, String title, String content) {
       showDialog(
@@ -38,12 +40,14 @@ class LeaveManagementPage extends HookWidget {
               TextButton(
                 child: const Text('Close'),
                 onPressed: () {
-                  typeController.clear();
-                  descriptionController.clear();
-                  startDateController.clear();
-                  endDateController.clear();
-                  daysController.clear();
-                  leaveTypeId.value = null;
+                  if (title == 'Success') {
+                    typeController.clear();
+                    descriptionController.clear();
+                    startDateController.clear();
+                    endDateController.clear();
+                    daysController.text = '0';
+                    leaveTypeId.value = null;
+                  }
                   Navigator.of(dialogContext).pop();
                 },
               ),
@@ -83,12 +87,10 @@ class LeaveManagementPage extends HookWidget {
                         ),
                       ),
                       onChanged: (value) {
-                        // Filter based on allLeaveTypes
                         filteredLeaveTypes.value = allLeaveTypes.value.where((type) {
                           final typeName = type['name'].toString().toLowerCase();
                           return typeName.contains(value.toLowerCase());
                         }).toList();
-                        print('Filtered Leave Types: ${filteredLeaveTypes.value}'); // Debug
                       },
                     ),
                     const SizedBox(height: 10),
@@ -105,13 +107,13 @@ class LeaveManagementPage extends HookWidget {
                           return ListTile(
                             title: Text(
                               leaveType['name'],
-                              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                              style: TextStyle(
+                                  color: isDarkMode ? Colors.white : Colors.black),
                             ),
                             onTap: () {
                               typeController.text = leaveType['name'];
                               leaveTypeId.value = leaveType['leave_type_id'];
-                              print('Selected Leave Type ID: ${leaveTypeId.value}'); // Debug
-                              Navigator.pop(context); // Close the bottom sheet
+                              Navigator.pop(context);
                             },
                           );
                         },
@@ -147,11 +149,10 @@ class LeaveManagementPage extends HookWidget {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
-        print('API Response: $data'); // Debug statement
 
         if (data.containsKey('results')) {
-          List<Map<String, dynamic>> types = List<Map<String, dynamic>>.from(data['results']);
-          print('Fetched Leave Types: $types'); // Debug
+          List<Map<String, dynamic>> types =
+          List<Map<String, dynamic>>.from(data['results']);
           isLoadingLeaveTypes.value = false;
           return types;
         } else {
@@ -170,12 +171,12 @@ class LeaveManagementPage extends HookWidget {
       fetchLeaveTypes().then((types) {
         allLeaveTypes.value = types;
         filteredLeaveTypes.value = types;
-        print('All Leave Types: ${allLeaveTypes.value}'); // Debug
       });
       return null;
     }, []);
 
-    Future<void> pickDate(BuildContext context, TextEditingController controller, bool isStartDate) async {
+    Future<void> pickDate(BuildContext context, TextEditingController controller,
+        bool isStartDate) async {
       DateTime initialDate = DateTime.now();
       DateTime firstDate = DateTime(2000);
       DateTime lastDate = DateTime(2100);
@@ -192,7 +193,8 @@ class LeaveManagementPage extends HookWidget {
           if (endDateController.text.isNotEmpty) {
             final endDate = DateFormat('yyyy-MM-dd').parse(endDateController.text);
             if (pickedDate.isAfter(endDate)) {
-              showCustomDialog(context, 'Invalid Date', 'Start date cannot be after the end date.');
+              showCustomDialog(
+                  context, 'Invalid Date', 'Start date cannot be after the end date.');
               return;
             }
           }
@@ -201,7 +203,8 @@ class LeaveManagementPage extends HookWidget {
           if (startDateController.text.isNotEmpty) {
             final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
             if (pickedDate.isBefore(startDate)) {
-              showCustomDialog(context, 'Invalid Date', 'End date cannot be before the start date.');
+              showCustomDialog(
+                  context, 'Invalid Date', 'End date cannot be before the start date.');
               return;
             }
           }
@@ -209,7 +212,8 @@ class LeaveManagementPage extends HookWidget {
         }
 
         if (startDateController.text.isNotEmpty && endDateController.text.isNotEmpty) {
-          final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
+          final startDate =
+          DateFormat('yyyy-MM-dd').parse(startDateController.text);
           final endDate = DateFormat('yyyy-MM-dd').parse(endDateController.text);
           final difference = endDate.difference(startDate).inDays + 1;
           daysController.text = difference.toString();
@@ -225,11 +229,13 @@ class LeaveManagementPage extends HookWidget {
           daysController.text.isNotEmpty &&
           leaveTypeId.value != null) {
         try {
+          isSubmitting.value = true;
           final prefs = await SharedPreferences.getInstance();
           final token = prefs.getString('token');
 
           if (token == null) {
             showCustomDialog(context, 'Error', 'User not authenticated');
+            isSubmitting.value = false;
             return;
           }
 
@@ -250,32 +256,33 @@ class LeaveManagementPage extends HookWidget {
             body: jsonEncode(requestBody),
           );
 
-          if (kDebugMode) {
-            print('Response status: ${response.statusCode}');
-          }
-          if (kDebugMode) {
-            print('Response body: ${response.body}');
-          }
-
-          if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
-            showCustomDialog(context, 'Success', 'Your leave request has been submitted successfully.');
-          } else {
-            try {
-              final responseBody = jsonDecode(response.body);
-              if (responseBody['success'] == true || responseBody.containsKey('data')) {
-                showCustomDialog(context, 'Success', 'Your leave request has been submitted successfully.');
-              } else {
-                showCustomDialog(context, 'Error', 'Failed to submit leave request. Please check your input and try again.');
-              }
-            } catch (e) {
-              showCustomDialog(context, 'Error', 'Failed to submit leave request. Please check your input and try again.');
+          if (response.statusCode == 200 ||
+              response.statusCode == 201 ||
+              response.statusCode == 204) {
+            showCustomDialog(context, 'Success',
+                'Your leave request has been submitted successfully.');
+          } else if (response.statusCode == 400) {
+            final responseBody = jsonDecode(response.body);
+            String errorMessage = 'Failed to submit leave request.';
+            if (responseBody is Map && responseBody.containsKey('message')) {
+              errorMessage = responseBody['message'];
             }
+            showCustomDialog(context, 'Error', errorMessage);
+          } else if (response.statusCode == 401) {
+            showCustomDialog(
+                context, 'Unauthorized', 'Your session has expired. Please log in again.');
+          } else {
+            showCustomDialog(context, 'Error',
+                'Failed to submit leave request. Please try again.');
           }
         } catch (e) {
           showCustomDialog(context, 'Error', 'An error occurred: $e');
+        } finally {
+          isSubmitting.value = false;
         }
       } else {
-        showCustomDialog(context, 'Error', 'Please fill in all fields to submit your leave request.');
+        showCustomDialog(context, 'Error',
+            'Please fill in all fields to submit your leave request.');
       }
     }
 
@@ -315,159 +322,170 @@ class LeaveManagementPage extends HookWidget {
         ),
         toolbarHeight: 80,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 140),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton.icon(
-                  onPressed: saveData,
-                  icon: const Icon(Icons.add),
-                  label: const Text("Add"),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.orange,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 30.0),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // Type Field
-              Column(
+      body: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: SingleChildScrollView(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Type*"),
-                  const SizedBox(height: 5),
-                  TextField(
-                    controller: typeController,
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 10.0),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      suffixIcon: const Icon(Icons.list),
-                    ),
-                    onTap: () => showLeaveTypeBottomSheet(context),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // Description Field
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Description"),
-                  const SizedBox(height: 5),
-                  TextField(
-                    controller: descriptionController,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 10.0),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  const SizedBox(height: 100),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: ElevatedButton.icon(
+                      onPressed: isSubmitting.value ? null : saveData,
+                      icon: const Icon(Icons.send),
+                      label: const Text("Submit"),
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.orange,
+                        disabledBackgroundColor: Colors.grey,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 15.0, horizontal: 30.0),
                       ),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // Start and End Date Fields
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("Start Date"),
-                        const SizedBox(height: 5),
-                        TextField(
-                          controller: startDateController,
-                          readOnly: true,
-                          decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 10.0),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            prefixIcon: const Icon(Icons.calendar_today),
+                  const SizedBox(height: 20),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("Type*"),
+                      const SizedBox(height: 5),
+                      TextField(
+                        controller: typeController,
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 15.0, horizontal: 10.0),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          onTap: () => pickDate(context, startDateController, true),
+                          suffixIcon: const Icon(Icons.list),
                         ),
-                      ],
-                    ),
+                        onTap: () => showLeaveTypeBottomSheet(context),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("End Date"),
-                        const SizedBox(height: 5),
-                        TextField(
-                          controller: endDateController,
-                          readOnly: true,
-                          decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 10.0),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            prefixIcon: const Icon(Icons.calendar_today),
+                  const SizedBox(height: 20),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("Description*"),
+                      const SizedBox(height: 5),
+                      TextField(
+                        controller: descriptionController,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 15.0, horizontal: 10.0),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          onTap: () => pickDate(context, endDateController, false),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // Days Field with + and - buttons
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Days*"),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 20),
                   Row(
                     children: [
                       Expanded(
-                        child: TextField(
-                          controller: daysController,
-                          readOnly: true,
-                          decoration: InputDecoration(
-                            contentPadding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 10.0),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("Start Date*"),
+                            const SizedBox(height: 5),
+                            TextField(
+                              controller: startDateController,
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 15.0, horizontal: 10.0),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                prefixIcon: const Icon(Icons.calendar_today),
+                              ),
+                              onTap: () =>
+                                  pickDate(context, startDateController, true),
                             ),
-                          ),
+                          ],
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Column(
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("End Date*"),
+                            const SizedBox(height: 5),
+                            TextField(
+                              controller: endDateController,
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 15.0, horizontal: 10.0),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                prefixIcon: const Icon(Icons.calendar_today),
+                              ),
+                              onTap: () =>
+                                  pickDate(context, endDateController, false),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("Days*"),
+                      const SizedBox(height: 5),
+                      Row(
                         children: [
-                          IconButton(
-                            onPressed: () {
-                              int currentDays = int.tryParse(daysController.text) ?? 0;
-                              daysController.text = (currentDays + 1).toString();
-                              print('Days Incremented: ${daysController.text}'); // Debug
-                            },
-                            icon: const Icon(Icons.add),
+                          Expanded(
+                            child: TextField(
+                              controller: daysController,
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 15.0, horizontal: 10.0),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
                           ),
-                          IconButton(
-                            onPressed: () {
-                              int currentDays = int.tryParse(daysController.text) ?? 0;
-                              if (currentDays > 0) {
-                                daysController.text = (currentDays - 1).toString();
-                                print('Days Decremented: ${daysController.text}'); // Debug
-                              }
-                            },
-                            icon: const Icon(Icons.remove),
+                          const SizedBox(width: 10),
+                          Column(
+                            children: [
+                              IconButton(
+                                onPressed: () {
+                                  int currentDays =
+                                      int.tryParse(daysController.text) ?? 0;
+                                  daysController.text =
+                                      (currentDays + 1).toString();
+                                },
+                                icon: const Icon(Icons.add),
+                              ),
+                              IconButton(
+                                onPressed: () {
+                                  int currentDays =
+                                      int.tryParse(daysController.text) ?? 0;
+                                  if (currentDays > 1) {
+                                    daysController.text =
+                                        (currentDays - 1).toString();
+                                  }
+                                },
+                                icon: const Icon(Icons.remove),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -475,9 +493,16 @@ class LeaveManagementPage extends HookWidget {
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
+          if (isSubmitting.value)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+        ],
       ),
     );
   }
