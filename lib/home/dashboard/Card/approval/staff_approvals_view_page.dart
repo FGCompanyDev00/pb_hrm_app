@@ -1,55 +1,145 @@
+// staff_approvals_view_page.dart
+
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_edit_request.dart';
+import 'package:intl/intl.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/car_booking_edit_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/leave_request_edit_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/meeting_edit_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/meeting_room_booking_edit_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ApprovalsViewPage extends StatefulWidget {
-  final Map<String, dynamic> item;
+  final String type;
+  final String id;
 
-  const ApprovalsViewPage({super.key, required this.item});
+  const ApprovalsViewPage({
+    super.key,
+    required this.type,
+    required this.id,
+  });
 
   @override
   _ApprovalsViewPageState createState() => _ApprovalsViewPageState();
 }
 
 class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
-  late Map<String, dynamic> item;
+  Map<String, dynamic>? data;
+  bool isFinalized = false;
+  bool isLoading = true;
+  String? imageUrl;
+  String? label;
 
   @override
   void initState() {
     super.initState();
-    item = widget.item;
+    _fetchData();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final padding = EdgeInsets.symmetric(
-      horizontal: MediaQuery.of(context).size.width * 0.03,
-    );
+  Future<void> _fetchData() async {
+    final String type = widget.type.toLowerCase();
+    final String id = widget.id;
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    String endpoint = '';
 
-    return Scaffold(
-      appBar: _buildAppBar(context),
-      body: SingleChildScrollView(
-        padding: padding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 60),
-            _buildRequestorSection(),
-            const SizedBox(height: 30),
-            _buildBlueSection(),
-            const SizedBox(height: 20),
-            _buildDetailsSection(),
-            const SizedBox(height: 10),
-            _buildWorkflowSection(),
-            const SizedBox(height: 10),
-            _buildDescriptionSection(),
-            const SizedBox(height: 30),
-            _buildActionButtons(context),
-          ],
-        ),
-      ),
-    );
+    switch (type) {
+      case 'leave':
+        endpoint = '$baseUrl/api/leave_request/$id';
+        break;
+      case 'car':
+        endpoint = '$baseUrl/api/office-administration/car_permit/me/$id';
+        break;
+      case 'meeting room':
+        endpoint = '$baseUrl/api/office-administration/book_meeting_room/my-request/$id';
+        break;
+      case 'meeting':
+        endpoint = '$baseUrl/api/work-tracking/meeting/get-meeting/$id';
+        break;
+      default:
+        _showErrorDialog('Error', 'Unknown request type.');
+        setState(() {
+          isLoading = false;
+        });
+        return;
+    }
+
+    try {
+      final String? tokenValue = await token;
+      if (tokenValue == null) {
+        _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+        setState(() {
+          isLoading = false;
+        });
+        return;
+      }
+
+      final response = await http.get(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $tokenValue',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (type == 'leave') {
+          data = decoded['results'] != null && decoded['results'].isNotEmpty
+              ? decoded['results'][0]
+              : null;
+        } else if (type == 'car') {
+          data = decoded['results'];
+        } else if (type == 'meeting room') {
+          data = decoded['results'];
+        } else if (type == 'meeting') {
+          data = decoded['result'] != null && decoded['result'].isNotEmpty
+              ? decoded['result'][0]
+              : null;
+        }
+        setState(() {
+          imageUrl = data?['img_path'] ??
+              'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+          isLoading = false;
+        });
+      } else {
+        _showErrorDialog('Error', 'Failed to fetch data: ${response.reasonPhrase}');
+        setState(() {
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching data: $e');
+      _showErrorDialog('Error', 'An unexpected error occurred while fetching data.');
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<String?> get token async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      return prefs.getString('token');
+    } catch (e) {
+      print('Error retrieving token: $e');
+      return null;
+    }
+  }
+
+  String formatDate(String? dateStr, {bool includeTime = false}) {
+    try {
+      if (dateStr == null || dateStr.isEmpty) {
+        return 'N/A';
+      }
+      final DateTime parsedDate = DateTime.parse(dateStr);
+      return includeTime
+          ? DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate)
+          : DateFormat('dd-MM-yyyy').format(parsedDate);
+    } catch (e) {
+      print('Date parsing error: $e');
+      return 'Invalid Date';
+    }
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
@@ -61,164 +151,273 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
             fit: BoxFit.cover,
           ),
           borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(20),
-            bottomRight: Radius.circular(20),
+            bottomLeft: Radius.circular(30),
+            bottomRight: Radius.circular(30),
           ),
         ),
       ),
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.black),
-        onPressed: () => Navigator.of(context).pop(true),
-      ),
+      centerTitle: true,
       title: const Text(
-        'Approvals',
+        'Approval Details',
         style: TextStyle(
           color: Colors.black,
-          fontWeight: FontWeight.bold,
+          fontSize: 22,
         ),
       ),
-      centerTitle: true,
-      backgroundColor: Colors.transparent,
+      leading: IconButton(
+        icon: const Icon(
+          Icons.arrow_back_ios_new,
+          color: Colors.black,
+          size: 20,
+        ),
+        onPressed: () {
+          Navigator.pop(context);
+        },
+      ),
+      toolbarHeight: 80,
       elevation: 0,
-      toolbarHeight: 70,
+      backgroundColor: Colors.transparent,
     );
   }
 
   Widget _buildRequestorSection() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        CircleAvatar(
-          backgroundImage: NetworkImage(
-            item['img_name'] ??
-                'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
+    String requestorName = data?['requestor_name'] ?? data?['employee_name'] ?? 'No Name';
+    String submittedOn = '';
+    switch (widget.type.toLowerCase()) {
+      case 'leave':
+        submittedOn = formatDate(data?['created_at']);
+        break;
+      case 'car':
+        submittedOn = formatDate(data?['created_date']);
+        break;
+      case 'meeting room':
+        submittedOn = formatDate(data?['date_create']);
+        break;
+      case 'meeting':
+        submittedOn = formatDate(data?['created_at']);
+        break;
+      default:
+        submittedOn = 'N/A';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 30.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text(
+            'Requestor',
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
           ),
-          radius: 35,
-        ),
-        const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              item['requestor_name'] ?? 'No Name',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                backgroundImage: NetworkImage(imageUrl!),
+                radius: 30,
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Submitted on ${item['created_at']?.split("T")[0] ?? 'N/A'}',
-              style: const TextStyle(fontSize: 13, color: Colors.black),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Status: ${item['is_approve'] ?? 'N/A'}',
-              style: const TextStyle(
-                  fontSize: 15, color: Colors.orange, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      ],
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    requestorName,
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Submitted on $submittedOn',
+                    style: const TextStyle(fontSize: 14, color: Colors.black54),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildBlueSection() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.lightBlueAccent,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        item['types'] ?? 'No Data',
-        style: const TextStyle(
-            color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.lightBlueAccent.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          _getTypeHeader(),
+          style: const TextStyle(color: Colors.black, fontSize: 16),
+        ),
       ),
     );
   }
 
+  String _getTypeHeader() {
+    switch (widget.type.toLowerCase()) {
+      case 'meeting':
+        return 'Meeting and Booking Meeting Room';
+      case 'leave':
+        return 'Leave Request';
+      case 'car':
+        return 'Car Permit Request';
+      case 'meeting room':
+        return 'Meeting Room Booking';
+      default:
+        return 'Approval Details';
+    }
+  }
+
   Widget _buildDetailsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          item['take_leave_type_id'] ?? 'No Title',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        const SizedBox(height: 10),
-        _buildInfoRow(Icons.calendar_today, 'Date', '${item['take_leave_from']} - ${item['take_leave_to']}'),
-        const SizedBox(height: 10),
-        Text(
-          'Type of leave: ${item['take_leave_reason'] ?? 'No Reason'}',
-          style: const TextStyle(fontSize: 15, color: Colors.orange, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
+    final String type = widget.type.toLowerCase();
+
+    switch (type) {
+      case 'meeting':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildInfoRow(Icons.bookmark, 'Title', data?['title'] ?? 'No Title', Colors.green),
+            const SizedBox(height: 8),
+            _buildInfoRow(
+              Icons.calendar_today,
+              'Date',
+              '${formatDate(data?['from_date_time'])} - ${formatDate(data?['to_date_time'])}',
+              Colors.blue,
+            ),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.room, 'Room', data?['room_name'] ?? 'No Room Info', Colors.orange),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.description, 'Details', data?['description'] ?? 'No Details Provided', Colors.purple),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.person, 'Employee', data?['employee_name'] ?? 'N/A', Colors.red),
+          ],
+        );
+      case 'leave':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildInfoRow(Icons.bookmark, 'Title', data?['name'] ?? 'No Title', Colors.green),
+            const SizedBox(height: 8),
+            _buildInfoRow(
+              Icons.calendar_today,
+              'Date',
+              '${data?['take_leave_from'] ?? 'N/A'} - ${data?['take_leave_to'] ?? 'N/A'}',
+              Colors.blue,
+            ),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.time_to_leave, 'Reason', data?['take_leave_reason'] ?? 'No Reason Provided', Colors.purple),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.person, 'Employee', data?['requestor_name'] ?? 'N/A', Colors.red),
+          ],
+        );
+      case 'car':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildInfoRow(Icons.bookmark, 'Purpose', data?['purpose'] ?? 'No Purpose', Colors.green),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.place, 'Place', data?['place'] ?? 'N/A', Colors.blue),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.directions_car, 'Vehicle ID', data?['vehicle_id'] ?? 'N/A', Colors.orange),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.calendar_today, 'Date Out', data?['date_out'] ?? 'N/A', Colors.blue),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.calendar_today, 'Date In', data?['date_in'] ?? 'N/A', Colors.blue),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.access_time, 'Time Out', data?['time_out'] ?? 'N/A', Colors.purple),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.access_time, 'Time In', data?['time_in'] ?? 'N/A', Colors.purple),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.person, 'Driver Name', data?['driver_name'] ?? 'N/A', Colors.red),
+          ],
+        );
+      case 'meeting room':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildInfoRow(Icons.bookmark, 'Title', data?['title'] ?? 'No Title', Colors.green),
+            const SizedBox(height: 8),
+            _buildInfoRow(
+              Icons.calendar_today,
+              'Date',
+              '${formatDate(data?['from_date_time'])} - ${formatDate(data?['to_date_time'])}',
+              Colors.blue,
+            ),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.room, 'Room', data?['room_name'] ?? 'No Room Info', Colors.orange),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.description, 'Remark', data?['remark'] ?? 'No Remarks', Colors.purple),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.person, 'Employee', data?['employee_name'] ?? 'N/A', Colors.red),
+          ],
+        );
+      default:
+        return const Center(
+          child: Text(
+            'Unknown Request Type',
+            style: TextStyle(fontSize: 16, color: Colors.red),
+          ),
+        );
+    }
   }
 
   Widget _buildWorkflowSection() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _buildUserAvatar(item['img_name']),
-        const SizedBox(width: 12),
-        const Icon(Icons.arrow_forward, color: Colors.green, size: 24),
-        const SizedBox(width: 12),
-        _buildUserAvatar('https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-        const SizedBox(width: 12),
-        const Icon(Icons.arrow_forward, color: Colors.green, size: 24),
-        const SizedBox(width: 12),
-        _buildUserAvatar('https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
+        _buildUserAvatar(imageUrl!, label: 'Requester'),
+        const SizedBox(width: 8),
+        const Icon(Icons.arrow_forward, color: Colors.green),
+        const SizedBox(width: 8),
+        _buildUserAvatar(data?['line_manager_img'] ??
+            'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
+            label: 'Line Manager'),
+        const SizedBox(width: 8),
+        const Icon(Icons.arrow_forward, color: Colors.green),
+        const SizedBox(width: 8),
+        _buildUserAvatar(data?['hr_img'] ??
+            'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg',
+            label: 'HR'),
       ],
     );
   }
 
-  Widget _buildUserAvatar(String? imageUrl) {
-    return CircleAvatar(
-      backgroundImage: NetworkImage(imageUrl ??
-          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg'),
-      radius: 22,
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String title, String content) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: 20, color: Colors.black54),
-        const SizedBox(width: 6),
-        Text(
-          '$title: ',
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-        ),
-        Text(
-          content,
-          style: const TextStyle(fontSize: 15),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDescriptionSection() {
+  Widget _buildUserAvatar(String imageUrl, {String label = ''}) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text(
-          'Description:',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        CircleAvatar(
+          backgroundImage: NetworkImage(imageUrl),
+          radius: 20,
+          backgroundColor: Colors.grey[300],
         ),
-        const SizedBox(height: 10),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.black),
-            borderRadius: BorderRadius.circular(8),
-            color: Colors.white,
+        if (label.isNotEmpty)
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10),
           ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String title, String content, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 8),
+        Expanded(
           child: Text(
-            item['take_leave_reason'] ?? 'No Description',
-            style: const TextStyle(fontSize: 15, color: Colors.black54),
+            '$title: $content',
+            style: const TextStyle(fontSize: 14, color: Colors.black),
           ),
         ),
       ],
@@ -229,74 +428,271 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _buildButton('Delete', Colors.redAccent, Colors.white, onPressed: () => _deleteRequest(context)),
-        _buildButton('Edit', Colors.lightBlueAccent, Colors.white, onPressed: () => _editRequest(context)),
+        _buildStyledButton(
+          label: 'Delete',
+          icon: Icons.delete,
+          backgroundColor: Colors.red.shade300,
+          textColor: Colors.white,
+          onPressed: isFinalized ? null : () => _handleDelete(),
+        ),
+        _buildStyledButton(
+          label: 'Edit',
+          icon: Icons.edit,
+          backgroundColor: Colors.blue,
+          textColor: Colors.white,
+          onPressed: isFinalized ? null : () => _handleEdit(),
+        ),
       ],
     );
   }
 
-  Widget _buildButton(String label, Color color, Color textColor, {required VoidCallback onPressed}) {
-    return ElevatedButton(
+  Widget _buildStyledButton({
+    required String label,
+    required IconData icon,
+    required Color backgroundColor,
+    required Color textColor,
+    required VoidCallback? onPressed,
+  }) {
+    return ElevatedButton.icon(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        foregroundColor: textColor, backgroundColor: color,
+        backgroundColor: backgroundColor,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(30),
         ),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+      icon: Icon(
+        icon,
+        color: textColor,
+        size: 18,
+      ),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
+      ),
     );
   }
 
-  Future<void> _deleteRequest(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+  Future<void> _handleEdit() async {
+    setState(() {
+      isFinalized = true;
+    });
 
-    if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Token is null. Please log in again.')),
-      );
+    final String type = widget.type.toLowerCase();
+
+    switch (type) {
+      case 'meeting':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MeetingEditPage(item: data!),
+          ),
+        );
+        break;
+      case 'leave':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LeaveRequestEditPage(item: data!),
+          ),
+        );
+        break;
+      case 'car':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CarBookingEditPage(item: data!),
+          ),
+        );
+        break;
+      case 'meeting room':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MeetingRoomBookingEditPage(item: data!),
+          ),
+        );
+        break;
+      default:
+        _showErrorDialog('Error', 'Unknown request type.');
+    }
+
+    setState(() {
+      isFinalized = false;
+    });
+  }
+
+  Future<void> _handleDelete() async {
+    final String type = widget.type.toLowerCase();
+    final String id = widget.id;
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+
+    if (id.isEmpty) {
+      _showErrorDialog('Invalid Data', 'Request ID is missing.');
       return;
     }
 
-    try {
-      final response = await http.put(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_cancel/${item['take_leave_request_id']}'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Request cancelled successfully')),
-        );
-        Navigator.pop(context, true);
-      } else {
-        throw Exception('Failed to cancel request: ${response.reasonPhrase}');
-      }
-    } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $error')),
-      );
+    final String? tokenValue = await token;
+    if (tokenValue == null) {
+      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      return;
     }
+
+    setState(() {
+      isFinalized = true;
+    });
+
+    try {
+      http.Response response;
+
+      switch (type) {
+        case 'leave':
+          response = await http.put(
+            Uri.parse('$baseUrl/api/leave_cancel/$id'),
+            headers: {
+              'Authorization': 'Bearer $tokenValue',
+              'Content-Type': 'application/json',
+            },
+          );
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            _showSuccessDialog('Success', 'Leave request deleted successfully.');
+          } else {
+            _showErrorDialog('Error', 'Failed to delete leave request: ${response.reasonPhrase}');
+          }
+          break;
+
+        case 'car':
+          response = await http.delete(
+            Uri.parse('$baseUrl/api/office-administration/car_permit/$id'),
+            headers: {
+              'Authorization': 'Bearer $tokenValue',
+              'Content-Type': 'application/json',
+            },
+          );
+          if (response.statusCode == 200 || response.statusCode == 204) {
+            _showSuccessDialog('Success', 'Car permit deleted successfully.');
+          } else {
+            _showErrorDialog('Error', 'Failed to delete car permit: ${response.reasonPhrase}');
+          }
+          break;
+
+        case 'meeting room':
+          response = await http.delete(
+            Uri.parse('$baseUrl/api/office-administration/book_meeting_room/$id'),
+            headers: {
+              'Authorization': 'Bearer $tokenValue',
+              'Content-Type': 'application/json',
+            },
+          );
+          if (response.statusCode == 200 || response.statusCode == 204) {
+            _showSuccessDialog('Success', 'Meeting room booking deleted successfully.');
+          } else {
+            _showErrorDialog('Error', 'Failed to delete meeting room booking: ${response.reasonPhrase}');
+          }
+          break;
+
+        case 'meeting':
+          response = await http.put(
+            Uri.parse('$baseUrl/api/work-tracking/meeting/delete/$id'),
+            headers: {
+              'Authorization': 'Bearer $tokenValue',
+              'Content-Type': 'application/json',
+            },
+          );
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            _showSuccessDialog('Success', 'Meeting deleted successfully.');
+          } else {
+            _showErrorDialog('Error', 'Failed to delete meeting: ${response.reasonPhrase}');
+          }
+          break;
+
+        default:
+          _showErrorDialog('Error', 'Unknown request type.');
+      }
+    } catch (e) {
+      print('Error deleting request: $e');
+      _showErrorDialog('Error', 'An unexpected error occurred while deleting the request.');
+    }
+
+    setState(() {
+      isFinalized = false;
+    });
   }
 
-  Future<void> _refreshData(BuildContext context) async {
-    setState(() {});
-  }
-
-  void _editRequest(BuildContext context) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => EditRequestPage(item: item),
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
+  }
 
-    if (result == true) {
-      _refreshData(context);  // Refresh the page to reflect updated data
-    }
+  void _showSuccessDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).pop();
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: _buildAppBar(context),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : data == null
+          ? const Center(
+        child: Text(
+          'No Data Available',
+          style: TextStyle(fontSize: 16, color: Colors.red),
+        ),
+      )
+          : SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _buildRequestorSection(),
+              _buildBlueSection(),
+              const SizedBox(height: 12),
+              _buildDetailsSection(),
+              const SizedBox(height: 12),
+              _buildWorkflowSection(),
+              const SizedBox(height: 20),
+              _buildActionButtons(context),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

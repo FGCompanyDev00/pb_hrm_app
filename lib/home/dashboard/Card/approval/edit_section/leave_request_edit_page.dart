@@ -1,19 +1,23 @@
+// lib/home/dashboard/Card/approval/leave_request_edit_page.dart
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart';  // For date formatting
+import 'package:intl/intl.dart'; // For date formatting
 
-class EditRequestPage extends StatefulWidget {
+/// This page allows the user to edit a leave request.
+/// It uses similar patterns as the other edit pages.
+class LeaveRequestEditPage extends StatefulWidget {
   final Map<String, dynamic> item;
 
-  const EditRequestPage({super.key, required this.item});
+  const LeaveRequestEditPage({super.key, required this.item});
 
   @override
-  _EditRequestPageState createState() => _EditRequestPageState();
+  _LeaveRequestEditPageState createState() => _LeaveRequestEditPageState();
 }
 
-class _EditRequestPageState extends State<EditRequestPage> {
+class _LeaveRequestEditPageState extends State<LeaveRequestEditPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _typesController;
   late TextEditingController _descriptionController;
@@ -22,6 +26,7 @@ class _EditRequestPageState extends State<EditRequestPage> {
   late TextEditingController _daysController;
   bool _isLoading = false;
 
+  // Leave types can be fetched from API or defined statically
   List<Map<String, dynamic>> leaveTypes = [
     {'id': '1', 'name': 'Holiday Leave'},
     {'id': '2', 'name': 'Sick Leave'},
@@ -35,28 +40,37 @@ class _EditRequestPageState extends State<EditRequestPage> {
   @override
   void initState() {
     super.initState();
-    _typesController = TextEditingController(text: widget.item['take_leave_type_id']?.toString() ?? '');
-    _descriptionController = TextEditingController(text: widget.item['take_leave_reason'] ?? '');
-    _startDateController = TextEditingController(text: widget.item['take_leave_from'] ?? DateFormat('yyyy-MM-dd').format(DateTime.now()));
-    _endDateController = TextEditingController(text: widget.item['take_leave_to'] ?? '');
-    _daysController = TextEditingController(text: widget.item['days']?.toString() ?? '1');
-    _calculateDays();  // Calculate days based on start and end date at initialization
+    _typesController = TextEditingController(
+        text: widget.item['take_leave_type_id']?.toString() ?? '');
+    _descriptionController =
+        TextEditingController(text: widget.item['take_leave_reason'] ?? '');
+    _startDateController =
+        TextEditingController(text: widget.item['take_leave_from'] ?? '');
+    _endDateController =
+        TextEditingController(text: widget.item['take_leave_to'] ?? '');
+    _daysController =
+        TextEditingController(text: widget.item['days']?.toString() ?? '1');
+    _calculateDays(); // Calculate days based on start and end date at initialization
   }
 
   @override
   void dispose() {
-    _descriptionController.dispose();
     _typesController.dispose();
+    _descriptionController.dispose();
     _startDateController.dispose();
     _endDateController.dispose();
     _daysController.dispose();
     super.dispose();
   }
 
-  Future<void> _selectDate(BuildContext context, TextEditingController controller, {bool isStart = true}) async {
+  /// Opens a date picker and sets the selected date to the controller.
+  Future<void> _selectDate(BuildContext context, TextEditingController controller,
+      {bool isStart = true}) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: controller.text.isNotEmpty
+          ? DateTime.parse(controller.text)
+          : DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
@@ -72,11 +86,13 @@ class _EditRequestPageState extends State<EditRequestPage> {
     }
   }
 
+  /// Calculates the number of days between start and end dates.
   void _calculateDays() {
-    if (_startDateController.text.isNotEmpty && _endDateController.text.isNotEmpty) {
+    if (_startDateController.text.isNotEmpty &&
+        _endDateController.text.isNotEmpty) {
       DateTime start = DateTime.parse(_startDateController.text);
       DateTime end = DateTime.parse(_endDateController.text);
-      int difference = end.difference(start).inDays + 1;  // Including the end date
+      int difference = end.difference(start).inDays + 1; // Including the end date
       if (difference > 0) {
         setState(() {
           _daysController.text = difference.toString();
@@ -85,26 +101,36 @@ class _EditRequestPageState extends State<EditRequestPage> {
     }
   }
 
+  /// Updates the end date based on the number of days.
   void _updateEndDateFromDays() {
-    DateTime start = DateTime.parse(_startDateController.text);
-    int days = int.parse(_daysController.text);
-    DateTime newEndDate = start.add(Duration(days: days - 1));  // End date calculation
-    setState(() {
-      _endDateController.text = DateFormat('yyyy-MM-dd').format(newEndDate);
-    });
-  }
-
-  void _updateDaysFromDates() {
-    DateTime start = DateTime.parse(_startDateController.text);
-    DateTime end = DateTime.parse(_endDateController.text);
-    int difference = end.difference(start).inDays + 1;
-    if (difference > 0) {
+    if (_startDateController.text.isNotEmpty &&
+        _daysController.text.isNotEmpty) {
+      DateTime start = DateTime.parse(_startDateController.text);
+      int days = int.parse(_daysController.text);
+      DateTime newEndDate =
+      start.add(Duration(days: days - 1)); // End date calculation
       setState(() {
-        _daysController.text = difference.toString();
+        _endDateController.text = DateFormat('yyyy-MM-dd').format(newEndDate);
       });
     }
   }
 
+  /// Updates the number of days based on start and end dates.
+  void _updateDaysFromDates() {
+    if (_startDateController.text.isNotEmpty &&
+        _endDateController.text.isNotEmpty) {
+      DateTime start = DateTime.parse(_startDateController.text);
+      DateTime end = DateTime.parse(_endDateController.text);
+      int difference = end.difference(start).inDays + 1;
+      if (difference > 0) {
+        setState(() {
+          _daysController.text = difference.toString();
+        });
+      }
+    }
+  }
+
+  /// Increments the number of days and updates the end date.
   void _incrementDays() {
     setState(() {
       int currentDays = int.parse(_daysController.text);
@@ -113,6 +139,7 @@ class _EditRequestPageState extends State<EditRequestPage> {
     });
   }
 
+  /// Decrements the number of days and updates the end date.
   void _decrementDays() {
     setState(() {
       int currentDays = int.parse(_daysController.text);
@@ -123,6 +150,7 @@ class _EditRequestPageState extends State<EditRequestPage> {
     });
   }
 
+  /// Sends a PUT request to update the leave request.
   Future<void> _updateRequest() async {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() {
@@ -136,21 +164,25 @@ class _EditRequestPageState extends State<EditRequestPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Token is null. Please log in again.')),
         );
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
       final response = await http.put(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_request/${widget.item['take_leave_request_id']}'),
+        Uri.parse(
+            'https://demo-application-api.flexiflows.co/api/leave_request/${widget.item['take_leave_request_id']}'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          "take_leave_from": _startDateController.text,
-          "take_leave_to": _endDateController.text,
-          "take_leave_type_id": _typesController.text,
-          "take_leave_reason": _descriptionController.text,
-          "days": _daysController.text,
+          'take_leave_from': _startDateController.text,
+          'take_leave_to': _endDateController.text,
+          'take_leave_type_id': _typesController.text,
+          'take_leave_reason': _descriptionController.text,
+          'days': _daysController.text,
         }),
       );
 
@@ -158,15 +190,15 @@ class _EditRequestPageState extends State<EditRequestPage> {
         _isLoading = false;
       });
 
-      // Handling the response based on the status code range (200-299 = success)
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        _showSuccess('Request updated successfully');
+        _showSuccess('Leave request updated successfully');
       } else {
-        _showError('Failed to update request: ${response.reasonPhrase}');
+        _showError('Failed to update leave request: ${response.reasonPhrase}');
       }
     }
   }
 
+  /// Displays a success message and navigates back.
   void _showSuccess(String message) {
     showDialog(
       context: context,
@@ -177,7 +209,8 @@ class _EditRequestPageState extends State<EditRequestPage> {
           actions: <Widget>[
             ElevatedButton(
               onPressed: () {
-                Navigator.of(context).pop();  // Only close the dialog
+                Navigator.of(context).pop(); // Close dialog
+                Navigator.of(context).pop(true); // Return to previous page
               },
               child: const Text('OK'),
             ),
@@ -187,12 +220,14 @@ class _EditRequestPageState extends State<EditRequestPage> {
     );
   }
 
+  /// Displays an error message.
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
   }
 
+  /// Shows a bottom sheet to select the leave type.
   void _showLeaveTypePicker() {
     showModalBottomSheet(
       context: context,
@@ -215,7 +250,6 @@ class _EditRequestPageState extends State<EditRequestPage> {
                     onTap: () {
                       setState(() {
                         _typesController.text = leaveTypes[index]['id'];
-                        _descriptionController.text = leaveTypes[index]['name'];
                       });
                       Navigator.pop(context);
                     },
@@ -229,6 +263,82 @@ class _EditRequestPageState extends State<EditRequestPage> {
     );
   }
 
+  /// Builds a text field with the given label and controller.
+  Widget _buildTextField(String label, TextEditingController controller) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        filled: true,
+        fillColor: Colors.grey.shade100,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        contentPadding:
+        const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter $label';
+        }
+        return null;
+      },
+    );
+  }
+
+  /// Builds a date field with a date picker.
+  Widget _buildDateField(String label, TextEditingController controller) {
+    return GestureDetector(
+      onTap: () =>
+          _selectDate(context, controller, isStart: label == 'Start Date'),
+      child: AbsorbPointer(
+        child: _buildTextField(label, controller),
+      ),
+    );
+  }
+
+  /// Builds the leave type field with a picker.
+  Widget _buildLeaveTypeField() {
+    return GestureDetector(
+      onTap: _showLeaveTypePicker,
+      child: AbsorbPointer(
+        child: _buildTextField('Leave Type', _typesController),
+      ),
+    );
+  }
+
+  /// Builds the days field with increment and decrement buttons.
+  Widget _buildDaysField() {
+    return Row(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.remove),
+          onPressed: _decrementDays,
+        ),
+        Expanded(
+          child: TextFormField(
+            controller: _daysController,
+            readOnly: true,
+            textAlign: TextAlign.center,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: Colors.grey.shade100,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.add),
+          onPressed: _incrementDays,
+        ),
+      ],
+    );
+  }
+
+  /// Builds the UI.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -240,7 +350,8 @@ class _EditRequestPageState extends State<EditRequestPage> {
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image:
+              AssetImage('assets/background.png'), // Update path if needed
               fit: BoxFit.cover,
             ),
             borderRadius: BorderRadius.only(
@@ -251,19 +362,21 @@ class _EditRequestPageState extends State<EditRequestPage> {
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
         child: Form(
           key: _formKey,
           child: ListView(
             children: [
-              _buildLeaveTypeField(),  // Leave Type Field
+              _buildLeaveTypeField(), // Leave Type Field
               const SizedBox(height: 20),
               _buildTextField('Reason', _descriptionController),
               const SizedBox(height: 20),
               Row(
                 children: [
                   Expanded(
-                    child: _buildDateField('Start Date', _startDateController),
+                    child:
+                    _buildDateField('Start Date', _startDateController),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -316,75 +429,6 @@ class _EditRequestPageState extends State<EditRequestPage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label, TextEditingController controller) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: Colors.grey.shade100,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-      ),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter $label';
-        }
-        return null;
-      },
-    );
-  }
-
-  Widget _buildDateField(String label, TextEditingController controller) {
-    return GestureDetector(
-      onTap: () => _selectDate(context, controller, isStart: label == 'Start Date'),
-      child: AbsorbPointer(
-        child: _buildTextField(label, controller),
-      ),
-    );
-  }
-
-  Widget _buildDaysField() {
-    return Row(
-      children: [
-        IconButton(
-          icon: const Icon(Icons.remove),
-          onPressed: _decrementDays,
-        ),
-        Expanded(
-          child: TextFormField(
-            controller: _daysController,
-            readOnly: true,
-            textAlign: TextAlign.center,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-          ),
-        ),
-        IconButton(
-          icon: const Icon(Icons.add),
-          onPressed: _incrementDays,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLeaveTypeField() {
-    return GestureDetector(
-      onTap: _showLeaveTypePicker,
-      child: AbsorbPointer(
-        child: _buildTextField('Type', _typesController),
       ),
     );
   }

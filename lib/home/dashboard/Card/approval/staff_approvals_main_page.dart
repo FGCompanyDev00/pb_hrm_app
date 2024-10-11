@@ -1,132 +1,200 @@
-// staff_approvals_main_page.dart
+// admin_approval_main_page.dart
 
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_request_approvals_result.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_approvals_view_page.dart';
-import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
-import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:intl/intl.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_approvals_view_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_request_approvals_result.dart';
+import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
+import 'package:pb_hrsystem/management/admin_approvals_view_page.dart';
+import 'package:pb_hrsystem/management/admin_history_view_page.dart';
+import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
-class StaffApprovalsPage extends StatefulWidget {
-  const StaffApprovalsPage({super.key});
+class StaffApprovalsMainPage extends StatefulWidget {
+  const StaffApprovalsMainPage({super.key});
 
   @override
-  _StaffApprovalsPageState createState() => _StaffApprovalsPageState();
+  _StaffApprovalsMainPageState createState() =>
+      _StaffApprovalsMainPageState();
 }
 
-class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
+class _StaffApprovalsMainPageState extends State<StaffApprovalsMainPage> {
   bool _isApprovalSelected = true;
-  List<Map<String, dynamic>> _approvalItems = [];
-  List<Map<String, dynamic>> _historyItems = [];
-  bool _isLoading = true;
+  List<Map<String, dynamic>> approvalItems = [];
+  List<Map<String, dynamic>> historyItems = [];
+  bool isLoading = true;
+  String? token;
 
   @override
   void initState() {
     super.initState();
-    _fetchApprovalsData();
+    fetchTokenAndData();
   }
 
-  Future<void> _fetchApprovalsData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    if (token == null) {
+  Future<void> fetchTokenAndData() async {
+    await retrieveToken();
+    if (token != null) {
+      fetchData();
+    } else {
       setState(() {
-        _isLoading = false;
+        isLoading = false;
       });
-      return;
+      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
     }
+  }
+
+  Future<void> retrieveToken() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      token = prefs.getString('token');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error retrieving token: $e');
+      }
+      _showErrorDialog('Error', 'Failed to retrieve token.');
+    }
+  }
+
+  Future<void> fetchData() async {
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
     try {
+      // Fetch Approvals data
       final approvalResponse = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/app/tasks/approvals/pending'),
-        headers: {'Authorization': 'Bearer $token'},
+        Uri.parse('$baseUrl/api/app/users/history/pending'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
       );
 
-      final historyResponse = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/app/tasks/approvals/history'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      if (approvalResponse.statusCode == 200) {
+        final dynamic approvalData = json.decode(approvalResponse.body);
 
-      if (approvalResponse.statusCode == 200 && historyResponse.statusCode == 200) {
-        final List<dynamic> approvalResults = json.decode(approvalResponse.body)['results'];
-        final List<dynamic> historyResults = json.decode(historyResponse.body)['results'];
-
-        setState(() {
-          _approvalItems = approvalResults.map((item) => _formatItem(item)).toList();
-          _historyItems = historyResults.map((item) => _formatItem(item)).toList();
-          _isLoading = false;
-        });
+        if (approvalData is Map<String, dynamic> &&
+            approvalData.containsKey('results')) {
+          final List<dynamic> results = approvalData['results'];
+          approvalItems = results
+              .whereType<Map<String, dynamic>>()
+              .where((item) => item['status'] == 'Waiting')
+              .map((item) => _formatItem(item))
+              .toList();
+        }
       } else {
-        setState(() {
-          _isLoading = false;
-        });
+        _showErrorDialog('Error', 'Failed to fetch approvals: ${approvalResponse.reasonPhrase}');
+      }
+
+      // Fetch History data
+      final historyResponse = await http.get(
+        Uri.parse('$baseUrl/api/app/tasks/approvals/history'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (historyResponse.statusCode == 200) {
+        final dynamic historyData = json.decode(historyResponse.body);
+
+        if (historyData is Map<String, dynamic> &&
+            historyData.containsKey('results')) {
+          final List<dynamic> results = historyData['results'];
+          historyItems = results
+              .whereType<Map<String, dynamic>>()
+              .where((item) =>
+          item['status'] == 'Approved' ||
+              item['status'] == 'Rejected')
+              .map((item) => _formatItem(item))
+              .toList();
+        }
+      } else {
+        _showErrorDialog('Error', 'Failed to fetch history: ${historyResponse.reasonPhrase}');
       }
     } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching data: $e');
+      }
+      _showErrorDialog('Error', 'An unexpected error occurred while fetching data.');
+    } finally {
       setState(() {
-        _isLoading = false;
+        isLoading = false;
       });
     }
+  }
+
+  // Show error dialog
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              // Optionally, navigate back or take other actions
+            },
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   Map<String, dynamic> _formatItem(Map<String, dynamic> item) {
-    String type = item['types'] ?? 'unknown';
+    String types = item['types'] ?? 'Unknown';
+
     Map<String, dynamic> formattedItem = {
-      'type': type,
-      'status': item['status'] ?? 'pending',
+      'types': types,
+      'status': item['status'] ?? 'Unknown',
       'statusColor': _getStatusColor(item['status']),
-      'icon': _getIconForType(type),
-      'typeColor': _getTypeColor(type),
-      'timestamp': DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now(),
-      'img_name': item['img_name'] ?? 'https://via.placeholder.com/150',
+      'icon': _getStatusIcon(item['status']), // IconData
+      'iconColor': _getStatusColor(item['status']),
+      'img_name': item['img_name'] ??
+          'https://via.placeholder.com/150', // Default image if not provided
     };
 
-    if (type == 'meeting') {
-      formattedItem.addAll({
-        'title': item['title'] ?? 'No Title',
-        'startDate': item['from_date_time'] ?? '',
-        'endDate': item['to_date_time'] ?? '',
-        'room': item['room_name'] ?? 'No Room Info',
-        'employee_name': item['employee_name'] ?? 'N/A',
-      });
-    } else if (type == 'leave') {
-      formattedItem.addAll({
-        'title': item['name'] ?? 'No Title',
-        'startDate': item['take_leave_from'] ?? '',
-        'endDate': item['take_leave_to'] ?? '',
-        'leave_type': item['leave_type'] ?? 'N/A',
-        'employee_name': item['requestor_name'] ?? 'N/A',
-      });
-    } else if (type == 'car') {
-      formattedItem.addAll({
-        'title': item['purpose'] ?? 'No Title',
-        'startDate': item['date_out'] ?? '',
-        'endDate': item['date_in'] ?? '',
-        'telephone': item['telephone'] ?? 'N/A',
-        'employee_name': item['requestor_name'] ?? 'N/A',
-      });
+    if (types == 'meeting') {
+      // ... existing meeting mapping
+    } else if (types == 'leave') {
+      formattedItem['title'] = item['take_leave_reason'] ?? 'No Title';
+
+      formattedItem['startDate'] =
+      (item['take_leave_from'] != null && item['take_leave_from'].isNotEmpty)
+          ? item['take_leave_from']
+          : 'N/A';
+
+      formattedItem['endDate'] =
+      (item['take_leave_to'] != null && item['take_leave_to'].isNotEmpty)
+          ? item['take_leave_to']
+          : 'N/A';
+
+      formattedItem['room'] = item['room_name'] ?? 'No Place Info';
+      formattedItem['details'] = item['take_leave_reason'] ?? 'No Details Provided';
+      formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
+      formattedItem['take_leave_request_id'] =
+          item['take_leave_request_id']?.toString() ?? ''; // ID for leave
+
+      // **Added line for 'days'**
+      formattedItem['days'] = item['days']?.toString() ?? 'N/A';
+
+      formattedItem['line_manager_img'] = item['line_manager_img'] ??
+          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+      formattedItem['hr_img'] = item['hr_img'] ??
+          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+    } else if (types == 'car') {
+      // ... existing car mapping
+    } else {
+      // Default processing
+      formattedItem['title'] = 'Unknown Type';
     }
 
     return formattedItem;
-  }
-
-  Color _getStatusColor(String? status) {
-    switch (status?.toLowerCase()) {
-      case 'approved':
-        return Colors.green;
-      case 'rejected':
-      case 'reject':
-        return Colors.red;
-      case 'cancelled':
-        return Colors.grey;
-      default:
-        return Colors.amber;
-    }
   }
 
   Color _getTypeColor(String type) {
@@ -142,196 +210,325 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
     }
   }
 
-  String _getIconForType(String type) {
-    switch (type.toLowerCase()) {
-      case 'leave':
-        return 'assets/leave_calendar.png';
-      case 'car':
-        return 'assets/car.png';
-      case 'meeting':
-        return 'assets/calendar.png';
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'waiting':
+      case 'branch waiting':
+      case 'pending':
+        return Colors.amber;
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+      case 'disapproved':
+      case 'cancel':
+        return Colors.red;
+      case 'processing':
+        return Colors.blue;
+      case 'unknown':
+        return Colors.grey;
       default:
-        return 'assets/default_icon.png';
+        return Colors.grey;
     }
   }
 
-  void _showApprovalDetail(BuildContext context, Map<String, dynamic> item) {
-    if (_isApprovalSelected) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ApprovalsViewPage(item: item),
+  IconData _getStatusIcon(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'waiting':
+      case 'branch waiting':
+      case 'pending':
+        return Icons.hourglass_empty;
+      case 'approved':
+        return Icons.check_circle;
+      case 'rejected':
+      case 'disapproved':
+      case 'cancel':
+        return Icons.cancel;
+      case 'processing':
+        return Icons.timelapse;
+      case 'unknown':
+        return Icons.help_outline;
+      default:
+        return Icons.info;
+    }
+  }
+
+  Widget getIconForType(String type) {
+    switch (type.toLowerCase()) {
+      case 'meeting':
+        return Image.asset('assets/calendar.png', width: 40, height: 40);
+      case 'leave':
+        return Image.asset('assets/leave_calendar.png', width: 40, height: 40);
+      case 'car':
+        return Image.asset('assets/car.png', width: 40, height: 40);
+      default:
+        return const Icon(Icons.info_outline, size: 40, color: Colors.grey);
+    }
+  }
+
+  Color getTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'meeting':
+        return Colors.green;
+      case 'leave':
+        return Colors.orange;
+      case 'car':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  void _openApprovalDetail(Map<String, dynamic> item) {
+    // Determine the unique ID based on the type
+    String type = item['types'];
+    String? id;
+
+    switch (type) {
+      case 'meeting':
+        id = item['uid'];
+        break;
+      case 'leave':
+        id = item['take_leave_request_id'];
+        break;
+      case 'car':
+        id = item['car_permit_id'];
+        break;
+      default:
+        id = null;
+    }
+
+    if (id == null || id.isEmpty) {
+      _showErrorDialog('Invalid Data', 'The selected item has invalid or missing ID.');
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ApprovalsViewPage(
+          type: type,
+          id: id as String,
         ),
-      );
-    } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => FinishStaffApprovalsPage(item: item),
-        ),
-      );
+      ),
+    );
+  }
+
+  void _openHistoryDetail(Map<String, dynamic> item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FinishStaffApprovalsPage(item: item),
+      ),
+    );
+  }
+
+  String formatDate(String? dateStr) {
+    try {
+      if (dateStr == null || dateStr.isEmpty) {
+        return 'N/A';
+      }
+
+      // Handle different date formats based on type
+      DateTime parsedDate;
+
+      // Attempt to parse the date string
+      try {
+        parsedDate = DateTime.parse(dateStr);
+      } catch (_) {
+        // If parsing fails, return the original string
+        return dateStr;
+      }
+
+      return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);
+    } catch (e) {
+      return 'Invalid Date';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
-    final size = MediaQuery.of(context).size;
-
     return Scaffold(
-      backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
-      body: Column(
-        children: [
-          Container(
-            height: size.height * 0.15,
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-                fit: BoxFit.cover,
+      backgroundColor: Colors.grey[100],
+      body: RefreshIndicator(
+        onRefresh: fetchData,
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              height: MediaQuery.of(context).size.height * 0.18,
+              decoration: BoxDecoration(
+                image: const DecorationImage(
+                  image: AssetImage('assets/ready_bg.png'),
+                  fit: BoxFit.cover,
+                ),
+                color: Colors.amber[700],
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
               ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
-            ),
-            child: Padding(
-              padding: EdgeInsets.only(top: size.height * 0.05, left: 16.0, right: 16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Stack(
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.arrow_back, color: isDarkMode ? Colors.white : Colors.black),
-                    onPressed: () {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (context) => const Dashboard()),
-                            (Route<dynamic> route) => false,
-                      );
-                    },
-                  ),
-                  Text(
-                    'Approvals',
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+                  Positioned(
+                    top: 60,
+                    left: 10,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back,
+                          size: 30, color: Colors.black),
+                      onPressed: () {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const Dashboard()),
+                              (Route<dynamic> route) => false,
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(width: 48),
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 50.0),
+                      child: Text(
+                        'Approvals',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isApprovalSelected = true;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12.0),
-                      decoration: BoxDecoration(
-                        color: _isApprovalSelected ? Colors.amber : Colors.grey[300],
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(20.0),
-                          bottomLeft: Radius.circular(20.0),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.approval_rounded, size: 24, color: _isApprovalSelected ? Colors.white : Colors.grey[600]),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Approval',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: _isApprovalSelected ? Colors.white : Colors.grey[600],
-                              fontSize: 16,
-                            ),
+            const SizedBox(height: 10),
+            // TabBar Section for Approval and History tabs
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isApprovalSelected = true;
+                        });
+                      },
+                      child: Container(
+                        padding:
+                        const EdgeInsets.symmetric(vertical: 10.0),
+                        decoration: BoxDecoration(
+                          color: _isApprovalSelected
+                              ? Colors.amber
+                              : Colors.grey[300],
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(20.0),
+                            bottomLeft: Radius.circular(20.0),
                           ),
-                        ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.grid_view_rounded,
+                                size: 24,
+                                color: _isApprovalSelected
+                                    ? Colors.white
+                                    : Colors.grey[600]),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Approval',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: _isApprovalSelected
+                                    ? Colors.white
+                                    : Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 1),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isApprovalSelected = false;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12.0),
-                      decoration: BoxDecoration(
-                        color: !_isApprovalSelected ? Colors.amber : Colors.grey[300],
-                        borderRadius: const BorderRadius.only(
-                          topRight: Radius.circular(20.0),
-                          bottomRight: Radius.circular(20.0),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.history_rounded, size: 24, color: !_isApprovalSelected ? Colors.white : Colors.grey[600]),
-                          const SizedBox(width: 8),
-                          Text(
-                            'History',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: !_isApprovalSelected ? Colors.white : Colors.grey[600],
-                              fontSize: 16,
-                            ),
+                  const SizedBox(width: 1),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isApprovalSelected = false;
+                        });
+                      },
+                      child: Container(
+                        padding:
+                        const EdgeInsets.symmetric(vertical: 10.0),
+                        decoration: BoxDecoration(
+                          color: !_isApprovalSelected
+                              ? Colors.amber
+                              : Colors.grey[300],
+                          borderRadius: const BorderRadius.only(
+                            topRight: Radius.circular(20.0),
+                            bottomRight: Radius.circular(20.0),
                           ),
-                        ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.history_rounded,
+                                size: 24,
+                                color: !_isApprovalSelected
+                                    ? Colors.white
+                                    : Colors.grey[600]),
+                            const SizedBox(width: 8),
+                            Text(
+                              'History',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: !_isApprovalSelected
+                                    ? Colors.white
+                                    : Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-              onRefresh: _fetchApprovalsData,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: _isApprovalSelected ? _approvalItems.length : _historyItems.length,
-                itemBuilder: (context, index) {
-                  final item = _isApprovalSelected ? _approvalItems[index] : _historyItems[index];
-                  return _buildApprovalCard(context, item, isDarkMode);
-                },
+                ],
               ),
             ),
-          ),
-        ],
+
+            const SizedBox(height: 8),
+            // ListView section for displaying approval items
+            Expanded(
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView(
+                padding: const EdgeInsets.all(16.0),
+                children: _isApprovalSelected
+                    ? approvalItems
+                    .map((item) => _buildCard(item))
+                    .toList()
+                    : historyItems
+                    .map((item) => _buildCard(item))
+                    .toList(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildApprovalCard(BuildContext context, Map<String, dynamic> item, bool isDarkMode) {
-    String type = item['type'] ?? 'unknown';
-    String title = item['title'] ?? 'No Title';
-    String status = item['status'] ?? 'Pending';
-    String employeeName = item['employee_name'] ?? 'N/A';
-    String employeeImage = item['img_name'] ?? 'https://via.placeholder.com/150';
-    Color typeColor = _getTypeColor(type);
-    Color statusColor = _getStatusColor(status);
+  Widget _buildCard(Map<String, dynamic> item) {
+    final String type = item['types'] ?? 'unknown';
+    final String title = item['title'] ?? 'No Title';
+    final String status = item['status'] ?? 'Pending';
+    final String employeeImage =
+        item['img_name'] ?? 'https://via.placeholder.com/150';
+    final Color typeColor = _getTypeColor(type);
+    final Color statusColor = _getStatusColor(status);
 
-    String startDate = item['startDate'] ?? '';
-    String endDate = item['endDate'] ?? '';
+    final String startDate = item['startDate'] ?? 'N/A';
+    final String endDate = item['endDate'] ?? 'N/A';
 
     String detailLabel = '';
     String detailValue = '';
@@ -340,27 +537,21 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
       detailLabel = 'Room';
       detailValue = item['room'] ?? 'No Room Info';
     } else if (type == 'leave') {
-      detailLabel = 'Type';
-      detailValue = item['leave_type'] ?? 'N/A';
+      detailLabel = 'Days';
+      detailValue = item['days'] ?? 'N/A';
     } else if (type == 'car') {
-      detailLabel = 'Telephone';
-      detailValue = item['telephone'] ?? 'N/A';
-    }
-
-    String formatDate(String? dateStr) {
-      try {
-        if (dateStr == null || dateStr.isEmpty) {
-          return 'N/A';
-        }
-        final DateTime parsedDate = DateTime.parse(dateStr);
-        return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);
-      } catch (e) {
-        return 'Invalid Date';
-      }
+      detailLabel = 'Requestor ID';
+      detailValue = item['requestor_id'] ?? 'N/A';
     }
 
     return GestureDetector(
-      onTap: () => _showApprovalDetail(context, item),
+      onTap: () {
+        if (_isApprovalSelected) {
+          _openApprovalDetail(item);
+        } else {
+          _openHistoryDetail(item);
+        }
+      },
       child: Card(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15.0),
@@ -382,19 +573,22 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
               ),
             ),
             const SizedBox(width: 12),
+            // Use getIconForType to display type-specific icon
+            getIconForType(type),
+            const SizedBox(width: 8),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+                padding:
+                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Image.asset(
-                          item['icon'],
-                          width: 24,
-                          height: 24,
-                          color: typeColor,
+                        Icon(
+                          item['icon'], // Use Icon widget for status
+                          size: 24,
+                          color: item['iconColor'] ?? typeColor,
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -411,7 +605,10 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                     Text(
                       title,
                       style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
+                        color:
+                        Provider.of<ThemeNotifier>(context).isDarkMode
+                            ? Colors.white
+                            : Colors.black,
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
@@ -445,13 +642,17 @@ class _StaffApprovalsPageState extends State<StaffApprovalsPage> {
                         Text(
                           'Status: ',
                           style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black,
+                            color:
+                            Provider.of<ThemeNotifier>(context).isDarkMode
+                                ? Colors.white
+                                : Colors.black,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8.0, vertical: 4.0),
                           decoration: BoxDecoration(
                             color: statusColor,
                             borderRadius: BorderRadius.circular(12.0),

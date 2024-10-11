@@ -206,7 +206,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   Widget _buildHeader(bool isDarkMode) {
     return Container(
-      height: 140,
+      height: 125,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(
@@ -221,7 +221,7 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
       child: Padding(
         padding:
-        const EdgeInsets.only(top: 60.0, left: 16.0, right: 16.0),
+        const EdgeInsets.only(top: 40.0, left: 16.0, right: 16.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -623,7 +623,7 @@ class DetailsPage extends StatelessWidget {
 
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(85.0),
+        preferredSize: const Size.fromHeight(110.0),
         child: Stack(
           children: [
             Container(
@@ -641,7 +641,7 @@ class DetailsPage extends StatelessWidget {
               child: const Center(
                 child: Column(
                   children: [
-                    SizedBox(height: 85),
+                    SizedBox(height: 70),
                     Text(
                       'Details',
                       style: TextStyle(
@@ -655,7 +655,7 @@ class DetailsPage extends StatelessWidget {
               ),
             ),
             Positioned(
-              top: 75,
+              top: 62,
               left: 16,
               child: IconButton(
                 icon:
