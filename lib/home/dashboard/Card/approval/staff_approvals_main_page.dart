@@ -365,38 +365,32 @@ class _StaffApprovalsMainPageState extends State<StaffApprovalsMainPage> {
                   bottomRight: Radius.circular(20),
                 ),
               ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 50,
-                    left: 10,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back,
-                          size: 30, color: Colors.black),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 60.0), // Adjust top padding here
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, size: 30, color: Colors.black),
                       onPressed: () {
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(
-                              builder: (context) => const Dashboard()),
+                          MaterialPageRoute(builder: (context) => const Dashboard()),
                               (Route<dynamic> route) => false,
                         );
                       },
                     ),
-                  ),
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.only(top: 40.0),
-                      child: Text(
-                        'Approvals',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    const Text(
+                      'Approvals',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 30), // This helps balance the layout
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -413,12 +407,9 @@ class _StaffApprovalsMainPageState extends State<StaffApprovalsMainPage> {
                         });
                       },
                       child: Container(
-                        padding:
-                        const EdgeInsets.symmetric(vertical: 10.0),
+                        padding: const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
-                          color: _isApprovalSelected
-                              ? Colors.amber
-                              : Colors.grey[300],
+                          color: _isApprovalSelected ? Colors.amber : Colors.grey[300],
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(20.0),
                             bottomLeft: Radius.circular(20.0),
@@ -456,12 +447,9 @@ class _StaffApprovalsMainPageState extends State<StaffApprovalsMainPage> {
                         });
                       },
                       child: Container(
-                        padding:
-                        const EdgeInsets.symmetric(vertical: 10.0),
+                        padding: const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
-                          color: !_isApprovalSelected
-                              ? Colors.amber
-                              : Colors.grey[300],
+                          color: !_isApprovalSelected ? Colors.amber : Colors.grey[300],
                           borderRadius: const BorderRadius.only(
                             topRight: Radius.circular(20.0),
                             bottomRight: Radius.circular(20.0),
@@ -493,7 +481,6 @@ class _StaffApprovalsMainPageState extends State<StaffApprovalsMainPage> {
                 ],
               ),
             ),
-
             const SizedBox(height: 8),
             // ListView section for displaying approval items
             Expanded(

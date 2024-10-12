@@ -411,7 +411,7 @@ class _DashboardState extends State<Dashboard> {
                         LayoutBuilder(
                           builder: (context, constraints) {
                             return Transform.translate(
-                                offset: const Offset(0, 10),
+                                offset: const Offset(0, 12),
                                 child: GridView.count(
                                   crossAxisCount: 3,
                                   shrinkWrap: true,
@@ -505,7 +505,7 @@ class _DashboardState extends State<Dashboard> {
 
   Widget _buildActionCard(BuildContext context, String imagePath, String title, bool isDarkMode, VoidCallback onTap) {
     return Card(
-      elevation: 10,
+      elevation: 6,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: const BorderSide(color: Colors.yellow, width: 1.5),

@@ -411,7 +411,7 @@ class _NotificationAdminPageState extends State<NotificationAdminPage> {
           children: [
             Container(
               width: double.infinity,
-              height: MediaQuery.of(context).size.height * 0.18,
+              height: MediaQuery.of(context).size.height * 0.16,
               decoration: BoxDecoration(
                 image: const DecorationImage(
                   image: AssetImage('assets/ready_bg.png'),
@@ -423,38 +423,32 @@ class _NotificationAdminPageState extends State<NotificationAdminPage> {
                   bottomRight: Radius.circular(20),
                 ),
               ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 60,
-                    left: 10,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back,
-                          size: 30, color: Colors.black),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 60.0), // Adjust top padding here
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, size: 30, color: Colors.black),
                       onPressed: () {
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(
-                              builder: (context) => const Dashboard()),
+                          MaterialPageRoute(builder: (context) => const Dashboard()),
                               (Route<dynamic> route) => false,
                         );
                       },
                     ),
-                  ),
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.only(top: 50.0),
-                      child: Text(
-                        'Notification',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    const Text(
+                      'Approvals',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 30), // This helps balance the layout
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -471,12 +465,9 @@ class _NotificationAdminPageState extends State<NotificationAdminPage> {
                         });
                       },
                       child: Container(
-                        padding:
-                        const EdgeInsets.symmetric(vertical: 10.0),
+                        padding: const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
-                          color: _isApprovalSelected
-                              ? Colors.amber
-                              : Colors.grey[300],
+                          color: _isApprovalSelected ? Colors.amber : Colors.grey[300],
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(20.0),
                             bottomLeft: Radius.circular(20.0),
@@ -514,12 +505,9 @@ class _NotificationAdminPageState extends State<NotificationAdminPage> {
                         });
                       },
                       child: Container(
-                        padding:
-                        const EdgeInsets.symmetric(vertical: 10.0),
+                        padding: const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
-                          color: !_isApprovalSelected
-                              ? Colors.amber
-                              : Colors.grey[300],
+                          color: !_isApprovalSelected ? Colors.amber : Colors.grey[300],
                           borderRadius: const BorderRadius.only(
                             topRight: Radius.circular(20.0),
                             bottomRight: Radius.circular(20.0),
@@ -551,7 +539,6 @@ class _NotificationAdminPageState extends State<NotificationAdminPage> {
                 ],
               ),
             ),
-
             const SizedBox(height: 8),
             // ListView section for displaying approval items
             Expanded(
@@ -615,12 +602,12 @@ class _NotificationAdminPageState extends State<NotificationAdminPage> {
           side: BorderSide(color: typeColor, width: 1),
         ),
         elevation: 3,
-        margin: const EdgeInsets.symmetric(vertical: 10.0),
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
         child: Row(
           children: [
             Container(
               width: 4,
-              height: 160,
+              height: 100,
               decoration: BoxDecoration(
                 color: typeColor,
                 borderRadius: const BorderRadius.only(

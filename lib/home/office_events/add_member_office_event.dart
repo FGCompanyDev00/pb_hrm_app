@@ -1,3 +1,5 @@
+// add_member_office_event.dart
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -15,10 +17,14 @@ class _AddMemberPageState extends State<AddMemberPage> {
   List<Map<String, dynamic>> _filteredMembers = [];
   final List<Map<String, dynamic>> _selectedMembers = [];
 
+  List<Map<String, dynamic>> _groups = [];
+  String? _selectedGroupId;
+
   @override
   void initState() {
     super.initState();
     _fetchMembers();
+    _fetchGroups();
   }
 
   /// Fetches the stored token from SharedPreferences
@@ -56,6 +62,36 @@ class _AddMemberPageState extends State<AddMemberPage> {
       }
     } catch (e) {
       _showErrorMessage('Error fetching members: $e');
+    }
+  }
+
+  /// Fetches the list of groups from the API
+  Future<void> _fetchGroups() async {
+    try {
+      String token = await _fetchToken();
+      final response = await http.get(
+        Uri.parse(
+            'https://demo-application-api.flexiflows.co/api/work-tracking/group/usergroups'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body)['results'];
+        setState(() {
+          _groups = data.map((item) => {
+            'id': item['id'],
+            'groupId': item['groupId'],
+            'group_name': item['group_name'],
+            'employees': item['employees'],
+          }).toList();
+        });
+      } else {
+        throw Exception('Failed to load groups');
+      }
+    } catch (e) {
+      _showErrorMessage('Error fetching groups: $e');
     }
   }
 
@@ -110,21 +146,75 @@ class _AddMemberPageState extends State<AddMemberPage> {
     });
   }
 
+  /// Selects a group and adds its members
+  void _selectGroup(String groupId) {
+    final group = _groups.firstWhere(
+            (element) => element['groupId'] == groupId,
+        orElse: () => {});
+    if (group.isNotEmpty) {
+      List<dynamic> employees = group['employees'];
+      setState(() {
+        for (var emp in employees) {
+          if (!_selectedMembers.any(
+                  (m) => m['employee_id'] == emp['employee_id'])) {
+            _selectedMembers.add({
+              'employee_id': emp['employee_id'],
+              'name': emp['employee_name'].split(' ')[0],
+              'surname': emp['employee_name'].split(' ').length > 1
+                  ? emp['employee_name'].split(' ')[1]
+                  : '',
+              'email': '', // Email not provided in group employees
+            });
+          }
+        }
+      });
+    }
+  }
+
   /// Shows an error message using a SnackBar
   void _showErrorMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(color: Colors.white)),
+        content:
+        Text(message, style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.red,
       ),
     );
   }
 
-  /// Builds the main UI of the page
+  /// Builds the group selection dropdown
+  Widget _buildGroupDropdown() {
+    return DropdownButtonFormField<String>(
+      decoration: InputDecoration(
+        labelText: 'Select Group',
+        prefixIcon: const Icon(Icons.group),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(30.0),
+        ),
+      ),
+      value: _selectedGroupId,
+      items: _groups
+          .map((group) => DropdownMenuItem<String>(
+        value: group['groupId'],
+        child: Text(group['group_name']),
+      ))
+          .toList(),
+      onChanged: (String? newValue) {
+        if (newValue != null) {
+          _selectGroup(newValue);
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: const Text('Office Event Add Members'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        toolbarHeight: 90,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(
@@ -138,27 +228,6 @@ class _AddMemberPageState extends State<AddMemberPage> {
           ),
         ),
         centerTitle: true,
-        title: const Text(
-          'Office Event Add Members',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 22,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Colors.black,
-            size: 20,
-          ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        toolbarHeight: 80,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
       ),
       body: Column(
         children: [
@@ -189,7 +258,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                                   backgroundImage: snapshot.data != null
                                       ? NetworkImage(snapshot.data!)
                                       : const AssetImage(
-                                      'assets/default_avatar.png')
+                                      'assets/default_avatar.jpg')
                                   as ImageProvider,
                                   radius: 25,
                                 ),
@@ -237,6 +306,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                 ],
               ),
             ),
+          // Search Box
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
@@ -252,6 +322,13 @@ class _AddMemberPageState extends State<AddMemberPage> {
               ),
             ),
           ),
+          // Group Selection Dropdown
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: _buildGroupDropdown(),
+          ),
+          const SizedBox(height: 16.0),
+          // Members List
           Expanded(
             child: ListView.builder(
               itemCount: _filteredMembers.length,
@@ -261,13 +338,12 @@ class _AddMemberPageState extends State<AddMemberPage> {
                   leading: FutureBuilder<String?>(
                     future: _fetchProfileImage(member['employee_id']),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.done &&
-                          snapshot.hasData) {
+                      if (snapshot.connectionState ==
+                          ConnectionState.done &&
+                          snapshot.hasData &&
+                          snapshot.data!.isNotEmpty) {
                         return CircleAvatar(
-                          backgroundImage: snapshot.data != null
-                              ? NetworkImage(snapshot.data!)
-                              : const AssetImage('assets/default_avatar.png')
-                          as ImageProvider,
+                          backgroundImage: NetworkImage(snapshot.data!),
                           radius: 25,
                         );
                       } else {

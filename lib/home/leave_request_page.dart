@@ -330,7 +330,7 @@ class LeaveManagementPage extends HookWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 100),
+                  const SizedBox(height: 160),
                   Align(
                     alignment: Alignment.centerRight,
                     child: ElevatedButton.icon(

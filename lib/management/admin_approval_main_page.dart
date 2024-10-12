@@ -445,38 +445,32 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                   bottomRight: Radius.circular(20),
                 ),
               ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: 45,
-                    left: 10,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back,
-                          size: 30, color: Colors.black),
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 60.0), // Adjust top padding here
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, size: 30, color: Colors.black),
                       onPressed: () {
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(
-                              builder: (context) => const Dashboard()),
+                          MaterialPageRoute(builder: (context) => const Dashboard()),
                               (Route<dynamic> route) => false,
                         );
                       },
                     ),
-                  ),
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.only(top: 35.0),
-                      child: Text(
-                        'Approvals',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    const Text(
+                      'Approvals',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 30), // This helps balance the layout
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -493,12 +487,9 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                         });
                       },
                       child: Container(
-                        padding:
-                        const EdgeInsets.symmetric(vertical: 10.0),
+                        padding: const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
-                          color: _isApprovalSelected
-                              ? Colors.amber
-                              : Colors.grey[300],
+                          color: _isApprovalSelected ? Colors.amber : Colors.grey[300],
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(20.0),
                             bottomLeft: Radius.circular(20.0),
@@ -536,12 +527,9 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                         });
                       },
                       child: Container(
-                        padding:
-                        const EdgeInsets.symmetric(vertical: 10.0),
+                        padding: const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
-                          color: !_isApprovalSelected
-                              ? Colors.amber
-                              : Colors.grey[300],
+                          color: !_isApprovalSelected ? Colors.amber : Colors.grey[300],
                           borderRadius: const BorderRadius.only(
                             topRight: Radius.circular(20.0),
                             bottomRight: Radius.circular(20.0),
@@ -573,7 +561,6 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                 ],
               ),
             ),
-
             const SizedBox(height: 8),
             // ListView section for displaying approval items
             Expanded(
@@ -642,7 +629,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           children: [
             Container(
               width: 4,
-              height: 160,
+              height: 110,
               decoration: BoxDecoration(
                 color: typeColor,
                 borderRadius: const BorderRadius.only(
