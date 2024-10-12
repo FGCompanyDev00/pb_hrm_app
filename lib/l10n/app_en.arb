@@ -103,5 +103,6 @@
   "enableBiometric": "Please enable biometric authentication in settings.",
   "authenticateToLogin": "Please authenticate to login",
   "authFailed": "Authentication Failed",
-  "tryAgain": "Biometric authentication failed. Please try again."
+  "tryAgain": "Biometric authentication failed. Please try again.",
+  "emptyFieldsMessage": "Empty Fields Message"
 }

@@ -1,3 +1,5 @@
+// main.dart
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -6,7 +8,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
-import 'package:pb_hrsystem/user_model.dart';
+import 'package:pb_hrsystem/user_model.dart'; // Updated import
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
@@ -68,7 +70,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ThemeNotifier()),
         ChangeNotifierProvider(create: (_) => LanguageNotifier()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
-         ChangeNotifierProvider(create: (_) => DateProvider()),
+        ChangeNotifierProvider(create: (_) => DateProvider()),
       ],
       child: const MyApp(),
     ),
@@ -235,7 +237,6 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
-
 
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {

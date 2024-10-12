@@ -1,3 +1,5 @@
+// login_page.dart
+
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -15,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:flutter/services.dart';
+import 'package:pb_hrsystem/user_model.dart'; // Updated import
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -71,8 +74,17 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login() async {
-    final String username = _usernameController.text;
-    final String password = _passwordController.text;
+    final String username = _usernameController.text.trim();
+    final String password = _passwordController.text.trim();
+
+    if (username.isEmpty || password.isEmpty) {
+      _showCustomDialog(
+          context,
+          AppLocalizations.of(context)!.loginFailed,
+          AppLocalizations.of(context)!.emptyFieldsMessage
+      );
+      return;
+    }
 
     final response = await http.post(
       Uri.parse('https://demo-application-api.flexiflows.co/api/login'),
@@ -91,6 +103,7 @@ class _LoginPageState extends State<LoginPage> {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', token);
+      await prefs.setBool('isLoggedIn', true); // Set isLoggedIn to true
 
       if (_rememberMe) {
         _saveCredentials();
@@ -103,6 +116,9 @@ class _LoginPageState extends State<LoginPage> {
         await _storage.write(key: 'password', value: password);
         await _storage.write(key: 'biometricEnabled', value: 'true');
       }
+
+      // Update UserProvider
+      Provider.of<UserProvider>(context, listen: false).login(token);
 
       bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
 
@@ -129,8 +145,8 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _authenticate({bool useBiometric = true}) async {
     if (!_biometricEnabled) {
-      _showCustomDialog(context, 'Biometric Disabled',
-          'Please enable biometric authentication.');
+      _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled,
+          AppLocalizations.of(context)!.enableBiometric);
       return;
     }
 
@@ -143,7 +159,11 @@ class _LoginPageState extends State<LoginPage> {
           stickyAuth: true,
         ),
       );
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) {
+        print('Biometric authentication error: $e');
+      }
+    }
 
     if (authenticated) {
       String? username = await _storage.read(key: 'username');
@@ -154,7 +174,7 @@ class _LoginPageState extends State<LoginPage> {
         _login();
       }
     } else {
-      _showCustomDialog(context, 'Authentication Failed', 'Please try again.');
+      _showCustomDialog(context, AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.tryAgain);
     }
   }
 
@@ -323,7 +343,7 @@ class _LoginPageState extends State<LoginPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              "Choose Language",
+                              AppLocalizations.of(context)!.chooseLanguage, // Localized Text
                               style: TextStyle(
                                 fontSize: screenWidth * 0.045,
                                 fontWeight: FontWeight.bold,

@@ -103,5 +103,6 @@
   "enableBiometric": "请在设置中启用生物识别身份验证。",
   "authenticateToLogin": "请进行身份验证以登录",
   "authFailed": "身份验证失败",
-  "tryAgain": "生物识别身份验证失败。请再试一次。"
+  "tryAgain": "生物识别身份验证失败。请再试一次。",
+  "emptyFieldsMessage": "空字段消息"
 }
