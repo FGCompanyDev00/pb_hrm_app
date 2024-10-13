@@ -48,7 +48,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   int? _notification; // Notification time in minutes
   String? _location; // For Add Meeting and Meeting Type for Booking Meeting Room
   List<PlatformFile> _selectedFiles = []; // For file uploads (only Type 1)
-  String? _permitBranchId; // For Car Booking
+  int? _permitBranchId; // For Car Booking
 
   String? _employeeId; // Current user's employee ID
 
@@ -57,9 +57,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
   // Lists for Projects and Statuses
   List<Project> _projects = [];
-
-  // List of Permit Branches (Assuming API endpoint available)
-  List<Branch> _branches = [];
 
   // Hard-coded list of Statuses as per provided API data
   final List<Status> _statuses = [
@@ -85,10 +82,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     ),
   ];
 
-  // Selected Project, Status, and Branch
+  // Selected Project and Status
   Project? _selectedProject;
   Status? _selectedStatus;
-  Branch? _selectedBranch;
 
   // Location options for Add Meeting and Meeting Type for Booking Meeting Room
   final List<String> _locationOptions = [
@@ -106,7 +102,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     _fetchEmployeeId();
     _fetchRooms();
     _fetchProjects();
-    _fetchBranches(); // Fetch branches for Car Booking
+    _fetchProfile(); // Fetch profile data for Type 3
+    // No need to fetch branches as permit_branch is fetched from profile
     // No need to fetch statuses as they are hard-coded
   }
 
@@ -199,33 +196,35 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     }
   }
 
-  /// Fetches the list of branches for Car Booking from the API
-  Future<void> _fetchBranches() async {
+  /// Fetches the profile data from the API to get branch_id
+  Future<void> _fetchProfile() async {
     try {
       String token = await _fetchToken();
 
       final response = await http.get(
-        Uri.parse(
-            'https://demo-application-api.flexiflows.co/api/office-administration/branches'),
+        Uri.parse('https://demo-application-api.flexiflows.co/api/profile/'),
         headers: {
           'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
         },
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body)['results'];
+        final Map<String, dynamic> data = jsonDecode(response.body)['results'];
         setState(() {
-          _branches = data
-              .map<Branch>((item) => Branch.fromJson(item))
-              .toList();
-          print('Fetched Branches: $_branches'); // Debug statement
+          _permitBranchId = data['branch_id'];
+          print('Fetched Permit Branch ID: $_permitBranchId'); // Debug
+          // Optionally, store branch_name if needed
         });
+
       } else {
-        throw Exception('Failed to load branches');
+        throw Exception('Failed to load profile');
       }
     } catch (e) {
-      _showErrorMessage('Error fetching branches: $e');
+      _showErrorMessage('Error fetching profile data: $e');
     }
+    print('Fetched Permit Branch ID: $_permitBranchId'); // After fetching profile
+
   }
 
   /// Submits the event based on the selected booking type
@@ -343,6 +342,16 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             };
             print('Submit Book Meeting Room Body: $body'); // Debug statement
           } else if (_selectedBookingType == '3. Booking Car') {
+            // Before proceeding, ensure that _permitBranchId is fetched
+            if (_permitBranchId == null) {
+              print('Permit Branch ID is null, attempting to fetch again.');
+              await _fetchProfile();
+              if (_permitBranchId == null) {
+                _showErrorMessage('Permit branch not available. Please try again.');
+                return;
+              }
+            }
+
             url =
             'https://demo-application-api.flexiflows.co/api/office-administration/car_permit';
             body = {
@@ -355,14 +364,15 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               "date_out": _endDateTime != null
                   ? DateFormat('yyyy-MM-dd').format(_endDateTime!)
                   : "",
-              "permit_branch": _permitBranchId, // Selected branch ID
+              "permit_branch": _permitBranchId, // Fetched branch ID from profile
               "notification": _notification ?? 30,
               "members": _selectedMembers
                   .map((member) => {"employee_id": member['employee_id']})
                   .toList(),
             };
             print('Submit Booking Car Body: $body'); // Debug statement
-          } else {
+          }
+          else {
             _showErrorMessage('Invalid booking type selected.');
             return;
           }
@@ -430,10 +440,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       _notification = null;
       _selectedProject = null;
       _selectedStatus = null;
-      _permitBranchId = null;
-      _selectedBranch = null;
     });
   }
+
 
   /// Validates the input fields based on the selected booking type
   bool _validateFields() {
@@ -510,7 +519,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           return false;
         }
         if (_permitBranchId == null) {
-          _showErrorMessage('Please select a permit branch.');
+          _showErrorMessage('Permit branch not available. Please try again.');
           return false;
         }
         if (_notification == null) {
@@ -784,56 +793,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     );
   }
 
-  /// Selects a branch (for booking type 3)
-  Future<void> _selectBranch() async {
-    if (_branches.isEmpty) {
-      _showErrorMessage('No branches available');
-      return;
-    }
-    await showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return Container(
-          height: 400,
-          child: Column(
-            children: [
-              Padding(
-                padding:
-                const EdgeInsets.all(16.0),
-                child: Text(
-                  'Select a Branch',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight:
-                      FontWeight.bold),
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _branches.length,
-                  itemBuilder: (context, index) {
-                    final branch = _branches[index];
-                    return ListTile(
-                      title: Text(branch.branchName),
-                      onTap: () {
-                        setState(() {
-                          _permitBranchId = branch.branchId;
-                          _selectedBranch = branch;
-                          print('Selected Branch: $_selectedBranch'); // Debug
-                        });
-                        Navigator.pop(context);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   /// Shows the notification time dropdown based on booking type
   Widget _buildNotificationDropdown() {
     return DropdownButtonFormField<int>(
@@ -887,29 +846,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           print('Selected Location/Meeting Type: $_location'); // Debug
         });
       },
-    );
-  }
-
-  /// Builds the branch selection dropdown (for Type 3)
-  Widget _buildBranchDropdown() {
-    return GestureDetector(
-      onTap: _selectBranch,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius:
-          BorderRadius.circular(10.0),
-          border: Border.all(color: Colors.grey),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
-        child: Row(
-          mainAxisAlignment:
-          MainAxisAlignment.spaceBetween,
-          children: [
-            Text(_selectedBranch?.branchName ?? 'Select Branch'),
-            const Icon(Icons.menu),
-          ],
-        ),
-      ),
     );
   }
 
@@ -1209,16 +1145,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 16.0),
-            // Permit Branch Dropdown
-            const Text(
-              'Permit Branch*',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16.0),
-            ),
-            const SizedBox(height: 8.0),
-            _buildBranchDropdown(),
             const SizedBox(height: 16.0),
             // Notification Dropdown
             const Text(
@@ -1623,7 +1549,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     // Build the UI
     return Scaffold(
       appBar: AppBar(
-
         title: const Text(
           'Add Office Event',
           style: TextStyle(color: Colors.black),
@@ -1801,28 +1726,5 @@ class Status {
   @override
   String toString() {
     return 'Status(id: $id, statusId: $statusId, name: $name)';
-  }
-}
-
-/// Model class for Branch
-class Branch {
-  final String branchId;
-  final String branchName;
-
-  Branch({
-    required this.branchId,
-    required this.branchName,
-  });
-
-  factory Branch.fromJson(Map<String, dynamic> json) {
-    return Branch(
-      branchId: json['branch_id'],
-      branchName: json['branch_name'],
-    );
-  }
-
-  @override
-  String toString() {
-    return 'Branch(branchId: $branchId, branchName: $branchName)';
   }
 }

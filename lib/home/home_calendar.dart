@@ -245,8 +245,7 @@ class _HomeCalendarState extends State<HomeCalendar>
 
   /// Fetches meeting data from the API
   Future<void> _fetchMeetingData() async {
-    final response = await _getRequest(
-        '/api/work-tracking/out-meeting/outmeeting/my-members');
+    final response = await _getRequest('/api/work-tracking/meeting/get-all-meeting');
     if (response == null) return;
 
     try {
@@ -263,17 +262,28 @@ class _HomeCalendarState extends State<HomeCalendar>
       final Map<DateTime, List<Event>> meetingEvents = {};
 
       for (var item in results) {
-        // Adjusted field names to match API response
-        final DateTime startDate = item['from_date'] != null
-            ? DateTime.parse(item['from_date'])
-            : DateTime.now();
-        final DateTime endDate = item['to_date'] != null
-            ? DateTime.parse(item['to_date'])
-            : DateTime.now();
+        // Ensure necessary fields are present
+        if (item['from_date'] == null ||
+            item['to_date'] == null ||
+            item['start_time'] == null ||
+            item['end_time'] == null) {
+          _showSnackBar('Missing date or time fields in meeting data.');
+          continue;
+        }
+
+        // Combine 'from_date' with 'start_time' and 'to_date' with 'end_time'
+        DateTime startDateTime;
+        DateTime endDateTime;
+        try {
+          startDateTime = DateTime.parse('${item['from_date']} ${item['start_time']}:00');
+          endDateTime = DateTime.parse('${item['to_date']} ${item['end_time']}:00');
+        } catch (e) {
+          _showSnackBar('Error parsing meeting dates or times: $e');
+          continue;
+        }
 
         // Handle possible nulls with default values
-        final String uid =
-            item['meeting_id']?.toString() ?? UniqueKey().toString();
+        final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
 
         String status = item['s_name'] != null
             ? _mapMeetingStatus(item['s_name'].toString())
@@ -283,12 +293,12 @@ class _HomeCalendarState extends State<HomeCalendar>
 
         final event = Event(
           title: item['title'] ?? 'Meeting',
-          startDateTime: startDate,
-          endDateTime: endDate,
+          startDateTime: startDateTime,
+          endDateTime: endDateTime,
           description: item['description'] ?? '',
           status: status,
           isMeeting: true,
-          location: item['location'] ?? '',
+          location: item['location'] ?? '', // Assuming 'location' field exists
           createdBy: item['create_by'] ?? '',
           imgName: item['file_name'] ?? '',
           createdAt: item['created_at'] ?? '',
@@ -305,8 +315,12 @@ class _HomeCalendarState extends State<HomeCalendar>
               : [],
         );
 
-        for (var day = _normalizeDate(startDate);
-        !day.isAfter(_normalizeDate(endDate));
+        // Normalize the start and end dates for event mapping
+        final normalizedStartDay = _normalizeDate(startDateTime);
+        final normalizedEndDay = _normalizeDate(endDateTime);
+
+        for (var day = normalizedStartDay;
+        !day.isAfter(normalizedEndDay);
         day = day.add(const Duration(days: 1))) {
           if (meetingEvents.containsKey(day)) {
             if (!meetingEvents[day]!.any((e) => e.uid == event.uid)) {
