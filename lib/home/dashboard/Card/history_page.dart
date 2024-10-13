@@ -623,49 +623,52 @@ class DetailsPage extends StatelessWidget {
 
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(100.0),
-        child: Stack(
-          children: [
-            Container(
-              width: double.infinity,
+        preferredSize: const Size.fromHeight(90.0),
+        child: AppBar(
+          automaticallyImplyLeading: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          flexibleSpace: ClipRRect(
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(20),
+              bottomRight: Radius.circular(20),
+            ),
+            child: Container(
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage("assets/background.png"),
+                  image: AssetImage('assets/background.png'),
                   fit: BoxFit.cover,
                 ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
-              child: const Center(
-                child: Column(
-                  children: [
-                    SizedBox(height: 100),
-                    Text(
-                      'Details',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ),
-            Positioned(
-              top: 94,
-              left: 16,
-              child: IconButton(
-                icon:
-                const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-              ),
+          ),
+          leading: Padding(
+            padding: const EdgeInsets.only(top: 25.0),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: () {
+                Navigator.pop(context);
+              },
             ),
-          ],
+          ),
+          title: const Padding(
+            padding: EdgeInsets.only(top: 34.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Spacer(flex: 2),
+                Text(
+                  'History Details',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                  ),
+                ),
+                Spacer(flex: 4),
+              ],
+            ),
+          ),
         ),
       ),
       body: Padding(
