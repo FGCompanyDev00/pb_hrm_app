@@ -1,5 +1,6 @@
 // office_add_event.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -48,7 +49,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   int? _notification; // Notification time in minutes
   String? _location; // For Add Meeting and Meeting Type for Booking Meeting Room
   List<PlatformFile> _selectedFiles = []; // For file uploads (only Type 1)
-  int? _permitBranchId; // For Car Booking
 
   String? _employeeId; // Current user's employee ID
 
@@ -102,8 +102,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     _fetchEmployeeId();
     _fetchRooms();
     _fetchProjects();
-    _fetchProfile(); // Fetch profile data for Type 3
-    // No need to fetch branches as permit_branch is fetched from profile
+    // Removed _fetchProfile() as it's no longer needed for Type 3
+    // No need to fetch branches as permit_branch is now defaulted to '0'
     // No need to fetch statuses as they are hard-coded
   }
 
@@ -124,7 +124,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _employeeId = prefs.getString('employee_id') ?? '';
-      print('Employee ID: $_employeeId'); // Debug statement
+      if (kDebugMode) {
+        print('Employee ID: $_employeeId');
+      } // Debug statement
     });
   }
 
@@ -132,7 +134,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   Future<String> _fetchToken() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     String token = prefs.getString('token') ?? '';
-    print('Fetched Token: $token'); // Debug statement
+    if (kDebugMode) {
+      print('Fetched Token: $token');
+    } // Debug statement
     return token;
   }
 
@@ -158,7 +162,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             'room_name': item['room_name'],
           })
               .toList();
-          print('Fetched Rooms: $_rooms'); // Debug statement
+          if (kDebugMode) {
+            print('Fetched Rooms: $_rooms');
+          } // Debug statement
         });
       } else {
         throw Exception('Failed to load rooms');
@@ -186,7 +192,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         setState(() {
           _projects =
               data.map<Project>((item) => Project.fromJson(item)).toList();
-          print('Fetched Projects: $_projects'); // Debug statement
+          if (kDebugMode) {
+            print('Fetched Projects: $_projects');
+          } // Debug statement
         });
       } else {
         throw Exception('Failed to load projects');
@@ -194,37 +202,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     } catch (e) {
       _showErrorMessage('Error fetching projects: $e');
     }
-  }
-
-  /// Fetches the profile data from the API to get branch_id
-  Future<void> _fetchProfile() async {
-    try {
-      String token = await _fetchToken();
-
-      final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/profile/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body)['results'];
-        setState(() {
-          _permitBranchId = data['branch_id'];
-          print('Fetched Permit Branch ID: $_permitBranchId'); // Debug
-          // Optionally, store branch_name if needed
-        });
-
-      } else {
-        throw Exception('Failed to load profile');
-      }
-    } catch (e) {
-      _showErrorMessage('Error fetching profile data: $e');
-    }
-    print('Fetched Permit Branch ID: $_permitBranchId'); // After fetching profile
-
   }
 
   /// Submits the event based on the selected booking type
@@ -285,8 +262,13 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             }
           }
 
-          print('Submitting Type 1 Add Meeting with fields: ${request.fields}');
-          print('Submitting Type 1 Add Meeting with ${request.files.length} files.');
+          if (kDebugMode) {
+            print('Submitting Type 1 Add Meeting with fields: ${request.fields}');
+          }
+          if (kDebugMode) {
+            print(
+              'Submitting Type 1 Add Meeting with ${request.files.length} files.');
+          }
 
           // Sending the request
           var streamedResponse = await request.send();
@@ -340,18 +322,11 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   .map((member) => {"employee_id": member['employee_id']})
                   .toList(),
             };
-            print('Submit Book Meeting Room Body: $body'); // Debug statement
+            if (kDebugMode) {
+              print('Submit Book Meeting Room Body: $body');
+            } // Debug statement
           } else if (_selectedBookingType == '3. Booking Car') {
-            // Before proceeding, ensure that _permitBranchId is fetched
-            if (_permitBranchId == null) {
-              print('Permit Branch ID is null, attempting to fetch again.');
-              await _fetchProfile();
-              if (_permitBranchId == null) {
-                _showErrorMessage('Permit branch not available. Please try again.');
-                return;
-              }
-            }
-
+            // Handle Type 3 without fetching permit_branch from API
             url =
             'https://demo-application-api.flexiflows.co/api/office-administration/car_permit';
             body = {
@@ -364,15 +339,16 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               "date_out": _endDateTime != null
                   ? DateFormat('yyyy-MM-dd').format(_endDateTime!)
                   : "",
-              "permit_branch": _permitBranchId, // Fetched branch ID from profile
+              "permit_branch": 0, // Default value as per requirement
               "notification": _notification ?? 30,
               "members": _selectedMembers
                   .map((member) => {"employee_id": member['employee_id']})
                   .toList(),
             };
-            print('Submit Booking Car Body: $body'); // Debug statement
-          }
-          else {
+            if (kDebugMode) {
+              print('Submit Booking Car Body: $body');
+            } // Debug statement
+          } else {
             _showErrorMessage('Invalid booking type selected.');
             return;
           }
@@ -440,9 +416,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       _notification = null;
       _selectedProject = null;
       _selectedStatus = null;
+      // Removed _permitBranchId as it's no longer used
     });
   }
-
 
   /// Validates the input fields based on the selected booking type
   bool _validateFields() {
@@ -518,10 +494,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           _showErrorMessage('Please enter the purpose.');
           return false;
         }
-        if (_permitBranchId == null) {
-          _showErrorMessage('Permit branch not available. Please try again.');
-          return false;
-        }
+        // Removed check for _permitBranchId as it's now defaulted to '0'
         if (_notification == null) {
           _showErrorMessage('Please select a notification time.');
           return false;
@@ -603,7 +576,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             _startDateTime?.hour ?? 0,
             _startDateTime?.minute ?? 0,
           );
-          print('Start DateTime: $_startDateTime'); // Debug statement
+          if (kDebugMode) {
+            print('Start DateTime: $_startDateTime');
+          } // Debug statement
         } else {
           _endDateTime = DateTime(
             picked.year,
@@ -612,7 +587,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             _endDateTime?.hour ?? 0,
             _endDateTime?.minute ?? 0,
           );
-          print('End DateTime: $_endDateTime'); // Debug statement
+          if (kDebugMode) {
+            print('End DateTime: $_endDateTime');
+          } // Debug statement
         }
       });
     }
@@ -636,7 +613,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             picked.hour,
             picked.minute,
           );
-          print('Start Time: $_startDateTime'); // Debug statement
+          if (kDebugMode) {
+            print('Start Time: $_startDateTime');
+          } // Debug statement
         } else {
           _endDateTime = DateTime(
             _endDateTime?.year ?? DateTime.now().year,
@@ -645,7 +624,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             picked.hour,
             picked.minute,
           );
-          print('End Time: $_endDateTime'); // Debug statement
+          if (kDebugMode) {
+            print('End Time: $_endDateTime');
+          } // Debug statement
         }
       });
     }
@@ -663,7 +644,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     if (selectedMembers != null && selectedMembers.isNotEmpty) {
       setState(() {
         _selectedMembers = selectedMembers;
-        print('Selected Members: $_selectedMembers'); // Debug statement
+        if (kDebugMode) {
+          print('Selected Members: $_selectedMembers');
+        } // Debug statement
       });
     }
   }
@@ -721,7 +704,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   setState(() {
                     _selectedBookingType =
                     '2. Meeting and Booking Meeting Room';
-                    print('Selected Booking Type: $_selectedBookingType'); // Debug
+                    if (kDebugMode) {
+                      print('Selected Booking Type: $_selectedBookingType');
+                    } // Debug
                   });
                   Navigator.pop(context);
                 },
@@ -731,7 +716,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 onTap: () {
                   setState(() {
                     _selectedBookingType = '3. Booking Car';
-                    print('Selected Booking Type: $_selectedBookingType'); // Debug
+                    if (kDebugMode) {
+                      print('Selected Booking Type: $_selectedBookingType');
+                    } // Debug
                   });
                   Navigator.pop(context);
                 },
@@ -752,13 +739,13 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     await showModalBottomSheet(
       context: context,
       builder: (context) {
-        return Container(
+        return SizedBox(
           height: 400,
           child: Column(
             children: [
-              Padding(
+              const Padding(
                 padding:
-                const EdgeInsets.all(16.0),
+                EdgeInsets.all(16.0),
                 child: Text(
                   'Select a Room',
                   style: TextStyle(
@@ -870,8 +857,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
   /// Builds the file upload section (only for Type 1)
   Widget _buildFileUploadSection() {
-    if (_selectedBookingType != '1. Add Meeting' || _selectedFiles.isEmpty)
+    if (_selectedBookingType != '1. Add Meeting' || _selectedFiles.isEmpty) {
       return Container();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1544,7 +1532,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   @override
   Widget build(BuildContext context) {
     // Calculate AppBar height
-    final double appBarHeight = kToolbarHeight + 20.0;
 
     // Build the UI
     return Scaffold(

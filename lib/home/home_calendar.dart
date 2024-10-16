@@ -245,7 +245,8 @@ class _HomeCalendarState extends State<HomeCalendar>
 
   /// Fetches meeting data from the API
   Future<void> _fetchMeetingData() async {
-    final response = await _getRequest('/api/work-tracking/meeting/get-all-meeting');
+    final response =
+    await _getRequest('/api/work-tracking/meeting/get-all-meeting');
     if (response == null) return;
 
     try {
@@ -275,8 +276,33 @@ class _HomeCalendarState extends State<HomeCalendar>
         DateTime startDateTime;
         DateTime endDateTime;
         try {
-          startDateTime = DateTime.parse('${item['from_date']} ${item['start_time']}:00');
-          endDateTime = DateTime.parse('${item['to_date']} ${item['end_time']}:00');
+          // Parse 'from_date' and 'start_time' separately and combine
+          DateTime fromDate = DateTime.parse(item['from_date']);
+          List<String> startTimeParts = item['start_time'].split(':');
+          if (startTimeParts.length != 2) {
+            throw FormatException('Invalid start_time format');
+          }
+          startDateTime = DateTime(
+            fromDate.year,
+            fromDate.month,
+            fromDate.day,
+            int.parse(startTimeParts[0]),
+            int.parse(startTimeParts[1]),
+          );
+
+          // Parse 'to_date' and 'end_time' separately and combine
+          DateTime toDate = DateTime.parse(item['to_date']);
+          List<String> endTimeParts = item['end_time'].split(':');
+          if (endTimeParts.length != 2) {
+            throw FormatException('Invalid end_time format');
+          }
+          endDateTime = DateTime(
+            toDate.year,
+            toDate.month,
+            toDate.day,
+            int.parse(endTimeParts[0]),
+            int.parse(endTimeParts[1]),
+          );
         } catch (e) {
           _showSnackBar('Error parsing meeting dates or times: $e');
           continue;
@@ -351,6 +377,8 @@ class _HomeCalendarState extends State<HomeCalendar>
         return 'Pending';
       case 'disapproved':
         return 'Cancelled';
+      case 'finished':
+        return 'Finished';
       default:
         return 'Pending';
     }
@@ -469,8 +497,32 @@ class _HomeCalendarState extends State<HomeCalendar>
         DateTime? endDateTime;
 
         try {
-          startDateTime = DateTime.parse('$dateOutStr $timeOutStr:00');
-          endDateTime = DateTime.parse('$dateInStr $timeInStr:00');
+          // Combine date and time properly
+          DateTime outDate = DateTime.parse(dateOutStr);
+          List<String> timeOutParts = timeOutStr.split(':');
+          if (timeOutParts.length != 2) {
+            throw FormatException('Invalid time_out format');
+          }
+          startDateTime = DateTime(
+            outDate.year,
+            outDate.month,
+            outDate.day,
+            int.parse(timeOutParts[0]),
+            int.parse(timeOutParts[1]),
+          );
+
+          DateTime inDate = DateTime.parse(dateInStr);
+          List<String> timeInParts = timeInStr.split(':');
+          if (timeInParts.length != 2) {
+            throw FormatException('Invalid time_in format');
+          }
+          endDateTime = DateTime(
+            inDate.year,
+            inDate.month,
+            inDate.day,
+            int.parse(timeInParts[0]),
+            int.parse(timeInParts[1]),
+          );
         } catch (e) {
           _showSnackBar('Error parsing car booking dates: $e');
           continue;
@@ -535,7 +587,8 @@ class _HomeCalendarState extends State<HomeCalendar>
   /// Formats date strings to ensure consistency
   String _formatDateString(String dateStr) {
     try {
-      DateTime parsedDate = DateFormat('yyyy-M-d').parse(dateStr);
+      // Assuming the date is in 'yyyy-MM-dd' or 'yyyy-MM-dd HH:mm:ss' format
+      DateTime parsedDate = DateFormat('yyyy-MM-dd').parse(dateStr);
       return DateFormat('yyyy-MM-dd').format(parsedDate);
     } catch (e) {
       _showSnackBar('Error formatting date string: $e');
@@ -798,7 +851,7 @@ class _HomeCalendarState extends State<HomeCalendar>
                   if (_showFiltersAndSearchBar) _buildSearchBar(),
                   _buildCalendar(context, isDarkMode),
                   _buildSectionSeparator(),
-                  _buildCalendarView(context, _eventsForDay), // Removed SizedBox
+                  _buildCalendarView(context, _eventsForDay),
                 ],
               ),
             ),
@@ -1202,7 +1255,8 @@ class _HomeCalendarState extends State<HomeCalendar>
                           'img_name': event.imgName ?? '',
                           'created_at': event.createdAt ?? '',
                           'is_repeat': event.isRepeat ?? '',
-                          'video_conference': event.videoConference ?? '',
+                          'video_conference':
+                          event.videoConference ?? '',
                           'uid': event.uid,
                           'members': event.members ?? [],
                           'category': event.category,

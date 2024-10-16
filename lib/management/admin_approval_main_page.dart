@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/management/admin_approvals_view_page.dart';
-import 'package:pb_hrsystem/management/admin_history_view_page.dart'; // Ensure this is correctly imported
+import 'package:pb_hrsystem/management/admin_history_view_page.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -41,7 +41,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       setState(() {
         isLoading = false;
       });
-      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog(
+          'Authentication Error', 'Token not found. Please log in again.');
     }
   }
 
@@ -58,67 +59,436 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
   Future<void> fetchData() async {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
+    setState(() {
+      isLoading = true;
+    });
+
+    approvalItems = [];
+    historyItems = [];
+
     try {
       // Fetch Approvals data
-      final approvalResponse = await http.get(
-        Uri.parse('$baseUrl/api/app/tasks/approvals/pending'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      // Leave Requests - Waiting
+      await fetchLeaveRequests(baseUrl, 'waiting', approvalItems);
 
-      if (approvalResponse.statusCode == 200) {
-        final dynamic approvalData = json.decode(approvalResponse.body);
+      // Leave Requests - Processing
+      await fetchLeaveRequests(baseUrl, 'processing', approvalItems);
 
-        if (approvalData is Map<String, dynamic> &&
-            approvalData.containsKey('results')) {
-          final List<dynamic> results = approvalData['results'];
-          approvalItems = results
-              .whereType<Map<String, dynamic>>()
-              .where((item) => _getStatusForType(item) == 'Waiting')
-              .map((item) => _formatItem(item))
-              .toList();
-        }
-      } else {
-        _showErrorDialog('Error', 'Failed to fetch approvals: ${approvalResponse.reasonPhrase}');
-      }
+      // Car Permits - Waiting
+      await fetchCarPermits(baseUrl, 'waiting', approvalItems);
+
+      // Car Permits - In-progress
+      await fetchCarPermits(baseUrl, 'in-progress', approvalItems);
+
+      // Meeting Room - Waitings
+      await fetchMeetingRooms(baseUrl, 'waitings', approvalItems);
+
+      // Meetings - All, filter 'Processing'
+      await fetchMeetings(baseUrl, 'Processing', approvalItems);
 
       // Fetch History data
-      final historyResponse = await http.get(
-        Uri.parse('$baseUrl/api/app/tasks/approvals/history'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      // Leave Requests - All
+      await fetchLeaveRequestsHistory(baseUrl, historyItems);
 
-      if (historyResponse.statusCode == 200) {
-        final dynamic historyData = json.decode(historyResponse.body);
+      // Car Permits - Approved
+      await fetchCarPermitsHistory(baseUrl, historyItems);
 
-        if (historyData is Map<String, dynamic> &&
-            historyData.containsKey('results')) {
-          final List<dynamic> results = historyData['results'];
-          historyItems = results
-              .whereType<Map<String, dynamic>>()
-              .where((item) {
-            String status = _getStatusForType(item);
-            return status == 'Approved' || status == 'Rejected';
-          }).map((item) => _formatItem(item))
-              .toList();
-        }
-      } else {
-        _showErrorDialog('Error', 'Failed to fetch history: ${historyResponse.reasonPhrase}');
-      }
+      // Meeting Room - Approve
+      await fetchMeetingRoomsHistory(baseUrl, 'approve', historyItems);
+
+      // Meeting Room - Disapprove
+      await fetchMeetingRoomsHistory(baseUrl, 'disapprove', historyItems);
+
+      // Meetings - All, filter 'Finished'
+      await fetchMeetings(baseUrl, 'Finished', historyItems);
     } catch (e) {
       print('Error fetching data: $e');
-      _showErrorDialog('Error', 'An unexpected error occurred while fetching data.');
+      _showErrorDialog(
+          'Error', 'An unexpected error occurred while fetching data.');
     } finally {
       setState(() {
         isLoading = false;
       });
       print('Approval Items: $approvalItems'); // Debugging line
       print('History Items: $historyItems'); // Debugging line
+    }
+  }
+
+  Future<String> fetchProfileImage(String requestorId) async {
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/profile/$requestorId'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final dynamic data = json.decode(response.body);
+
+      if (data is Map<String, dynamic>) {
+        final String? imageUrl = data['images'];
+        if (imageUrl != null) {
+          return imageUrl;
+        } else {
+          print('No images field in profile data');
+          return 'https://via.placeholder.com/150';
+        }
+      } else {
+        print('Unexpected data format in profile response');
+        return 'https://via.placeholder.com/150';
+      }
+    } else {
+      print(
+          'Failed to fetch profile for $requestorId: ${response.reasonPhrase}');
+      return 'https://via.placeholder.com/150';
+    }
+  }
+
+  Future<void> fetchLeaveRequests(String baseUrl, String status,
+      List<Map<String, dynamic>> items) async {
+    String endpoint = '';
+    if (status == 'waiting') {
+      endpoint = '/api/leave_requestwaiting';
+    } else if (status == 'processing') {
+      endpoint = '/api/leave_requestprocessing';
+    } else {
+      return;
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final dynamic data = json.decode(response.body);
+
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('results') && data['results'] is List) {
+          List<dynamic> results = data['results'];
+
+          for (var item in results) {
+            String requestorId = item['requestor_id'] ?? '';
+            if (requestorId.isNotEmpty) {
+              String profileImageUrl = await fetchProfileImage(requestorId);
+              item['img_name'] = profileImageUrl;
+            } else {
+              item['img_name'] = 'https://via.placeholder.com/150';
+            }
+
+            item['types'] = 'leave';
+            item['status'] = item['is_approve'] ?? 'Unknown';
+            items.add(_formatItem(item));
+          }
+        } else {
+          print('Expected "results" field to be a list but got: $data');
+        }
+      } else {
+        print('Unexpected data format: $data');
+      }
+    } else {
+      _showErrorDialog('Error',
+          'Failed to fetch leave requests: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> fetchCarPermits(String baseUrl, String status,
+      List<Map<String, dynamic>> items) async {
+    String endpoint = '';
+    if (status == 'waiting') {
+      endpoint = '/api/office-administration/car_permits/waiting';
+    } else if (status == 'in-progress') {
+      endpoint = '/api/office-administration/car_permits/in-progress';
+    } else {
+      return;
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final dynamic data = json.decode(response.body);
+
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('results') && data['results'] is List) {
+          List<dynamic> results = data['results'];
+
+          for (var item in results) {
+            String requestorId = item['requestor_id'] ?? '';
+            if (requestorId.isNotEmpty) {
+              String profileImageUrl = await fetchProfileImage(requestorId);
+              item['img_name'] = profileImageUrl;
+            } else {
+              item['img_name'] = 'https://via.placeholder.com/150';
+            }
+
+            item['types'] = 'car';
+            item['status'] = item['status'] ?? 'Unknown';
+            items.add(_formatItem(item));
+          }
+        } else {
+          print('Expected "results" field to be a list but got: $data');
+        }
+      } else {
+        print('Unexpected data format: $data');
+      }
+    } else {
+      _showErrorDialog(
+          'Error', 'Failed to fetch car permits: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> fetchMeetingRooms(String baseUrl, String status,
+      List<Map<String, dynamic>> items) async {
+    String endpoint = '';
+    if (status == 'waitings') {
+      endpoint = '/api/office-administration/book_meeting_room/waitings';
+    } else if (status == 'approve') {
+      endpoint = '/api/office-administration/book_meeting_room/approve';
+    } else if (status == 'disapprove') {
+      endpoint = '/api/office-administration/book_meeting_room/disapprove';
+    } else {
+      return;
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final dynamic data = json.decode(response.body);
+
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('results') && data['results'] is List) {
+          List<dynamic> results = data['results'];
+
+          for (var item in results) {
+            String requestorId = item['employee_id'] ?? '';
+            if (requestorId.isNotEmpty) {
+              String profileImageUrl = await fetchProfileImage(requestorId);
+              item['img_name'] = profileImageUrl;
+            } else {
+              item['img_name'] = 'https://via.placeholder.com/150';
+            }
+
+            item['types'] = 'meeting_room';
+            item['status'] = item['status'] ?? 'Unknown';
+            items.add(_formatItem(item));
+          }
+        } else {
+          print('Expected "results" field to be a list but got: $data');
+        }
+      } else {
+        print('Unexpected data format: $data');
+      }
+    } else {
+      _showErrorDialog(
+          'Error', 'Failed to fetch meeting rooms: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> fetchMeetings(String baseUrl, String statusFilter,
+      List<Map<String, dynamic>> items) async {
+    String endpoint = '/api/work-tracking/meeting/get-all-meeting';
+
+    final response = await http.get(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final dynamic data = json.decode(response.body);
+
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('results') && data['results'] is List) {
+          List<dynamic> results = data['results'];
+
+          for (var item in results) {
+            if (item['s_name'] == statusFilter) {
+              String requestorId = item['create_by'] ?? '';
+              if (requestorId.isNotEmpty) {
+                String profileImageUrl = await fetchProfileImage(requestorId);
+                item['img_name'] = profileImageUrl;
+              } else {
+                item['img_name'] = 'https://via.placeholder.com/150';
+              }
+
+              item['types'] = 'meeting';
+              item['status'] = item['s_name'] ?? 'Unknown';
+              items.add(_formatItem(item));
+            }
+          }
+        } else {
+          print('Expected "results" field to be a list but got: $data');
+        }
+      } else {
+        print('Unexpected data format: $data');
+      }
+    } else {
+      _showErrorDialog(
+          'Error', 'Failed to fetch meetings: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> fetchLeaveRequestsHistory(
+      String baseUrl, List<Map<String, dynamic>> items) async {
+    String endpoint = '/api/leave_requests/all';
+
+    final response = await http.get(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final dynamic data = json.decode(response.body);
+
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('results') && data['results'] is List) {
+          List<dynamic> results = data['results'];
+
+          for (var item in results) {
+            String status = item['is_approve'] ?? 'Unknown';
+            if (status == 'Approved' ||
+                status == 'Rejected' ||
+                status == 'Cancel') {
+              String requestorId = item['requestor_id'] ?? '';
+              if (requestorId.isNotEmpty) {
+                String profileImageUrl = await fetchProfileImage(requestorId);
+                item['img_name'] = profileImageUrl;
+              } else {
+                item['img_name'] = 'https://via.placeholder.com/150';
+              }
+
+              item['types'] = 'leave';
+              item['status'] = status;
+              items.add(_formatItem(item));
+            }
+          }
+        } else {
+          print('Expected "results" field to be a list but got: $data');
+        }
+      } else {
+        print('Unexpected data format: $data');
+      }
+    } else {
+      _showErrorDialog('Error',
+          'Failed to fetch leave requests history: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> fetchCarPermitsHistory(
+      String baseUrl, List<Map<String, dynamic>> items) async {
+    String endpoint = '/api/office-administration/car_permits/approved';
+
+    final response = await http.get(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final dynamic data = json.decode(response.body);
+
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('results') && data['results'] is List) {
+          List<dynamic> results = data['results'];
+
+          for (var item in results) {
+            String requestorId = item['requestor_id'] ?? '';
+            if (requestorId.isNotEmpty) {
+              String profileImageUrl = await fetchProfileImage(requestorId);
+              item['img_name'] = profileImageUrl;
+            } else {
+              item['img_name'] = 'https://via.placeholder.com/150';
+            }
+
+            item['types'] = 'car';
+            item['status'] = item['status'] ?? 'Unknown';
+            items.add(_formatItem(item));
+          }
+        } else {
+          print('Expected "results" field to be a list but got: $data');
+        }
+      } else {
+        print('Unexpected data format: $data');
+      }
+    } else {
+      _showErrorDialog('Error',
+          'Failed to fetch car permits history: ${response.reasonPhrase}');
+    }
+  }
+
+  Future<void> fetchMeetingRoomsHistory(String baseUrl, String status,
+      List<Map<String, dynamic>> items) async {
+    String endpoint = '';
+    if (status == 'approve') {
+      endpoint = '/api/office-administration/book_meeting_room/approve';
+    } else if (status == 'disapprove') {
+      endpoint = '/api/office-administration/book_meeting_room/disapprove';
+    } else {
+      return;
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final dynamic data = json.decode(response.body);
+
+      if (data is Map<String, dynamic>) {
+        if (data.containsKey('results') && data['results'] is List) {
+          List<dynamic> results = data['results'];
+
+          for (var item in results) {
+            String requestorId = item['employee_id'] ?? '';
+            if (requestorId.isNotEmpty) {
+              String profileImageUrl = await fetchProfileImage(requestorId);
+              item['img_name'] = profileImageUrl;
+            } else {
+              item['img_name'] = 'https://via.placeholder.com/150';
+            }
+
+            item['types'] = 'meeting_room';
+            item['status'] = item['status'] ?? 'Unknown';
+            items.add(_formatItem(item));
+          }
+        } else {
+          print('Expected "results" field to be a list but got: $data');
+        }
+      } else {
+        print('Unexpected data format: $data');
+      }
+    } else {
+      _showErrorDialog('Error',
+          'Failed to fetch meeting rooms history: ${response.reasonPhrase}');
     }
   }
 
@@ -176,12 +546,13 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
 
     if (types == 'meeting') {
       formattedItem['title'] = item['title'] ?? 'No Title';
-      formattedItem['startDate'] = item['from_date_time'] ?? 'N/A';
-      formattedItem['endDate'] = item['to_date_time'] ?? 'N/A';
+      formattedItem['startDate'] = item['from_date'] ?? 'N/A';
+      formattedItem['endDate'] = item['to_date'] ?? 'N/A';
       formattedItem['room'] = item['room_name'] ?? 'No Room Info';
-      formattedItem['details'] = item['remark'] ?? 'No Details Provided';
-      formattedItem['employee_name'] = item['employee_name'] ?? 'N/A';
-      formattedItem['uid'] = item['uid'] ?? ''; // Unique ID for meeting
+      formattedItem['details'] = item['description'] ?? 'No Details Provided';
+      formattedItem['employee_name'] = item['create_by'] ?? 'N/A';
+      formattedItem['uid'] =
+          item['meeting_id'] ?? ''; // Unique ID for meeting
       formattedItem['line_manager_img'] = item['line_manager_img'] ??
           'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
       formattedItem['hr_img'] = item['hr_img'] ??
@@ -200,7 +571,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           : 'N/A';
 
       formattedItem['room'] = item['room_name'] ?? 'No Place Info';
-      formattedItem['details'] = item['take_leave_reason'] ?? 'No Details Provided';
+      formattedItem['details'] =
+          item['take_leave_reason'] ?? 'No Details Provided';
       formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
       formattedItem['take_leave_request_id'] =
           item['take_leave_request_id']?.toString() ?? ''; // ID for leave
@@ -208,33 +580,50 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
       formattedItem['hr_img'] = item['hr_img'] ??
           'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+      formattedItem['img_name'] =
+          item['img_name'] ?? 'https://via.placeholder.com/150';
+      formattedItem['created_at'] = item['created_at'] ?? 'N/A';
     } else if (types == 'car') {
       formattedItem['title'] = item['purpose'] ?? 'No Title';
 
       formattedItem['startDate'] =
+      (item['date_out'] != null && item['date_out'].isNotEmpty)
+          ? item['date_out']
+          : 'N/A';
+
+      formattedItem['endDate'] =
       (item['date_in'] != null && item['date_in'].isNotEmpty)
           ? item['date_in']
           : 'N/A';
 
       formattedItem['time'] =
-      (item['time_in'] != null && item['time_in'].isNotEmpty)
-          ? item['time_in']
-          : 'N/A';
-
-      formattedItem['time_end'] =
       (item['time_out'] != null && item['time_out'].isNotEmpty)
           ? item['time_out']
           : 'N/A';
 
-      formattedItem['endDate'] =
-      (item['date_out'] != null && item['date_out'].isNotEmpty)
-          ? item['date_out']
+      formattedItem['time_end'] =
+      (item['time_in'] != null && item['time_in'].isNotEmpty)
+          ? item['time_in']
           : 'N/A';
 
       formattedItem['room'] = item['place'] ?? 'No Place Info';
       formattedItem['details'] = item['purpose'] ?? 'No Details Provided';
       formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
-      formattedItem['car_permit_id'] = item['uid']?.toString() ?? ''; // ID for car permit
+      formattedItem['car_permit_id'] =
+          item['uid']?.toString() ?? ''; // ID for car permit
+      formattedItem['line_manager_img'] = item['line_manager_img'] ??
+          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+      formattedItem['hr_img'] = item['hr_img'] ??
+          'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+    } else if (types == 'meeting_room') {
+      formattedItem['title'] = item['title'] ?? 'No Title';
+      formattedItem['startDate'] = item['from_date_time'] ?? 'N/A';
+      formattedItem['endDate'] = item['to_date_time'] ?? 'N/A';
+      formattedItem['room'] = item['room_name'] ?? 'No Room Info';
+      formattedItem['details'] = item['remark'] ?? 'No Details Provided';
+      formattedItem['employee_name'] = item['employee_name'] ?? 'N/A';
+      formattedItem['uid'] =
+          item['uid'] ?? ''; // Unique ID for meeting room booking
       formattedItem['line_manager_img'] = item['line_manager_img'] ??
           'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
       formattedItem['hr_img'] = item['hr_img'] ??
@@ -250,6 +639,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
   Color _getTypeColor(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
+      case 'meeting_room':
         return Colors.green;
       case 'leave':
         return Colors.orange;
@@ -267,6 +657,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       case 'pending':
         return Colors.amber;
       case 'approved':
+      case 'approve':
+      case 'finished':
         return Colors.green;
       case 'rejected':
       case 'disapproved':
@@ -288,6 +680,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       case 'pending':
         return Icons.hourglass_empty;
       case 'approved':
+      case 'approve':
+      case 'finished':
         return Icons.check_circle;
       case 'rejected':
       case 'disapproved':
@@ -305,6 +699,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
   Widget getIconForType(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
+      case 'meeting_room':
         return Image.asset('assets/calendar.png', width: 40, height: 40);
       case 'leave':
         return Image.asset('assets/leave_calendar.png', width: 40, height: 40);
@@ -318,6 +713,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
   Color getTypeColor(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
+      case 'meeting_room':
         return Colors.green;
       case 'leave':
         return Colors.orange;
@@ -335,7 +731,10 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
 
     switch (type) {
       case 'meeting':
-        id = item['uid']; // Ensure consistency with _formatItem
+        id = item['uid'] ?? item['meeting_id']; // Ensure consistency with _formatItem
+        break;
+      case 'meeting_room':
+        id = item['uid'];
         break;
       case 'leave':
         id = item['take_leave_request_id'];
@@ -348,7 +747,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     }
 
     if (id == null || id.isEmpty) {
-      _showErrorDialog('Invalid Data', 'The selected item has invalid or missing ID.');
+      _showErrorDialog(
+          'Invalid Data', 'The selected item has invalid or missing ID.');
       return;
     }
 
@@ -371,7 +771,10 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
 
     switch (type) {
       case 'meeting':
-        id = item['uid']; // Ensure consistency with _formatItem
+        id = item['uid'] ?? item['meeting_id']; // Ensure consistency with _formatItem
+        break;
+      case 'meeting_room':
+        id = item['uid'];
         break;
       case 'leave':
         id = item['take_leave_request_id'];
@@ -384,7 +787,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     }
 
     if (id == null || id.isEmpty) {
-      _showErrorDialog('Invalid Data', 'The selected item has invalid or missing ID.');
+      _showErrorDialog(
+          'Invalid Data', 'The selected item has invalid or missing ID.');
       return;
     }
 
@@ -446,16 +850,19 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 60.0), // Adjust top padding here
+                padding:
+                const EdgeInsets.only(left: 16.0, right: 16.0, top: 60.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back, size: 30, color: Colors.black),
+                      icon: const Icon(Icons.arrow_back,
+                          size: 30, color: Colors.black),
                       onPressed: () {
                         Navigator.pushAndRemoveUntil(
                           context,
-                          MaterialPageRoute(builder: (context) => const Dashboard()),
+                          MaterialPageRoute(
+                              builder: (context) => const Dashboard()),
                               (Route<dynamic> route) => false,
                         );
                       },
@@ -489,7 +896,9 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
-                          color: _isApprovalSelected ? Colors.amber : Colors.grey[300],
+                          color: _isApprovalSelected
+                              ? Colors.amber
+                              : Colors.grey[300],
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(20.0),
                             bottomLeft: Radius.circular(20.0),
@@ -529,7 +938,9 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
-                          color: !_isApprovalSelected ? Colors.amber : Colors.grey[300],
+                          color: !_isApprovalSelected
+                              ? Colors.amber
+                              : Colors.grey[300],
                           borderRadius: const BorderRadius.only(
                             topRight: Radius.circular(20.0),
                             bottomRight: Radius.circular(20.0),
@@ -569,12 +980,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                   : ListView(
                 padding: const EdgeInsets.all(16.0),
                 children: _isApprovalSelected
-                    ? approvalItems
-                    .map((item) => _buildCard(item))
-                    .toList()
-                    : historyItems
-                    .map((item) => _buildCard(item))
-                    .toList(),
+                    ? approvalItems.map((item) => _buildCard(item)).toList()
+                    : historyItems.map((item) => _buildCard(item)).toList(),
               ),
             ),
           ],
@@ -599,15 +1006,15 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     String detailLabel = '';
     String detailValue = '';
 
-    if (type == 'meeting') {
+    if (type == 'meeting' || type == 'meeting_room') {
       detailLabel = 'Room';
       detailValue = item['room'] ?? 'No Room Info';
     } else if (type == 'leave') {
       detailLabel = 'Created at';
       detailValue = item['created_at'] ?? 'N/A';
     } else if (type == 'car') {
-      detailLabel = 'Requestor ID';
-      detailValue = item['requestor_id'] ?? 'N/A';
+      detailLabel = 'Place';
+      detailValue = item['room'] ?? 'N/A';
     }
 
     return GestureDetector(
@@ -644,8 +1051,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
             const SizedBox(width: 8),
             Expanded(
               child: Padding(
-                padding:
-                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
+                padding: const EdgeInsets.symmetric(
+                    vertical: 12.0, horizontal: 12.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -665,8 +1072,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                     Text(
                       title,
                       style: TextStyle(
-                        color:
-                        Provider.of<ThemeNotifier>(context).isDarkMode
+                        color: Provider.of<ThemeNotifier>(context).isDarkMode
                             ? Colors.white
                             : Colors.black,
                         fontSize: 18,
