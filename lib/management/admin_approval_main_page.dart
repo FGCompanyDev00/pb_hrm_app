@@ -632,7 +632,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       case 'meeting':
         return Image.asset('assets/calendar.png', width: 40, height: 40);
       case 'meeting_room':
-        return Image.asset('assets/meeting_room.png', width: 40, height: 40); // Ensure you have this asset
+        return Image.asset('assets/meeting_room.png', width: 40, height: 40);
       case 'leave':
         return Image.asset('assets/leave_calendar.png',
             width: 40, height: 40);

@@ -103,6 +103,9 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
         }
 
         if (data != null) {
+          // Debug: Print the fetched data
+          print('Fetched Data for type "$type": $data');
+
           // Extract employee_id (pID) from the fetched data
           String? pID = data?['employee_id']?.toString();
 
@@ -612,6 +615,9 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
 
     Widget? editPage;
 
+    // Debug: Print the data before navigating to the edit page
+    print('Navigating to Edit Page with data: $data');
+
     switch (type) {
       case 'meeting':
         editPage = MeetingEditPage(item: data!);
@@ -637,9 +643,14 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
       await Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => editPage!),
-      ).then((_) {
-        // Refresh data after returning from edit page
-        _fetchData();
+      ).then((result) {
+        // Debug: Print the result from the edit page
+        print('Returned from Edit Page with result: $result');
+
+        // Refresh data after returning from edit page if result is true
+        if (result == true) {
+          _fetchData();
+        }
       });
     }
 
@@ -684,7 +695,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
           if (response.statusCode == 200 || response.statusCode == 201) {
             _showSuccessDialog('Success', 'Leave request deleted successfully.');
           } else {
-            _showErrorDialog('Error', 'Failed to delete leave request: ${response.reasonPhrase}');
+            _showErrorDialog('Error', 'Failed to delete leave request: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
           break;
 
@@ -699,7 +710,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
           if (response.statusCode == 200 || response.statusCode == 204) {
             _showSuccessDialog('Success', 'Car permit deleted successfully.');
           } else {
-            _showErrorDialog('Error', 'Failed to delete car permit: ${response.reasonPhrase}');
+            _showErrorDialog('Error', 'Failed to delete car permit: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
           break;
 
@@ -714,7 +725,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
           if (response.statusCode == 200 || response.statusCode == 204) {
             _showSuccessDialog('Success', 'Meeting room booking deleted successfully.');
           } else {
-            _showErrorDialog('Error', 'Failed to delete meeting room booking: ${response.reasonPhrase}');
+            _showErrorDialog('Error', 'Failed to delete meeting room booking: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
           break;
 
@@ -729,7 +740,7 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
           if (response.statusCode == 200 || response.statusCode == 201) {
             _showSuccessDialog('Success', 'Meeting deleted successfully.');
           } else {
-            _showErrorDialog('Error', 'Failed to delete meeting: ${response.reasonPhrase}');
+            _showErrorDialog('Error', 'Failed to delete meeting: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
           break;
 

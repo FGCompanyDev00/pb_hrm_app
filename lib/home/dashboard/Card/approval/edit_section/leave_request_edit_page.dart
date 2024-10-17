@@ -1,3 +1,5 @@
+// leave_request_edit_page.dart
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -78,11 +80,14 @@ class _LeaveRequestEditPageState extends State<LeaveRequestEditPage> {
         final data = jsonDecode(response.body);
         setState(() {
           leaveTypes = List<Map<String, dynamic>>.from(data['results']);
+          // Debug: Print fetched leave types
+          print('Fetched Leave Types: $leaveTypes');
+
           // Find the leave type name based on the leave_type_id from the item
           final matchedLeaveType = leaveTypes.firstWhere(
                   (type) =>
               type['leave_type_id'].toString() ==
-                  widget.item['take_leave_type_id'].toString(),
+                  widget.item['leave_type_id'].toString(),
               orElse: () => {});
           if (matchedLeaveType.isNotEmpty) {
             _selectedLeaveTypeId = matchedLeaveType['leave_type_id'];
@@ -118,6 +123,7 @@ class _LeaveRequestEditPageState extends State<LeaveRequestEditPage> {
         initialDate = DateTime.parse(controller.text);
       } catch (e) {
         // If parsing fails, default to today
+        print('Error parsing date: $e');
       }
     }
     final DateTime? picked = await showDatePicker(
@@ -152,6 +158,7 @@ class _LeaveRequestEditPageState extends State<LeaveRequestEditPage> {
         }
       } catch (e) {
         // Handle invalid date formats
+        print('Error calculating days: $e');
       }
     }
   }
@@ -168,6 +175,7 @@ class _LeaveRequestEditPageState extends State<LeaveRequestEditPage> {
         });
       } catch (e) {
         // Handle invalid date formats or parsing errors
+        print('Error updating end date from days: $e');
       }
     }
   }
@@ -186,6 +194,7 @@ class _LeaveRequestEditPageState extends State<LeaveRequestEditPage> {
         }
       } catch (e) {
         // Handle invalid date formats or parsing errors
+        print('Error updating days from dates: $e');
       }
     }
   }
@@ -214,6 +223,14 @@ class _LeaveRequestEditPageState extends State<LeaveRequestEditPage> {
         _showError('Please select a valid Leave Type.');
         return;
       }
+
+      // Validate that take_leave_request_id exists
+      if (widget.item['take_leave_request_id'] == null ||
+          widget.item['take_leave_request_id'].toString().isEmpty) {
+        _showError('Invalid Leave Request ID.');
+        return;
+      }
+
       setState(() {
         _isLoading = true;
       });
@@ -229,9 +246,14 @@ class _LeaveRequestEditPageState extends State<LeaveRequestEditPage> {
         return;
       }
       try {
+        // Corrected field names and data types
+        final int leaveRequestId = int.parse(widget.item['take_leave_request_id'].toString());
+        final int leaveTypeId = _selectedLeaveTypeId!;
+        final int days = int.parse(_daysController.text);
+
         final response = await http.put(
           Uri.parse(
-              'https://demo-application-api.flexiflows.co/api/leave_request/${widget.item['take_leave_request_id']}'),
+              'https://demo-application-api.flexiflows.co/api/leave_request/$leaveRequestId'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
@@ -239,19 +261,35 @@ class _LeaveRequestEditPageState extends State<LeaveRequestEditPage> {
           body: jsonEncode({
             'take_leave_from': _startDateController.text,
             'take_leave_to': _endDateController.text,
-            'take_leave_type_id': _selectedLeaveTypeId.toString(),
+            'leave_type_id': leaveTypeId, // Changed to 'leave_type_id'
             'take_leave_reason': _descriptionController.text,
-            'days': _daysController.text,
+            'days': days, // Changed to integer
           }),
         );
+
+        // Debug: Print the request and response details
+        print('PUT Request URL: https://demo-application-api.flexiflows.co/api/leave_request/$leaveRequestId');
+        print('Request Body: ${jsonEncode({
+          'take_leave_from': _startDateController.text,
+          'take_leave_to': _endDateController.text,
+          'leave_type_id': leaveTypeId,
+          'take_leave_reason': _descriptionController.text,
+          'days': days,
+        })}');
+        print('Response Status Code: ${response.statusCode}');
+        print('Response Body: ${response.body}');
+
         setState(() {
           _isLoading = false;
         });
         if (response.statusCode >= 200 && response.statusCode < 300) {
           _showSuccess('Leave request updated successfully');
         } else {
+          // Log the response body for debugging
+          print('Update Failed: ${response.statusCode}');
+          print('Response Body: ${response.body}');
           _showError(
-              'Failed to update leave request: ${response.reasonPhrase}');
+              'Failed to update leave request: ${response.reasonPhrase}\nResponse Body: ${response.body}');
         }
       } catch (e) {
         setState(() {
@@ -429,6 +467,15 @@ class _LeaveRequestEditPageState extends State<LeaveRequestEditPage> {
               ),
               contentPadding: const EdgeInsets.symmetric(vertical: 16),
             ),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter number of days';
+              }
+              if (int.tryParse(value) == null || int.parse(value) < 1) {
+                return 'Please enter a valid number of days';
+              }
+              return null;
+            },
           ),
         ),
         IconButton(
