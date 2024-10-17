@@ -27,6 +27,9 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
   bool isLoading = true;
   String? token;
 
+  // Cache for storing profile images URLs based on unique IDs
+  final Map<String, String> _imageCache = {};
+
   @override
   void initState() {
     super.initState();
@@ -114,41 +117,9 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     }
   }
 
-  Future<String> fetchProfileImage(String requestorId) async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/profile/$requestorId'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final dynamic data = json.decode(response.body);
-
-      if (data is Map<String, dynamic>) {
-        final String? imageUrl = data['images'];
-        if (imageUrl != null) {
-          return imageUrl;
-        } else {
-          print('No images field in profile data');
-          return 'https://via.placeholder.com/150';
-        }
-      } else {
-        print('Unexpected data format in profile response');
-        return 'https://via.placeholder.com/150';
-      }
-    } else {
-      print(
-          'Failed to fetch profile for $requestorId: ${response.reasonPhrase}');
-      return 'https://via.placeholder.com/150';
-    }
-  }
-
-  Future<void> fetchLeaveRequests(String baseUrl, String status,
-      List<Map<String, dynamic>> items) async {
+  // Fetch methods (unchanged, except for adding 'profile_id' in _formatItem)
+  Future<void> fetchLeaveRequests(
+      String baseUrl, String status, List<Map<String, dynamic>> items) async {
     String endpoint = '';
     if (status == 'waiting') {
       endpoint = '/api/leave_requestwaiting';
@@ -174,14 +145,6 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           List<dynamic> results = data['results'];
 
           for (var item in results) {
-            String requestorId = item['requestor_id'] ?? '';
-            if (requestorId.isNotEmpty) {
-              String profileImageUrl = await fetchProfileImage(requestorId);
-              item['img_name'] = profileImageUrl;
-            } else {
-              item['img_name'] = 'https://via.placeholder.com/150';
-            }
-
             item['types'] = 'leave';
             item['status'] = item['is_approve'] ?? 'Unknown';
             items.add(_formatItem(item));
@@ -193,13 +156,13 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
         print('Unexpected data format: $data');
       }
     } else {
-      _showErrorDialog('Error',
-          'Failed to fetch leave requests: ${response.reasonPhrase}');
+      _showErrorDialog(
+          'Error', 'Failed to fetch leave requests: ${response.reasonPhrase}');
     }
   }
 
-  Future<void> fetchCarPermits(String baseUrl, String status,
-      List<Map<String, dynamic>> items) async {
+  Future<void> fetchCarPermits(
+      String baseUrl, String status, List<Map<String, dynamic>> items) async {
     String endpoint = '';
     if (status == 'waiting') {
       endpoint = '/api/office-administration/car_permits/waiting';
@@ -225,14 +188,6 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           List<dynamic> results = data['results'];
 
           for (var item in results) {
-            String requestorId = item['requestor_id'] ?? '';
-            if (requestorId.isNotEmpty) {
-              String profileImageUrl = await fetchProfileImage(requestorId);
-              item['img_name'] = profileImageUrl;
-            } else {
-              item['img_name'] = 'https://via.placeholder.com/150';
-            }
-
             item['types'] = 'car';
             item['status'] = item['status'] ?? 'Unknown';
             items.add(_formatItem(item));
@@ -249,8 +204,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     }
   }
 
-  Future<void> fetchMeetingRooms(String baseUrl, String status,
-      List<Map<String, dynamic>> items) async {
+  Future<void> fetchMeetingRooms(
+      String baseUrl, String status, List<Map<String, dynamic>> items) async {
     String endpoint = '';
     if (status == 'waitings') {
       endpoint = '/api/office-administration/book_meeting_room/waitings';
@@ -278,14 +233,6 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           List<dynamic> results = data['results'];
 
           for (var item in results) {
-            String requestorId = item['employee_id'] ?? '';
-            if (requestorId.isNotEmpty) {
-              String profileImageUrl = await fetchProfileImage(requestorId);
-              item['img_name'] = profileImageUrl;
-            } else {
-              item['img_name'] = 'https://via.placeholder.com/150';
-            }
-
             item['types'] = 'meeting_room';
             item['status'] = item['status'] ?? 'Unknown';
             items.add(_formatItem(item));
@@ -297,13 +244,13 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
         print('Unexpected data format: $data');
       }
     } else {
-      _showErrorDialog(
-          'Error', 'Failed to fetch meeting rooms: ${response.reasonPhrase}');
+      _showErrorDialog('Error',
+          'Failed to fetch meeting rooms: ${response.reasonPhrase}');
     }
   }
 
-  Future<void> fetchMeetings(String baseUrl, String statusFilter,
-      List<Map<String, dynamic>> items) async {
+  Future<void> fetchMeetings(
+      String baseUrl, String statusFilter, List<Map<String, dynamic>> items) async {
     String endpoint = '/api/work-tracking/meeting/get-all-meeting';
 
     final response = await http.get(
@@ -323,14 +270,6 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
 
           for (var item in results) {
             if (item['s_name'] == statusFilter) {
-              String requestorId = item['create_by'] ?? '';
-              if (requestorId.isNotEmpty) {
-                String profileImageUrl = await fetchProfileImage(requestorId);
-                item['img_name'] = profileImageUrl;
-              } else {
-                item['img_name'] = 'https://via.placeholder.com/150';
-              }
-
               item['types'] = 'meeting';
               item['status'] = item['s_name'] ?? 'Unknown';
               items.add(_formatItem(item));
@@ -369,17 +308,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
 
           for (var item in results) {
             String status = item['is_approve'] ?? 'Unknown';
-            if (status == 'Approved' ||
-                status == 'Rejected' ||
-                status == 'Cancel') {
-              String requestorId = item['requestor_id'] ?? '';
-              if (requestorId.isNotEmpty) {
-                String profileImageUrl = await fetchProfileImage(requestorId);
-                item['img_name'] = profileImageUrl;
-              } else {
-                item['img_name'] = 'https://via.placeholder.com/150';
-              }
-
+            if (status == 'Approved' || status == 'Rejected' || status == 'Cancel') {
               item['types'] = 'leave';
               item['status'] = status;
               items.add(_formatItem(item));
@@ -417,14 +346,6 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           List<dynamic> results = data['results'];
 
           for (var item in results) {
-            String requestorId = item['requestor_id'] ?? '';
-            if (requestorId.isNotEmpty) {
-              String profileImageUrl = await fetchProfileImage(requestorId);
-              item['img_name'] = profileImageUrl;
-            } else {
-              item['img_name'] = 'https://via.placeholder.com/150';
-            }
-
             item['types'] = 'car';
             item['status'] = item['status'] ?? 'Unknown';
             items.add(_formatItem(item));
@@ -441,8 +362,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     }
   }
 
-  Future<void> fetchMeetingRoomsHistory(String baseUrl, String status,
-      List<Map<String, dynamic>> items) async {
+  Future<void> fetchMeetingRoomsHistory(
+      String baseUrl, String status, List<Map<String, dynamic>> items) async {
     String endpoint = '';
     if (status == 'approve') {
       endpoint = '/api/office-administration/book_meeting_room/approve';
@@ -468,14 +389,6 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           List<dynamic> results = data['results'];
 
           for (var item in results) {
-            String requestorId = item['employee_id'] ?? '';
-            if (requestorId.isNotEmpty) {
-              String profileImageUrl = await fetchProfileImage(requestorId);
-              item['img_name'] = profileImageUrl;
-            } else {
-              item['img_name'] = 'https://via.placeholder.com/150';
-            }
-
             item['types'] = 'meeting_room';
             item['status'] = item['status'] ?? 'Unknown';
             items.add(_formatItem(item));
@@ -544,6 +457,18 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           'https://via.placeholder.com/150', // Default image if not provided
     };
 
+    // Determine profile_id based on type
+    String? profileId;
+    if (types == 'leave' || types == 'car') {
+      profileId = item['requestor_id'] ?? item['employee_id'];
+    } else if (types == 'meeting_room') {
+      profileId = item['employee_id'];
+    } else if (types == 'meeting') {
+      profileId = item['create_by_id'];
+    }
+
+    formattedItem['profile_id'] = profileId ?? '';
+
     if (types == 'meeting') {
       formattedItem['title'] = item['title'] ?? 'No Title';
       formattedItem['startDate'] = item['from_date'] ?? 'N/A';
@@ -551,8 +476,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       formattedItem['room'] = item['room_name'] ?? 'No Room Info';
       formattedItem['details'] = item['description'] ?? 'No Details Provided';
       formattedItem['employee_name'] = item['create_by'] ?? 'N/A';
-      formattedItem['uid'] =
-          item['meeting_id'] ?? ''; // Unique ID for meeting
+      formattedItem['uid'] = item['meeting_id'] ?? ''; // Unique ID for meeting
       formattedItem['line_manager_img'] = item['line_manager_img'] ??
           'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
       formattedItem['hr_img'] = item['hr_img'] ??
@@ -571,8 +495,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           : 'N/A';
 
       formattedItem['room'] = item['room_name'] ?? 'No Place Info';
-      formattedItem['details'] =
-          item['take_leave_reason'] ?? 'No Details Provided';
+      formattedItem['details'] = item['take_leave_reason'] ?? 'No Details Provided';
       formattedItem['employee_name'] = item['requestor_name'] ?? 'N/A';
       formattedItem['take_leave_request_id'] =
           item['take_leave_request_id']?.toString() ?? ''; // ID for leave
@@ -580,8 +503,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
           'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
       formattedItem['hr_img'] = item['hr_img'] ??
           'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
-      formattedItem['img_name'] =
-          item['img_name'] ?? 'https://via.placeholder.com/150';
+      formattedItem['img_name'] = item['img_path'] ?? 'https://via.placeholder.com/150';
       formattedItem['created_at'] = item['created_at'] ?? 'N/A';
     } else if (types == 'car') {
       formattedItem['title'] = item['purpose'] ?? 'No Title';
@@ -622,8 +544,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       formattedItem['room'] = item['room_name'] ?? 'No Room Info';
       formattedItem['details'] = item['remark'] ?? 'No Details Provided';
       formattedItem['employee_name'] = item['employee_name'] ?? 'N/A';
-      formattedItem['uid'] =
-          item['uid'] ?? ''; // Unique ID for meeting room booking
+      formattedItem['uid'] = item['uid'] ?? ''; // Unique ID for meeting room booking
       formattedItem['line_manager_img'] = item['line_manager_img'] ??
           'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
       formattedItem['hr_img'] = item['hr_img'] ??
@@ -636,11 +557,21 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     return formattedItem;
   }
 
+  // Helper function to get display name
+  String _getDisplayName(String type) {
+    if (type.toLowerCase() == 'meeting_room') {
+      return 'Meeting Room';
+    } else {
+      return type[0].toUpperCase() + type.substring(1);
+    }
+  }
+
   Color _getTypeColor(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
-      case 'meeting_room':
         return Colors.green;
+      case 'meeting_room':
+        return Colors.purple; // Different color for Meeting Room
       case 'leave':
         return Colors.orange;
       case 'car':
@@ -699,10 +630,12 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
   Widget getIconForType(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
-      case 'meeting_room':
         return Image.asset('assets/calendar.png', width: 40, height: 40);
+      case 'meeting_room':
+        return Image.asset('assets/meeting_room.png', width: 40, height: 40); // Ensure you have this asset
       case 'leave':
-        return Image.asset('assets/leave_calendar.png', width: 40, height: 40);
+        return Image.asset('assets/leave_calendar.png',
+            width: 40, height: 40);
       case 'car':
         return Image.asset('assets/car.png', width: 40, height: 40);
       default:
@@ -710,28 +643,13 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     }
   }
 
-  Color getTypeColor(String type) {
-    switch (type.toLowerCase()) {
-      case 'meeting':
-      case 'meeting_room':
-        return Colors.green;
-      case 'leave':
-        return Colors.orange;
-      case 'car':
-        return Colors.blue;
-      default:
-        return Colors.grey;
-    }
-  }
-
   void _openApprovalDetail(Map<String, dynamic> item) {
-    // Determine the unique ID based on the type
     String type = item['types'];
     String? id;
 
     switch (type) {
       case 'meeting':
-        id = item['uid'] ?? item['meeting_id']; // Ensure consistency with _formatItem
+        id = item['uid'];
         break;
       case 'meeting_room':
         id = item['uid'];
@@ -850,8 +768,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                 ),
               ),
               child: Padding(
-                padding:
-                const EdgeInsets.only(left: 16.0, right: 16.0, top: 60.0),
+                padding: const EdgeInsets.only(
+                    left: 16.0, right: 16.0, top: 60.0), // Adjust top padding here
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -894,7 +812,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                         });
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10.0),
+                        padding:
+                        const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
                           color: _isApprovalSelected
                               ? Colors.amber
@@ -936,7 +855,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                         });
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10.0),
+                        padding:
+                        const EdgeInsets.symmetric(vertical: 10.0),
                         decoration: BoxDecoration(
                           color: !_isApprovalSelected
                               ? Colors.amber
@@ -980,8 +900,12 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                   : ListView(
                 padding: const EdgeInsets.all(16.0),
                 children: _isApprovalSelected
-                    ? approvalItems.map((item) => _buildCard(item)).toList()
-                    : historyItems.map((item) => _buildCard(item)).toList(),
+                    ? approvalItems
+                    .map((item) => _buildCard(item))
+                    .toList()
+                    : historyItems
+                    .map((item) => _buildCard(item))
+                    .toList(),
               ),
             ),
           ],
@@ -995,8 +919,12 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
     final String title = item['title'] ?? 'No Title';
     final String status = item['status'] ?? 'Pending';
     final String employeeName = item['employee_name'] ?? 'N/A';
-    final String employeeImage =
-        item['img_name'] ?? 'https://via.placeholder.com/150';
+    // Determine which ID to use based on type
+    final String profileId = item['profile_id'] ?? '';
+    // Use cached image URL if available
+    final String cachedImageUrl = _imageCache[profileId] ??
+        'https://via.placeholder.com/150'; // Placeholder if not fetched yet
+
     final Color typeColor = _getTypeColor(type);
     final Color statusColor = _getStatusColor(status);
 
@@ -1027,39 +955,39 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
       },
       child: Card(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(30.0),
-          side: BorderSide(color: typeColor, width: 1),
+          borderRadius: BorderRadius.circular(15.0), // Reduced radius for better look
+          side: BorderSide(color: typeColor, width: 2),
         ),
-        elevation: 3,
+        elevation: 4,
         margin: const EdgeInsets.symmetric(vertical: 10.0),
-        child: Row(
-          children: [
-            Container(
-              width: 4,
-              height: 110,
-              decoration: BoxDecoration(
-                color: typeColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(15.0),
-                  bottomLeft: Radius.circular(15.0),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: typeColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(10.0),
+                    bottomLeft: Radius.circular(10.0),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            // Use getIconForType to display type-specific icon
-            getIconForType(type),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    vertical: 12.0, horizontal: 12.0),
+              const SizedBox(width: 12),
+              // Use getIconForType to display type-specific icon
+              getIconForType(type),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Type and Title
                     Row(
                       children: [
                         Text(
-                          type[0].toUpperCase() + type.substring(1),
+                          _getDisplayName(type),
                           style: TextStyle(
                             color: typeColor,
                             fontSize: 16,
@@ -1068,18 +996,22 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Text(
                       title,
                       style: TextStyle(
-                        color: Provider.of<ThemeNotifier>(context).isDarkMode
+                        color:
+                        Provider.of<ThemeNotifier>(context).isDarkMode
                             ? Colors.white
                             : Colors.black,
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
+                    // Date Range
                     Text(
                       'From: ${formatDate(startDate)}',
                       style: TextStyle(
@@ -1095,6 +1027,7 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                       ),
                     ),
                     const SizedBox(height: 4),
+                    // Detail Label and Value
                     Text(
                       '$detailLabel: $detailValue',
                       style: TextStyle(
@@ -1102,7 +1035,8 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                         fontSize: 12,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
+                    // Status
                     Row(
                       children: [
                         Text(
@@ -1137,17 +1071,86 @@ class _ManagementApprovalsPageState extends State<ManagementApprovalsPage> {
                   ],
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: CircleAvatar(
-                backgroundImage: NetworkImage(employeeImage),
-                radius: 35,
+              const SizedBox(width: 12),
+              // Profile Image with FutureBuilder
+              FutureBuilder<String>(
+                future: getImageUrl(profileId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircleAvatar(
+                      backgroundImage:
+                      NetworkImage('https://via.placeholder.com/150'),
+                      radius: 25,
+                    );
+                  } else if (snapshot.hasError) {
+                    return const CircleAvatar(
+                      backgroundImage:
+                      NetworkImage('https://via.placeholder.com/150'),
+                      radius: 25,
+                    );
+                  } else {
+                    return CircleAvatar(
+                      backgroundImage: NetworkImage(snapshot.data!),
+                      radius: 25,
+                    );
+                  }
+                },
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  // Method to fetch image URL based on profile ID
+  Future<String> getImageUrl(String id) async {
+    if (id.isEmpty) {
+      return 'https://via.placeholder.com/150';
+    }
+
+    // Check if the image URL is already cached
+    if (_imageCache.containsKey(id)) {
+      return _imageCache[id]!;
+    }
+
+    // Fetch from API
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    final String endpoint = '/api/profile/$id';
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final dynamic data = json.decode(response.body);
+
+        if (data is Map<String, dynamic> &&
+            data.containsKey('results') &&
+            data['results'] is Map<String, dynamic>) {
+          final String imageUrl = data['results']['images'] ??
+              'https://via.placeholder.com/150';
+
+          // Cache the image URL
+          _imageCache[id] = imageUrl;
+
+          return imageUrl;
+        } else {
+          print('Unexpected data format when fetching image: $data');
+          return 'https://via.placeholder.com/150';
+        }
+      } else {
+        print('Failed to fetch image for ID $id: ${response.statusCode}');
+        return 'https://via.placeholder.com/150';
+      }
+    } catch (e) {
+      print('Error fetching image for ID $id: $e');
+      return 'https://via.placeholder.com/150';
+    }
   }
 }
