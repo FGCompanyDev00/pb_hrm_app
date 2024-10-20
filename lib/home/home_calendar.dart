@@ -843,7 +843,7 @@ class _HomeCalendarState extends State<HomeCalendar>
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
-                // Ensures all children are centered horizontally
+
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   _buildCalendarHeader(isDarkMode),

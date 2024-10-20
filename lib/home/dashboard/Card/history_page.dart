@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/history_details_page.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -76,9 +77,11 @@ class _HistoryPageState extends State<HistoryPage> {
         throw Exception('Failed to load data');
       }
     } catch (e) {
+      // Optionally, you can show an error message to the user
       setState(() {
         _isLoading = false;
       });
+      print('Error fetching data: $e');
     }
   }
 
@@ -92,7 +95,8 @@ class _HistoryPageState extends State<HistoryPage> {
       'iconColor': _getTypeColor(type),
       'timestamp':
       DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now(),
-      'img_name': item['img_name'] ?? 'https://via.placeholder.com/150',
+      'img_name': item['img_name'] ??
+          'https://via.placeholder.com/150', // Placeholder image
     };
 
     if (type == 'meeting') {
@@ -102,6 +106,7 @@ class _HistoryPageState extends State<HistoryPage> {
         'endDate': item['to_date_time'] ?? '',
         'room': item['room_name'] ?? 'No Room Info',
         'employee_name': item['employee_name'] ?? 'N/A',
+        'uid': item['uid']?.toString() ?? '', // Updated to use 'uid'
       });
     } else if (type == 'leave') {
       formattedItem.addAll({
@@ -110,14 +115,16 @@ class _HistoryPageState extends State<HistoryPage> {
         'endDate': item['take_leave_to'] ?? '',
         'leave_type': item['leave_type'] ?? 'N/A',
         'employee_name': item['requestor_name'] ?? 'N/A',
+        'take_leave_request_id': item['take_leave_request_id']?.toString() ?? '',
       });
     } else if (type == 'car') {
       formattedItem.addAll({
         'title': item['purpose'] ?? 'No Title',
         'startDate': item['date_out'] ?? '',
         'endDate': item['date_in'] ?? '',
-        'telephone': item['telephone'] ?? 'N/A',
+        'telephone': item['employee_tel'] ?? 'N/A',
         'employee_name': item['requestor_name'] ?? 'N/A',
+        'uid': item['uid'] ?? '',
       });
     }
 
@@ -244,7 +251,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(width: 48),
+            const SizedBox(width: 48), // Placeholder for alignment
           ],
         ),
       ),
@@ -384,7 +391,13 @@ class _HistoryPageState extends State<HistoryPage> {
         if (dateStr == null || dateStr.isEmpty) {
           return 'N/A';
         }
-        final DateTime parsedDate = DateTime.parse(dateStr);
+        // Handle both date and datetime formats
+        DateTime parsedDate;
+        if (dateStr.contains('T')) {
+          parsedDate = DateTime.parse(dateStr);
+        } else {
+          parsedDate = DateTime.parse('${dateStr}T00:00:00.000Z');
+        }
         return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);
       } catch (e) {
         return 'Invalid Date';
@@ -393,10 +406,34 @@ class _HistoryPageState extends State<HistoryPage> {
 
     return GestureDetector(
       onTap: () {
+        // Extract 'types', 'id', and 'status'
+        String types = item['type'] ?? 'unknown';
+        String id;
+        String status = item['status'] ?? 'Pending';
+
+        if (types == 'leave') {
+          id = item['take_leave_request_id']?.toString() ?? '';
+        } else if (types == 'car') {
+          id = item['uid'] ?? '';
+        } else if (types == 'meeting') {
+          id = item['uid'] ?? ''; // Updated to use 'uid'
+        } else {
+          id = '';
+        }
+
+        if (id.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid ID')),
+          );
+          return;
+        }
+
+        // Navigate to DetailsPage with 'types', 'id', and 'status'
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) => DetailsPage(item: item)),
+              builder: (context) =>
+                  DetailsPage(types: types, id: id, status: status)),
         );
       },
       child: Card(
@@ -518,6 +555,12 @@ class _HistoryPageState extends State<HistoryPage> {
               child: CircleAvatar(
                 backgroundImage: NetworkImage(employeeImage),
                 radius: 24,
+                onBackgroundImageError: (_, __) {
+                  // Handle image load error by setting default avatar
+                  setState(() {
+                    employeeImage = _defaultAvatarUrl();
+                  });
+                },
               ),
             ),
           ],
@@ -525,235 +568,10 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
     );
   }
-}
 
-class DetailsPage extends StatelessWidget {
-  final Map<String, dynamic> item;
-
-  const DetailsPage({super.key, required this.item});
-
-  Color _getStatusColor(String? status) {
-    switch (status?.toLowerCase()) {
-      case 'approved':
-        return Colors.green;
-      case 'disapproved':
-      case 'rejected':
-      case 'cancel':
-        return Colors.red;
-      case 'waiting':
-      case 'pending':
-        return Colors.amber;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  Color _getIconColor(String? status) {
-    switch (status?.toLowerCase()) {
-      case 'approved':
-        return Colors.green;
-      case 'disapproved':
-      case 'rejected':
-      case 'cancel':
-        return Colors.redAccent;
-      case 'waiting':
-      case 'pending':
-        return Colors.orangeAccent;
-      default:
-        return Colors.blueGrey;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
-    final statusColor = _getStatusColor(item['status']);
-    final String type = item['type'] ?? 'unknown';
-
-    String title = item['title'] ?? 'N/A';
-    String status = item['status'] ?? 'Unknown';
-    String employeeName = item['employee_name'] ?? 'N/A';
-
-    String detailLabel1 = '';
-    String detailValue1 = '';
-    String detailLabel2 = '';
-    String detailValue2 = '';
-    String detailLabel3 = '';
-    String detailValue3 = '';
-    String detailLabel4 = '';
-    String detailValue4 = '';
-    String detailLabel5 = '';
-    String detailValue5 = '';
-
-    if (type == 'meeting') {
-      detailLabel1 = 'From';
-      detailValue1 = item['from_date_time'] ?? 'N/A';
-      detailLabel2 = 'To';
-      detailValue2 = item['to_date_time'] ?? 'N/A';
-      detailLabel3 = 'Room';
-      detailValue3 = item['room'] ?? 'N/A';
-      detailLabel4 = 'Employee';
-      detailValue4 = employeeName;
-      detailLabel5 = 'Details';
-      detailValue5 = item['details'] ?? 'No Details';
-    } else if (type == 'leave') {
-      detailLabel1 = 'From';
-      detailValue1 = item['take_leave_from'] ?? 'N/A';
-      detailLabel2 = 'To';
-      detailValue2 = item['take_leave_to'] ?? 'N/A';
-      detailLabel3 = 'Type';
-      detailValue3 = item['leave_type'] ?? 'N/A';
-      detailLabel4 = 'Employee';
-      detailValue4 = employeeName;
-      detailLabel5 = 'Reason';
-      detailValue5 = item['take_leave_reason'] ?? 'N/A';
-    } else if (type == 'car') {
-      detailLabel1 = 'From';
-      detailValue1 = item['date_out'] ?? 'N/A';
-      detailLabel2 = 'To';
-      detailValue2 = item['date_in'] ?? 'N/A';
-      detailLabel3 = 'Telephone';
-      detailValue3 = item['telephone'] ?? 'N/A';
-      detailLabel4 = 'Employee';
-      detailValue4 = employeeName;
-      detailLabel5 = 'Purpose';
-      detailValue5 = item['purpose'] ?? 'N/A';
-    }
-
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(90.0),
-        child: AppBar(
-          automaticallyImplyLeading: true,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          flexibleSpace: ClipRRect(
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(20),
-              bottomRight: Radius.circular(20),
-            ),
-            child: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/background.png'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
-          leading: Padding(
-            padding: const EdgeInsets.only(top: 25.0),
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
-              onPressed: () {
-                Navigator.pop(context);
-              },
-            ),
-          ),
-          title: const Padding(
-            padding: EdgeInsets.only(top: 34.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              children: [
-                Spacer(flex: 2),
-                Text(
-                  'History Details',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 24,
-                  ),
-                ),
-                Spacer(flex: 4),
-              ],
-            ),
-          ),
-        ),
-      ),
-      body: Padding(
-        padding:
-        const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color:
-                  isDarkMode ? Colors.white : Colors.black,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0, vertical: 16.0),
-              decoration: BoxDecoration(
-                color: statusColor,
-                borderRadius: BorderRadius.circular(12.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    spreadRadius: 2,
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Text(
-                status,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 24),
-            _buildInfoRow(
-                Icons.calendar_today, detailLabel1, detailValue1, _getIconColor(status)),
-            _buildInfoRow(
-                Icons.calendar_today, detailLabel2, detailValue2, _getIconColor(status)),
-            _buildInfoRow(
-                Icons.info_outline, detailLabel3, detailValue3, _getIconColor(status)),
-            _buildInfoRow(
-                Icons.person, detailLabel4, detailValue4, _getIconColor(status)),
-            _buildInfoRow(
-                Icons.notes, detailLabel5, detailValue5, _getIconColor(status)),
-            const Spacer(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(
-      IconData icon, String label, String value, Color iconColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor, size: 28),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              '$label: $value',
-              style: const TextStyle(
-                fontSize: 20,
-                color: Colors.black87,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
+  // Helper method to get a default avatar URL
+  String _defaultAvatarUrl() {
+    // Replace with a publicly accessible image URL
+    return 'https://www.w3schools.com/howto/img_avatar.png';
   }
 }

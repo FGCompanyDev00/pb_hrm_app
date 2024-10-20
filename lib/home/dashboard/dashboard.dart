@@ -6,6 +6,8 @@ import 'package:pb_hrsystem/home/dashboard/Card/history_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_approvals_main_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/qr_profile_page.dart';
+import 'package:pb_hrsystem/notifications/notification_admin_page.dart';
+import 'package:pb_hrsystem/notifications/notification_staff_page.dart';
 import 'package:pb_hrsystem/roles.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
@@ -15,10 +17,6 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
 import 'package:pb_hrsystem/management/admin_approval_main_page.dart';
-
-import '../../notifications/notification_admin_page.dart';
-import '../../notifications/notification_staff_page.dart';
-import '../../notifications/notification_page.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -374,15 +372,6 @@ class _DashboardState extends State<Dashboard> {
                                         if (kDebugMode) {
                                           print('Error fetching user roles: $e');
                                         }
-                                        // Fallback to default NotificationPage
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(builder: (context) => const NotificationPage()),
-                                        ).then((_) {
-                                          setState(() {
-                                            _hasUnreadNotifications = false;
-                                          });
-                                        });
                                       }
                                     },
                                   ),
