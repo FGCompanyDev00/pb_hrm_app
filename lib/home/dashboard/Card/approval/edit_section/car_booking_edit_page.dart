@@ -1,5 +1,3 @@
-// lib/home/dashboard/Card/approval/car_booking_edit_page.dart
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -7,8 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class CarBookingEditPage extends StatefulWidget {
   final Map<String, dynamic> item;
+  final String id;
 
-  const CarBookingEditPage({super.key, required this.item});
+  const CarBookingEditPage(
+      {super.key,
+        required this.id,
+        required this.item});
 
   @override
   _CarBookingEditPageState createState() => _CarBookingEditPageState();
@@ -26,16 +28,11 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
   @override
   void initState() {
     super.initState();
-    // Initialize controllers with existing data
-    _employeeIdController =
-        TextEditingController(text: widget.item['employee_id'] ?? '');
-    _purposeController =
-        TextEditingController(text: widget.item['purpose'] ?? '');
+    _employeeIdController = TextEditingController(text: widget.item['employee_id'] ?? '');
+    _purposeController = TextEditingController(text: widget.item['purpose'] ?? '');
     _placeController = TextEditingController(text: widget.item['place'] ?? '');
-    _dateInController =
-        TextEditingController(text: widget.item['date_in'] ?? '');
-    _dateOutController =
-        TextEditingController(text: widget.item['date_out'] ?? '');
+    _dateInController = TextEditingController(text: widget.item['date_in'] ?? '');
+    _dateOutController = TextEditingController(text: widget.item['date_out'] ?? '');
   }
 
   @override
@@ -48,27 +45,21 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
     super.dispose();
   }
 
-  /// Opens a date picker and sets the selected date to the controller.
-  Future<void> _selectDate(
-      BuildContext context, TextEditingController controller) async {
+  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: controller.text.isNotEmpty
-          ? DateTime.parse(controller.text)
-          : DateTime.now(),
+      initialDate: controller.text.isNotEmpty ? DateTime.parse(controller.text) : DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
 
     if (pickedDate != null) {
       setState(() {
-        controller.text =
-        pickedDate.toIso8601String().split('T')[0]; // Format to 'yyyy-MM-dd'
+        controller.text = pickedDate.toIso8601String().split('T')[0];
       });
     }
   }
 
-  /// Sends a PUT request to update the car booking.
   Future<void> _updateRequest() async {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() {
@@ -79,20 +70,17 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
       final token = prefs.getString('token');
 
       if (token == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Token is null. Please log in again.')),
-        );
+        _showError('Token is null. Please log in again.');
         setState(() {
           _isLoading = false;
         });
         return;
       }
 
-      String uid = widget.item['uid'];
+      String uid = widget.id;
 
       final response = await http.put(
-        Uri.parse(
-            'https://demo-application-api.flexiflows.co/api/office-administration/car_permit/$uid'),
+        Uri.parse('https://demo-application-api.flexiflows.co/api/office-administration/car_permit/$uid'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -103,7 +91,6 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
           'place': _placeController.text,
           'date_in': _dateInController.text,
           'date_out': _dateOutController.text,
-          // Members are not required
         }),
       );
 
@@ -119,7 +106,6 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
     }
   }
 
-  /// Displays a success message and navigates back.
   void _showSuccess(String message) {
     showDialog(
       context: context,
@@ -131,7 +117,6 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
-                Navigator.of(context).pop(true); // Return to previous page
               },
               child: const Text('OK'),
             ),
@@ -141,16 +126,13 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
     );
   }
 
-  /// Displays an error message.
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
   }
 
-  /// Builds a text field with the given label and controller.
-  Widget _buildTextField(String label, TextEditingController controller,
-      {bool readOnly = false, VoidCallback? onTap}) {
+  Widget _buildTextField(String label, TextEditingController controller, {bool readOnly = false, VoidCallback? onTap}) {
     return TextFormField(
       controller: controller,
       readOnly: readOnly,
@@ -162,8 +144,7 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        contentPadding:
-        const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -174,7 +155,6 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
     );
   }
 
-  /// Builds a date field with a date picker.
   Widget _buildDateField(String label, TextEditingController controller) {
     return GestureDetector(
       onTap: () => _selectDate(context, controller),
@@ -184,7 +164,6 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
     );
   }
 
-  /// Builds the UI.
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -196,7 +175,7 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'), // Update path if needed
+              image: AssetImage('assets/background.png'),
               fit: BoxFit.cover,
             ),
             borderRadius: BorderRadius.only(
@@ -205,10 +184,10 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
             ),
           ),
         ),
+        toolbarHeight: 100,
       ),
       body: Padding(
-        padding:
-        const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
         child: Form(
           key: _formKey,
           child: ListView(
@@ -239,8 +218,7 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
                 label: const Text('Cancel'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey,
-                  padding:
-                  const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -258,8 +236,7 @@ class _CarBookingEditPageState extends State<CarBookingEditPage> {
                 label: const Text('Update'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.amber,
-                  padding:
-                  const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),

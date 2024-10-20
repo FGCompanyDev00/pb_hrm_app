@@ -41,6 +41,11 @@ class _DetailsPageState extends State<DetailsPage> {
     });
   }
 
+  /// Handle refresh action
+  Future<void> _handleRefresh() async {
+    await _fetchData();  // Re-fetch data when user pulls down
+  }
+
   /// Fetch Leave Types
   Future<void> _fetchLeaveTypes() async {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
@@ -349,9 +354,13 @@ class _DetailsPageState extends State<DetailsPage> {
 
   /// Build Requestor Section
   Widget _buildRequestorSection() {
-    // Correctly assign requestorName without duplication
+    // Correctly assign requestorName and requestor image URL
     String requestorName = data?['requestor_name'] ?? data?['employee_name'] ?? 'No Name';
     String submittedOn = '';
+
+    // Fetch image URL for requestor from 'img_path' or 'img_ref'
+    String requestorImageUrl = data?['img_path'] ?? data?['img_ref'] ?? _defaultAvatarUrl();
+
     switch (widget.types.toLowerCase()) {
       case 'leave':
         submittedOn = formatDate(data?['created_at']);
@@ -371,8 +380,8 @@ class _DetailsPageState extends State<DetailsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildStatusRow(widget.status), // Status row above requestor
-          const SizedBox(height: 20), // Add some spacing
+          _buildStatusRow(widget.status), // Display status
+          const SizedBox(height: 20), // Add spacing
           const Text(
             'Requestor',
             style: TextStyle(
@@ -385,14 +394,15 @@ class _DetailsPageState extends State<DetailsPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Display the requestor's image using CircleAvatar
               CircleAvatar(
-                backgroundImage: NetworkImage(imageUrl ?? _defaultAvatarUrl()),
-                radius: 35,
+                backgroundImage: NetworkImage(requestorImageUrl),
+                radius: 35, // Larger circle for profile image
                 backgroundColor: Colors.grey[300],
                 onBackgroundImageError: (_, __) {
-                  // Handle image loading error by setting default avatar
+                  // Handle image load error by setting default avatar
                   setState(() {
-                    imageUrl = _defaultAvatarUrl();
+                    requestorImageUrl = _defaultAvatarUrl();
                   });
                 },
               ),
@@ -412,9 +422,7 @@ class _DetailsPageState extends State<DetailsPage> {
                   Text(
                     'Submitted on $submittedOn',
                     style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.black54,
-                    ),
+                        fontSize: 14, color: Colors.black54),
                   ),
                 ],
               ),
@@ -583,25 +591,25 @@ class _DetailsPageState extends State<DetailsPage> {
 
   /// Build Workflow Section
   Widget _buildWorkflowSection() {
+    // Only show this section if the request type is 'leave'
+    if (widget.types.toLowerCase() != 'leave') {
+      return const SizedBox.shrink(); // Returns an empty widget if not 'leave'
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildUserAvatar(imageUrl ?? _defaultAvatarUrl(),
-              label: 'Requestor'),
+          _buildUserAvatar(imageUrl ?? _defaultAvatarUrl(), label: 'Requestor'),
           const SizedBox(width: 12),
           const Icon(Icons.arrow_forward, color: Colors.green),
           const SizedBox(width: 12),
-          _buildUserAvatar(
-              lineManagerImageUrl ?? _defaultAvatarUrl(),
-              label: 'Line Manager'),
+          _buildUserAvatar(lineManagerImageUrl ?? _defaultAvatarUrl(), label: 'Line Manager'),
           const SizedBox(width: 12),
           const Icon(Icons.arrow_forward, color: Colors.green),
           const SizedBox(width: 12),
-          _buildUserAvatar(
-              hrImageUrl ?? _defaultAvatarUrl(),
-              label: 'HR'),
+          _buildUserAvatar(hrImageUrl ?? _defaultAvatarUrl(), label: 'HR'),
         ],
       ),
     );
@@ -771,21 +779,28 @@ class _DetailsPageState extends State<DetailsPage> {
     });
 
     final String type = widget.types.toLowerCase();
+    String idToSend;
+
+    if (type == 'leave') {
+      idToSend = data?['take_leave_request_id'] ?? widget.id; // Use take_leave_request_id
+    } else {
+      idToSend = data?['uid'] ?? widget.id; // Use uid for car and meeting
+    }
 
     Widget? editPage;
 
-    // Debug: Print the data before navigating to the edit page
-    print('Navigating to Edit Page with data: $data');
+    // Debug: Print the data and id before navigating to the edit page
+    print('Navigating to Edit Page with data: $data and id: $idToSend');
 
     switch (type) {
       case 'meeting':
-        editPage = MeetingEditPage(item: data!);
+        editPage = MeetingEditPage(item: data!, id: idToSend);
         break;
       case 'leave':
-        editPage = LeaveRequestEditPage(item: data!);
+        editPage = LeaveRequestEditPage(item: data!, id: idToSend);
         break;
       case 'car':
-        editPage = CarBookingEditPage(item: data!);
+        editPage = CarBookingEditPage(item: data!, id: idToSend);
         break;
       default:
         _showErrorDialog('Error', 'Unknown request type.');
@@ -828,9 +843,7 @@ class _DetailsPageState extends State<DetailsPage> {
 
     final String? tokenValue = await _getToken();
     if (tokenValue == null) {
-      _showErrorDialog(
-          'Authentication Error',
-          'Token not found. Please log in again.');
+      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
       return;
     }
 
@@ -850,14 +863,10 @@ class _DetailsPageState extends State<DetailsPage> {
               'Content-Type': 'application/json',
             },
           );
-          if (response.statusCode == 200 ||
-              response.statusCode == 201) {
-            _showSuccessDialog(
-                'Success', 'Leave request deleted successfully.');
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            _showSuccessDialog('Success', 'Leave request deleted successfully.');
           } else {
-            _showErrorDialog(
-                'Error',
-                'Failed to delete leave request: ${response.reasonPhrase}\nResponse Body: ${response.body}');
+            _showErrorDialog('Error', 'Failed to delete leave request: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
           break;
 
@@ -869,14 +878,10 @@ class _DetailsPageState extends State<DetailsPage> {
               'Content-Type': 'application/json',
             },
           );
-          if (response.statusCode == 200 ||
-              response.statusCode == 204) {
-            _showSuccessDialog(
-                'Success', 'Car permit deleted successfully.');
+          if (response.statusCode == 200 || response.statusCode == 204) {
+            _showSuccessDialog('Success', 'Car permit deleted successfully.');
           } else {
-            _showErrorDialog(
-                'Error',
-                'Failed to delete car permit: ${response.reasonPhrase}\nResponse Body: ${response.body}');
+            _showErrorDialog('Error', 'Failed to delete car permit: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
           break;
 
@@ -888,13 +893,10 @@ class _DetailsPageState extends State<DetailsPage> {
               'Content-Type': 'application/json',
             },
           );
-          if (response.statusCode == 200 ||
-              response.statusCode == 201) {
+          if (response.statusCode == 200 || response.statusCode == 201) {
             _showSuccessDialog('Success', 'Meeting deleted successfully.');
           } else {
-            _showErrorDialog(
-                'Error',
-                'Failed to delete meeting: ${response.reasonPhrase}\nResponse Body: ${response.body}');
+            _showErrorDialog('Error', 'Failed to delete meeting: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
           break;
 
@@ -903,9 +905,7 @@ class _DetailsPageState extends State<DetailsPage> {
       }
     } catch (e) {
       print('Error deleting request: $e');
-      _showErrorDialog(
-          'Error',
-          'An unexpected error occurred while deleting the request.');
+      _showErrorDialog('Error', 'An unexpected error occurred while deleting the request.');
     }
 
     setState(() {
@@ -958,29 +958,32 @@ class _DetailsPageState extends State<DetailsPage> {
       appBar: _buildAppBar(context),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : data == null
-          ? const Center(
-        child: Text(
-          'No Data Available',
-          style: TextStyle(fontSize: 16, color: Colors.red),
-        ),
-      )
-          : SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 24.0, vertical: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 10),
-              _buildRequestorSection(),
-              _buildBlueSection(),
-              const SizedBox(height: 20),
-              _buildDetailsSection(),
-              const SizedBox(height: 20),
-              _buildWorkflowSection(),
-              _buildActionButtons(context),
-            ],
+          : RefreshIndicator(
+        onRefresh: _handleRefresh,  // Pull down to refresh
+        child: data == null
+            ? const Center(
+          child: Text(
+            'No Data Available',
+            style: TextStyle(fontSize: 16, color: Colors.red),
+          ),
+        )
+            : SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: 24.0, vertical: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 10),
+                _buildRequestorSection(),
+                _buildBlueSection(),
+                const SizedBox(height: 20),
+                _buildDetailsSection(),
+                const SizedBox(height: 20),
+                _buildWorkflowSection(),
+                _buildActionButtons(context),
+              ],
+            ),
           ),
         ),
       ),

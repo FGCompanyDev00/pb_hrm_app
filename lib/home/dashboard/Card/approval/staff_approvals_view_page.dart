@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/car_booking_edit_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/leave_request_edit_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/meeting_edit_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/meeting_room_booking_edit_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -605,31 +604,35 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
     );
   }
 
-  // Handle Edit Action
+  /// Handle Edit Action
   Future<void> _handleEdit() async {
     setState(() {
       isFinalized = true;
     });
 
     final String type = widget.type.toLowerCase();
+    String idToSend;
+
+    if (type == 'leave') {
+      idToSend = data?['take_leave_request_id'] ?? widget.id; // Use take_leave_request_id
+    } else {
+      idToSend = data?['uid'] ?? widget.id; // Use uid for car and meeting
+    }
 
     Widget? editPage;
 
-    // Debug: Print the data before navigating to the edit page
-    print('Navigating to Edit Page with data: $data');
+    // Debug: Print the data and id before navigating to the edit page
+    print('Navigating to Edit Page with data: $data and id: $idToSend');
 
     switch (type) {
       case 'meeting':
-        editPage = MeetingEditPage(item: data!);
+        editPage = MeetingEditPage(item: data!, id: idToSend);
         break;
       case 'leave':
-        editPage = LeaveRequestEditPage(item: data!);
+        editPage = LeaveRequestEditPage(item: data!, id: idToSend);
         break;
       case 'car':
-        editPage = CarBookingEditPage(item: data!);
-        break;
-      case 'meeting room':
-        editPage = MeetingRoomBookingEditPage(item: data!);
+        editPage = CarBookingEditPage(item: data!, id: idToSend);
         break;
       default:
         _showErrorDialog('Error', 'Unknown request type.');

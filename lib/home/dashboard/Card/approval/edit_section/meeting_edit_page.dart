@@ -8,8 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// This page allows the user to edit a meeting request.
 class MeetingEditPage extends StatefulWidget {
   final Map<String, dynamic> item;
+  final String id;
 
-  const MeetingEditPage({super.key, required this.item});
+  const MeetingEditPage({super.key, required this.id, required this.item});
 
   @override
   _MeetingEditPageState createState() => _MeetingEditPageState();
@@ -104,7 +105,6 @@ class _MeetingEditPageState extends State<MeetingEditPage> {
     }
   }
 
-  /// Sends a PUT request to update the meeting.
   Future<void> _updateRequest() async {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() {
@@ -115,20 +115,17 @@ class _MeetingEditPageState extends State<MeetingEditPage> {
       final token = prefs.getString('token');
 
       if (token == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Token is null. Please log in again.')),
-        );
+        _showError('Token is null. Please log in again.');
         setState(() {
           _isLoading = false;
         });
         return;
       }
 
-      String meetingId = widget.item['meeting_id'];
+      String meetingId = widget.id;  // Use the id passed from the widget
 
       final response = await http.put(
-        Uri.parse(
-            'https://demo-application-api.flexiflows.co/api/work-tracking/meeting/update/$meetingId'),
+        Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/meeting/update/$meetingId'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -168,7 +165,6 @@ class _MeetingEditPageState extends State<MeetingEditPage> {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
-                Navigator.of(context).pop(true); // Return to previous page
               },
               child: const Text('OK'),
             ),
@@ -299,6 +295,7 @@ class _MeetingEditPageState extends State<MeetingEditPage> {
             ),
           ),
         ),
+        toolbarHeight: 100,
       ),
       body: Padding(
         padding:

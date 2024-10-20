@@ -273,50 +273,53 @@ class _HistoryPageState extends State<HistoryPage> {
             child: Center(child: CircularProgressIndicator()),
           )
               : Expanded(
-            child: _isPendingSelected
-                ? _pendingItems.isEmpty
-                ? const Center(
-              child: Text(
-                'No Pending Items',
-                style: TextStyle(fontSize: 16),
+            child: RefreshIndicator(
+              onRefresh: _fetchHistoryData, // This function will refresh data
+              child: _isPendingSelected
+                  ? _pendingItems.isEmpty
+                  ? const Center(
+                child: Text(
+                  'No Pending Items',
+                  style: TextStyle(fontSize: 16),
+                ),
+              )
+                  : ListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: _pendingItems.length,
+                itemBuilder: (context, index) {
+                  final item = _pendingItems[index];
+                  return _buildHistoryCard(
+                    context,
+                    item,
+                    isHistory: false,
+                  );
+                },
+              )
+                  : _historyItems.isEmpty
+                  ? const Center(
+                child: Text(
+                  'No History Items',
+                  style: TextStyle(fontSize: 16),
+                ),
+              )
+                  : ListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: _historyItems.length,
+                itemBuilder: (context, index) {
+                  final item = _historyItems[index];
+                  return _buildHistoryCard(
+                    context,
+                    item,
+                    isHistory: true,
+                  );
+                },
               ),
-            )
-                : ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _pendingItems.length,
-              itemBuilder: (context, index) {
-                final item = _pendingItems[index];
-                return _buildHistoryCard(
-                  context,
-                  item,
-                  isHistory: false,
-                );
-              },
-            )
-                : _historyItems.isEmpty
-                ? const Center(
-              child: Text(
-                'No History Items',
-                style: TextStyle(fontSize: 16),
-              ),
-            )
-                : ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _historyItems.length,
-              itemBuilder: (context, index) {
-                final item = _historyItems[index];
-                return _buildHistoryCard(
-                  context,
-                  item,
-                  isHistory: true,
-                );
-              },
             ),
           ),
         ],
       ),
     );
-  }
+}
 
   /// Builds the header section with background image and title
   Widget _buildHeader(bool isDarkMode) {

@@ -8,8 +8,9 @@ import 'package:intl/intl.dart';
 
 class LeaveRequestEditPage extends StatefulWidget {
   final Map<String, dynamic> item;
+  final String id;
 
-  const LeaveRequestEditPage({super.key, required this.item});
+  const LeaveRequestEditPage({super.key, required this.id, required this.item});
 
   @override
   _LeaveRequestEditPageState createState() => _LeaveRequestEditPageState();
@@ -224,16 +225,10 @@ class _LeaveRequestEditPageState extends State<LeaveRequestEditPage> {
         return;
       }
 
-      // Validate that take_leave_request_id exists
-      if (widget.item['take_leave_request_id'] == null ||
-          widget.item['take_leave_request_id'].toString().isEmpty) {
-        _showError('Invalid Leave Request ID.');
-        return;
-      }
-
       setState(() {
         _isLoading = true;
       });
+
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
       if (token == null) {
@@ -245,57 +240,33 @@ class _LeaveRequestEditPageState extends State<LeaveRequestEditPage> {
         });
         return;
       }
-      try {
-        // Corrected field names and data types
-        final int leaveRequestId = int.parse(widget.item['take_leave_request_id'].toString());
-        final int leaveTypeId = _selectedLeaveTypeId!;
-        final int days = int.parse(_daysController.text);
 
-        final response = await http.put(
-          Uri.parse(
-              'https://demo-application-api.flexiflows.co/api/leave_request/$leaveRequestId'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({
-            'take_leave_from': _startDateController.text,
-            'take_leave_to': _endDateController.text,
-            'leave_type_id': leaveTypeId, // Changed to 'leave_type_id'
-            'take_leave_reason': _descriptionController.text,
-            'days': days, // Changed to integer
-          }),
-        );
+      // Use the id passed from the widget
+      String leaveRequestId = widget.id;
 
-        // Debug: Print the request and response details
-        print('PUT Request URL: https://demo-application-api.flexiflows.co/api/leave_request/$leaveRequestId');
-        print('Request Body: ${jsonEncode({
+      final response = await http.put(
+        Uri.parse('https://demo-application-api.flexiflows.co/api/leave_request/$leaveRequestId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
           'take_leave_from': _startDateController.text,
           'take_leave_to': _endDateController.text,
-          'leave_type_id': leaveTypeId,
+          'take_leave_type_id': _selectedLeaveTypeId,
           'take_leave_reason': _descriptionController.text,
-          'days': days,
-        })}');
-        print('Response Status Code: ${response.statusCode}');
-        print('Response Body: ${response.body}');
+          'days': _daysController.text,
+        }),
+      );
 
-        setState(() {
-          _isLoading = false;
-        });
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          _showSuccess('Leave request updated successfully');
-        } else {
-          // Log the response body for debugging
-          print('Update Failed: ${response.statusCode}');
-          print('Response Body: ${response.body}');
-          _showError(
-              'Failed to update leave request: ${response.reasonPhrase}\nResponse Body: ${response.body}');
-        }
-      } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
-        _showError('Error updating leave request: $e');
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        _showSuccess('Leave request updated successfully');
+      } else {
+        _showError('Failed to update leave request: ${response.reasonPhrase}');
       }
     }
   }
@@ -507,6 +478,7 @@ class _LeaveRequestEditPageState extends State<LeaveRequestEditPage> {
               ),
             ),
           ),
+          toolbarHeight: 100,
         ),
         body: const Center(
           child: CircularProgressIndicator(),
