@@ -8,7 +8,6 @@ import 'dart:convert';
 import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/car_booking_edit_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/leave_request_edit_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/meeting_edit_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/meeting_room_booking_edit_page.dart';
 
 class DetailsPage extends StatefulWidget {
   final String types;
@@ -27,17 +26,64 @@ class DetailsPage extends StatefulWidget {
 
 class _DetailsPageState extends State<DetailsPage> {
   Map<String, dynamic>? data;
+  Map<int, String> _leaveTypes = {};
   bool isFinalized = false;
   bool isLoading = true;
   String? imageUrl;
+  String? lineManagerImageUrl;
+  String? hrImageUrl;
 
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    _fetchLeaveTypes().then((_) {
+      _fetchData();
+    });
   }
 
-  // Fetch detailed data using POST API
+  /// Fetch Leave Types
+  Future<void> _fetchLeaveTypes() async {
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    const String leaveTypesUrl = '$baseUrl/api/leave-types';
+    try {
+      final String? tokenValue = await _getToken();
+      if (tokenValue == null) {
+        _showErrorDialog('Authentication Error',
+            'Token not found. Please log in again.');
+        return;
+      }
+      final response = await http.get(
+        Uri.parse(leaveTypesUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $tokenValue',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['statusCode'] == 200) {
+          final List<dynamic> leaveTypesData = responseBody['results'];
+          setState(() {
+            _leaveTypes = {
+              for (var lt in leaveTypesData) lt['leave_type_id']: lt['name']
+            };
+          });
+        } else {
+          _showErrorDialog('Error',
+              responseBody['message'] ?? 'Failed to load leave types');
+        }
+      } else {
+        _showErrorDialog(
+            'Error', 'Failed to load leave types: ${response.statusCode}');
+      }
+    } catch (e) {
+      _showErrorDialog('Error',
+          'An unexpected error occurred while fetching leave types.');
+    }
+  }
+
+  /// Fetch detailed data using POST API
   Future<void> _fetchData() async {
     setState(() {
       isLoading = true;
@@ -45,9 +91,32 @@ class _DetailsPageState extends State<DetailsPage> {
 
     final String type = widget.types.toLowerCase();
     final String id = widget.id;
-    final String status = widget.status;
+    final String status;
+    if (widget.types.toLowerCase() == 'leave') {
+      if (widget.status.toLowerCase() == 'approved') {
+        status = 'Approved';
+      } else if (widget.status.toLowerCase() == 'cancel') {
+        status = 'Cancel';
+      } else if (widget.status.toLowerCase() == 'processing') {
+        status = 'Processing';
+      } else {
+        status = widget.status; // Keep as is for other statuses
+      }
+    } else if (widget.types.toLowerCase() == 'meeting') {
+      if (widget.status.toLowerCase() == 'approved') {
+        status = 'approved';
+      } else if (widget.status.toLowerCase() == 'cancel') {
+        status = 'cancel';
+      } else {
+        status = widget.status; // Keep as is for other statuses
+      }
+    } else {
+      status = widget.status; // Keep as is for other types like car
+    }
+
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    final String postApiUrl = '$baseUrl/api/app/users/history/pending/id';
+    // Correct API endpoint by appending the actual ID
+    final String postApiUrl = '$baseUrl/api/app/users/history/pending/$id';
 
     try {
       final String? tokenValue = await _getToken();
@@ -60,32 +129,11 @@ class _DetailsPageState extends State<DetailsPage> {
         return;
       }
 
-      // Prepare the request body based on the type
-      Map<String, dynamic> requestBody;
-
-      switch(type) {
-        case 'leave':
-          requestBody = {
-            'types': widget.types,
-            'take_leave_request_id': widget.id,
-            'status': widget.status, // Include the 'status' as per API requirement
-          };
-          break;
-        case 'car':
-        case 'meeting':
-          requestBody = {
-            'types': widget.types,
-            'uid': widget.id,
-            'status': widget.status,
-          };
-          break;
-        default:
-          requestBody = {
-            'types': widget.types,
-            'id': widget.id, // Fallback if type is unknown
-            'status': widget.status,
-          };
-      }
+      // Prepare the request body with 'types' and 'status'
+      Map<String, dynamic> requestBody = {
+        'types': widget.types,
+        'status': status,
+      };
 
       print('Sending POST request to $postApiUrl with body: $requestBody');
 
@@ -101,45 +149,117 @@ class _DetailsPageState extends State<DetailsPage> {
       print('Received response with status code: ${response.statusCode}');
       print('Response body: ${response.body}');
 
-      if (response.statusCode == 200 || response.statusCode == 202) {
+      if (response.statusCode == 200 ||
+          response.statusCode == 201 ||
+          response.statusCode == 202) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
 
-        // Check if 'result' key exists; adjust based on actual API response
-        if (!responseData.containsKey('result')) {
-          _showErrorDialog(
-              'Error', 'Invalid API response structure.');
+        // Check the 'statusCode' in the response body
+        if (responseData.containsKey('statusCode') &&
+            (responseData['statusCode'] == 200 ||
+                responseData['statusCode'] == 201 ||
+                responseData['statusCode'] == 202)) {
+          // Success
+          if (!responseData.containsKey('results')) {
+            _showErrorDialog('Error', 'Invalid API response structure.');
+            setState(() {
+              isLoading = false;
+            });
+            return;
+          }
+
+          // Handle 'results' as a list for 'leave' type
+          if (type == 'leave') {
+            if (responseData['results'] is List) {
+              final List<dynamic> resultsList = responseData['results'];
+              if (resultsList.isNotEmpty) {
+                setState(() {
+                  data = resultsList[0] as Map<String, dynamic>;
+                  isLoading = false;
+                });
+
+                if (data != null) {
+                  // Directly use 'img_name' from the response for the image URL
+                  setState(() {
+                    imageUrl = data?['img_name'] ?? _defaultAvatarUrl();
+                    // Optional: Handle workflow images if available
+                    lineManagerImageUrl =
+                        data?['line_manager_img'] ?? _defaultAvatarUrl();
+                    hrImageUrl = data?['hr_img'] ?? _defaultAvatarUrl();
+                  });
+                } else {
+                  setState(() {
+                    imageUrl = _defaultAvatarUrl();
+                    lineManagerImageUrl = _defaultAvatarUrl();
+                    hrImageUrl = _defaultAvatarUrl();
+                  });
+                }
+              } else {
+                // Empty list
+                setState(() {
+                  data = null;
+                  isLoading = false;
+                });
+              }
+            } else {
+              // Unexpected structure
+              setState(() {
+                data = null;
+                isLoading = false;
+              });
+              _showErrorDialog('Error', 'Unexpected data format.');
+            }
+          } else {
+            // For meeting, check if 'results' is a list or a map
+            if (type == 'meeting') {
+              if (responseData['results'] is List && responseData['results'].isNotEmpty) {
+                setState(() {
+                  data = responseData['results'][0] as Map<String, dynamic>;
+                  isLoading = false;
+                });
+              } else if (responseData['results'] is Map<String, dynamic>) {
+                setState(() {
+                  data = responseData['results'] as Map<String, dynamic>;
+                  isLoading = false;
+                });
+              } else {
+                // Unexpected structure
+                setState(() {
+                  data = null;
+                  isLoading = false;
+                });
+                _showErrorDialog('Error', 'Unexpected data format.');
+              }
+            } else {
+              // For other types like car, leave
+              if (responseData['results'] is Map<String, dynamic>) {
+                setState(() {
+                  data = responseData['results'] as Map<String, dynamic>;
+                  isLoading = false;
+                });
+              } else {
+                // Unexpected structure for other types
+                setState(() {
+                  data = null;
+                  isLoading = false;
+                });
+                _showErrorDialog('Error', 'Unexpected data format.');
+              }
+            }
+          }
+        } else {
+          // Handle API-level errors
+          String errorMessage =
+              responseData['message'] ?? 'Unknown error.';
+          _showErrorDialog('Error', errorMessage);
           setState(() {
             isLoading = false;
           });
-          return;
-        }
-
-        setState(() {
-          data = responseData['result'];
-          isLoading = false;
-        });
-
-        if (data != null) {
-          // Fetch employee image if available
-          String? pID = data?['employee_id']?.toString();
-
-          if (pID != null && pID.isNotEmpty) {
-            await _fetchProfileImage(pID);
-          } else {
-            // Use default avatar
-            setState(() {
-              imageUrl = _defaultAvatarUrl();
-            });
-          }
-        } else {
-          setState(() {
-            imageUrl = _defaultAvatarUrl();
-          });
         }
       } else {
+        // Handle HTTP errors
         _showErrorDialog(
-            'Error',
-            'Failed to fetch details: ${response.statusCode} ${response.reasonPhrase}\nResponse Body: ${response.body}');
+            'Error', 'Failed to fetch details: ${response.statusCode}');
         setState(() {
           isLoading = false;
         });
@@ -154,72 +274,13 @@ class _DetailsPageState extends State<DetailsPage> {
     }
   }
 
-  // Fetch profile image using employee_id (pID)
-  Future<void> _fetchProfileImage(String pID) async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    String profileEndpoint = '$baseUrl/api/profile/$pID';
-
-    try {
-      final String? tokenValue = await _getToken();
-      if (tokenValue == null) {
-        _showErrorDialog('Authentication Error',
-            'Token not found. Please log in again.');
-        setState(() {
-          isLoading = false;
-        });
-        return;
-      }
-
-      final response = await http.get(
-        Uri.parse(profileEndpoint),
-        headers: {
-          'Authorization': 'Bearer $tokenValue',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      print(
-          'Fetching profile image from $profileEndpoint with status code: ${response.statusCode}');
-      print('Profile response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        final profileResults = decoded['results'];
-        if (profileResults != null &&
-            profileResults['images'] != null &&
-            profileResults['images'].isNotEmpty) {
-          setState(() {
-            imageUrl = profileResults['images'];
-          });
-        } else {
-          // Use default avatar
-          setState(() {
-            imageUrl = _defaultAvatarUrl();
-          });
-        }
-      } else {
-        // Use default avatar
-        print('Failed to fetch profile image: ${response.reasonPhrase}');
-        setState(() {
-          imageUrl = _defaultAvatarUrl();
-        });
-      }
-    } catch (e) {
-      print('Error fetching profile image: $e');
-      // Use default avatar
-      setState(() {
-        imageUrl = _defaultAvatarUrl();
-      });
-    }
-  }
-
-  // Helper method to get a default avatar URL
+  /// Helper method to get a default avatar URL
   String _defaultAvatarUrl() {
     // Replace with a publicly accessible image URL
     return 'https://www.w3schools.com/howto/img_avatar.png';
   }
 
-  // Retrieve token from SharedPreferences
+  /// Retrieve token from SharedPreferences
   Future<String?> _getToken() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -230,7 +291,7 @@ class _DetailsPageState extends State<DetailsPage> {
     }
   }
 
-  // Format date string
+  /// Format date string
   String formatDate(String? dateStr, {bool includeTime = false}) {
     try {
       if (dateStr == null || dateStr.isEmpty) {
@@ -246,7 +307,7 @@ class _DetailsPageState extends State<DetailsPage> {
     }
   }
 
-  // Build AppBar
+  /// Build AppBar
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
       flexibleSpace: Container(
@@ -286,11 +347,10 @@ class _DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  // Build Requestor Section
+  /// Build Requestor Section
   Widget _buildRequestorSection() {
     // Correctly assign requestorName without duplication
-    String requestorName =
-        data?['requestor_name'] ?? data?['employee_name'] ?? 'No Name';
+    String requestorName = data?['requestor_name'] ?? data?['employee_name'] ?? 'No Name';
     String submittedOn = '';
     switch (widget.types.toLowerCase()) {
       case 'leave':
@@ -298,9 +358,6 @@ class _DetailsPageState extends State<DetailsPage> {
         break;
       case 'car':
         submittedOn = formatDate(data?['created_date']);
-        break;
-      case 'meeting room':
-        submittedOn = formatDate(data?['date_create']);
         break;
       case 'meeting':
         submittedOn = formatDate(data?['created_at']);
@@ -314,6 +371,8 @@ class _DetailsPageState extends State<DetailsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          _buildStatusRow(widget.status), // Status row above requestor
+          const SizedBox(height: 20), // Add some spacing
           const Text(
             'Requestor',
             style: TextStyle(
@@ -327,10 +386,7 @@ class _DetailsPageState extends State<DetailsPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               CircleAvatar(
-                backgroundImage: imageUrl != null && imageUrl!.isNotEmpty
-                    ? NetworkImage(imageUrl!)
-                    : const NetworkImage(
-                    'https://www.w3schools.com/howto/img_avatar.png'),
+                backgroundImage: NetworkImage(imageUrl ?? _defaultAvatarUrl()),
                 radius: 35,
                 backgroundColor: Colors.grey[300],
                 onBackgroundImageError: (_, __) {
@@ -356,7 +412,9 @@ class _DetailsPageState extends State<DetailsPage> {
                   Text(
                     'Submitted on $submittedOn',
                     style: const TextStyle(
-                        fontSize: 14, color: Colors.black54),
+                      fontSize: 14,
+                      color: Colors.black54,
+                    ),
                   ),
                 ],
               ),
@@ -367,7 +425,32 @@ class _DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  // Build Blue Section
+  Widget _buildStatusRow(String status) {
+    final Color statusColor = _getStatusColor(status);
+    final IconData statusIcon = _getStatusIcon(status);
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          statusIcon,
+          color: statusColor,
+          size: 30, // Larger size for better visibility
+        ),
+        const SizedBox(width: 8),
+        Text(
+          status,
+          style: TextStyle(
+            color: statusColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 20, // Larger font size for emphasis
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Build Blue Section
   Widget _buildBlueSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10.0),
@@ -389,25 +472,24 @@ class _DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  // Get Type Header Text
+  /// Get Type Header Text
   String _getTypeHeader() {
     switch (widget.types.toLowerCase()) {
       case 'meeting':
-        return 'Meeting and Booking Meeting Room';
+        return 'Meeting Details';
       case 'leave':
-        return 'Leave Request';
+        return 'Leave Request Details';
       case 'car':
-        return 'Car Permit Request';
-      case 'meeting room':
-        return 'Meeting Room Booking';
+        return 'Car Booking Details';
       default:
         return 'Approval Details';
     }
   }
 
-  // Build Details Section
+  /// Build Details Section
   Widget _buildDetailsSection() {
     final String type = widget.types.toLowerCase();
+
 
     switch (type) {
       case 'meeting':
@@ -427,14 +509,20 @@ class _DetailsPageState extends State<DetailsPage> {
             _buildInfoRow(Icons.room, 'Room',
                 data?['room_name'] ?? 'No Room Info', Colors.orange),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.description, 'Remark',
-                data?['remark'] ?? 'No Remarks', Colors.purple),
+            _buildInfoRow(Icons.phone, 'Employee Tel',
+                data?['employee_tel'] ?? 'No Telephone', Colors.purple),
+            const SizedBox(height: 12),
+            _buildInfoRow(Icons.email, 'Employee Email',
+                data?['employee_email'] ?? 'No Email', Colors.purple),
           ],
         );
       case 'leave':
+        String leaveTypeName =
+            _leaveTypes[data?['leave_type_id']] ?? 'Unknown';
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+
             _buildInfoRow(Icons.bookmark, 'Title',
                 data?['name'] ?? 'No Title', Colors.green),
             const SizedBox(height: 12),
@@ -445,8 +533,15 @@ class _DetailsPageState extends State<DetailsPage> {
               Colors.blue,
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.time_to_leave, 'Reason',
-                data?['take_leave_reason'] ?? 'No Reason Provided', Colors.purple),
+            _buildInfoRow(Icons.label, 'Leave Type',
+                leaveTypeName, Colors.orange),
+            const SizedBox(height: 12),
+            _buildInfoRow(Icons.access_time, 'Days',
+                data?['days']?.toString() ?? 'N/A', Colors.purple),
+            const SizedBox(height: 12),
+            _buildInfoRow(Icons.description, 'Reason',
+                data?['take_leave_reason'] ?? 'No Reason Provided',
+                Colors.red),
           ],
         );
       case 'car':
@@ -474,29 +569,6 @@ class _DetailsPageState extends State<DetailsPage> {
             _buildInfoRow(Icons.access_time, 'Time In',
                 data?['time_in'] ?? 'N/A', Colors.purple),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.person, 'Driver Name',
-                data?['driver_name'] ?? 'N/A', Colors.red),
-          ],
-        );
-      case 'meeting room':
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoRow(Icons.bookmark, 'Title',
-                data?['title'] ?? 'No Title', Colors.green),
-            const SizedBox(height: 12),
-            _buildInfoRow(
-              Icons.calendar_today,
-              'Date',
-              '${formatDate(data?['from_date_time'])} - ${formatDate(data?['to_date_time'])}',
-              Colors.blue,
-            ),
-            const SizedBox(height: 12),
-            _buildInfoRow(Icons.room, 'Room',
-                data?['room_name'] ?? 'No Room Info', Colors.orange),
-            const SizedBox(height: 12),
-            _buildInfoRow(Icons.description, 'Remark',
-                data?['remark'] ?? 'No Remarks', Colors.purple),
           ],
         );
       default:
@@ -509,7 +581,7 @@ class _DetailsPageState extends State<DetailsPage> {
     }
   }
 
-  // Build Workflow Section
+  /// Build Workflow Section
   Widget _buildWorkflowSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20.0),
@@ -522,35 +594,29 @@ class _DetailsPageState extends State<DetailsPage> {
           const Icon(Icons.arrow_forward, color: Colors.green),
           const SizedBox(width: 12),
           _buildUserAvatar(
-              data?['line_manager_img'] ?? _defaultAvatarUrl(),
+              lineManagerImageUrl ?? _defaultAvatarUrl(),
               label: 'Line Manager'),
           const SizedBox(width: 12),
           const Icon(Icons.arrow_forward, color: Colors.green),
           const SizedBox(width: 12),
           _buildUserAvatar(
-              data?['hr_img'] ?? _defaultAvatarUrl(),
+              hrImageUrl ?? _defaultAvatarUrl(),
               label: 'HR'),
         ],
       ),
     );
   }
 
-  // Build User Avatar with Label
+  /// Build User Avatar with Label
   Widget _buildUserAvatar(String imageUrl, {String label = ''}) {
     return Column(
       children: [
         CircleAvatar(
-          backgroundImage: imageUrl.isNotEmpty
-              ? NetworkImage(imageUrl)
-              : const NetworkImage(
-              'https://www.w3schools.com/howto/img_avatar.png'),
+          backgroundImage: NetworkImage(imageUrl),
           radius: 20,
           backgroundColor: Colors.grey[300],
           onBackgroundImageError: (_, __) {
-            // Handle image loading error by setting default avatar
-            setState(() {
-              imageUrl = _defaultAvatarUrl();
-            });
+            // Handle image loading error by using default avatar
           },
         ),
         if (label.isNotEmpty)
@@ -565,7 +631,57 @@ class _DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  // Build Info Row
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return Colors.green;
+      case 'cancel':
+      case 'cancelled':
+      case 'disapproved':
+        return Colors.red;
+      case 'processing':
+      case 'waiting':
+        return Colors.orange;
+      default:
+        return Colors.grey; // Default color for other statuses
+    }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return Icons.check_circle;
+      case 'cancel':
+        return Icons.cancel;
+      case 'processing':
+        return Icons.hourglass_empty;
+      default:
+        return Icons.info; // Default icon for other statuses
+    }
+  }
+
+  Widget _buildStatusBox(String status) {
+    final Color statusColor = _getStatusColor(status);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.2), // Light background
+        border: Border.all(color: statusColor, width: 2), // Border color
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          color: statusColor, // Text color matching the border
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+
+  /// Build Info Row
   Widget _buildInfoRow(
       IconData icon, String title, String content, Color color) {
     return Row(
@@ -582,8 +698,15 @@ class _DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  // Build Action Buttons
+  /// Build Action Buttons
   Widget _buildActionButtons(BuildContext context) {
+    // Hide action buttons if status is approved, disapproved, or cancel
+    if (widget.status.toLowerCase() == 'approved' ||
+        widget.status.toLowerCase() == 'disapproved' ||
+        widget.status.toLowerCase() == 'cancel') {
+      return const SizedBox.shrink();
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20.0),
       child: Row(
@@ -608,7 +731,7 @@ class _DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  // Build Styled Button
+  /// Build Styled Button
   Widget _buildStyledButton({
     required String label,
     required IconData icon,
@@ -641,7 +764,7 @@ class _DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  // Handle Edit Action
+  /// Handle Edit Action
   Future<void> _handleEdit() async {
     setState(() {
       isFinalized = true;
@@ -663,9 +786,6 @@ class _DetailsPageState extends State<DetailsPage> {
         break;
       case 'car':
         editPage = CarBookingEditPage(item: data!);
-        break;
-      case 'meeting room':
-        editPage = MeetingRoomBookingEditPage(item: data!);
         break;
       default:
         _showErrorDialog('Error', 'Unknown request type.');
@@ -695,7 +815,7 @@ class _DetailsPageState extends State<DetailsPage> {
     });
   }
 
-  // Handle Delete Action
+  /// Handle Delete Action
   Future<void> _handleDelete() async {
     final String type = widget.types.toLowerCase();
     final String id = widget.id;
@@ -730,7 +850,8 @@ class _DetailsPageState extends State<DetailsPage> {
               'Content-Type': 'application/json',
             },
           );
-          if (response.statusCode == 200 || response.statusCode == 201) {
+          if (response.statusCode == 200 ||
+              response.statusCode == 201) {
             _showSuccessDialog(
                 'Success', 'Leave request deleted successfully.');
           } else {
@@ -748,33 +869,14 @@ class _DetailsPageState extends State<DetailsPage> {
               'Content-Type': 'application/json',
             },
           );
-          if (response.statusCode == 200 || response.statusCode == 204) {
+          if (response.statusCode == 200 ||
+              response.statusCode == 204) {
             _showSuccessDialog(
                 'Success', 'Car permit deleted successfully.');
           } else {
             _showErrorDialog(
                 'Error',
                 'Failed to delete car permit: ${response.reasonPhrase}\nResponse Body: ${response.body}');
-          }
-          break;
-
-        case 'meeting room':
-          response = await http.delete(
-            Uri.parse(
-                '$baseUrl/api/office-administration/book_meeting_room/$id'),
-            headers: {
-              'Authorization': 'Bearer $tokenValue',
-              'Content-Type': 'application/json',
-            },
-          );
-          if (response.statusCode == 200 || response.statusCode == 204) {
-            _showSuccessDialog(
-                'Success',
-                'Meeting room booking deleted successfully.');
-          } else {
-            _showErrorDialog(
-                'Error',
-                'Failed to delete meeting room booking: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
           break;
 
@@ -786,7 +888,8 @@ class _DetailsPageState extends State<DetailsPage> {
               'Content-Type': 'application/json',
             },
           );
-          if (response.statusCode == 200 || response.statusCode == 201) {
+          if (response.statusCode == 200 ||
+              response.statusCode == 201) {
             _showSuccessDialog('Success', 'Meeting deleted successfully.');
           } else {
             _showErrorDialog(
@@ -810,7 +913,7 @@ class _DetailsPageState extends State<DetailsPage> {
     });
   }
 
-  // Show Error Dialog
+  /// Show Error Dialog
   void _showErrorDialog(String title, String message) {
     showDialog(
       context: context,
@@ -829,7 +932,7 @@ class _DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  // Show Success Dialog
+  /// Show Success Dialog
   void _showSuccessDialog(String title, String message) {
     showDialog(
       context: context,
@@ -869,13 +972,13 @@ class _DetailsPageState extends State<DetailsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              const SizedBox(height: 10),
               _buildRequestorSection(),
               _buildBlueSection(),
               const SizedBox(height: 20),
               _buildDetailsSection(),
               const SizedBox(height: 20),
               _buildWorkflowSection(),
-              const SizedBox(height: 20),
               _buildActionButtons(context),
             ],
           ),

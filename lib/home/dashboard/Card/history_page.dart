@@ -21,6 +21,7 @@ class _HistoryPageState extends State<HistoryPage> {
   bool _isPendingSelected = true;
   List<Map<String, dynamic>> _pendingItems = [];
   List<Map<String, dynamic>> _historyItems = [];
+  Map<int, String> _leaveTypes = {};
   bool _isLoading = true;
 
   @override
@@ -29,11 +30,12 @@ class _HistoryPageState extends State<HistoryPage> {
     _fetchHistoryData();
   }
 
+  /// Fetches leave types, pending items, and history items from the API
   Future<void> _fetchHistoryData() async {
-    const String pendingApiUrl =
-        'https://demo-application-api.flexiflows.co/api/app/users/history/pending';
-    const String historyApiUrl =
-        'https://demo-application-api.flexiflows.co/api/app/users/history';
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    const String pendingApiUrl = '$baseUrl/api/app/users/history/pending';
+    const String historyApiUrl = '$baseUrl/api/app/users/history';
+    const String leaveTypesUrl = '$baseUrl/api/leave-types';
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -43,6 +45,32 @@ class _HistoryPageState extends State<HistoryPage> {
         throw Exception('User not authenticated');
       }
 
+      // Fetch Leave Types
+      final leaveTypesResponse = await http.get(
+        Uri.parse(leaveTypesUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (leaveTypesResponse.statusCode == 200) {
+        final leaveTypesBody = jsonDecode(leaveTypesResponse.body);
+        if (leaveTypesBody['statusCode'] == 200) {
+          final List<dynamic> leaveTypesData = leaveTypesBody['results'];
+          _leaveTypes = {
+            for (var lt in leaveTypesData) lt['leave_type_id']: lt['name']
+          };
+        } else {
+          throw Exception(
+              leaveTypesBody['message'] ?? 'Failed to load leave types');
+        }
+      } else {
+        throw Exception(
+            'Failed to load leave types: ${leaveTypesResponse.statusCode}');
+      }
+
+      // Fetch Pending Items
       final pendingResponse = await http.get(
         Uri.parse(pendingApiUrl),
         headers: {
@@ -51,6 +79,7 @@ class _HistoryPageState extends State<HistoryPage> {
         },
       );
 
+      // Fetch History Items
       final historyResponse = await http.get(
         Uri.parse(historyApiUrl),
         headers: {
@@ -59,80 +88,126 @@ class _HistoryPageState extends State<HistoryPage> {
         },
       );
 
-      if (pendingResponse.statusCode == 200 &&
-          historyResponse.statusCode == 200) {
-        final List<dynamic> pendingData =
-        jsonDecode(pendingResponse.body)['results'];
-        final List<dynamic> historyData =
-        jsonDecode(historyResponse.body)['results'];
+      // Initialize temporary lists
+      final List<Map<String, dynamic>> tempPendingItems = [];
+      final List<Map<String, dynamic>> tempHistoryItems = [];
 
-        setState(() {
-          _pendingItems =
-              pendingData.map((item) => _formatItem(item)).toList();
-          _historyItems =
-              historyData.map((item) => _formatItem(item)).toList();
-          _isLoading = false;
-        });
+      // Process Pending Response
+      if (pendingResponse.statusCode == 200) {
+        final responseBody = jsonDecode(pendingResponse.body);
+        if (responseBody['statusCode'] == 200) {
+          final List<dynamic> pendingData = responseBody['results'];
+          tempPendingItems.addAll(
+              pendingData.map((item) => _formatItem(item as Map<String, dynamic>)));
+        } else {
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load pending data');
+        }
       } else {
-        throw Exception('Failed to load data');
+        throw Exception(
+            'Failed to load pending data: ${pendingResponse.statusCode}');
       }
+
+      // Process History Response
+      if (historyResponse.statusCode == 200) {
+        final responseBody = jsonDecode(historyResponse.body);
+        if (responseBody['statusCode'] == 200) {
+          final List<dynamic> historyData = responseBody['results'];
+          tempHistoryItems.addAll(
+              historyData.map((item) => _formatItem(item as Map<String, dynamic>)));
+        } else {
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load history data');
+        }
+      } else {
+        throw Exception(
+            'Failed to load history data: ${historyResponse.statusCode}');
+      }
+
+      // Update State
+      setState(() {
+        _pendingItems = tempPendingItems;
+        _historyItems = tempHistoryItems;
+        _isLoading = false;
+      });
     } catch (e) {
-      // Optionally, you can show an error message to the user
       setState(() {
         _isLoading = false;
       });
       print('Error fetching data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching data: $e')),
+      );
     }
   }
 
+  /// Formats each item based on its type
   Map<String, dynamic> _formatItem(Map<String, dynamic> item) {
-    String type = item['types'] ?? 'unknown';
+    String type = item['types']?.toLowerCase() ?? 'unknown';
     Map<String, dynamic> formattedItem = {
       'type': type,
-      'status': item['status'] ?? 'pending',
-      'statusColor': _getStatusColor(item['status']),
+      'status': _getItemStatus(type, item),
+      'statusColor': _getStatusColor(_getItemStatus(type, item)),
       'icon': _getIconForType(type),
       'iconColor': _getTypeColor(type),
       'timestamp':
       DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now(),
       'img_name': item['img_name'] ??
           'https://via.placeholder.com/150', // Placeholder image
+      'img_path': item['img_path'] ?? '', // Add img_path if available
     };
 
-    if (type == 'meeting') {
-      formattedItem.addAll({
-        'title': item['title'] ?? 'No Title',
-        'startDate': item['from_date_time'] ?? '',
-        'endDate': item['to_date_time'] ?? '',
-        'room': item['room_name'] ?? 'No Room Info',
-        'employee_name': item['employee_name'] ?? 'N/A',
-        'uid': item['uid']?.toString() ?? '', // Updated to use 'uid'
-      });
-    } else if (type == 'leave') {
-      formattedItem.addAll({
-        'title': item['name'] ?? 'No Title',
-        'startDate': item['take_leave_from'] ?? '',
-        'endDate': item['take_leave_to'] ?? '',
-        'leave_type': item['leave_type'] ?? 'N/A',
-        'employee_name': item['requestor_name'] ?? 'N/A',
-        'take_leave_request_id': item['take_leave_request_id']?.toString() ?? '',
-      });
-    } else if (type == 'car') {
-      formattedItem.addAll({
-        'title': item['purpose'] ?? 'No Title',
-        'startDate': item['date_out'] ?? '',
-        'endDate': item['date_in'] ?? '',
-        'telephone': item['employee_tel'] ?? 'N/A',
-        'employee_name': item['requestor_name'] ?? 'N/A',
-        'uid': item['uid'] ?? '',
-      });
+    // Add type-specific fields and ensure 'id' is consistent
+    switch (type) {
+      case 'meeting':
+        formattedItem.addAll({
+          'title': item['title'] ?? 'No Title',
+          'startDate': item['from_date_time'] ?? '',
+          'endDate': item['to_date_time'] ?? '',
+          'room': item['room_name'] ?? 'No Room Info',
+          'employee_name': item['employee_name'] ?? 'N/A',
+          'id': item['uid']?.toString() ?? '',
+          'status': _getItemStatus(type, item),
+        });
+        break;
+      case 'leave':
+        int leaveTypeId = item['leave_type_id'] ?? 0;
+        String leaveTypeName = _leaveTypes[leaveTypeId] ?? 'Unknown';
+        formattedItem.addAll({
+          'title': item['name'] ?? 'No Title',
+          'startDate': item['take_leave_from'] ?? '',
+          'endDate': item['take_leave_to'] ?? '',
+          'leave_type': leaveTypeName,
+          'employee_name': item['requestor_name'] ?? 'N/A',
+          'id': item['take_leave_request_id']?.toString() ?? '',
+          'status': _getItemStatus(type, item),
+        });
+        break;
+      case 'car':
+        formattedItem.addAll({
+          'title': item['purpose'] ?? 'No Purpose',
+          'startDate': item['date_out'] ?? '',
+          'endDate': item['date_in'] ?? '',
+          'employee_name': item['requestor_name'] ?? 'N/A',
+          'id': item['uid']?.toString() ?? '',
+          'status': _getItemStatus(type, item),
+        });
+        break;
+      default:
+      // Handle unknown types if necessary
+        break;
     }
 
     return formattedItem;
   }
 
-  Color _getStatusColor(String? status) {
-    switch (status?.toLowerCase()) {
+  String _getItemStatus(String type, Map<String, dynamic> item) {
+    return (item['status'] ?? 'waiting').toString().toLowerCase();
+  }
+
+  /// Returns color based on status
+  Color _getStatusColor(String status) {
+    switch (status) {
       case 'approved':
         return Colors.green;
       case 'disapproved':
@@ -141,14 +216,18 @@ class _HistoryPageState extends State<HistoryPage> {
         return Colors.red;
       case 'pending':
       case 'waiting':
+      case 'branch waiting':
         return Colors.amber;
       case 'processing':
         return Colors.blue;
+      case 'deleted':
+        return Colors.red;
       default:
         return Colors.grey;
     }
   }
 
+  /// Returns color based on type
   Color _getTypeColor(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
@@ -162,6 +241,7 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
+  /// Returns icon based on type
   IconData _getIconForType(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
@@ -193,16 +273,43 @@ class _HistoryPageState extends State<HistoryPage> {
             child: Center(child: CircularProgressIndicator()),
           )
               : Expanded(
-            child: ListView.builder(
+            child: _isPendingSelected
+                ? _pendingItems.isEmpty
+                ? const Center(
+              child: Text(
+                'No Pending Items',
+                style: TextStyle(fontSize: 16),
+              ),
+            )
+                : ListView.builder(
               padding: const EdgeInsets.all(16.0),
-              itemCount: _isPendingSelected
-                  ? _pendingItems.length
-                  : _historyItems.length,
+              itemCount: _pendingItems.length,
               itemBuilder: (context, index) {
-                final item = _isPendingSelected
-                    ? _pendingItems[index]
-                    : _historyItems[index];
-                return _buildHistoryCard(context, item);
+                final item = _pendingItems[index];
+                return _buildHistoryCard(
+                  context,
+                  item,
+                  isHistory: false,
+                );
+              },
+            )
+                : _historyItems.isEmpty
+                ? const Center(
+              child: Text(
+                'No History Items',
+                style: TextStyle(fontSize: 16),
+              ),
+            )
+                : ListView.builder(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: _historyItems.length,
+              itemBuilder: (context, index) {
+                final item = _historyItems[index];
+                return _buildHistoryCard(
+                  context,
+                  item,
+                  isHistory: true,
+                );
               },
             ),
           ),
@@ -211,6 +318,7 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
+  /// Builds the header section with background image and title
   Widget _buildHeader(bool isDarkMode) {
     return Container(
       height: 150,
@@ -258,6 +366,7 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
+  /// Builds the tab bar for toggling between Pending and History
   Widget _buildTabBar() {
     return Padding(
       padding:
@@ -354,8 +463,10 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
+  /// Builds each history/pending card
   Widget _buildHistoryCard(
-      BuildContext context, Map<String, dynamic> item) {
+      BuildContext context, Map<String, dynamic> item,
+      {required bool isHistory}) {
     final themeNotifier =
     Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
@@ -364,8 +475,10 @@ class _HistoryPageState extends State<HistoryPage> {
     String title = item['title'] ?? 'No Title';
     String status = item['status'] ?? 'Pending';
     String employeeName = item['employee_name'] ?? 'N/A';
-    String employeeImage =
-        item['img_name'] ?? 'https://via.placeholder.com/150';
+    String employeeImage = item['img_path'].isNotEmpty
+        ? item['img_path']
+        : item['img_name'] ??
+        'https://via.placeholder.com/150'; // Prefer img_path
     Color typeColor = _getTypeColor(type);
     Color statusColor = _getStatusColor(status);
 
@@ -375,17 +488,26 @@ class _HistoryPageState extends State<HistoryPage> {
     String detailLabel = '';
     String detailValue = '';
 
-    if (type == 'meeting') {
-      detailLabel = 'Room';
-      detailValue = item['room'] ?? 'No Room Info';
-    } else if (type == 'leave') {
-      detailLabel = 'Type';
-      detailValue = item['leave_type'] ?? 'N/A';
-    } else if (type == 'car') {
-      detailLabel = 'Telephone';
-      detailValue = item['telephone'] ?? 'N/A';
+    // Determine detail label and value based on type
+    switch (type) {
+      case 'meeting':
+        detailLabel = 'Room';
+        detailValue = item['room'] ?? 'No Room Info';
+        break;
+      case 'leave':
+        detailLabel = 'Type';
+        detailValue = item['leave_type'] ?? 'N/A';
+        break;
+      case 'car':
+        detailLabel = 'Requestor Name';
+        detailValue = item['employee_name'] ?? 'N/A';
+        break;
+      default:
+        detailLabel = 'Detail';
+        detailValue = 'N/A';
     }
 
+    /// Formats date strings
     String formatDate(String? dateStr) {
       try {
         if (dateStr == null || dateStr.isEmpty) {
@@ -394,6 +516,8 @@ class _HistoryPageState extends State<HistoryPage> {
         // Handle both date and datetime formats
         DateTime parsedDate;
         if (dateStr.contains('T')) {
+          parsedDate = DateTime.parse(dateStr);
+        } else if (dateStr.contains(' ')) {
           parsedDate = DateTime.parse(dateStr);
         } else {
           parsedDate = DateTime.parse('${dateStr}T00:00:00.000Z');
@@ -406,20 +530,9 @@ class _HistoryPageState extends State<HistoryPage> {
 
     return GestureDetector(
       onTap: () {
-        // Extract 'types', 'id', and 'status'
-        String types = item['type'] ?? 'unknown';
-        String id;
-        String status = item['status'] ?? 'Pending';
-
-        if (types == 'leave') {
-          id = item['take_leave_request_id']?.toString() ?? '';
-        } else if (types == 'car') {
-          id = item['uid'] ?? '';
-        } else if (types == 'meeting') {
-          id = item['uid'] ?? ''; // Updated to use 'uid'
-        } else {
-          id = '';
-        }
+        String types = type;
+        String id = item['id'] ?? '';
+        String status = item['status'] ?? 'pending';
 
         if (id.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -428,12 +541,16 @@ class _HistoryPageState extends State<HistoryPage> {
           return;
         }
 
-        // Navigate to DetailsPage with 'types', 'id', and 'status'
+        // Navigate to DetailsPage with required parameters
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) =>
-                  DetailsPage(types: types, id: id, status: status)),
+            builder: (context) => DetailsPage(
+              types: types,
+              id: id,
+              status: status,
+            ),
+          ),
         );
       },
       child: Card(
@@ -445,6 +562,7 @@ class _HistoryPageState extends State<HistoryPage> {
         margin: const EdgeInsets.symmetric(vertical: 8.0),
         child: Row(
           children: [
+            // Colored side bar indicating type
             Container(
               width: 5,
               height: 100,
@@ -457,6 +575,7 @@ class _HistoryPageState extends State<HistoryPage> {
               ),
             ),
             const SizedBox(width: 12),
+            // Main content of the card
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -464,6 +583,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Type Icon and Title
                     Row(
                       children: [
                         Icon(
@@ -483,6 +603,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       ],
                     ),
                     const SizedBox(height: 8),
+                    // Title
                     Text(
                       title,
                       style: TextStyle(
@@ -492,6 +613,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       ),
                     ),
                     const SizedBox(height: 4),
+                    // From and To Dates
                     Text(
                       'From: ${formatDate(startDate)}',
                       style: TextStyle(
@@ -507,6 +629,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       ),
                     ),
                     const SizedBox(height: 4),
+                    // Detail Label and Value
                     Text(
                       '$detailLabel: $detailValue',
                       style: TextStyle(
@@ -515,14 +638,14 @@ class _HistoryPageState extends State<HistoryPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    // Status Indicator
                     Row(
                       children: [
                         Text(
                           'Status: ',
                           style: TextStyle(
-                            color: isDarkMode
-                                ? Colors.white
-                                : Colors.black,
+                            color:
+                            isDarkMode ? Colors.white : Colors.black,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -536,7 +659,8 @@ class _HistoryPageState extends State<HistoryPage> {
                             BorderRadius.circular(12.0),
                           ),
                           child: Text(
-                            status,
+                            status[0].toUpperCase() +
+                                status.substring(1),
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -549,6 +673,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 ),
               ),
             ),
+            // Employee Avatar
             Padding(
               padding:
               const EdgeInsets.symmetric(horizontal: 8.0),
@@ -557,9 +682,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 radius: 24,
                 onBackgroundImageError: (_, __) {
                   // Handle image load error by setting default avatar
-                  setState(() {
-                    employeeImage = _defaultAvatarUrl();
-                  });
+                  // Consider using a default image directly
                 },
               ),
             ),
@@ -569,7 +692,7 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
-  // Helper method to get a default avatar URL
+  /// Helper method to get a default avatar URL
   String _defaultAvatarUrl() {
     // Replace with a publicly accessible image URL
     return 'https://www.w3schools.com/howto/img_avatar.png';
