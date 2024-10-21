@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/history_details_page.dart';
+import 'package:pb_hrsystem/home/dashboard/history/history_details_page.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -168,6 +168,7 @@ class _HistoryPageState extends State<HistoryPage> {
           'employee_name': item['employee_name'] ?? 'N/A',
           'id': item['uid']?.toString() ?? '',
           'status': _getItemStatus(type, item),
+          'remark': item['remark'] ?? '',
         });
         break;
       case 'leave':
@@ -494,8 +495,8 @@ class _HistoryPageState extends State<HistoryPage> {
     // Determine detail label and value based on type
     switch (type) {
       case 'meeting':
-        detailLabel = 'Room';
-        detailValue = item['room'] ?? 'No Room Info';
+        detailLabel = 'Employee Name';
+        detailValue = item['employee_name'] ?? 'N/A';
         break;
       case 'leave':
         detailLabel = 'Type';

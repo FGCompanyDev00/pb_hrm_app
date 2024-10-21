@@ -1,13 +1,12 @@
 // details_page.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pb_hrsystem/home/dashboard/history/history_office_booking_event_edit_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/car_booking_edit_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/leave_request_edit_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/meeting_edit_page.dart';
 
 class DetailsPage extends StatefulWidget {
   final String types;
@@ -32,6 +31,7 @@ class _DetailsPageState extends State<DetailsPage> {
   String? imageUrl;
   String? lineManagerImageUrl;
   String? hrImageUrl;
+  String? _errorMessage; // <-- Declared _errorMessage
 
   @override
   void initState() {
@@ -43,7 +43,7 @@ class _DetailsPageState extends State<DetailsPage> {
 
   /// Handle refresh action
   Future<void> _handleRefresh() async {
-    await _fetchData();  // Re-fetch data when user pulls down
+    await _fetchData(); // Re-fetch data when user pulls down
   }
 
   /// Fetch Leave Types
@@ -65,26 +65,33 @@ class _DetailsPageState extends State<DetailsPage> {
         },
       );
 
-      if (response.statusCode == 200) {
-        final responseBody = jsonDecode(response.body);
-        if (responseBody['statusCode'] == 200) {
-          final List<dynamic> leaveTypesData = responseBody['results'];
+      if (kDebugMode) {
+        print('Fetching Leave Types from URL: $leaveTypesUrl');
+        print('Response Status Code: ${response.statusCode}');
+        print('Response Body: ${response.body}');
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        if (data['statusCode'] == 200 && data['results'] is List) {
           setState(() {
             _leaveTypes = {
-              for (var lt in leaveTypesData) lt['leave_type_id']: lt['name']
+              for (var lt in data['results']) lt['leave_type_id']: lt['name']
             };
           });
         } else {
-          _showErrorDialog('Error',
-              responseBody['message'] ?? 'Failed to load leave types');
+          throw Exception('Failed to fetch leave types');
         }
       } else {
-        _showErrorDialog(
-            'Error', 'Failed to load leave types: ${response.statusCode}');
+        throw Exception('Failed to fetch leave types: ${response.statusCode}');
       }
     } catch (e) {
-      _showErrorDialog('Error',
-          'An unexpected error occurred while fetching leave types.');
+      setState(() {
+        _errorMessage = 'Error fetching leave types: $e';
+      });
+      if (kDebugMode) {
+        print('Error fetching leave types: $e');
+      }
     }
   }
 
@@ -92,6 +99,7 @@ class _DetailsPageState extends State<DetailsPage> {
   Future<void> _fetchData() async {
     setState(() {
       isLoading = true;
+      _errorMessage = null; // Reset error message before fetching
     });
 
     final String type = widget.types.toLowerCase();
@@ -140,7 +148,9 @@ class _DetailsPageState extends State<DetailsPage> {
         'status': status,
       };
 
-      print('Sending POST request to $postApiUrl with body: $requestBody');
+      if (kDebugMode) {
+        print('Sending POST request to $postApiUrl with body: $requestBody');
+      }
 
       final response = await http.post(
         Uri.parse(postApiUrl),
@@ -151,8 +161,10 @@ class _DetailsPageState extends State<DetailsPage> {
         body: jsonEncode(requestBody),
       );
 
-      print('Received response with status code: ${response.statusCode}');
-      print('Response body: ${response.body}');
+      if (kDebugMode) {
+        print('Received response with status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+      }
 
       if (response.statusCode == 200 ||
           response.statusCode == 201 ||
@@ -217,7 +229,8 @@ class _DetailsPageState extends State<DetailsPage> {
           } else {
             // For meeting, check if 'results' is a list or a map
             if (type == 'meeting') {
-              if (responseData['results'] is List && responseData['results'].isNotEmpty) {
+              if (responseData['results'] is List &&
+                  responseData['results'].isNotEmpty) {
                 setState(() {
                   data = responseData['results'][0] as Map<String, dynamic>;
                   isLoading = false;
@@ -355,11 +368,13 @@ class _DetailsPageState extends State<DetailsPage> {
   /// Build Requestor Section
   Widget _buildRequestorSection() {
     // Correctly assign requestorName and requestor image URL
-    String requestorName = data?['requestor_name'] ?? data?['employee_name'] ?? 'No Name';
+    String requestorName =
+        data?['requestor_name'] ?? data?['employee_name'] ?? 'No Name';
     String submittedOn = '';
 
     // Fetch image URL for requestor from 'img_path' or 'img_ref'
-    String requestorImageUrl = data?['img_path'] ?? data?['img_ref'] ?? _defaultAvatarUrl();
+    String requestorImageUrl =
+        data?['img_path'] ?? data?['img_ref'] ?? _defaultAvatarUrl();
 
     switch (widget.types.toLowerCase()) {
       case 'leave':
@@ -449,7 +464,7 @@ class _DetailsPageState extends State<DetailsPage> {
         Text(
           status,
           style: TextStyle(
-            color: statusColor,
+            color: statusColor, // Text color matching the border
             fontWeight: FontWeight.bold,
             fontSize: 20, // Larger font size for emphasis
           ),
@@ -498,7 +513,6 @@ class _DetailsPageState extends State<DetailsPage> {
   Widget _buildDetailsSection() {
     final String type = widget.types.toLowerCase();
 
-
     switch (type) {
       case 'meeting':
         return Column(
@@ -514,9 +528,6 @@ class _DetailsPageState extends State<DetailsPage> {
               Colors.blue,
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.room, 'Room',
-                data?['room_name'] ?? 'No Room Info', Colors.orange),
-            const SizedBox(height: 12),
             _buildInfoRow(Icons.phone, 'Employee Tel',
                 data?['employee_tel'] ?? 'No Telephone', Colors.purple),
             const SizedBox(height: 12),
@@ -530,7 +541,6 @@ class _DetailsPageState extends State<DetailsPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             _buildInfoRow(Icons.bookmark, 'Title',
                 data?['name'] ?? 'No Title', Colors.green),
             const SizedBox(height: 12),
@@ -625,6 +635,9 @@ class _DetailsPageState extends State<DetailsPage> {
           backgroundColor: Colors.grey[300],
           onBackgroundImageError: (_, __) {
             // Handle image loading error by using default avatar
+            setState(() {
+              imageUrl = _defaultAvatarUrl();
+            });
           },
         ),
         if (label.isNotEmpty)
@@ -782,48 +795,36 @@ class _DetailsPageState extends State<DetailsPage> {
     String idToSend;
 
     if (type == 'leave') {
-      idToSend = data?['take_leave_request_id'] ?? widget.id; // Use take_leave_request_id
+      idToSend = data?['take_leave_request_id']?.toString() ?? widget.id;
     } else {
-      idToSend = data?['uid'] ?? widget.id; // Use uid for car and meeting
+      idToSend = data?['uid']?.toString() ?? widget.id;
     }
-
-    Widget? editPage;
 
     // Debug: Print the data and id before navigating to the edit page
-    print('Navigating to Edit Page with data: $data and id: $idToSend');
-
-    switch (type) {
-      case 'meeting':
-        editPage = MeetingEditPage(item: data!, id: idToSend);
-        break;
-      case 'leave':
-        editPage = LeaveRequestEditPage(item: data!, id: idToSend);
-        break;
-      case 'car':
-        editPage = CarBookingEditPage(item: data!, id: idToSend);
-        break;
-      default:
-        _showErrorDialog('Error', 'Unknown request type.');
-        setState(() {
-          isFinalized = false;
-        });
-        return;
+    if (kDebugMode) {
+      print('Navigating to Edit Page with data: $data and id: $idToSend');
     }
 
-    if (editPage != null) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => editPage!),
-      ).then((result) {
-        // Debug: Print the result from the edit page
+    // Navigate to OfficeBookingEventEditPage with id and type
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OfficeBookingEventEditPage(
+          id: idToSend,
+          type: type,
+        ),
+      ),
+    ).then((result) {
+      // Debug: Print the result from the edit page
+      if (kDebugMode) {
         print('Returned from Edit Page with result: $result');
+      }
 
-        // Refresh data after returning from edit page if result is true
-        if (result == true) {
-          _fetchData();
-        }
-      });
-    }
+      // Refresh data after returning from edit page if result is true
+      if (result == true) {
+        _fetchData();
+      }
+    });
 
     setState(() {
       isFinalized = false;
@@ -843,7 +844,8 @@ class _DetailsPageState extends State<DetailsPage> {
 
     final String? tokenValue = await _getToken();
     if (tokenValue == null) {
-      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog(
+          'Authentication Error', 'Token not found. Please log in again.');
       return;
     }
 
@@ -866,7 +868,8 @@ class _DetailsPageState extends State<DetailsPage> {
           if (response.statusCode == 200 || response.statusCode == 201) {
             _showSuccessDialog('Success', 'Leave request deleted successfully.');
           } else {
-            _showErrorDialog('Error', 'Failed to delete leave request: ${response.reasonPhrase}\nResponse Body: ${response.body}');
+            _showErrorDialog('Error',
+                'Failed to delete leave request: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
           break;
 
@@ -881,7 +884,8 @@ class _DetailsPageState extends State<DetailsPage> {
           if (response.statusCode == 200 || response.statusCode == 204) {
             _showSuccessDialog('Success', 'Car permit deleted successfully.');
           } else {
-            _showErrorDialog('Error', 'Failed to delete car permit: ${response.reasonPhrase}\nResponse Body: ${response.body}');
+            _showErrorDialog('Error',
+                'Failed to delete car permit: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
           break;
 
@@ -896,7 +900,8 @@ class _DetailsPageState extends State<DetailsPage> {
           if (response.statusCode == 200 || response.statusCode == 201) {
             _showSuccessDialog('Success', 'Meeting deleted successfully.');
           } else {
-            _showErrorDialog('Error', 'Failed to delete meeting: ${response.reasonPhrase}\nResponse Body: ${response.body}');
+            _showErrorDialog('Error',
+                'Failed to delete meeting: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
           break;
 
@@ -905,7 +910,8 @@ class _DetailsPageState extends State<DetailsPage> {
       }
     } catch (e) {
       print('Error deleting request: $e');
-      _showErrorDialog('Error', 'An unexpected error occurred while deleting the request.');
+      _showErrorDialog(
+          'Error', 'An unexpected error occurred while deleting the request.');
     }
 
     setState(() {
@@ -959,7 +965,7 @@ class _DetailsPageState extends State<DetailsPage> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-        onRefresh: _handleRefresh,  // Pull down to refresh
+        onRefresh: _handleRefresh, // Pull down to refresh
         child: data == null
             ? const Center(
           child: Text(
@@ -968,6 +974,8 @@ class _DetailsPageState extends State<DetailsPage> {
           ),
         )
             : SingleChildScrollView(
+          physics:
+          const AlwaysScrollableScrollPhysics(), // To allow pull-to-refresh even when content is less
           child: Padding(
             padding: const EdgeInsets.symmetric(
                 horizontal: 24.0, vertical: 16.0),

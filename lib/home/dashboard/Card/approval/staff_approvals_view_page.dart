@@ -2,9 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/car_booking_edit_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/leave_request_edit_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/edit_section/meeting_edit_page.dart';
+import 'package:pb_hrsystem/home/dashboard/history/history_office_booking_event_edit_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -619,43 +617,27 @@ class _ApprovalsViewPageState extends State<ApprovalsViewPage> {
       idToSend = data?['uid'] ?? widget.id; // Use uid for car and meeting
     }
 
-    Widget? editPage;
-
     // Debug: Print the data and id before navigating to the edit page
     print('Navigating to Edit Page with data: $data and id: $idToSend');
 
-    switch (type) {
-      case 'meeting':
-        editPage = MeetingEditPage(item: data!, id: idToSend);
-        break;
-      case 'leave':
-        editPage = LeaveRequestEditPage(item: data!, id: idToSend);
-        break;
-      case 'car':
-        editPage = CarBookingEditPage(item: data!, id: idToSend);
-        break;
-      default:
-        _showErrorDialog('Error', 'Unknown request type.');
-        setState(() {
-          isFinalized = false;
-        });
-        return;
-    }
+    // Navigate to OfficeBookingEventEditPage with id and type
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OfficeBookingEventEditPage(
+          id: idToSend,
+          type: type,
+        ),
+      ),
+    ).then((result) {
+      // Debug: Print the result from the edit page
+      print('Returned from Edit Page with result: $result');
 
-    if (editPage != null) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => editPage!),
-      ).then((result) {
-        // Debug: Print the result from the edit page
-        print('Returned from Edit Page with result: $result');
-
-        // Refresh data after returning from edit page if result is true
-        if (result == true) {
-          _fetchData();
-        }
-      });
-    }
+      // Refresh data after returning from edit page if result is true
+      if (result == true) {
+        _fetchData();
+      }
+    });
 
     setState(() {
       isFinalized = false;
