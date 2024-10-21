@@ -3,8 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/management/admin_approvals_view_page.dart';
-import 'package:pb_hrsystem/management/admin_history_view_page.dart';
+import 'package:pb_hrsystem/approvals//admin_approvals_view_page.dart';
+import 'package:pb_hrsystem/approvals//admin_history_view_page.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

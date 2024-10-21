@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/approvals/admin_approval_main_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_main_page.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approval/staff_approvals_main_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approvals/staff_approvals_main_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/qr_profile_page.dart';
 import 'package:pb_hrsystem/notifications/notification_admin_page.dart';
@@ -16,7 +18,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
-import 'package:pb_hrsystem/management/admin_approval_main_page.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -416,58 +417,10 @@ class _DashboardState extends State<Dashboard> {
                                       );
                                     }),
                                     _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
-                                      final currentUser = Provider.of<UserProvider>(context, listen: false).currentUser;
-
-                                      if (kDebugMode) {
-                                        print('Current user: ${currentUser.name}, Roles: ${currentUser.roles}');
-                                      }
-
-                                      const List<String> managementMappedRoles = [
-                                        UserRole.managersbh,
-                                        UserRole.john,
-                                        UserRole.adminhq1,
-                                      ];
-
-                                      const List<String> additionalManagementRoles = [
-                                        'HeadOfHR',
-                                        'HR',
-                                        'AdminHQ',
-                                      ];
-
-                                      for (var role in currentUser.roles) {
-                                        String mappedRole = UserRole.mapApiRole(role);
-                                        if (kDebugMode) {
-                                          print('API Role: $role => Mapped Role: $mappedRole');
-                                        }
-                                      }
-
-                                      final hasManagementRole = currentUser.roles.any((role) {
-                                        String mappedRole = UserRole.mapApiRole(role);
-                                        bool isManagementRole = managementMappedRoles.contains(mappedRole) ||
-                                            additionalManagementRoles.contains(role);
-                                        if (kDebugMode) {
-                                          print('Checking role: $role (mapped to: $mappedRole) - Is Management Role: $isManagementRole');
-                                        }
-                                        return isManagementRole;
-                                      });
-
-                                      if (hasManagementRole) {
-                                        if (kDebugMode) {
-                                          print('Navigating to Management Approvals Page');
-                                        }
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(builder: (context) => const ManagementApprovalsPage()),
-                                        );
-                                      } else {
-                                        if (kDebugMode) {
-                                          print('Navigating to Staff Approvals Page');
-                                        }
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(builder: (context) => const StaffApprovalsMainPage()),
-                                        );
-                                      }
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
+                                      );
                                     }),
                                     _buildActionCard(context, 'assets/status-up.png', 'Work Tracking', isDarkMode, () {
                                       Navigator.push(
