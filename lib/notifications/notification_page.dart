@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_details_page.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
+import 'package:pb_hrsystem/notifications/notification_detail_page.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-class ApprovalsMainPage extends StatefulWidget {
-  const ApprovalsMainPage({super.key});
+class NotificationPage extends StatefulWidget {
+  const NotificationPage({super.key});
 
   @override
-  _ApprovalsMainPageState createState() => _ApprovalsMainPageState();
+  _NotificationPageState createState() => _NotificationPageState();
 }
 
-class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
+class _NotificationPageState extends State<NotificationPage> {
   // Tab selection flag: true for Approvals, false for History
   bool _isPendingSelected = true;
 
@@ -316,7 +316,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
               },
             ),
             Text(
-              'Approvals',
+              'Notification Page',
               style: TextStyle(
                 color: isDarkMode ? Colors.white : Colors.black,
                 fontSize: 22,
@@ -366,7 +366,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                             : Colors.grey.shade600),
                     const SizedBox(width: 8),
                     Text(
-                      'Approvals',
+                      'Meeting',
                       style: TextStyle(
                         color: _isPendingSelected
                             ? Colors.white
@@ -411,7 +411,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                             : Colors.grey.shade600),
                     const SizedBox(width: 8),
                     Text(
-                      'History',
+                      'Approval',
                       style: TextStyle(
                         color: !_isPendingSelected
                             ? Colors.white
@@ -521,7 +521,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ApprovalsDetailsPage(
+            builder: (context) => NotificationDetailPage(
               types: type,
               id: id,
               status: status,

@@ -8,8 +8,7 @@ import 'package:pb_hrsystem/home/dashboard/history/history_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals/staff_approvals_main_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/qr_profile_page.dart';
-import 'package:pb_hrsystem/notifications/notification_admin_page.dart';
-import 'package:pb_hrsystem/notifications/notification_staff_page.dart';
+import 'package:pb_hrsystem/notifications/notification_page.dart'; // Updated import
 import 'package:pb_hrsystem/roles.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
@@ -116,32 +115,7 @@ class _DashboardState extends State<Dashboard> {
     super.dispose();
   }
 
-  // Method to check if the user has a management role
-  bool _hasManagementRole(List<String> roles) {
-    const List<String> managementMappedRoles = [
-      UserRole.managersbh,
-      UserRole.john,
-      UserRole.adminhq1,
-    ];
-
-    const List<String> additionalManagementRoles = [
-      'HeadOfHR',
-      'HR',
-      'AdminHQ',
-    ];
-
-    for (var role in roles) {
-      String mappedRole = UserRole.mapApiRole(role);
-      if (managementMappedRoles.contains(mappedRole) ||
-          additionalManagementRoles.contains(role)) {
-        if (kDebugMode) {
-          print('User has management role: $role (mapped to: $mappedRole)');
-        }
-        return true;
-      }
-    }
-    return false;
-  }
+  // Removed the _hasManagementRole method as it's no longer needed
 
   @override
   Widget build(BuildContext context) {
@@ -224,7 +198,6 @@ class _DashboardState extends State<Dashboard> {
                                   ),
                                 ),
                               ),
-
                               GestureDetector(
                                 onTap: () {
                                   _showLogoutDialog(context);
@@ -257,7 +230,6 @@ class _DashboardState extends State<Dashboard> {
               ),
             Column(
               children: [
-
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.all(16.0),
@@ -345,35 +317,15 @@ class _DashboardState extends State<Dashboard> {
                                       height: 24,
                                       color: isDarkMode ? Colors.white : Colors.black,
                                     ),
-                                    onPressed: () async {
-                                      // Fetch the latest user profile to get updated roles
-                                      try {
-                                        final userProfile = await futureUserProfile;
-                                        final roles = userProfile.roles;
-                                        if (_hasManagementRole(roles)) {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(builder: (context) => const NotificationAdminPage()),
-                                          ).then((_) {
-                                            setState(() {
-                                              _hasUnreadNotifications = false;
-                                            });
-                                          });
-                                        } else {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(builder: (context) => const NotificationStaffPage()),
-                                          ).then((_) {
-                                            setState(() {
-                                              _hasUnreadNotifications = false;
-                                            });
-                                          });
-                                        }
-                                      } catch (e) {
-                                        if (kDebugMode) {
-                                          print('Error fetching user roles: $e');
-                                        }
-                                      }
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => const NotificationPage()),
+                                      ).then((_) {
+                                        setState(() {
+                                          _hasUnreadNotifications = false;
+                                        });
+                                      });
                                     },
                                   ),
                                   if (_hasUnreadNotifications)
@@ -443,7 +395,6 @@ class _DashboardState extends State<Dashboard> {
       ),
     );
   }
-
 
   Widget _buildActionCard(BuildContext context, String imagePath, String title, bool isDarkMode, VoidCallback onTap) {
     return Card(

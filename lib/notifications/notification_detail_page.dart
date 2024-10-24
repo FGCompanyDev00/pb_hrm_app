@@ -4,12 +4,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-class ApprovalsDetailsPage extends StatefulWidget {
+class NotificationDetailPage extends StatefulWidget {
   final String id;
   final String types;
   final String status;
 
-  const ApprovalsDetailsPage({
+  const NotificationDetailPage({
     Key? key,
     required this.id,
     required this.types,
@@ -17,10 +17,10 @@ class ApprovalsDetailsPage extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _ApprovalsDetailsPageState createState() => _ApprovalsDetailsPageState();
+  _NotificationDetailPageState createState() => _NotificationDetailPageState();
 }
 
-class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
+class _NotificationDetailPageState extends State<NotificationDetailPage> {
   final TextEditingController _descriptionController = TextEditingController();
   bool isLoading = true;
   bool isFinalized = false;
