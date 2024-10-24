@@ -323,10 +323,6 @@ class _OfficeBookingEventEditPageState
           _showErrorMessage('Please enter the employee telephone number.');
           return false;
         }
-        if (_selectedMembers.isEmpty) {
-          _showErrorMessage('Please select at least one member.');
-          return false;
-        }
         break;
       case 'car':
         if (_carPurposeController.text.isEmpty ||

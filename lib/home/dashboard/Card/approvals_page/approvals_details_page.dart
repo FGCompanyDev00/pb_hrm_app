@@ -418,13 +418,6 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           // car approval has extra data to send
           endpoint = '$baseUrl/api/office-administration/car_permit/approved/${widget.id}';
           body = {
-            'vehicle_id': {
-              'vehicle_uid': approvalData?['vehicle_uid'] ?? 'default_uid',
-            },
-            'branch_vehicle': {
-              'vehicle_uid': approvalData?['vehicle_uid'] ?? '',
-              'permit_id': approvalData?['permit_id'] ?? '',
-            },
             'comment': comment
           };
         } else {
