@@ -26,81 +26,91 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
   // Loading state
   bool _isLoading = true;
 
-  // Pagination variables
-  static const int _pageSize = 20;
-  int _currentPendingPage = 1;
-  int _currentHistoryPage = 1;
-  bool _hasMorePending = true;
-  bool _hasMoreHistory = true;
-
-  // Scroll Controllers for pagination
-  final ScrollController _pendingScrollController = ScrollController();
-  final ScrollController _historyScrollController = ScrollController();
-
   // Known types
   final Set<String> _knownTypes = {'meeting', 'leave', 'car'};
+
+  // Leave Types Map: leave_type_id -> name
+  Map<int, String> _leaveTypesMap = {};
 
   @override
   void initState() {
     super.initState();
     _fetchInitialData();
-    _setupScrollControllers();
   }
 
-  @override
-  void dispose() {
-    _pendingScrollController.dispose();
-    _historyScrollController.dispose();
-    super.dispose();
-  }
-
-  /// Initializes data fetching for both Approvals and History sections
+  /// Initializes data fetching for leave types, pending items, and history items
   Future<void> _fetchInitialData() async {
     setState(() {
       _isLoading = true;
     });
-    await Future.wait([
-      _fetchPendingItems(reset: true),
-      _fetchHistoryItems(reset: true),
-    ]);
-    setState(() {
-      _isLoading = false;
-    });
-  }
 
-  /// Sets up scroll listeners for lazy loading in both sections
-  void _setupScrollControllers() {
-    _pendingScrollController.addListener(() {
-      if (_pendingScrollController.position.pixels >=
-          _pendingScrollController.position.maxScrollExtent - 200 &&
-          !_isLoading &&
-          _hasMorePending &&
-          _isPendingSelected) {
-        _fetchPendingItems();
-      }
-    });
-
-    _historyScrollController.addListener(() {
-      if (_historyScrollController.position.pixels >=
-          _historyScrollController.position.maxScrollExtent - 200 &&
-          !_isLoading &&
-          _hasMoreHistory &&
-          !_isPendingSelected) {
-        _fetchHistoryItems();
-      }
-    });
-  }
-
-  /// Fetches pending approval items with pagination
-  Future<void> _fetchPendingItems({bool reset = false}) async {
-    if (!_hasMorePending && !reset) return;
-
-    if (reset) {
-      _currentPendingPage = 1;
-      _hasMorePending = true;
-      _pendingItems.clear();
+    try {
+      await _fetchLeaveTypes();
+      await Future.wait([
+        _fetchPendingItems(),
+        _fetchHistoryItems(),
+      ]);
+    } catch (e) {
+      print('Error during initial data fetch: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching data: $e')),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
+  }
 
+  /// Fetches leave types from the API and populates the _leaveTypesMap
+  Future<void> _fetchLeaveTypes() async {
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    const String leaveTypesApiUrl = '$baseUrl/api/leave-types';
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final leaveTypesResponse = await http.get(
+        Uri.parse(leaveTypesApiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (leaveTypesResponse.statusCode == 200) {
+        final responseBody = jsonDecode(leaveTypesResponse.body);
+        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+          final List<dynamic> leaveTypesData = responseBody['results'];
+          setState(() {
+            _leaveTypesMap = {
+              for (var item in leaveTypesData)
+                item['leave_type_id']: item['name'].toString()
+            };
+          });
+        } else {
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load leave types');
+        }
+      } else {
+        throw Exception(
+            'Failed to load leave types: ${leaveTypesResponse.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching leave types: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching leave types: $e')),
+      );
+    }
+  }
+
+  /// Fetches all pending approval items without pagination
+  Future<void> _fetchPendingItems() async {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
     const String pendingApiUrl = '$baseUrl/api/app/tasks/approvals/pending';
 
@@ -113,7 +123,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
       }
 
       final pendingResponse = await http.get(
-        Uri.parse('$pendingApiUrl?page=$_currentPendingPage&size=$_pageSize'),
+        Uri.parse(pendingApiUrl),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -135,11 +145,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
               .toList();
 
           setState(() {
-            _pendingItems.addAll(filteredData);
-            _currentPendingPage++;
-            if (filteredData.length < _pageSize) {
-              _hasMorePending = false;
-            }
+            _pendingItems = filteredData;
           });
         } else {
           throw Exception(
@@ -157,16 +163,8 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
     }
   }
 
-  /// Fetches history items with pagination
-  Future<void> _fetchHistoryItems({bool reset = false}) async {
-    if (!_hasMoreHistory && !reset) return;
-
-    if (reset) {
-      _currentHistoryPage = 1;
-      _hasMoreHistory = true;
-      _historyItems.clear();
-    }
-
+  /// Fetches all history items without pagination
+  Future<void> _fetchHistoryItems() async {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
     const String historyApiUrl = '$baseUrl/api/app/tasks/approvals/history';
 
@@ -179,7 +177,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
       }
 
       final historyResponse = await http.get(
-        Uri.parse('$historyApiUrl?page=$_currentHistoryPage&size=$_pageSize'),
+        Uri.parse(historyApiUrl),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -201,11 +199,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
               .toList();
 
           setState(() {
-            _historyItems.addAll(filteredData);
-            _currentHistoryPage++;
-            if (filteredData.length < _pageSize) {
-              _hasMoreHistory = false;
-            }
+            _historyItems = filteredData;
           });
         } else {
           throw Exception(
@@ -242,7 +236,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           )
               : Expanded(
             child: RefreshIndicator(
-              onRefresh: _fetchInitialData, // Refreshes both sections
+              onRefresh: _fetchInitialData, // Refreshes all data
               child: _isPendingSelected
                   ? _pendingItems.isEmpty
                   ? const Center(
@@ -252,30 +246,15 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                 ),
               )
                   : ListView.builder(
-                controller: _pendingScrollController,
                 padding: const EdgeInsets.all(16.0),
-                itemCount:
-                _pendingItems.length + 1, // +1 for loading
+                itemCount: _pendingItems.length,
                 itemBuilder: (context, index) {
-                  if (index < _pendingItems.length) {
-                    final item = _pendingItems[index];
-                    return _buildItemCard(
-                      context,
-                      item,
-                      isHistory: false,
-                    );
-                  } else {
-                    // Display loading indicator at the end
-                    return _hasMorePending
-                        ? const Padding(
-                      padding: EdgeInsets.symmetric(
-                          vertical: 16.0),
-                      child: Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                        : const SizedBox.shrink();
-                  }
+                  final item = _pendingItems[index];
+                  return _buildItemCard(
+                    context,
+                    item,
+                    isHistory: false,
+                  );
                 },
               )
                   : _historyItems.isEmpty
@@ -286,30 +265,15 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                 ),
               )
                   : ListView.builder(
-                controller: _historyScrollController,
                 padding: const EdgeInsets.all(16.0),
-                itemCount:
-                _historyItems.length + 1, // +1 for loading
+                itemCount: _historyItems.length,
                 itemBuilder: (context, index) {
-                  if (index < _historyItems.length) {
-                    final item = _historyItems[index];
-                    return _buildItemCard(
-                      context,
-                      item,
-                      isHistory: true,
-                    );
-                  } else {
-                    // Display loading indicator at the end
-                    return _hasMoreHistory
-                        ? const Padding(
-                      padding: EdgeInsets.symmetric(
-                          vertical: 16.0),
-                      child: Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    )
-                        : const SizedBox.shrink();
-                  }
+                  final item = _historyItems[index];
+                  return _buildItemCard(
+                    context,
+                    item,
+                    isHistory: true,
+                  );
                 },
               ),
             ),
@@ -481,6 +445,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
     String status = (item['status']?.toString() ?? 'Pending').trim();
     String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
+    String requestorName = (item['requestor_name']?.toString() ?? 'N/A').trim();
     String id = (item['uid']?.toString() ??
         item['take_leave_request_id']?.toString() ??
         '')
@@ -516,20 +481,19 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         detailValue = employeeName;
         break;
       case 'leave':
-        title = item['name']?.toString() ??
-            item['leave_type_name']?.toString() ??
-            'No Title';
+        int leaveTypeId = item['leave_type_id'] ?? 0;
+        title = _leaveTypesMap[leaveTypeId] ?? 'Unknown Leave Type';
         startDate = item['take_leave_from']?.toString() ?? '';
         endDate = item['take_leave_to']?.toString() ?? '';
         detailLabel = 'Type';
-        detailValue = item['leave_type_name']?.toString() ?? 'N/A';
+        detailValue = _leaveTypesMap[leaveTypeId] ?? 'N/A';
         break;
       case 'car':
         title = item['purpose']?.toString() ?? 'No Purpose';
         startDate = item['date_out']?.toString() ?? '';
         endDate = item['date_in']?.toString() ?? '';
         detailLabel = 'Requestor Name';
-        detailValue = employeeName;
+        detailValue = _removeDuplicateNames(requestorName);
         break;
       default:
       // This case should not occur due to the earlier type check
@@ -674,6 +638,19 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         ),
       ),
     );
+  }
+
+  /// Removes duplicate parts from the requestor name
+  String _removeDuplicateNames(String name) {
+    if (name.isEmpty) return 'N/A';
+    // Example: "UserHQ1UserHQ1" -> "UserHQ1"
+    // This can be adjusted based on the duplication pattern
+    RegExp regExp = RegExp(r'^(.*?)\1+$');
+    Match? match = regExp.firstMatch(name);
+    if (match != null && match.groupCount >= 1) {
+      return match.group(1)!;
+    }
+    return name;
   }
 
   /// Builds the employee avatar with error handling
