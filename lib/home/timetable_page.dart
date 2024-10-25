@@ -1,28 +1,31 @@
+import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_timetable/flutter_timetable.dart';
 import 'package:intl/intl.dart';
+import 'package:pb_hrsystem/core/standard/color.dart';
+import 'package:pb_hrsystem/core/widgets/timetable_day/timetable_day_veiw.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class TimetablePage extends StatefulWidget {
   final DateTime date;
-  final List<TimetableItem<String>> events;
+  // final List<TimetableItem> events;
 
-  const TimetablePage({required this.date, required this.events, super.key});
+  const TimetablePage({required this.date, super.key});
 
   @override
-  _TimetablePageState createState() => _TimetablePageState();
+  TimetablePageState createState() => TimetablePageState();
 }
 
-class _TimetablePageState extends State<TimetablePage> {
+class TimetablePageState extends State<TimetablePage> {
   late DateTime selectedDate = widget.date;
-  List<TimetableItem<String>> events = [];
+  List<TimetableItem> events = [];
+  List<TimetableItem<String>> currentEvents = [];
 
   @override
   void initState() {
     super.initState();
-    events = widget.events;
+    // events = widget.events;
     _fetchLeaveRequests(selectedDate);
   }
 
@@ -42,39 +45,58 @@ class _TimetablePageState extends State<TimetablePage> {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> results = json.decode(response.body)['results'];
+        List<dynamic> results = json.decode(response.body)['results'];
         final List<TimetableItem<String>> fetchedEvents = [];
-
+        results = results.where((e) {
+          DateTime dateData = DateTime.parse(e['take_leave_from']);
+          return dateData.day == selectedDate.day;
+        }).toList();
         for (var item in results) {
-          final DateTime startDate = item['take_leave_from'] != null
-              ? DateTime.parse(item['take_leave_from'])
-              : DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 8);
-          final DateTime endDate = item['take_leave_to'] != null
-              ? DateTime.parse(item['take_leave_to'])
-              : DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 17);
+          final DateTime startDate = item['take_leave_from'] != null ? DateTime.parse(item['take_leave_from']) : DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 8);
+          final DateTime endDate = item['take_leave_to'] != null ? DateTime.parse(item['take_leave_to']) : DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 17);
+          final DateTime updatedOn = item['updated_at'] != null ? DateTime.parse(item['updated_at']) : DateTime.parse(item['created_at']);
           final eventTitle = item['name'];
-          final eventDescription = item['take_leave_reason'] ?? 'Approval Pending';
+          final eventReason = item['take_leave_reason'] ?? 'Approval Pending';
+          double eventDays = 0;
+
+          if (item['days'].runtimeType == double) {
+            eventDays = item['days'];
+          }
+
+          if (item['days'].runtimeType == int) {
+            eventDays = double.parse(item['days'].toString());
+          }
 
           // Create TimetableItems for each day of the event
-          for (var day = startDate;
-          day.isBefore(endDate.add(const Duration(days: 1)));
-          day = day.add(const Duration(days: 1))) {
+          // if (startDate.hour > 0 && endDate.hour > 0) {
+          for (var day = startDate; day.isBefore(endDate.add(const Duration(days: 1))); day = day.add(const Duration(days: 1))) {
             fetchedEvents.add(
-              TimetableItem<String>(
-                DateTime(day.year, day.month, day.day, startDate.hour, startDate.minute),
-                DateTime(day.year, day.month, day.day, endDate.hour, endDate.minute),
-                data: '$eventTitle: $eventDescription',
+              TimetableItem(
+                id: item['take_leave_request_id'],
+                value: item['pID'],
+                title: eventTitle,
+                reason: eventReason,
+                name: item['requestor_name'],
+                updatedOn: updatedOn,
+                leaveTypeID: item['leave_type_id'],
+                days: eventDays.toDouble(),
+                start: DateTime(day.year, day.month, day.day, 12, 0),
+                end: DateTime(day.year, day.month, day.day, 15, 0),
+                // start: DateTime(day.year, day.month, day.day, startDate.hour, startDate.minute),
+                // end: DateTime(day.year, day.month, day.day, endDate.hour, endDate.minute),
+                category: 'AL',
+                status: item['is_approve'],
               ),
             );
           }
+          // }
         }
 
         setState(() {
-          events = fetchedEvents;
+          currentEvents = fetchedEvents;
         });
       } else {
-        _showErrorDialog(
-            'Failed to Load Leave Requests', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to Load Leave Requests', 'Server returned status code: ${response.statusCode}. Message: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog('Error Fetching Leave Requests', 'An unexpected error occurred: $e');
@@ -139,39 +161,21 @@ class _TimetablePageState extends State<TimetablePage> {
         toolbarHeight: 80,
       ),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left, size: 30),
-                  onPressed: () {
-                    setState(() {
-                      selectedDate = DateTime(selectedDate.year, selectedDate.month - 1, selectedDate.day);
-                      _fetchLeaveRequests(selectedDate);
-                    });
-                  },
-                ),
-                Text(
-                  DateFormat.yMMMM().format(selectedDate),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right, size: 30),
-                  onPressed: () {
-                    setState(() {
-                      selectedDate = DateTime(selectedDate.year, selectedDate.month + 1, selectedDate.day);
-                      _fetchLeaveRequests(selectedDate);
-                    });
-                  },
-                ),
-              ],
+            padding: const EdgeInsets.symmetric(
+              vertical: 10.0,
+              horizontal: 25,
+            ),
+            child: Text(
+              DateFormat('y MMMM').format(selectedDate),
+              textAlign: TextAlign.left,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
           ),
           Padding(
@@ -180,10 +184,7 @@ class _TimetablePageState extends State<TimetablePage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(7, (index) {
                 final day = selectedDate.add(Duration(days: index - 3));
-                final hasEvent = events.any((event) =>
-                event.start.day == day.day &&
-                    event.start.month == day.month &&
-                    event.start.year == day.year);
+                final hasEvent = events.any((event) => event.start.day == day.day && event.start.month == day.month && event.start.year == day.year);
                 return _buildDateItem(
                   DateFormat.E().format(day),
                   day.day,
@@ -199,54 +200,74 @@ class _TimetablePageState extends State<TimetablePage> {
               }),
             ),
           ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: _buildEventSlotsForDay(selectedDate),
+          Container(
+            height: 8,
+            margin: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: ColorStandardization().colorDarkGold,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.grey,
+                  spreadRadius: 1.0,
+                  blurRadius: 5.0,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
           ),
+          TimeTableDayWidget(
+            eventsTimeTable: currentEvents,
+            selectedDay: selectedDate,
+          ),
+          // Expanded(
+          //   child: ListView(
+          //     padding: const EdgeInsets.symmetric(horizontal: 16),
+          //     children: _buildEventSlotsForDay(selectedDate),
+          //   ),
+          // ),
         ],
       ),
     );
   }
 
-  Widget _buildDateItem(String day, int date,
-      {bool isSelected = false, bool hasEvent = false, required VoidCallback onTap}) {
+  Widget _buildDateItem(String day, int date, {bool isSelected = false, bool hasEvent = false, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
-      child: Column(
-        children: [
-          Text(
-            day,
-            style: TextStyle(
-              fontSize: 14,
-              color: isSelected ? Colors.black : Colors.grey,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? const Color(0xFFD4A017)
-                  : hasEvent
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 6,
+          vertical: 12,
+        ),
+        width: 45,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFFD4A017)
+              : hasEvent
                   ? Colors.green.withOpacity(0.5)
                   : Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: isSelected
-                  ? [BoxShadow(color: Colors.black26, blurRadius: 10)]
-                  : [],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            Text(
+              day.toUpperCase(),
+              style: TextStyle(
+                fontSize: 12,
+                color: isSelected ? Colors.white : Colors.grey,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
             ),
-            child: Text(
+            const SizedBox(height: 8),
+            Text(
               "$date",
               style: TextStyle(
                 fontSize: 16,
                 color: isSelected || hasEvent ? Colors.white : Colors.black,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -267,56 +288,53 @@ class _TimetablePageState extends State<TimetablePage> {
           Expanded(
             child: event != null && event.isNotEmpty
                 ? Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.green,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                event,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-              ),
-            )
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      event,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  )
                 : Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade300, width: 1),
-                ),
-              ),
-            ),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                      ),
+                    ),
+                  ),
           ),
         ],
       ),
     );
   }
 
-  List<Widget> _buildEventSlotsForDay(DateTime date) {
-    final List<Widget> slots = [];
-    final eventsForDay = events.where((event) =>
-    event.start.day == date.day &&
-        event.start.month == date.month &&
-        event.start.year == date.year).toList();
+  // List<Widget> _buildEventSlotsForDay(DateTime date) {
+  //   final List<Widget> slots = [];
+  //   final eventsForDay = events.where((event) => event.start.day == date.day && event.start.month == date.month && event.start.year == date.year).toList();
 
-    for (var i = 0; i < 24; i++) {
-      final String timeLabel = "${i.toString().padLeft(2, '0')}:00";
-      final matchingEvent = eventsForDay.firstWhere(
-            (event) => event.start.hour == i,
-        orElse: () => TimetableItem<String>(
-          DateTime(date.year, date.month, date.day, i),
-          DateTime(date.year, date.month, date.day, i + 1),
-          data: "",
-        ),
-      );
+  //   for (var i = 7; i < 16; i++) {
+  //     final String timeLabel = "${i.toString().padLeft(2, '0')}:00";
+  //     final matchingEvent = eventsForDay.firstWhere(
+  //       (event) => event.start.hour == i,
+  //       orElse: () => TimetableItem<String>(
+  //         DateTime(date.year, date.month, date.day, i),
+  //         DateTime(date.year, date.month, date.day, i + 1),
+  //         data: "",
+  //       ),
+  //     );
 
-      String eventTitle = matchingEvent.data ?? "";
+  //     String eventTitle = matchingEvent.data ?? "";
 
-      if (eventTitle.isNotEmpty) {
-        slots.add(_buildTimeSlot(timeLabel, event: eventTitle));
-      } else {
-        slots.add(_buildTimeSlot(timeLabel));
-      }
-    }
+  //     if (eventTitle.isNotEmpty) {
+  //       slots.add(_buildTimeSlot(timeLabel, event: eventTitle));
+  //     } else {
+  //       slots.add(_buildTimeSlot(timeLabel));
+  //     }
+  //   }
 
-    return slots;
-  }
+  //   return slots;
+  // }
 }

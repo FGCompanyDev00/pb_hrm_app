@@ -299,9 +299,9 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
   Map<String, String> _getEventDetails() {
     String creatorName = widget.event['createdBy'] ?? widget.event['created_by_name'] ?? 'Unknown';
     String imageUrl = widget.event['img_name'] ?? '';
-    String createdAt = widget.event['created_at'] ?? '';
+    DateTime createdAt = widget.event['created_at'] ?? '';
 
-    String formattedCreatedAt = _formatDate(createdAt, format: 'MMM dd, yyyy');
+    String formattedCreatedAt = _formatDate(createdAt.toString(), format: 'MMM dd, yyyy');
     String formattedStartDate = '';
     String formattedEndDate = '';
 

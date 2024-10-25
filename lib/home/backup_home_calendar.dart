@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:async';
+import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_timetable/flutter_timetable.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
@@ -53,10 +53,8 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     _fetchMeetingRoomBookings();
     _fetchCarBookings();
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initializationSettings =
-    InitializationSettings(android: initializationSettingsAndroid);
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
     _animationController = AnimationController(
       vsync: this,
@@ -395,10 +393,8 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             children: [
               Text('Description: ${event.description}', semanticsLabel: 'Description: ${event.description}'),
               Text('Status: ${event.status}', semanticsLabel: 'Status: ${event.status}'),
-              if (event.isMeeting && event.location != null)
-                Text('Location: ${event.location}', semanticsLabel: 'Location: ${event.location}'),
-              if (event.isMeeting && event.createdBy != null)
-                Text('Created By: ${event.createdBy}', semanticsLabel: 'Created By: ${event.createdBy}'),
+              if (event.isMeeting && event.location != null) Text('Location: ${event.location}', semanticsLabel: 'Location: ${event.location}'),
+              if (event.isMeeting && event.createdBy != null) Text('Created By: ${event.createdBy}', semanticsLabel: 'Created By: ${event.createdBy}'),
             ],
           ),
           actions: [
@@ -449,8 +445,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
       dayEvents = dayEvents.where((event) {
         final eventTitle = event.title.toLowerCase();
         final eventDescription = event.description.toLowerCase();
-        return eventTitle.contains(_searchQuery.toLowerCase()) ||
-            eventDescription.contains(_searchQuery.toLowerCase());
+        return eventTitle.contains(_searchQuery.toLowerCase()) || eventDescription.contains(_searchQuery.toLowerCase());
       }).toList();
     }
     setState(() {
@@ -463,19 +458,11 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
   void _showDayView(DateTime selectedDay) {
     final List<Event> dayEvents = _getEventsForDay(selectedDay);
-    final List<TimetableItem<String>> timetableItems = dayEvents.map((event) {
-      return TimetableItem<String>(
-        event.startDateTime,
-        event.endDateTime,
-        data: event.title,
-      );
-    }).toList();
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => TimetablePage(
           date: selectedDay,
-          events: timetableItems,
         ),
       ),
     );
@@ -627,15 +614,15 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
   }
 
   void _addEvent(
-      String title,
-      DateTime startDateTime,
-      DateTime endDateTime,
-      String description, {
-        required String status,
-        required bool isMeeting,
-        required String category,
-        required String uid,
-      }) {
+    String title,
+    DateTime startDateTime,
+    DateTime endDateTime,
+    String description, {
+    required String status,
+    required bool isMeeting,
+    required String category,
+    required String uid,
+  }) {
     final newEvent = Event(
       title,
       startDateTime,
@@ -924,8 +911,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                 final startTime = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day, hour, 0);
                 final endTime = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day, hour + 1, 0);
                 final hourEvents = events.where((event) {
-                  return (event.startDateTime.hour <= hour && event.endDateTime.hour > hour) ||
-                      (!event.isMeeting && event.startDateTime.hour == 0 && event.endDateTime.hour == 0);
+                  return (event.startDateTime.hour <= hour && event.endDateTime.hour > hour) || (!event.isMeeting && event.startDateTime.hour == 0 && event.endDateTime.hour == 0);
                 }).toList();
                 return Column(
                   children: [
@@ -949,29 +935,29 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                             child: hourEvents.isEmpty
                                 ? const SizedBox()
                                 : Wrap(
-                              spacing: 4,
-                              runSpacing: 4,
-                              children: hourEvents.map((event) {
-                                return GestureDetector(
-                                  onTap: () {
-                                    _showEventDetailModal(event);
-                                  },
-                                  child: Container(
-                                    width: MediaQuery.of(context).size.width - 80,
-                                    padding: const EdgeInsets.all(8.0),
-                                    decoration: BoxDecoration(
-                                      color: getEventColor(event).withOpacity(0.7),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      event.title,
-                                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
+                                    spacing: 4,
+                                    runSpacing: 4,
+                                    children: hourEvents.map((event) {
+                                      return GestureDetector(
+                                        onTap: () {
+                                          _showEventDetailModal(event);
+                                        },
+                                        child: Container(
+                                          width: MediaQuery.of(context).size.width - 80,
+                                          padding: const EdgeInsets.all(8.0),
+                                          decoration: BoxDecoration(
+                                            color: getEventColor(event).withOpacity(0.7),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            event.title,
+                                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
                                   ),
-                                );
-                              }).toList(),
-                            ),
                           ),
                         ),
                       ],
@@ -994,8 +980,7 @@ class GradientAnimationLine extends StatefulWidget {
   _GradientAnimationLineState createState() => _GradientAnimationLineState();
 }
 
-class _GradientAnimationLineState extends State<GradientAnimationLine>
-    with SingleTickerProviderStateMixin {
+class _GradientAnimationLineState extends State<GradientAnimationLine> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<Color?> _colorAnimation1;
   late final Animation<Color?> _colorAnimation2;
@@ -1070,29 +1055,28 @@ class Event {
   final String category;
 
   Event(
-      this.title,
-      this.startDateTime,
-      this.endDateTime,
-      this.description, {
-        required this.status,
-        required this.isMeeting,
-        this.location,
-        this.createdBy,
-        this.imgName,
-        this.createdAt,
-        required this.uid,
-        this.isRepeat,
-        this.videoConference,
-        this.backgroundColor,
-        this.outmeetingUid,
-        required this.category,
-      });
+    this.title,
+    this.startDateTime,
+    this.endDateTime,
+    this.description, {
+    required this.status,
+    required this.isMeeting,
+    this.location,
+    this.createdBy,
+    this.imgName,
+    this.createdAt,
+    required this.uid,
+    this.isRepeat,
+    this.videoConference,
+    this.backgroundColor,
+    this.outmeetingUid,
+    required this.category,
+  });
 
   String get formattedTime => DateFormat.jm().format(startDateTime);
 
   @override
-  String toString() =>
-      '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
+  String toString() => '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
 }
 
 class MeetingDataSource extends CalendarDataSource {

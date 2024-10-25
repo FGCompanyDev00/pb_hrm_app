@@ -10,6 +10,15 @@ typedef DayViewItemBuilder<T extends Object> = Widget Function(
   AdvancedDayEvent<T> event,
 );
 
+typedef TimeViewItemBuilder<T extends Object> = Widget Function(
+  BuildContext context,
+  BoxConstraints constraints,
+
+  ///index of the item in same row
+  int itemIndex,
+  TimetableItem event,
+);
+
 typedef DayViewTimeRowBuilder<T extends Object> = Widget Function(
   BuildContext context,
   BoxConstraints constraints,
