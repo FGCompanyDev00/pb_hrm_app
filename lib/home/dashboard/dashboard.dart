@@ -2,10 +2,8 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/approvals/admin_approval_main_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_main_page.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approvals/staff_approvals_main_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/qr_profile_page.dart';
 import 'package:pb_hrsystem/notifications/notification_page.dart'; // Updated import

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_details_page.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
-import 'package:pb_hrsystem/notifications/notification_detail_page.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,10 +16,11 @@ class NotificationPage extends StatefulWidget {
 }
 
 class _NotificationPageState extends State<NotificationPage> {
-  // Tab selection flag: true for Approvals, false for History
-  bool _isPendingSelected = true;
+  // Tab selection flag: true for Meeting, false for Approval
+  bool _isMeetingSelected = true;
 
   // Data lists
+  List<Map<String, dynamic>> _meetingInvites = [];
   List<Map<String, dynamic>> _pendingItems = [];
   List<Map<String, dynamic>> _historyItems = [];
 
@@ -32,13 +33,17 @@ class _NotificationPageState extends State<NotificationPage> {
   // Leave Types Map: leave_type_id -> name
   Map<int, String> _leaveTypesMap = {};
 
+  // Base URL for images
+  final String _imageBaseUrl =
+      'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
+
   @override
   void initState() {
     super.initState();
     _fetchInitialData();
   }
 
-  /// Initializes data fetching for leave types, pending items, and history items
+  /// Initializes data fetching for leave types, pending items, history items, and meeting invites
   Future<void> _fetchInitialData() async {
     setState(() {
       _isLoading = true;
@@ -48,10 +53,12 @@ class _NotificationPageState extends State<NotificationPage> {
       await _fetchLeaveTypes();
       await Future.wait([
         _fetchPendingItems(),
-        _fetchHistoryItems(),
+        _fetchMeetingInvites(),
       ]);
-    } catch (e) {
+      print('Initial data fetched successfully.');
+    } catch (e, stackTrace) {
       print('Error during initial data fetch: $e');
+      print(stackTrace);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching data: $e')),
       );
@@ -83,16 +90,21 @@ class _NotificationPageState extends State<NotificationPage> {
         },
       );
 
+      print(
+          'Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
+
       if (leaveTypesResponse.statusCode == 200) {
         final responseBody = jsonDecode(leaveTypesResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
           final List<dynamic> leaveTypesData = responseBody['results'];
           setState(() {
             _leaveTypesMap = {
               for (var item in leaveTypesData)
-                item['leave_type_id']: item['name'].toString()
+                item['leave_type_id'] as int: item['name'].toString()
             };
           });
+          print('Leave types loaded: $_leaveTypesMap');
         } else {
           throw Exception(
               responseBody['message'] ?? 'Failed to load leave types');
@@ -101,11 +113,13 @@ class _NotificationPageState extends State<NotificationPage> {
         throw Exception(
             'Failed to load leave types: ${leaveTypesResponse.statusCode}');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error fetching leave types: $e');
+      print(stackTrace);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching leave types: $e')),
       );
+      rethrow; // So that _fetchInitialData catches and handles
     }
   }
 
@@ -130,9 +144,13 @@ class _NotificationPageState extends State<NotificationPage> {
         },
       );
 
+      print(
+          'Fetching pending items: Status Code ${pendingResponse.statusCode}');
+
       if (pendingResponse.statusCode == 200) {
         final responseBody = jsonDecode(pendingResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
           final List<dynamic> pendingData = responseBody['results'];
 
           // Filter out null items and unknown types
@@ -147,6 +165,7 @@ class _NotificationPageState extends State<NotificationPage> {
           setState(() {
             _pendingItems = filteredData;
           });
+          print('Pending items loaded: ${_pendingItems.length} items.');
         } else {
           throw Exception(
               responseBody['message'] ?? 'Failed to load pending data');
@@ -155,18 +174,21 @@ class _NotificationPageState extends State<NotificationPage> {
         throw Exception(
             'Failed to load pending data: ${pendingResponse.statusCode}');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error fetching pending data: $e');
+      print(stackTrace);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching pending data: $e')),
       );
+      rethrow;
     }
   }
 
-  /// Fetches all history items without pagination
-  Future<void> _fetchHistoryItems() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String historyApiUrl = '$baseUrl/api/app/tasks/approvals/history';
+
+  /// Fetches meeting invites from the provided API and populates the _meetingInvites list
+  Future<void> _fetchMeetingInvites() async {
+    const String baseUrl = 'https://demo-application-api.flexiflows.co'; // Replace with your actual base URL
+    final String meetingInvitesApiUrl = '$baseUrl/api/office-administration/book_meeting_room/invites-meeting';
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -176,44 +198,46 @@ class _NotificationPageState extends State<NotificationPage> {
         throw Exception('User not authenticated');
       }
 
-      final historyResponse = await http.get(
-        Uri.parse(historyApiUrl),
+      final response = await http.get(
+        Uri.parse(meetingInvitesApiUrl),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
 
-      if (historyResponse.statusCode == 200) {
-        final responseBody = jsonDecode(historyResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
-          final List<dynamic> historyData = responseBody['results'];
+      print('Fetching meeting invites: Status Code ${response.statusCode}');
 
-          // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = historyData
-              .where((item) => item != null)
-              .map((item) => Map<String, dynamic>.from(item))
-              .where((item) =>
-          item['types'] != null &&
-              _knownTypes.contains(item['types'].toString().toLowerCase()))
-              .toList();
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+          final List<dynamic> meetingData = responseBody['results'];
+
+          // Add 'types': 'meeting' to each meeting item for consistency
+          final List<Map<String, dynamic>> formattedMeetingData = meetingData.map((item) {
+            final Map<String, dynamic> meetingItem = Map<String, dynamic>.from(item);
+            meetingItem['types'] = 'meeting'; // Ensure 'types' field is present
+            return meetingItem;
+          }).toList();
 
           setState(() {
-            _historyItems = filteredData;
+            _meetingInvites = formattedMeetingData;
           });
+
+          print('Meeting invites loaded: ${_meetingInvites.length} items.');
         } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load history data');
+          throw Exception(responseBody['message'] ?? 'Failed to load meeting invites');
         }
       } else {
-        throw Exception(
-            'Failed to load history data: ${historyResponse.statusCode}');
+        throw Exception('Failed to load meeting invites: ${response.statusCode}');
       }
-    } catch (e) {
-      print('Error fetching history data: $e');
+    } catch (e, stackTrace) {
+      print('Error fetching meeting invites: $e');
+      print(stackTrace);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching history data: $e')),
+        SnackBar(content: Text('Error fetching meeting invites: $e')),
       );
+      rethrow;
     }
   }
 
@@ -237,19 +261,19 @@ class _NotificationPageState extends State<NotificationPage> {
               : Expanded(
             child: RefreshIndicator(
               onRefresh: _fetchInitialData, // Refreshes all data
-              child: _isPendingSelected
-                  ? _pendingItems.isEmpty
+              child: _isMeetingSelected
+                  ? _meetingInvites.isEmpty
                   ? const Center(
                 child: Text(
-                  'No Pending Items',
+                  'No Meeting Invites',
                   style: TextStyle(fontSize: 16),
                 ),
               )
                   : ListView.builder(
                 padding: const EdgeInsets.all(16.0),
-                itemCount: _pendingItems.length,
+                itemCount: _meetingInvites.length,
                 itemBuilder: (context, index) {
-                  final item = _pendingItems[index];
+                  final item = _meetingInvites[index];
                   return _buildItemCard(
                     context,
                     item,
@@ -257,24 +281,27 @@ class _NotificationPageState extends State<NotificationPage> {
                   );
                 },
               )
-                  : _historyItems.isEmpty
+                  : _pendingItems.isEmpty && _historyItems.isEmpty
                   ? const Center(
                 child: Text(
-                  'No History Items',
+                  'No Approval Items',
                   style: TextStyle(fontSize: 16),
                 ),
               )
-                  : ListView.builder(
+                  : ListView(
                 padding: const EdgeInsets.all(16.0),
-                itemCount: _historyItems.length,
-                itemBuilder: (context, index) {
-                  final item = _historyItems[index];
-                  return _buildItemCard(
+                children: [
+                  ..._pendingItems.map((item) => _buildItemCard(
+                    context,
+                    item,
+                    isHistory: false,
+                  )),
+                  ..._historyItems.map((item) => _buildItemCard(
                     context,
                     item,
                     isHistory: true,
-                  );
-                },
+                  )),
+                ],
               ),
             ),
           ),
@@ -316,7 +343,7 @@ class _NotificationPageState extends State<NotificationPage> {
               },
             ),
             Text(
-              'Notification Page',
+              'Notification',
               style: TextStyle(
                 color: isDarkMode ? Colors.white : Colors.black,
                 fontSize: 22,
@@ -330,7 +357,7 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
-  /// Builds the tab bar for toggling between Approvals and History.
+  /// Builds the tab bar for toggling between Meeting and Approval.
   Widget _buildTabBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
@@ -339,18 +366,16 @@ class _NotificationPageState extends State<NotificationPage> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                if (!_isPendingSelected) {
+                if (!_isMeetingSelected) {
                   setState(() {
-                    _isPendingSelected = true;
+                    _isMeetingSelected = true;
                   });
                 }
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
                 decoration: BoxDecoration(
-                  color: _isPendingSelected
-                      ? Colors.amber
-                      : Colors.grey.shade300,
+                  color: _isMeetingSelected ? Colors.amber : Colors.grey.shade300,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -359,16 +384,16 @@ class _NotificationPageState extends State<NotificationPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.hourglass_empty_rounded,
+                    Icon(Icons.meeting_room, // Updated Icon
                         size: 24,
-                        color: _isPendingSelected
+                        color: _isMeetingSelected
                             ? Colors.white
                             : Colors.grey.shade600),
                     const SizedBox(width: 8),
                     Text(
                       'Meeting',
                       style: TextStyle(
-                        color: _isPendingSelected
+                        color: _isMeetingSelected
                             ? Colors.white
                             : Colors.grey.shade600,
                         fontWeight: FontWeight.bold,
@@ -384,16 +409,16 @@ class _NotificationPageState extends State<NotificationPage> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                if (_isPendingSelected) {
+                if (_isMeetingSelected) {
                   setState(() {
-                    _isPendingSelected = false;
+                    _isMeetingSelected = false;
                   });
                 }
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
                 decoration: BoxDecoration(
-                  color: !_isPendingSelected
+                  color: !_isMeetingSelected
                       ? Colors.amber
                       : Colors.grey.shade300,
                   borderRadius: const BorderRadius.only(
@@ -406,14 +431,14 @@ class _NotificationPageState extends State<NotificationPage> {
                   children: [
                     Icon(Icons.history_rounded,
                         size: 24,
-                        color: !_isPendingSelected
+                        color: !_isMeetingSelected
                             ? Colors.white
                             : Colors.grey.shade600),
                     const SizedBox(width: 8),
                     Text(
                       'Approval',
                       style: TextStyle(
-                        color: !_isPendingSelected
+                        color: !_isMeetingSelected
                             ? Colors.white
                             : Colors.grey.shade600,
                         fontWeight: FontWeight.bold,
@@ -430,222 +455,237 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
-  /// Builds each item card for Approvals or History.
+  /// Builds each item card for Meeting or Approval.
   Widget _buildItemCard(BuildContext context, Map<String, dynamic> item,
       {required bool isHistory}) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+    final themeNotifier =
+    Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    // Extract and validate common fields
-    String type = (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
-    if (!_knownTypes.contains(type)) {
-      // Unknown type, do not display
-      return const SizedBox.shrink();
-    }
+    try {
+      // Determine the type of the item
+      String type = (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
+      if (!_knownTypes.contains(type)) {
+        // Unknown type, do not display
+        print('Unknown type encountered: $type');
+        return const SizedBox.shrink();
+      }
 
-    String status = (item['status']?.toString() ??
-        item['is_approve']?.toString() ??
-        'Pending')
-        .trim();
-    String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
-    String requestorName = (item['requestor_name']?.toString() ?? 'N/A').trim();
+      String status = (item['status']?.toString() ?? 'Pending').trim();
+      String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
 
-    // Correct ID usage based on type
-    String id = '';
-    if (type == 'leave') {
-      id = (item['take_leave_request_id']?.toString() ?? '').trim();
-    } else {
-      id = (item['uid']?.toString() ?? '').trim();
-    }
+      // Correct ID usage based on type
+      String id = '';
+      if (type == 'leave') {
+        id = (item['take_leave_request_id']?.toString() ?? '').trim();
+      } else if (type == 'meeting') {
+        id = (item['uid']?.toString() ?? '').trim(); // Use 'uid' for meeting
+      } else {
+        id = (item['uid']?.toString() ?? '').trim(); // Use 'uid' for car
+      }
 
-    String imgName = (item['img_name']?.toString() ?? '').trim();
-    String imgPath = (item['img_path']?.toString() ?? '').trim();
+      if (id.isEmpty) {
+        print('Item with type $type has empty id.');
+        return const SizedBox.shrink();
+      }
 
-    // Determine employee image URL
-    String employeeImage = imgPath.isNotEmpty
-        ? imgPath
-        : (imgName.isNotEmpty
-        ? imgName
-        : 'https://via.placeholder.com/150');
+      String imgName = (item['img_name']?.toString() ?? '').trim();
+      String imgPath = (item['img_path']?.toString() ?? '').trim();
 
-    // Determine colors and icons based on type
-    Color typeColor = _getTypeColor(type);
-    Color statusColor = _getStatusColor(status);
-    IconData typeIcon = _getIconForType(type);
+      // Determine employee image URL
+      String employeeImage;
+      if (imgPath.isNotEmpty && imgPath.startsWith('http')) {
+        employeeImage = imgPath;
+      } else if (imgPath.isNotEmpty) {
+        employeeImage = '$_imageBaseUrl$imgPath';
+      } else if (imgName.isNotEmpty && imgName.startsWith('http')) {
+        employeeImage = imgName;
+      } else if (imgName.isNotEmpty) {
+        employeeImage = '$_imageBaseUrl$imgName';
+      } else {
+        // Use default placeholder image
+        employeeImage =
+        'https://via.placeholder.com/150'; // Ensure this URL is accessible
+      }
 
-    // Determine title and dates based on type
-    String title = '';
-    String startDate = '';
-    String endDate = '';
-    String detailLabel = '';
-    String detailValue = '';
+      // Determine colors and icons based on type
+      Color typeColor = _getTypeColor(type);
+      Color statusColor = _getStatusColor(status);
+      IconData typeIcon = _getIconForType(type);
 
-    switch (type) {
-      case 'meeting':
+      // Determine title and dates based on type
+      String title = '';
+      String startDate = '';
+      String endDate = '';
+      String detailLabel = '';
+      String detailValue = '';
+
+      if (type == 'meeting') {
         title = item['title']?.toString() ?? 'No Title';
         startDate = item['from_date_time']?.toString() ?? '';
         endDate = item['to_date_time']?.toString() ?? '';
         detailLabel = 'Employee Name';
         detailValue = employeeName;
-        break;
-      case 'leave':
+      } else if (type == 'leave') {
         int leaveTypeId = item['leave_type_id'] ?? 0;
         title = _leaveTypesMap[leaveTypeId] ?? 'Unknown Leave Type';
         startDate = item['take_leave_from']?.toString() ?? '';
         endDate = item['take_leave_to']?.toString() ?? '';
-        detailLabel = 'Type';
+        detailLabel = 'Leave Type';
         detailValue = _leaveTypesMap[leaveTypeId] ?? 'N/A';
-        break;
-      case 'car':
+      } else if (type == 'car') {
         title = item['purpose']?.toString() ?? 'No Purpose';
         startDate = item['date_out']?.toString() ?? '';
         endDate = item['date_in']?.toString() ?? '';
         detailLabel = 'Requestor Name';
-        detailValue = _removeDuplicateNames(requestorName);
-        break;
-      default:
-      // This case should not occur due to the earlier type check
+        detailValue = _removeDuplicateNames(item['requestor_name']?.toString() ?? 'N/A');
+      } else {
+        print('Unhandled type: $type');
         return const SizedBox.shrink();
-    }
+      }
 
-    return GestureDetector(
-      onTap: () {
-        if (id.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid ID')),
-          );
-          return;
-        }
+      return GestureDetector(
+        onTap: () {
+          if (id.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Invalid ID')),
+            );
+            return;
+          }
 
-        // Navigate to DetailsPage with required parameters
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => NotificationDetailPage(
-              types: type,
-              id: id,
-              status: status,
-            ),
-          ),
-        );
-      },
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15.0),
-          side: BorderSide(color: typeColor, width: 2),
-        ),
-        elevation: 4,
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Row(
-          children: [
-            // Colored side bar
-            Container(
-              width: 5,
-              height: 100,
-              decoration: BoxDecoration(
-                color: typeColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(15.0),
-                  bottomLeft: Radius.circular(15.0),
-                ),
+          // Navigate to DetailsPage with required parameters
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ApprovalsDetailsPage(
+                id: id,
+                type: type, // Pass the type explicitly
               ),
             ),
-            const SizedBox(width: 12),
-            // Content
-            Expanded(
-              child: Padding(
-                padding:
-                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Type and Icon
-                    Row(
-                      children: [
-                        Icon(typeIcon, color: typeColor, size: 24),
-                        const SizedBox(width: 8),
-                        Text(
-                          type[0].toUpperCase() + type.substring(1),
-                          style: TextStyle(
-                            color: typeColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    // Title
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    // Dates
-                    Text(
-                      'From: ${_formatDate(startDate)}',
-                      style:
-                      TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                    ),
-                    Text(
-                      'To: ${_formatDate(endDate)}',
-                      style:
-                      TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                    ),
-                    const SizedBox(height: 4),
-                    // Detail
-                    Text(
-                      '$detailLabel: $detailValue',
-                      style:
-                      TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                    ),
-                    const SizedBox(height: 8),
-                    // Status
-                    Row(
-                      children: [
-                        Text(
-                          'Status: ',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0, vertical: 4.0),
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            borderRadius: BorderRadius.circular(12.0),
-                          ),
-                          child: Text(
-                            status,
-                            style: const TextStyle(
-                              color: Colors.white,
+          );
+        },
+        child: Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+            side: BorderSide(color: typeColor, width: 2),
+          ),
+          elevation: 4,
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            children: [
+              // Colored side bar
+              Container(
+                width: 5,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: typeColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(15.0),
+                    bottomLeft: Radius.circular(15.0),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Content
+              Expanded(
+                child: Padding(
+                  padding:
+                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Type and Icon
+                      Row(
+                        children: [
+                          Icon(typeIcon, color: typeColor, size: 24),
+                          const SizedBox(width: 8),
+                          Text(
+                            type[0].toUpperCase() + type.substring(1),
+                            style: TextStyle(
+                              color: typeColor,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              fontSize: 12,
                             ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Title
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 4),
+                      // Dates
+                      Text(
+                        'From: ${_formatDate(startDate)}',
+                        style:
+                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                      ),
+                      Text(
+                        'To: ${_formatDate(endDate)}',
+                        style:
+                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      // Detail
+                      Text(
+                        '$detailLabel: $detailValue',
+                        style:
+                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      // Status
+                      Row(
+                        children: [
+                          Text(
+                            'Status: ',
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0, vertical: 4.0),
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                            child: Text(
+                              status,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            // Employee Image with Error Handling
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: _buildEmployeeAvatar(employeeImage),
-            ),
-          ],
+              // Employee Image with Error Handling
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: _buildEmployeeAvatar(employeeImage),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e, stackTrace) {
+      print('Error building item card: $e');
+      print(stackTrace);
+      return const SizedBox.shrink();
+    }
   }
 
   /// Removes duplicate parts from the requestor name
@@ -673,9 +713,10 @@ class _NotificationPageState extends State<NotificationPage> {
           height: 48,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            return Icon(
+            print('Error loading employee image from $imageUrl: $error');
+            return const Icon(
               Icons.person,
-              color: Colors.grey.shade700,
+              color: Colors.grey,
               size: 24,
             );
           },
@@ -713,7 +754,9 @@ class _NotificationPageState extends State<NotificationPage> {
 
       // Format the date to 'dd-MM-yyyy' or modify as needed
       return DateFormat('dd-MM-yyyy').format(parsedDate);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('Date parsing error for "$dateStr": $e');
+      print(stackTrace);
       return 'Invalid Date';
     }
   }
@@ -736,6 +779,8 @@ class _NotificationPageState extends State<NotificationPage> {
         return Colors.orange;
       case 'deleted':
         return Colors.red;
+      case 'completed':
+        return Colors.grey;
       default:
         return Colors.grey;
     }

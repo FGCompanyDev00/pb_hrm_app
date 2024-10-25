@@ -32,6 +32,10 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
   // Leave Types Map: leave_type_id -> name
   Map<int, String> _leaveTypesMap = {};
 
+  // Base URL for images
+  final String _imageBaseUrl =
+      'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
+
   @override
   void initState() {
     super.initState();
@@ -50,8 +54,10 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         _fetchPendingItems(),
         _fetchHistoryItems(),
       ]);
-    } catch (e) {
+      print('Initial data fetched successfully.');
+    } catch (e, stackTrace) {
       print('Error during initial data fetch: $e');
+      print(stackTrace);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching data: $e')),
       );
@@ -83,16 +89,21 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         },
       );
 
+      print(
+          'Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
+
       if (leaveTypesResponse.statusCode == 200) {
         final responseBody = jsonDecode(leaveTypesResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
           final List<dynamic> leaveTypesData = responseBody['results'];
           setState(() {
             _leaveTypesMap = {
               for (var item in leaveTypesData)
-                item['leave_type_id']: item['name'].toString()
+                item['leave_type_id'] as int: item['name'].toString()
             };
           });
+          print('Leave types loaded: $_leaveTypesMap');
         } else {
           throw Exception(
               responseBody['message'] ?? 'Failed to load leave types');
@@ -101,11 +112,13 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         throw Exception(
             'Failed to load leave types: ${leaveTypesResponse.statusCode}');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error fetching leave types: $e');
+      print(stackTrace);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching leave types: $e')),
       );
+      rethrow; // So that _fetchInitialData catches and handles
     }
   }
 
@@ -130,9 +143,13 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         },
       );
 
+      print(
+          'Fetching pending items: Status Code ${pendingResponse.statusCode}');
+
       if (pendingResponse.statusCode == 200) {
         final responseBody = jsonDecode(pendingResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
           final List<dynamic> pendingData = responseBody['results'];
 
           // Filter out null items and unknown types
@@ -147,6 +164,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           setState(() {
             _pendingItems = filteredData;
           });
+          print('Pending items loaded: ${_pendingItems.length} items.');
         } else {
           throw Exception(
               responseBody['message'] ?? 'Failed to load pending data');
@@ -155,11 +173,13 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         throw Exception(
             'Failed to load pending data: ${pendingResponse.statusCode}');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error fetching pending data: $e');
+      print(stackTrace);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching pending data: $e')),
       );
+      rethrow;
     }
   }
 
@@ -184,9 +204,13 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         },
       );
 
+      print(
+          'Fetching history items: Status Code ${historyResponse.statusCode}');
+
       if (historyResponse.statusCode == 200) {
         final responseBody = jsonDecode(historyResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
           final List<dynamic> historyData = responseBody['results'];
 
           // Filter out null items and unknown types
@@ -201,6 +225,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           setState(() {
             _historyItems = filteredData;
           });
+          print('History items loaded: ${_historyItems.length} items.');
         } else {
           throw Exception(
               responseBody['message'] ?? 'Failed to load history data');
@@ -209,11 +234,13 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         throw Exception(
             'Failed to load history data: ${historyResponse.statusCode}');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error fetching history data: $e');
+      print(stackTrace);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching history data: $e')),
       );
+      rethrow;
     }
   }
 
@@ -348,9 +375,8 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12.0),
                 decoration: BoxDecoration(
-                  color: _isPendingSelected
-                      ? Colors.amber
-                      : Colors.grey.shade300,
+                  color:
+                  _isPendingSelected ? Colors.amber : Colors.grey.shade300,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -433,219 +459,243 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
   /// Builds each item card for Approvals or History.
   Widget _buildItemCard(BuildContext context, Map<String, dynamic> item,
       {required bool isHistory}) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+    final themeNotifier =
+    Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    // Extract and validate common fields
-    String type = (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
-    if (!_knownTypes.contains(type)) {
-      // Unknown type, do not display
-      return const SizedBox.shrink();
-    }
-
-    String status = (item['status']?.toString() ??
-        item['is_approve']?.toString() ??
-        'Pending')
-        .trim();
-    String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
-    String requestorName = (item['requestor_name']?.toString() ?? 'N/A').trim();
-
-    // Correct ID usage based on type
-    String id = '';
-    if (type == 'leave') {
-      id = (item['take_leave_request_id']?.toString() ?? '').trim();
-    } else {
-      id = (item['uid']?.toString() ?? '').trim();
-    }
-
-    String imgName = (item['img_name']?.toString() ?? '').trim();
-    String imgPath = (item['img_path']?.toString() ?? '').trim();
-
-    // Determine employee image URL
-    String employeeImage = imgPath.isNotEmpty
-        ? imgPath
-        : (imgName.isNotEmpty
-        ? imgName
-        : 'https://via.placeholder.com/150');
-
-    // Determine colors and icons based on type
-    Color typeColor = _getTypeColor(type);
-    Color statusColor = _getStatusColor(status);
-    IconData typeIcon = _getIconForType(type);
-
-    // Determine title and dates based on type
-    String title = '';
-    String startDate = '';
-    String endDate = '';
-    String detailLabel = '';
-    String detailValue = '';
-
-    switch (type) {
-      case 'meeting':
-        title = item['title']?.toString() ?? 'No Title';
-        startDate = item['from_date_time']?.toString() ?? '';
-        endDate = item['to_date_time']?.toString() ?? '';
-        detailLabel = 'Employee Name';
-        detailValue = employeeName;
-        break;
-      case 'leave':
-        int leaveTypeId = item['leave_type_id'] ?? 0;
-        title = _leaveTypesMap[leaveTypeId] ?? 'Unknown Leave Type';
-        startDate = item['take_leave_from']?.toString() ?? '';
-        endDate = item['take_leave_to']?.toString() ?? '';
-        detailLabel = 'Type';
-        detailValue = _leaveTypesMap[leaveTypeId] ?? 'N/A';
-        break;
-      case 'car':
-        title = item['purpose']?.toString() ?? 'No Purpose';
-        startDate = item['date_out']?.toString() ?? '';
-        endDate = item['date_in']?.toString() ?? '';
-        detailLabel = 'Requestor Name';
-        detailValue = _removeDuplicateNames(requestorName);
-        break;
-      default:
-      // This case should not occur due to the earlier type check
+    try {
+      // Extract and validate common fields
+      String type =
+      (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
+      if (!_knownTypes.contains(type)) {
+        // Unknown type, do not display
+        print('Unknown type encountered: $type');
         return const SizedBox.shrink();
-    }
+      }
 
-    return GestureDetector(
-      onTap: () {
-        if (id.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid ID')),
-          );
-          return;
-        }
+      String status = (item['status']?.toString() ??
+          item['is_approve']?.toString() ??
+          'Pending')
+          .trim();
+      String employeeName =
+      (item['employee_name']?.toString() ?? 'N/A').trim();
+      String requestorName =
+      (item['requestor_name']?.toString() ?? 'N/A').trim();
 
-        // Navigate to DetailsPage with required parameters
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ApprovalsDetailsPage(
-              types: type,
-              id: id,
-              status: status,
-            ),
-          ),
-        );
-      },
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15.0),
-          side: BorderSide(color: typeColor, width: 2),
-        ),
-        elevation: 4,
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
-        child: Row(
-          children: [
-            // Colored side bar
-            Container(
-              width: 5,
-              height: 100,
-              decoration: BoxDecoration(
-                color: typeColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(15.0),
-                  bottomLeft: Radius.circular(15.0),
-                ),
+      // Correct ID usage based on type
+      String id = '';
+      if (type == 'leave') {
+        id = (item['take_leave_request_id']?.toString() ?? '').trim();
+      } else {
+        id = (item['uid']?.toString() ?? '').trim(); // Use 'uid' for meeting and car
+      }
+
+      if (id.isEmpty) {
+        print('Item with type $type has empty id.');
+        return const SizedBox.shrink();
+      }
+
+      String imgName = (item['img_name']?.toString() ?? '').trim();
+      String imgPath = (item['img_path']?.toString() ?? '').trim();
+
+      // Determine employee image URL
+      String employeeImage;
+      if (imgPath.isNotEmpty && imgPath.startsWith('http')) {
+        employeeImage = imgPath;
+      } else if (imgPath.isNotEmpty) {
+        employeeImage = '$_imageBaseUrl$imgPath';
+      } else if (imgName.isNotEmpty && imgName.startsWith('http')) {
+        employeeImage = imgName;
+      } else if (imgName.isNotEmpty) {
+        employeeImage = '$_imageBaseUrl$imgName';
+      } else {
+        // Use default placeholder image
+        employeeImage =
+        'https://via.placeholder.com/150'; // Ensure this URL is accessible
+      }
+
+      // Determine colors and icons based on type
+      Color typeColor = _getTypeColor(type);
+      Color statusColor = _getStatusColor(status);
+      IconData typeIcon = _getIconForType(type);
+
+      // Determine title and dates based on type
+      String title = '';
+      String startDate = '';
+      String endDate = '';
+      String detailLabel = '';
+      String detailValue = '';
+
+      switch (type) {
+        case 'meeting':
+          title = item['title']?.toString() ?? 'No Title';
+          startDate = item['from_date_time']?.toString() ?? '';
+          endDate = item['to_date_time']?.toString() ?? '';
+          detailLabel = 'Employee Name';
+          detailValue = employeeName;
+          break;
+        case 'leave':
+          int leaveTypeId = item['leave_type_id'] ?? 0;
+          title = _leaveTypesMap[leaveTypeId] ?? 'Unknown Leave Type';
+          startDate = item['take_leave_from']?.toString() ?? '';
+          endDate = item['take_leave_to']?.toString() ?? '';
+          detailLabel = 'Leave Type';
+          detailValue = _leaveTypesMap[leaveTypeId] ?? 'N/A';
+          break;
+        case 'car':
+          title = item['purpose']?.toString() ?? 'No Purpose';
+          startDate = item['date_out']?.toString() ?? '';
+          endDate = item['date_in']?.toString() ?? '';
+          detailLabel = 'Requestor Name';
+          detailValue = _removeDuplicateNames(requestorName);
+          break;
+        default:
+          print('Unhandled type: $type');
+          return const SizedBox.shrink();
+      }
+
+      return GestureDetector(
+        onTap: () {
+          if (id.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Invalid ID')),
+            );
+            return;
+          }
+
+          // Navigate to DetailsPage with required parameters
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ApprovalsDetailsPage(
+                id: id,
+                type: type, // Pass the type explicitly
               ),
             ),
-            const SizedBox(width: 12),
-            // Content
-            Expanded(
-              child: Padding(
-                padding:
-                const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Type and Icon
-                    Row(
-                      children: [
-                        Icon(typeIcon, color: typeColor, size: 24),
-                        const SizedBox(width: 8),
-                        Text(
-                          type[0].toUpperCase() + type.substring(1),
-                          style: TextStyle(
-                            color: typeColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    // Title
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    // Dates
-                    Text(
-                      'From: ${_formatDate(startDate)}',
-                      style:
-                      TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                    ),
-                    Text(
-                      'To: ${_formatDate(endDate)}',
-                      style:
-                      TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                    ),
-                    const SizedBox(height: 4),
-                    // Detail
-                    Text(
-                      '$detailLabel: $detailValue',
-                      style:
-                      TextStyle(color: Colors.grey.shade700, fontSize: 14),
-                    ),
-                    const SizedBox(height: 8),
-                    // Status
-                    Row(
-                      children: [
-                        Text(
-                          'Status: ',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0, vertical: 4.0),
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            borderRadius: BorderRadius.circular(12.0),
-                          ),
-                          child: Text(
-                            status,
-                            style: const TextStyle(
-                              color: Colors.white,
+          );
+        },
+        child: Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+            side: BorderSide(color: typeColor, width: 2),
+          ),
+          elevation: 4,
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            children: [
+              // Colored side bar
+              Container(
+                width: 5,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: typeColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(15.0),
+                    bottomLeft: Radius.circular(15.0),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Content
+              Expanded(
+                child: Padding(
+                  padding:
+                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Type and Icon
+                      Row(
+                        children: [
+                          Icon(typeIcon, color: typeColor, size: 24),
+                          const SizedBox(width: 8),
+                          Text(
+                            type[0].toUpperCase() + type.substring(1),
+                            style: TextStyle(
+                              color: typeColor,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              fontSize: 12,
                             ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Title
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 4),
+                      // Dates
+                      Text(
+                        'From: ${_formatDate(startDate)}',
+                        style:
+                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                      ),
+                      Text(
+                        'To: ${_formatDate(endDate)}',
+                        style:
+                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      // Detail
+                      Text(
+                        '$detailLabel: $detailValue',
+                        style:
+                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      // Status
+                      Row(
+                        children: [
+                          Text(
+                            'Status: ',
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0, vertical: 4.0),
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                            child: Text(
+                              status,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            // Employee Image with Error Handling
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: _buildEmployeeAvatar(employeeImage),
-            ),
-          ],
+              // Employee Image with Error Handling
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: _buildEmployeeAvatar(employeeImage),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e, stackTrace) {
+      print('Error building item card: $e');
+      print(stackTrace);
+      return const SizedBox.shrink();
+    }
   }
 
   /// Removes duplicate parts from the requestor name
@@ -673,9 +723,10 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           height: 48,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            return Icon(
+            print('Error loading employee image from $imageUrl: $error');
+            return const Icon(
               Icons.person,
-              color: Colors.grey.shade700,
+              color: Colors.grey,
               size: 24,
             );
           },
@@ -713,7 +764,9 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
       // Format the date to 'dd-MM-yyyy' or modify as needed
       return DateFormat('dd-MM-yyyy').format(parsedDate);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('Date parsing error for "$dateStr": $e');
+      print(stackTrace);
       return 'Invalid Date';
     }
   }
@@ -736,6 +789,8 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         return Colors.orange;
       case 'deleted':
         return Colors.red;
+      case 'completed':
+        return Colors.grey;
       default:
         return Colors.grey;
     }
