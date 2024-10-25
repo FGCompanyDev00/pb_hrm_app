@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_timetable/flutter_timetable.dart';
+import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
@@ -834,6 +835,7 @@ class _HomeCalendarState extends State<HomeCalendar>
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
+    
 
     return Scaffold(
       body: Stack(
@@ -851,7 +853,11 @@ class _HomeCalendarState extends State<HomeCalendar>
                   if (_showFiltersAndSearchBar) _buildSearchBar(),
                   _buildCalendar(context, isDarkMode),
                   _buildSectionSeparator(),
-                  _buildCalendarView(context, _eventsForDay),
+                  // _buildCalendarView(context, _eventsForDay),
+                  CalendarDayWidget(
+                    selectedDay: _selectedDay,
+                    eventsCalendar: _eventsForDay,
+                  ),
                 ],
               ),
             ),

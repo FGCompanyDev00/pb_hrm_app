@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
@@ -15,8 +16,7 @@ class EventDetailView extends StatefulWidget {
   _EventDetailViewState createState() => _EventDetailViewState();
 }
 
-class _EventDetailViewState extends State<EventDetailView>
-    with SingleTickerProviderStateMixin {
+class _EventDetailViewState extends State<EventDetailView> with SingleTickerProviderStateMixin {
   // State variables
   bool _isLoading = false;
   bool _hasResponded = false;
@@ -73,12 +73,10 @@ class _EventDetailViewState extends State<EventDetailView>
   Future<void> _checkUserResponse() async {
     final prefs = await SharedPreferences.getInstance();
     final responses = prefs.getStringList('eventResponses') ?? [];
-    final uid = widget.event['uid'] ??
-        widget.event['outmeeting_uid'] ??
-        '';
+    final uid = widget.event['uid'] ?? widget.event['outmeeting_uid'] ?? '';
 
     final response = responses.firstWhere(
-          (resp) {
+      (resp) {
         final parts = resp.split(':');
         return parts.length == 2 && parts[0] == uid;
       },
@@ -106,9 +104,7 @@ class _EventDetailViewState extends State<EventDetailView>
       _isLoading = true;
     });
 
-    final uid = widget.event['uid'] ??
-        widget.event['outmeeting_uid'] ??
-        '';
+    final uid = widget.event['uid'] ?? widget.event['outmeeting_uid'] ?? '';
     const baseUrl = 'https://demo-application-api.flexiflows.co';
 
     final prefs = await SharedPreferences.getInstance();
@@ -225,51 +221,50 @@ class _EventDetailViewState extends State<EventDetailView>
     }
 
     return await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Row(
-            children: [
-
-              Text(
-                title,
-                style: TextStyle(
-                  color: dialogColor,
-                  fontWeight: FontWeight.bold,
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Row(
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: dialogColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              content: Text(
+                content,
+                style: const TextStyle(color: Colors.black87),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(false),
                 ),
-              ),
-            ],
-          ),
-          content: Text(
-            content,
-            style: const TextStyle(color: Colors.black87),
-          ),
-          actions: [
-            TextButton(
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.grey),
-              ),
-              onPressed: () => Navigator.of(context).pop(false),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: dialogColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: dialogColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Confirm'),
+                  onPressed: () => Navigator.of(context).pop(true),
                 ),
-              ),
-              child: const Text('Confirm'),
-              onPressed: () => Navigator.of(context).pop(true),
-            ),
-          ],
-        );
-      },
-    ) ??
+              ],
+            );
+          },
+        ) ??
         false;
   }
 
@@ -289,36 +284,6 @@ class _EventDetailViewState extends State<EventDetailView>
     );
   }
 
-  /// Builds a detail item with an icon, title, and content.
-  Widget _buildDetailItem(
-      IconData icon,
-      String title,
-      String content,
-      Color iconColor,
-      ) {
-    return Card(
-      elevation: 3,
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: ListTile(
-        leading: Icon(icon, color: iconColor, size: 30),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        subtitle: Text(
-          content,
-          style: const TextStyle(fontSize: 16),
-        ),
-      ),
-    );
-  }
-
   /// Formats a given date string into a readable format.
   String _formatDate(String dateStr, {String format = 'MMM dd, yyyy hh:mm a'}) {
     if (dateStr.isEmpty) return '';
@@ -332,8 +297,7 @@ class _EventDetailViewState extends State<EventDetailView>
 
   /// Extracts and formats necessary event details.
   Map<String, String> _getEventDetails() {
-    String creatorName =
-        widget.event['createdBy'] ?? widget.event['created_by_name'] ?? 'Unknown';
+    String creatorName = widget.event['createdBy'] ?? widget.event['created_by_name'] ?? 'Unknown';
     String imageUrl = widget.event['img_name'] ?? '';
     String createdAt = widget.event['created_at'] ?? '';
 
@@ -341,13 +305,9 @@ class _EventDetailViewState extends State<EventDetailView>
     String formattedStartDate = '';
     String formattedEndDate = '';
 
-    if (widget.event['startDateTime'] != null &&
-        widget.event['endDateTime'] != null) {
-      formattedStartDate = _formatDate(
-          widget.event['startDateTime'].toString(),
-          format: 'MMM dd, yyyy hh:mm a');
-      formattedEndDate =
-          _formatDate(widget.event['endDateTime'].toString(), format: 'MMM dd, yyyy hh:mm a');
+    if (widget.event['startDateTime'] != null && widget.event['endDateTime'] != null) {
+      formattedStartDate = _formatDate(widget.event['startDateTime'].toString(), format: 'MMM dd, yyyy hh:mm a');
+      formattedEndDate = _formatDate(widget.event['endDateTime'].toString(), format: 'MMM dd, yyyy hh:mm a');
     }
 
     return {
@@ -362,58 +322,45 @@ class _EventDetailViewState extends State<EventDetailView>
   Widget _buildMembersList(List<dynamic> members) {
     if (members.isEmpty) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 30),
-        const Text(
-          'Members',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 15),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: members.length,
-          itemBuilder: (context, index) {
-            final member = members[index];
-            String memberName = member['member_name'] ?? 'Unknown Member';
-            String department = member['department_name'] ?? '';
-            String memberImage = member['img_name'] ?? '';
+    List<Widget> membersList = [];
 
-            return Card(
-              elevation: 2,
-              margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 0),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: ListTile(
-                leading: CircleAvatar(
-                  radius: 24,
-                  backgroundImage: memberImage.isNotEmpty
-                      ? NetworkImage(memberImage)
-                      : const AssetImage('assets/default_avatar.png')
-                  as ImageProvider,
-                ),
-                title: Text(
-                  memberName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-                subtitle: Text(
-                  department,
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-              ),
-            );
-          },
-        ),
-      ],
+    for (var v in members) {
+      membersList.add(_avatarUser(v['img_name']));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: membersList),
+          const SizedBox(height: 15),
+          const Text(
+            'Description:',
+            textAlign: TextAlign.left,
+            style: TextStyle(
+              fontSize: 18,
+            ),
+          ),
+          Text(
+            widget.event['description'],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _avatarUser(String link) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.green),
+        borderRadius: BorderRadius.circular(50),
+      ),
+      margin: const EdgeInsets.only(right: 3),
+      child: CircleAvatar(
+        radius: 15,
+        backgroundImage: link.isNotEmpty ? NetworkImage(link) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+      ),
     );
   }
 
@@ -422,60 +369,59 @@ class _EventDetailViewState extends State<EventDetailView>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Container(
-        padding: EdgeInsets.symmetric(
-            horizontal: horizontalPadding, vertical: 25),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12.withOpacity(0.05),
-              blurRadius: 15,
-              offset: const Offset(0, -3),
-            ),
-          ],
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(25),
-            topRight: Radius.circular(25),
-          ),
-        ),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 25),
+        // decoration: BoxDecoration(
+        //   color: Colors.white,
+        //   boxShadow: [
+        //     BoxShadow(
+        //       color: Colors.black12.withOpacity(0.05),
+        //       blurRadius: 15,
+        //       offset: const Offset(0, -3),
+        //     ),
+        //   ],
+        //   borderRadius: const BorderRadius.only(
+        //     topLeft: Radius.circular(25),
+        //     topRight: Radius.circular(25),
+        //   ),
+        // ),
         child: _isLoading
             ? const Center(
-          child: CircularProgressIndicator(),
-        )
+                child: CircularProgressIndicator(),
+              )
             : Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Join Button
-            Expanded(
-              child: _buildResponsiveButton(
-                label: 'Join',
-                color: _hasResponded ? Colors.grey : Colors.green,
-                onPressed:
-                _hasResponded ? null : () => _respondToMeeting('yes'),
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Join Button
+
+                  // Maybe Button
+                  // Expanded(
+                  //   child: _buildResponsiveButton(
+                  //     label: 'Maybe',
+                  //     color: _hasResponded ? Colors.grey : Colors.orange,
+                  //     onPressed: _hasResponded ? null : () => _respondToMeeting('maybe'),
+                  //   ),
+                  // ),
+                  // const SizedBox(width: 15),
+                  // Reject Button
+                  Expanded(
+                    child: _buildResponsiveButton(
+                      label: 'Reject',
+                      color: _hasResponded ? Colors.grey : Colors.grey,
+                      onPressed: _hasResponded ? null : () => _respondToMeeting('no'),
+                      icon: Icons.clear,
+                    ),
+                  ),
+                  const SizedBox(width: 35),
+                  Expanded(
+                    child: _buildResponsiveButton(
+                      label: 'Join',
+                      color: _hasResponded ? Colors.grey : ColorStandardization().colorDarkGold,
+                      onPressed: _hasResponded ? null : () => _respondToMeeting('yes'),
+                      icon: Icons.check_circle_outline,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 15),
-            // Maybe Button
-            Expanded(
-              child: _buildResponsiveButton(
-                label: 'Maybe',
-                color: _hasResponded ? Colors.grey : Colors.orange,
-                onPressed:
-                _hasResponded ? null : () => _respondToMeeting('maybe'),
-              ),
-            ),
-            const SizedBox(width: 15),
-            // Reject Button
-            Expanded(
-              child: _buildResponsiveButton(
-                label: 'Reject',
-                color: _hasResponded ? Colors.grey : Colors.red,
-                onPressed:
-                _hasResponded ? null : () => _respondToMeeting('no'),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -485,20 +431,28 @@ class _EventDetailViewState extends State<EventDetailView>
     required String label,
     required Color color,
     required VoidCallback? onPressed,
+    required IconData icon,
   }) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(20),
         ),
         elevation: onPressed != null ? 6 : 0,
       ),
-      child: Text(
-        label,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Icon(icon),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox.shrink(),
+        ],
       ),
     );
   }
@@ -507,44 +461,74 @@ class _EventDetailViewState extends State<EventDetailView>
   Widget _buildCreatorSection(Map<String, String> details) {
     return Column(
       children: [
-        const SizedBox(height: 25),
-        CircleAvatar(
-          radius: 50,
-          backgroundImage: details['imageUrl']!.isNotEmpty
-              ? NetworkImage(details['imageUrl']!)
-              : const AssetImage('assets/default_avatar.png') as ImageProvider,
-        ),
-        Text(
-          details['creatorName']!,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        if (details['formattedCreatedAt']!.isNotEmpty)
-          Text(
-            'Submitted on ${details['formattedCreatedAt']}',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
+        const Center(
+          child: Text(
+            'Requestor',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
             textAlign: TextAlign.center,
           ),
-        const SizedBox(height: 5),
+        ),
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 35,
+              backgroundImage: details['imageUrl']!.isNotEmpty ? NetworkImage(details['imageUrl']!) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+            ),
+            const SizedBox(
+              width: 20,
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  details['creatorName']!,
+                  style: const TextStyle(
+                    fontSize: 18,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                if (details['formattedCreatedAt']!.isNotEmpty)
+                  Text(
+                    'Submitted on ${details['formattedCreatedAt']}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+              ],
+            ),
+          ],
+        ),
       ],
     );
   }
 
   /// Builds the event title widget.
-  Widget _buildEventTitle() {
-    return Text(
-      widget.event['title'] ?? 'No Title',
-      style: const TextStyle(
-        fontSize: 28,
-        fontWeight: FontWeight.bold,
-      ),
-      textAlign: TextAlign.center,
+  Widget _buildEventRequestor() {
+    return Column(
+      children: [
+        const Text(
+          'Requestor',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        Row(
+          children: [
+            CircleAvatar(backgroundImage: NetworkImage(widget.event['img_name'])),
+            Text(
+              widget.event['created_by_name'],
+            )
+          ],
+        ),
+      ],
     );
   }
 
@@ -572,46 +556,50 @@ class _EventDetailViewState extends State<EventDetailView>
   /// Builds the list of event details.
   Widget _buildEventDetails() {
     final details = _getEventDetails();
+    String? title = widget.event['title'];
+    String? location = widget.event['location'];
+    String? category = widget.event['category'];
+    final startDate = DateTime.parse(widget.event['startDateTime']);
+    final endDate = DateTime.parse(widget.event['endDateTime']);
+    String startDisplay12 = "${(startDate.hour % 12 == 0 ? 12 : startDate.hour % 12).toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')} ${startDate.hour >= 12 ? 'PM' : 'AM'}";
+    String endDisplay12 = "${(endDate.hour % 12 == 0 ? 12 : endDate.hour % 12).toString().padLeft(2, '0')}:${endDate.minute.toString().padLeft(2, '0')} ${endDate.hour >= 12 ? 'PM' : 'AM'}";
     return Column(
       children: [
-        if (widget.event['description'] != null &&
-            widget.event['description'].isNotEmpty)
-          _buildDetailItem(
-            Icons.description,
-            'Description',
-            widget.event['description'],
-            Colors.blueAccent,
+        if (title != null)
+          titleCustom(
+            'Title : ${widget.event['title']}',
+            Icons.bookmark_add_outlined,
           ),
         if (details['formattedStartDate']!.isNotEmpty)
-          _buildDetailItem(
-            Icons.calendar_today,
-            'Start Date',
-            details['formattedStartDate']!,
-            Colors.green,
+          titleCustom(
+            'Date : ${startDate.year}-${startDate.month}-${startDate.day} - ${endDate.year}-${endDate.month}-${endDate.day}',
+            Icons.free_cancellation_outlined,
           ),
         if (details['formattedEndDate']!.isNotEmpty)
-          _buildDetailItem(
-            Icons.calendar_today_outlined,
-            'End Date',
-            details['formattedEndDate']!,
-            Colors.redAccent,
+          titleCustom(
+            'Time : $startDisplay12 - $endDisplay12',
+            Icons.punch_clock_outlined,
           ),
-        if (widget.event['location'] != null &&
-            widget.event['location'].isNotEmpty)
-          _buildDetailItem(
-            Icons.location_on,
-            'Location',
-            widget.event['location'],
-            Colors.purple,
+        if (location != null)
+          titleCustom(
+            'Location : ${widget.event['location']}',
+            Icons.location_on_rounded,
           ),
-        if (widget.event['status'] != null &&
-            widget.event['status'].isNotEmpty)
-          _buildDetailItem(
-            Icons.info,
-            'Status',
-            widget.event['status'],
-            Colors.cyan,
+        if (category != null)
+          titleCustom(
+            'Type : $category',
+            Icons.stream_outlined,
           ),
+        const ListTile(
+          leading: SizedBox.shrink(),
+          title: Text(
+            'Room: Back can yon 2F',
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.orange,
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -621,28 +609,31 @@ class _EventDetailViewState extends State<EventDetailView>
     final details = _getEventDetails();
     final isMeeting = _eventType == 'Meeting';
     final members = widget.event['members'] ?? [];
+    final size = MediaQuery.sizeOf(context);
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          if (isMeeting) _buildCreatorSection(details),
-          const SizedBox(height: 15),
-          _buildEventTitle(),
-          const SizedBox(height: 8),
-          _buildEventType(),
-          const SizedBox(height: 20),
-          _buildEventDetails(),
-          if (members.isNotEmpty) _buildMembersList(members),
-          const SizedBox(height: 30),
-        ],
+    return Container(
+      padding: const EdgeInsets.only(top: 50),
+      constraints: BoxConstraints(maxWidth: size.width * 0.8),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (isMeeting) _buildCreatorSection(details),
+            const SizedBox(height: 8),
+            _buildEventType(),
+            const SizedBox(height: 20),
+            _buildEventDetails(),
+            if (members.isNotEmpty) _buildMembersList(members),
+            const SizedBox(height: 30),
+          ],
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    double horizontalPadding = MediaQuery.of(context).size.width * 0.05;
+    double horizontalPadding = MediaQuery.of(context).size.width * 0.07;
     final isMeeting = _eventType == 'Meeting';
 
     return Scaffold(
@@ -678,9 +669,10 @@ class _EventDetailViewState extends State<EventDetailView>
         ),
       ),
       centerTitle: true,
-      title: const Text(
-        'Event Details',
-        style: TextStyle(
+      title: Text(
+        widget.event['category'],
+        // 'Event Details',
+        style: const TextStyle(
           color: Colors.black,
           fontSize: 22,
         ),
@@ -709,6 +701,19 @@ class _EventDetailViewState extends State<EventDetailView>
         opacity: _fadeAnimation,
         child: child,
       ),
+    );
+  }
+
+  Widget titleCustom(String name, IconData icon) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(
+        name,
+        style: const TextStyle(
+          fontSize: 14,
+        ),
+      ),
+      minTileHeight: 0,
     );
   }
 }
