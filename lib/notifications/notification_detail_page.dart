@@ -1,3 +1,5 @@
+// notification_detail_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,14 +20,17 @@ class NotificationDetailPage extends StatefulWidget {
   _NotificationDetailPageState createState() => _NotificationDetailPageState();
 }
 
-class _NotificationDetailPageState extends State<NotificationDetailPage> {
+class _NotificationDetailPageState extends State<NotificationDetailPage>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _descriptionController = TextEditingController();
   bool isLoading = true;
   bool isFinalized = false;
   Map<String, dynamic>? approvalData;
   String? requestorImage;
+  String? userResponse;
+  late AnimationController _animationController;
+  late Animation<double> _animation;
 
-  // Base URL for images
   final String _imageBaseUrl =
       'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
@@ -33,6 +38,12 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
   void initState() {
     super.initState();
     _fetchApprovalDetails();
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    );
+    _animation =
+        CurvedAnimation(parent: _animationController, curve: Curves.easeOut);
   }
 
   Future<void> _fetchApprovalDetails() async {
@@ -47,30 +58,23 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
         return;
       }
 
-      http.Response response;
-
-      // Determine the API URL based on the type
       if (widget.type == 'leave') {
         apiUrl = '$baseUrl/api/leave_request/all/${widget.id}';
       } else if (widget.type == 'car') {
-        apiUrl =
-        '$baseUrl/api/office-administration/car_permit/${widget.id}';
+        apiUrl = '$baseUrl/api/office-administration/car_permit/${widget.id}';
       } else if (widget.type == 'meeting') {
-        apiUrl =
-        '$baseUrl/api/office-administration/book_meeting_room/${widget.id}';
+        apiUrl = '$baseUrl/api/office-administration/book_meeting_room/${widget.id}';
       } else {
         throw Exception('Unknown type: ${widget.type}');
       }
 
-      response = await http.get(
+      final response = await http.get(
         Uri.parse(apiUrl),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
       );
-
-      print('Response Status Code: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -81,17 +85,16 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
                 ? Map<String, dynamic>.from(data['results'][0])
                 : Map<String, dynamic>.from(data['results']);
 
-            // Updated profile image handling for leave type
             if (widget.type == 'leave') {
-              String? imgPath = approvalData!['img_path']?.toString().trim();
+              String? imgPath =
+              approvalData!['img_path']?.toString().trim();
               if (imgPath != null && imgPath.isNotEmpty) {
                 requestorImage = imgPath;
               } else {
                 requestorImage =
-                'https://via.placeholder.com/150'; // Default image
+                'https://via.placeholder.com/150';
               }
             } else {
-              // Existing logic for car and meeting types
               String? imgName =
               approvalData!['img_name']?.toString().trim();
               String? imgPath =
@@ -114,24 +117,22 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
               }
             }
 
+            if (widget.type == 'meeting') {
+              userResponse =
+                  approvalData!['user_response']?.toString().toLowerCase();
+            }
+
             isLoading = false;
           });
-          print('Approval details loaded successfully.');
         } else {
           throw Exception(
               data['message'] ?? 'Failed to load approval details.');
         }
-      } else if (response.statusCode == 403) {
-        throw Exception('Access forbidden: ${response.statusCode}');
-      } else if (response.statusCode == 404) {
-        throw Exception('Approval details not found: ${response.statusCode}');
       } else {
         throw Exception(
             'Failed to load approval details: ${response.statusCode}');
       }
-    } catch (e, stackTrace) {
-      print('Error fetching approval details: $e');
-      print(stackTrace);
+    } catch (e) {
       _showErrorDialog('Error', e.toString());
       setState(() {
         isLoading = false;
@@ -173,9 +174,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
       } else {
         return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);
       }
-    } catch (e, stackTrace) {
-      print('Date parsing error for "$dateStr": $e');
-      print(stackTrace);
+    } catch (e) {
       return 'Invalid Date';
     }
   }
@@ -184,9 +183,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       return prefs.getString('token');
-    } catch (e, stackTrace) {
-      print('Error retrieving token: $e');
-      print(stackTrace);
+    } catch (e) {
       return null;
     }
   }
@@ -214,13 +211,13 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
             const SizedBox(height: 5),
             _buildDetailsSection(),
             const SizedBox(height: 30),
-            if (widget.type == 'leave' ||
-                widget.type == 'car' ||
-                widget.type == 'meeting') ...[
+            if (widget.type == 'meeting') ...[
+              _buildMeetingActionButtons(),
+            ] else ...[
               if (isPendingStatus(status)) ...[
                 _buildCommentInputSection(),
                 const SizedBox(height: 22),
-                _buildActionButtons(context),
+                _buildActionButtons(),
               ],
               if (!isPendingStatus(status) &&
                   status.toLowerCase() == 'reject')
@@ -269,7 +266,6 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
         approvalData?['requestor_name'] ??
         'No Name';
 
-    // Adjusted to use 'created_date' for car types if 'created_at' is null
     String submittedOn = 'N/A';
     if (approvalData?['created_at'] != null &&
         approvalData!['created_at'].toString().isNotEmpty) {
@@ -288,7 +284,9 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
       children: [
         const Text('Requestor',
             style: TextStyle(
-                color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20)),
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 20)),
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -297,16 +295,15 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
               backgroundImage: NetworkImage(profileImage),
               radius: 35,
               backgroundColor: Colors.grey[300],
-              onBackgroundImageError: (error, stackTrace) {
-                print('Error loading requestor image: $error');
-              },
+              onBackgroundImageError: (error, stackTrace) {},
             ),
             const SizedBox(width: 15),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(requestorName,
-                    style: const TextStyle(color: Colors.black, fontSize: 18)),
+                    style: const TextStyle(
+                        color: Colors.black, fontSize: 18)),
                 const SizedBox(height: 6),
                 Text('Submitted on $submittedOn',
                     style:
@@ -369,12 +366,10 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInfoRow(
-            'Leave Request ID',
+        _buildInfoRow('Leave Request ID',
             approvalData?['take_leave_request_id']?.toString() ?? 'N/A',
-            Icons.assignment,
-            Colors.green),
-        const SizedBox(height: 8), // Spacing between rows
+            Icons.assignment, Colors.green),
+        const SizedBox(height: 8),
         _buildInfoRow('Leave Type', approvalData?['name'] ?? 'N/A',
             Icons.person, Colors.purple),
         const SizedBox(height: 8),
@@ -403,8 +398,9 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInfoRow('Car Booking ID', approvalData?['id']?.toString() ?? 'N/A',
-            Icons.directions_car, Colors.green),
+        _buildInfoRow('Car Booking ID',
+            approvalData?['id']?.toString() ?? 'N/A', Icons.directions_car,
+            Colors.green),
         const SizedBox(height: 8),
         _buildInfoRow('Purpose', approvalData?['purpose'] ?? 'N/A',
             Icons.bookmark, Colors.green),
@@ -421,11 +417,13 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
             Icons.calendar_today,
             Colors.blue),
         const SizedBox(height: 8),
-        _buildInfoRow('Place', approvalData?['place']?.toString() ?? 'N/A',
-            Icons.place, Colors.orange),
+        _buildInfoRow('Place',
+            approvalData?['place']?.toString() ?? 'N/A', Icons.place,
+            Colors.orange),
         const SizedBox(height: 8),
-        _buildInfoRow('Status', approvalData?['status']?.toString() ?? 'Pending',
-            Icons.stairs, Colors.red),
+        _buildInfoRow('Status',
+            approvalData?['status']?.toString() ?? 'Pending', Icons.stairs,
+            Colors.red),
       ],
     );
   }
@@ -434,11 +432,9 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInfoRow(
-            'Meeting ID',
+        _buildInfoRow('Meeting ID',
             approvalData?['meeting_id']?.toString() ?? 'N/A',
-            Icons.meeting_room,
-            Colors.green),
+            Icons.meeting_room, Colors.green),
         const SizedBox(height: 8),
         _buildInfoRow('Title', approvalData?['title'] ?? 'N/A', Icons.title,
             Colors.blue),
@@ -455,11 +451,13 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
             Icons.calendar_today,
             Colors.blue),
         const SizedBox(height: 8),
-        _buildInfoRow('Room Name', approvalData?['room_name']?.toString() ?? 'N/A',
-            Icons.room, Colors.orange),
+        _buildInfoRow('Room Name',
+            approvalData?['room_name']?.toString() ?? 'N/A', Icons.room,
+            Colors.orange),
         const SizedBox(height: 8),
-        _buildInfoRow('Status', approvalData?['status']?.toString() ?? 'Pending',
-            Icons.stairs, Colors.red),
+        _buildInfoRow('Status',
+            approvalData?['status']?.toString() ?? 'Pending', Icons.stairs,
+            Colors.red),
       ],
     );
   }
@@ -472,7 +470,8 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
         const SizedBox(width: 12),
         Expanded(
           child: Text('$title: $content',
-              style: const TextStyle(fontSize: 16, color: Colors.black)),
+              style:
+              const TextStyle(fontSize: 16, color: Colors.black)),
         ),
       ],
     );
@@ -488,7 +487,8 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
         TextField(
           controller: _descriptionController,
           decoration: InputDecoration(
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20)),
             hintText: 'Enter approval/rejection comments',
           ),
           maxLines: 3,
@@ -521,7 +521,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
+  Widget _buildActionButtons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -530,13 +530,100 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
             icon: Icons.close,
             backgroundColor: Colors.red,
             textColor: Colors.white,
-            onPressed: isFinalized ? null : () => _handleReject(context)),
+            onPressed: isFinalized ? null : () => _handleReject()),
         _buildStyledButton(
             label: 'Approve',
             icon: Icons.check_circle_outline,
             backgroundColor: Colors.green,
             textColor: Colors.white,
-            onPressed: isFinalized ? null : () => _handleApprove(context)),
+            onPressed: isFinalized ? null : () => _handleApprove()),
+      ],
+    );
+  }
+
+  Widget _buildMeetingActionButtons() {
+    bool alreadyResponded = userResponse != null;
+    String responseLabel = '';
+    Color buttonColor = Colors.grey;
+    IconData buttonIcon = Icons.check;
+
+    if (userResponse == 'join') {
+      responseLabel = 'Joined';
+      buttonColor = Colors.blue;
+      buttonIcon = Icons.check;
+    } else if (userResponse == 'decline') {
+      responseLabel = 'Declined';
+      buttonColor = Colors.red;
+      buttonIcon = Icons.close;
+    } else if (userResponse == 'undecided') {
+      responseLabel = 'Undecided';
+      buttonColor = Colors.orange;
+      buttonIcon = Icons.help_outline;
+    }
+
+    return Column(
+      children: [
+        alreadyResponded
+            ? Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            OutlinedButton.icon(
+              onPressed: null,
+              style: OutlinedButton.styleFrom(
+                backgroundColor: buttonColor,
+                side: BorderSide.none,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30)),
+              ),
+              icon:
+              Icon(buttonIcon, color: Colors.white, size: 20),
+              label: Text(responseLabel,
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white)),
+            ),
+          ],
+        )
+            : Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          alignment: WrapAlignment.center,
+          children: [
+            _buildResponsiveButton(
+              label: 'Join',
+              icon: Icons.person_add,
+              backgroundColor: Colors.blue,
+              textColor: Colors.white,
+              onPressed: () => _handleMeetingAction('join'),
+            ),
+            _buildResponsiveButton(
+              label: 'Decline',
+              icon: Icons.close,
+              backgroundColor: Colors.red,
+              textColor: Colors.white,
+              onPressed: () => _handleMeetingAction('decline'),
+            ),
+            _buildResponsiveButton(
+              label: 'Undecided',
+              icon: Icons.help_outline,
+              backgroundColor: Colors.orange,
+              textColor: Colors.white,
+              onPressed: () => _handleMeetingAction('undecided'),
+            ),
+          ],
+        ),
+        if (_animationController.isAnimating)
+          ScaleTransition(
+            scale: _animation,
+            child: const Icon(
+              Icons.celebration,
+              color: Colors.pink,
+              size: 50,
+            ),
+          ),
       ],
     );
   }
@@ -552,28 +639,123 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor,
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        padding:
+        const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30)),
       ),
       icon: Icon(icon, color: textColor, size: 20),
       label: Text(label,
           style: TextStyle(
-              fontSize: 18, fontWeight: FontWeight.w600, color: textColor)),
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: textColor)),
     );
   }
 
-  Future<void> _handleApprove(BuildContext context) async {
-    await _sendApprovalStatus('approve', context);
+  Widget _buildResponsiveButton({
+    required String label,
+    required IconData icon,
+    required Color backgroundColor,
+    required Color textColor,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: MediaQuery.of(context).size.width * 0.28,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor,
+          padding:
+          const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30)),
+        ),
+        icon: Icon(icon, color: textColor, size: 20),
+        label: Text(label,
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: textColor)),
+      ),
+    );
   }
 
-  Future<void> _handleReject(BuildContext context) async {
-    await _sendApprovalStatus('reject', context);
+  Future<void> _handleApprove() async {
+    await _sendApprovalStatus('approve');
   }
 
-  Future<void> _sendApprovalStatus(
-      String action, BuildContext context) async {
-    final String comment = _descriptionController.text.trim();
+  Future<void> _handleReject() async {
+    await _sendApprovalStatus('reject');
+  }
 
+  Future<void> _handleMeetingAction(String action) async {
+    final String uid = widget.id;
+    final String baseUrl = 'https://demo-application-api.flexiflows.co';
+
+    String endpoint;
+
+    if (action == 'join') {
+      endpoint = '$baseUrl/api/office-administration/book_meeting_room/yes/$uid';
+    } else if (action == 'decline' || action == 'undecided') {
+      endpoint = '$baseUrl/api/office-administration/book_meeting_room/no/$uid';
+    } else {
+      _showErrorDialog('Error', 'Invalid action.');
+      return;
+    }
+
+    setState(() {
+      isFinalized = true;
+    });
+
+    try {
+      final String? token = await _getToken();
+      if (token == null) {
+        _showErrorDialog(
+            'Authentication Error', 'Token not found. Please log in again.');
+        setState(() {
+          isFinalized = false;
+        });
+        return;
+      }
+
+      final response = await http.put(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        setState(() {
+          userResponse = action;
+        });
+        _animationController.forward().then((_) {
+          _animationController.reset();
+        });
+        _showSuccessDialog(
+            'Success',
+            'You have successfully ${action == 'join' ? 'joined' : 'responded to'} the meeting invite.');
+        Navigator.of(context).pop(true);
+      } else {
+        final responseBody = jsonDecode(response.body);
+        String errorMessage =
+            responseBody['message'] ?? 'Failed to $action the meeting invite.';
+        _showErrorDialog('Error', errorMessage);
+        setState(() {
+          isFinalized = false;
+        });
+      }
+    } catch (e) {
+      _showErrorDialog('Error', 'An unexpected error occurred.');
+      setState(() {
+        isFinalized = false;
+      });
+    }
+  }
+
+  Future<void> _sendApprovalStatus(String action) async {
     setState(() {
       isFinalized = true;
     });
@@ -591,8 +773,8 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
 
     String endpoint = '';
     Map<String, dynamic> body = {};
-    String method = 'POST'; // default method
-    // Adjust endpoint, body and method based on type and action
+    String method = 'POST';
+
     if (widget.type == 'leave') {
       method = 'PUT';
       if (action == 'approve') {
@@ -601,33 +783,13 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
         endpoint = '$baseUrl/api/leave_reject/${widget.id}';
       }
       body = {};
-      if (comment.isNotEmpty) {
-        body['details'] = comment;
-      }
-    } else if (widget.type == 'meeting') {
-      method = 'PUT';
-      if (action == 'approve') {
-        endpoint =
-        '$baseUrl/api/office-administration/book_meeting_room/approve/${widget.id}';
-      } else if (action == 'reject') {
-        endpoint =
-        '$baseUrl/api/office-administration/book_meeting_room/disapprove/${widget.id}';
-      }
-      body = {};
-      if (comment.isNotEmpty) {
-        body['details'] = comment;
-      }
     } else if (widget.type == 'car') {
-      // Existing code for car
       method = 'POST';
       endpoint = '$baseUrl/api/app/tasks/approvals/pending/${widget.id}';
       body = {
         "status": action == 'approve' ? 'Approved' : 'Rejected',
         "types": widget.type,
       };
-      if (comment.isNotEmpty) {
-        body['description'] = comment;
-      }
     } else {
       _showErrorDialog('Error', 'Invalid request type.');
       setState(() {
@@ -635,8 +797,6 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
       });
       return;
     }
-
-    print('Sending $action request to $endpoint with body: $body');
 
     try {
       http.Response response;
@@ -660,23 +820,22 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
         );
       }
 
-      print('Approval response status: ${response.statusCode}');
-      print('Approval response body: ${response.body}');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         _showSuccessDialog(
             'Success', 'Request has been $action successfully.');
+        await _fetchApprovalDetails();
+        Navigator.of(context).pop(true);
       } else {
         final responseBody = jsonDecode(response.body);
         String errorMessage =
             responseBody['message'] ?? 'Failed to $action the request.';
         _showErrorDialog('Error', errorMessage);
+        setState(() {
+          isFinalized = false;
+        });
       }
-    } catch (e, stackTrace) {
-      print('Error sending $action request: $e');
-      print(stackTrace);
+    } catch (e) {
       _showErrorDialog('Error', 'An unexpected error occurred.');
-    } finally {
       setState(() {
         isFinalized = false;
       });
@@ -708,8 +867,10 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(ctx).pop(); // Close the dialog
-              Navigator.of(context).pop(); // Navigate back
+              Navigator.of(ctx).pop();
+              if (widget.type == 'meeting') {
+                Navigator.of(context).pop(true);
+              }
             },
             child: const Text('OK'),
           ),

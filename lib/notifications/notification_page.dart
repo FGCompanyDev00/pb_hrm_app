@@ -1,7 +1,9 @@
+// notification_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_details_page.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
+import 'package:pb_hrsystem/notifications/notification_detail_page.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,24 +18,13 @@ class NotificationPage extends StatefulWidget {
 }
 
 class _NotificationPageState extends State<NotificationPage> {
-  // Tab selection flag: true for Meeting, false for Approval
   bool _isMeetingSelected = true;
-
-  // Data lists
   List<Map<String, dynamic>> _meetingInvites = [];
   List<Map<String, dynamic>> _pendingItems = [];
   List<Map<String, dynamic>> _historyItems = [];
-
-  // Loading state
   bool _isLoading = true;
-
-  // Known types
   final Set<String> _knownTypes = {'meeting', 'leave', 'car'};
-
-  // Leave Types Map: leave_type_id -> name
   Map<int, String> _leaveTypesMap = {};
-
-  // Base URL for images
   final String _imageBaseUrl =
       'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
@@ -43,7 +34,6 @@ class _NotificationPageState extends State<NotificationPage> {
     _fetchInitialData();
   }
 
-  /// Initializes data fetching for leave types, pending items, history items, and meeting invites
   Future<void> _fetchInitialData() async {
     setState(() {
       _isLoading = true;
@@ -55,10 +45,7 @@ class _NotificationPageState extends State<NotificationPage> {
         _fetchPendingItems(),
         _fetchMeetingInvites(),
       ]);
-      print('Initial data fetched successfully.');
-    } catch (e, stackTrace) {
-      print('Error during initial data fetch: $e');
-      print(stackTrace);
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching data: $e')),
       );
@@ -69,175 +56,131 @@ class _NotificationPageState extends State<NotificationPage> {
     }
   }
 
-  /// Fetches leave types from the API and populates the _leaveTypesMap
   Future<void> _fetchLeaveTypes() async {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
     const String leaveTypesApiUrl = '$baseUrl/api/leave-types';
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
 
-      if (token == null) {
-        throw Exception('User not authenticated');
-      }
+    if (token == null) {
+      throw Exception('User not authenticated');
+    }
 
-      final leaveTypesResponse = await http.get(
-        Uri.parse(leaveTypesApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+    final leaveTypesResponse = await http.get(
+      Uri.parse(leaveTypesApiUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-      print(
-          'Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
-
-      if (leaveTypesResponse.statusCode == 200) {
-        final responseBody = jsonDecode(leaveTypesResponse.body);
-        if (responseBody['statusCode'] == 200 &&
-            responseBody['results'] != null) {
-          final List<dynamic> leaveTypesData = responseBody['results'];
-          setState(() {
-            _leaveTypesMap = {
-              for (var item in leaveTypesData)
-                item['leave_type_id'] as int: item['name'].toString()
-            };
-          });
-          print('Leave types loaded: $_leaveTypesMap');
-        } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load leave types');
-        }
+    if (leaveTypesResponse.statusCode == 200) {
+      final responseBody = jsonDecode(leaveTypesResponse.body);
+      if (responseBody['statusCode'] == 200 &&
+          responseBody['results'] != null) {
+        final List<dynamic> leaveTypesData = responseBody['results'];
+        setState(() {
+          _leaveTypesMap = {
+            for (var item in leaveTypesData)
+              item['leave_type_id'] as int: item['name'].toString()
+          };
+        });
       } else {
         throw Exception(
-            'Failed to load leave types: ${leaveTypesResponse.statusCode}');
+            responseBody['message'] ?? 'Failed to load leave types');
       }
-    } catch (e, stackTrace) {
-      print('Error fetching leave types: $e');
-      print(stackTrace);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching leave types: $e')),
-      );
-      rethrow; // So that _fetchInitialData catches and handles
+    } else {
+      throw Exception(
+          'Failed to load leave types: ${leaveTypesResponse.statusCode}');
     }
   }
 
-  /// Fetches all pending approval items without pagination
   Future<void> _fetchPendingItems() async {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
     const String pendingApiUrl = '$baseUrl/api/app/tasks/approvals/pending';
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
 
-      if (token == null) {
-        throw Exception('User not authenticated');
-      }
+    if (token == null) {
+      throw Exception('User not authenticated');
+    }
 
-      final pendingResponse = await http.get(
-        Uri.parse(pendingApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+    final pendingResponse = await http.get(
+      Uri.parse(pendingApiUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-      print(
-          'Fetching pending items: Status Code ${pendingResponse.statusCode}');
+    if (pendingResponse.statusCode == 200) {
+      final responseBody = jsonDecode(pendingResponse.body);
+      if (responseBody['statusCode'] == 200 &&
+          responseBody['results'] != null) {
+        final List<dynamic> pendingData = responseBody['results'];
+        final List<Map<String, dynamic>> filteredData = pendingData
+            .where((item) => item != null)
+            .map((item) => Map<String, dynamic>.from(item))
+            .where((item) =>
+        item['types'] != null &&
+            _knownTypes.contains(item['types'].toString().toLowerCase()))
+            .toList();
 
-      if (pendingResponse.statusCode == 200) {
-        final responseBody = jsonDecode(pendingResponse.body);
-        if (responseBody['statusCode'] == 200 &&
-            responseBody['results'] != null) {
-          final List<dynamic> pendingData = responseBody['results'];
-
-          // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = pendingData
-              .where((item) => item != null)
-              .map((item) => Map<String, dynamic>.from(item))
-              .where((item) =>
-          item['types'] != null &&
-              _knownTypes.contains(item['types'].toString().toLowerCase()))
-              .toList();
-
-          setState(() {
-            _pendingItems = filteredData;
-          });
-          print('Pending items loaded: ${_pendingItems.length} items.');
-        } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load pending data');
-        }
+        setState(() {
+          _pendingItems = filteredData;
+        });
       } else {
         throw Exception(
-            'Failed to load pending data: ${pendingResponse.statusCode}');
+            responseBody['message'] ?? 'Failed to load pending data');
       }
-    } catch (e, stackTrace) {
-      print('Error fetching pending data: $e');
-      print(stackTrace);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching pending data: $e')),
-      );
-      rethrow;
+    } else {
+      throw Exception(
+          'Failed to load pending data: ${pendingResponse.statusCode}');
     }
   }
 
-
-  /// Fetches meeting invites from the provided API and populates the _meetingInvites list
   Future<void> _fetchMeetingInvites() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co'; // Replace with your actual base URL
-    final String meetingInvitesApiUrl = '$baseUrl/api/office-administration/book_meeting_room/invites-meeting';
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    final String meetingInvitesApiUrl =
+        '$baseUrl/api/office-administration/book_meeting_room/invites-meeting';
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
 
-      if (token == null) {
-        throw Exception('User not authenticated');
-      }
+    if (token == null) {
+      throw Exception('User not authenticated');
+    }
 
-      final response = await http.get(
-        Uri.parse(meetingInvitesApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+    final response = await http.get(
+      Uri.parse(meetingInvitesApiUrl),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-      print('Fetching meeting invites: Status Code ${response.statusCode}');
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        final List<dynamic> meetingData = responseBody['results'];
+        final List<Map<String, dynamic>> formattedMeetingData =
+        meetingData.map((item) {
+          final Map<String, dynamic> meetingItem =
+          Map<String, dynamic>.from(item);
+          meetingItem['types'] = 'meeting';
+          return meetingItem;
+        }).toList();
 
-      if (response.statusCode == 200) {
-        final responseBody = jsonDecode(response.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
-          final List<dynamic> meetingData = responseBody['results'];
-
-          // Add 'types': 'meeting' to each meeting item for consistency
-          final List<Map<String, dynamic>> formattedMeetingData = meetingData.map((item) {
-            final Map<String, dynamic> meetingItem = Map<String, dynamic>.from(item);
-            meetingItem['types'] = 'meeting'; // Ensure 'types' field is present
-            return meetingItem;
-          }).toList();
-
-          setState(() {
-            _meetingInvites = formattedMeetingData;
-          });
-
-          print('Meeting invites loaded: ${_meetingInvites.length} items.');
-        } else {
-          throw Exception(responseBody['message'] ?? 'Failed to load meeting invites');
-        }
+        setState(() {
+          _meetingInvites = formattedMeetingData;
+        });
       } else {
-        throw Exception('Failed to load meeting invites: ${response.statusCode}');
+        throw Exception(responseBody['message'] ?? 'Failed to load meeting invites');
       }
-    } catch (e, stackTrace) {
-      print('Error fetching meeting invites: $e');
-      print(stackTrace);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching meeting invites: $e')),
-      );
-      rethrow;
+    } else {
+      throw Exception('Failed to load meeting invites: ${response.statusCode}');
     }
   }
 
@@ -260,7 +203,7 @@ class _NotificationPageState extends State<NotificationPage> {
           )
               : Expanded(
             child: RefreshIndicator(
-              onRefresh: _fetchInitialData, // Refreshes all data
+              onRefresh: _fetchInitialData,
               child: _isMeetingSelected
                   ? _meetingInvites.isEmpty
                   ? const Center(
@@ -310,7 +253,6 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
-  /// Builds the header section with background image and title.
   Widget _buildHeader(bool isDarkMode) {
     return Container(
       height: 150,
@@ -350,14 +292,13 @@ class _NotificationPageState extends State<NotificationPage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(width: 48), // Placeholder for alignment
+            const SizedBox(width: 48),
           ],
         ),
       ),
     );
   }
 
-  /// Builds the tab bar for toggling between Meeting and Approval.
   Widget _buildTabBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
@@ -384,7 +325,7 @@ class _NotificationPageState extends State<NotificationPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.meeting_room, // Updated Icon
+                    Icon(Icons.meeting_room,
                         size: 24,
                         color: _isMeetingSelected
                             ? Colors.white
@@ -455,7 +396,6 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
-  /// Builds each item card for Meeting or Approval.
   Widget _buildItemCard(BuildContext context, Map<String, dynamic> item,
       {required bool isHistory}) {
     final themeNotifier =
@@ -463,36 +403,30 @@ class _NotificationPageState extends State<NotificationPage> {
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     try {
-      // Determine the type of the item
       String type = (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
       if (!_knownTypes.contains(type)) {
-        // Unknown type, do not display
-        print('Unknown type encountered: $type');
         return const SizedBox.shrink();
       }
 
       String status = (item['status']?.toString() ?? 'Pending').trim();
       String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
 
-      // Correct ID usage based on type
       String id = '';
       if (type == 'leave') {
         id = (item['take_leave_request_id']?.toString() ?? '').trim();
       } else if (type == 'meeting') {
-        id = (item['uid']?.toString() ?? '').trim(); // Use 'uid' for meeting
+        id = (item['uid']?.toString() ?? '').trim();
       } else {
-        id = (item['uid']?.toString() ?? '').trim(); // Use 'uid' for car
+        id = (item['uid']?.toString() ?? '').trim();
       }
 
       if (id.isEmpty) {
-        print('Item with type $type has empty id.');
         return const SizedBox.shrink();
       }
 
       String imgName = (item['img_name']?.toString() ?? '').trim();
       String imgPath = (item['img_path']?.toString() ?? '').trim();
 
-      // Determine employee image URL
       String employeeImage;
       if (imgPath.isNotEmpty && imgPath.startsWith('http')) {
         employeeImage = imgPath;
@@ -503,17 +437,14 @@ class _NotificationPageState extends State<NotificationPage> {
       } else if (imgName.isNotEmpty) {
         employeeImage = '$_imageBaseUrl$imgName';
       } else {
-        // Use default placeholder image
         employeeImage =
-        'https://via.placeholder.com/150'; // Ensure this URL is accessible
+        'https://via.placeholder.com/150';
       }
 
-      // Determine colors and icons based on type
       Color typeColor = _getTypeColor(type);
       Color statusColor = _getStatusColor(status);
       IconData typeIcon = _getIconForType(type);
 
-      // Determine title and dates based on type
       String title = '';
       String startDate = '';
       String endDate = '';
@@ -540,12 +471,11 @@ class _NotificationPageState extends State<NotificationPage> {
         detailLabel = 'Requestor Name';
         detailValue = _removeDuplicateNames(item['requestor_name']?.toString() ?? 'N/A');
       } else {
-        print('Unhandled type: $type');
         return const SizedBox.shrink();
       }
 
       return GestureDetector(
-        onTap: () {
+        onTap: () async {
           if (id.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Invalid ID')),
@@ -553,16 +483,19 @@ class _NotificationPageState extends State<NotificationPage> {
             return;
           }
 
-          // Navigate to DetailsPage with required parameters
-          Navigator.push(
+          final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => ApprovalsDetailsPage(
+              builder: (context) => NotificationDetailPage(
                 id: id,
-                type: type, // Pass the type explicitly
+                type: type,
               ),
             ),
           );
+
+          if (result == true) {
+            _fetchInitialData();
+          }
         },
         child: Card(
           shape: RoundedRectangleBorder(
@@ -573,7 +506,6 @@ class _NotificationPageState extends State<NotificationPage> {
           margin: const EdgeInsets.symmetric(vertical: 8.0),
           child: Row(
             children: [
-              // Colored side bar
               Container(
                 width: 5,
                 height: 100,
@@ -586,7 +518,6 @@ class _NotificationPageState extends State<NotificationPage> {
                 ),
               ),
               const SizedBox(width: 12),
-              // Content
               Expanded(
                 child: Padding(
                   padding:
@@ -594,7 +525,6 @@ class _NotificationPageState extends State<NotificationPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Type and Icon
                       Row(
                         children: [
                           Icon(typeIcon, color: typeColor, size: 24),
@@ -610,7 +540,6 @@ class _NotificationPageState extends State<NotificationPage> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      // Title
                       Text(
                         title,
                         style: TextStyle(
@@ -620,7 +549,6 @@ class _NotificationPageState extends State<NotificationPage> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      // Dates
                       Text(
                         'From: ${_formatDate(startDate)}',
                         style:
@@ -632,14 +560,12 @@ class _NotificationPageState extends State<NotificationPage> {
                         TextStyle(color: Colors.grey.shade700, fontSize: 14),
                       ),
                       const SizedBox(height: 4),
-                      // Detail
                       Text(
                         '$detailLabel: $detailValue',
                         style:
                         TextStyle(color: Colors.grey.shade700, fontSize: 14),
                       ),
                       const SizedBox(height: 8),
-                      // Status
                       Row(
                         children: [
                           Text(
@@ -672,7 +598,6 @@ class _NotificationPageState extends State<NotificationPage> {
                   ),
                 ),
               ),
-              // Employee Image with Error Handling
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8.0),
                 child: _buildEmployeeAvatar(employeeImage),
@@ -681,18 +606,13 @@ class _NotificationPageState extends State<NotificationPage> {
           ),
         ),
       );
-    } catch (e, stackTrace) {
-      print('Error building item card: $e');
-      print(stackTrace);
+    } catch (e) {
       return const SizedBox.shrink();
     }
   }
 
-  /// Removes duplicate parts from the requestor name
   String _removeDuplicateNames(String name) {
     if (name.isEmpty) return 'N/A';
-    // Example: "UserHQ1UserHQ1" -> "UserHQ1"
-    // This can be adjusted based on the duplication pattern
     RegExp regExp = RegExp(r'^(.*?)\1+$');
     Match? match = regExp.firstMatch(name);
     if (match != null && match.groupCount >= 1) {
@@ -701,7 +621,6 @@ class _NotificationPageState extends State<NotificationPage> {
     return name;
   }
 
-  /// Builds the employee avatar with error handling
   Widget _buildEmployeeAvatar(String imageUrl) {
     return CircleAvatar(
       radius: 24,
@@ -713,7 +632,6 @@ class _NotificationPageState extends State<NotificationPage> {
           height: 48,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            print('Error loading employee image from $imageUrl: $error');
             return const Icon(
               Icons.person,
               color: Colors.grey,
@@ -725,7 +643,6 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
-  /// Formats the date string to 'dd-MM-yyyy'. Handles various date formats.
   String _formatDate(String? dateStr) {
     try {
       if (dateStr == null || dateStr.isEmpty) {
@@ -734,7 +651,6 @@ class _NotificationPageState extends State<NotificationPage> {
 
       DateTime parsedDate;
 
-      // Handle the case where the date is in 'YYYY-MM-DD' or 'YYYY-M-D' format
       if (RegExp(r"^\d{4}-\d{1,2}-\d{1,2}$").hasMatch(dateStr)) {
         List<String> dateParts = dateStr.split('-');
         int year = int.parse(dateParts[0]);
@@ -742,35 +658,29 @@ class _NotificationPageState extends State<NotificationPage> {
         int day = int.parse(dateParts[2]);
 
         parsedDate = DateTime(year, month, day);
-      }
-      // Handle ISO 8601 formatted dates like '2024-04-25T00:00:00.000Z'
-      else if (dateStr.contains('T')) {
+      } else if (dateStr.contains('T')) {
         parsedDate = DateTime.parse(dateStr);
-      }
-      // Default fallback for unsupported formats
-      else {
+      } else {
         parsedDate = DateTime.parse(dateStr);
       }
 
-      // Format the date to 'dd-MM-yyyy' or modify as needed
       return DateFormat('dd-MM-yyyy').format(parsedDate);
-    } catch (e, stackTrace) {
-      print('Date parsing error for "$dateStr": $e');
-      print(stackTrace);
+    } catch (e) {
       return 'Invalid Date';
     }
   }
 
-  /// Returns appropriate color based on the status
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'approved':
+      case 'yes':
         return Colors.green;
       case 'reject':
       case 'rejected':
         return Colors.red;
       case 'waiting':
       case 'pending':
+      case 'no':
         return Colors.amber;
       case 'processing':
       case 'branch processing':
@@ -786,7 +696,6 @@ class _NotificationPageState extends State<NotificationPage> {
     }
   }
 
-  /// Returns color based on type
   Color _getTypeColor(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
@@ -800,7 +709,6 @@ class _NotificationPageState extends State<NotificationPage> {
     }
   }
 
-  /// Returns icon based on type
   IconData _getIconForType(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
