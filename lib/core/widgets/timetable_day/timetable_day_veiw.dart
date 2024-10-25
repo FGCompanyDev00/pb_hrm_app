@@ -2,7 +2,6 @@ import 'dart:collection';
 
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_datetime_format/flutter_datetime_format.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 
 class TimeTableDayWidget extends StatelessWidget {
@@ -75,8 +74,12 @@ class TimeTableDayWidget extends StatelessWidget {
           Color statusColor = Colors.orange;
           String category = '';
 
-          if (event.category == 'AL') category = 'Annual Leave';
-          if (event.category == 'MC') category = 'Sick Leave';
+          if (event.category == 'AL') {
+            category = 'Leave';
+            statusColor = Colors.green;
+          }
+
+          if (event.category == 'MC') category = 'Sick';
 
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -100,7 +103,7 @@ class TimeTableDayWidget extends StatelessWidget {
                       'is_repeat': '',
                       'video_conference': '',
                       'uid': eventsTimeTable[itemIndex].id,
-                      'members': [],
+                      'members': const [],
                       'category': category,
                     },
                   ),
@@ -109,12 +112,23 @@ class TimeTableDayWidget extends StatelessWidget {
             },
             child: Container(
               margin: const EdgeInsets.only(right: 3, left: 3),
-              padding: const EdgeInsets.symmetric(horizontal: 5),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 5,
+                vertical: 10,
+              ),
               height: constraints.maxHeight,
               width: 50,
               decoration: BoxDecoration(
                 color: statusColor.withOpacity(0.8),
                 borderRadius: const BorderRadius.all(Radius.circular(10)),
+              ),
+              child: Text(
+                category,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           );

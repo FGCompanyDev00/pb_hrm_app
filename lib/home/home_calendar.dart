@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:async';
-import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
@@ -589,7 +588,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
 
   /// Navigates to day view when a day is double-tapped
   void _showDayView(DateTime selectedDay) {
-    final List<Event> dayEvents = _getEventsForDay(selectedDay);
+    // final List<Event> dayEvents = _getEventsForDay(selectedDay);
 
     Navigator.push(
       context,
@@ -787,10 +786,20 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                   _buildCalendar(context, isDarkMode),
                   _buildSectionSeparator(),
                   // _buildCalendarView(context, _eventsForDay),
-                  CalendarDayWidget(
-                    selectedDay: _selectedDay,
-                    eventsCalendar: _eventsForDay,
-                  ),
+                  _eventsForDay.isEmpty
+                      ? const Text(
+                          'No events for this day.',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center, // Centered text
+                        )
+                      : CalendarDayWidget(
+                          selectedDay: _selectedDay,
+                          eventsCalendar: _eventsForDay,
+                        ),
                 ],
               ),
             ),

@@ -1,5 +1,7 @@
 // event_detail_view.dart
 
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
@@ -299,7 +301,14 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
   Map<String, String> _getEventDetails() {
     String creatorName = widget.event['createdBy'] ?? widget.event['created_by_name'] ?? 'Unknown';
     String imageUrl = widget.event['img_name'] ?? '';
-    DateTime createdAt = widget.event['created_at'] ?? '';
+    String createdAt = '';
+    if (widget.event['created_at'] != null) {
+      if (widget.event['created_at'].runtimeType == DateTime) {
+        createdAt = widget.event['created_at'].toString();
+      } else {
+        createdAt = widget.event['created_at'];
+      }
+    }
 
     String formattedCreatedAt = _formatDate(createdAt.toString(), format: 'MMM dd, yyyy');
     String formattedStartDate = '';

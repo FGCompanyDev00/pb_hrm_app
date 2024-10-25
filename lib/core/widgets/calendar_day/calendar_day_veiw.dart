@@ -19,7 +19,7 @@ class CalendarDayWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentTime = DateTime.now();
-    int currentHour = currentTime.hour > 9  ? 11 : 7;
+    int currentHour = currentTime.hour > 9 ? 11 : 7;
     int untilEnd = currentTime.hour > 9 ? 19 : 10;
 
     List<AdvancedDayEvent<String>> currentEvents = [];
@@ -32,8 +32,6 @@ class CalendarDayWidget extends StatelessWidget {
       Duration storeHours = e.startDateTime.difference(endTime);
 
       if (currentTime.hour > 9) {
-        currentHour = 11;
-        untilEnd = 19;
         if (storeHours.inHours > 4) {
           // int splitHoursStart = e.startDateTime.hour - storeHours.inHours;
           int splitHours = endTime.hour - storeHours.inHours;
