@@ -1,3 +1,5 @@
+// project_management_page.dart
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/assignment_section.dart';
@@ -33,6 +35,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage>
   @override
   void initState() {
     super.initState();
+    print('[_ProjectManagementPageState] Received projectId: ${widget.projectId}');
     _loadUserData().then((_) {
       _refreshData();
     });
@@ -64,7 +67,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage>
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _currentUserId = prefs.getString('userId') ?? '';
+      _currentUserId = prefs.getString('user_id') ?? '';
     });
   }
 
@@ -151,9 +154,9 @@ class _ProjectManagementPageState extends State<ProjectManagementPage>
                 fontWeight: FontWeight.normal,
               ),
               tabs: const [
-                Tab(text: 'Processing or Detail'),
-                Tab(text: 'Assignment /Task'),
-                Tab(text: 'Comment/Chat'),
+                Tab(text: 'Processing / Detail'),
+                Tab(text: 'Assignment / Task'),
+                Tab(text: 'Comment / Chat'),
               ],
             ),
             Expanded(

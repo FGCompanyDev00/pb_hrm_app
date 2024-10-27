@@ -1,24 +1,25 @@
+// add_processing.dart
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_processing_members.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_processing_members.dart';
+import 'package:file_picker/file_picker.dart';
 
 class AddProcessingPage extends StatefulWidget {
   final String projectId;
   final String baseUrl;
 
   const AddProcessingPage({
-    super.key,
+    Key? key,
     required this.projectId,
     required this.baseUrl,
-  });
+  }) : super(key: key);
 
   @override
   _AddProcessingPageState createState() => _AddProcessingPageState();
@@ -26,16 +27,23 @@ class AddProcessingPage extends StatefulWidget {
 
 class _AddProcessingPageState extends State<AddProcessingPage> {
   final _formKey = GlobalKey<FormState>();
-  String _title = '';
-  String _description = '';
-  String _selectedStatus = 'Processing';
-  String _statusId = '0a8d93f0-1c05-42b2-8e56-984a578ef077';
-  DateTime? _startDate;
-  TimeOfDay? _startTime;
-  DateTime? _endDate;
-  TimeOfDay? _endTime;
-  List<File> _selectedImages = [];
-  List<Map<String, dynamic>> _selectedMembers = [];
+
+  // Processing Data
+  String title = '';
+  String description = '';
+  String status = 'Processing';
+  String statusId = '0a8d93f0-1c05-42b2-8e56-984a578ef077';
+  DateTime? fromDate;
+  DateTime? toDate;
+  TimeOfDay? startTime;
+  TimeOfDay? endTime;
+
+  // Members
+  List<Map<String, dynamic>> selectedMembers = [];
+
+  // File Uploads
+  List<PlatformFile> selectedFiles = [];
+
   bool _isLoading = false;
 
   final Map<String, String> _statusMap = {
@@ -44,6 +52,17 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     'Processing': '0a8d93f0-1c05-42b2-8e56-984a578ef077',
     'Finished': 'e35569eb-75e1-4005-9232-bfb57303b8b3',
   };
+
+  @override
+  void initState() {
+    super.initState();
+    print('[_AddProcessingPageState] Initializing with projectId: ${widget.projectId}, baseUrl: ${widget.baseUrl}');
+    // Initialize default dates and times
+    fromDate = DateTime.now();
+    toDate = DateTime.now();
+    startTime = const TimeOfDay(hour: 9, minute: 0);
+    endTime = const TimeOfDay(hour: 17, minute: 0);
+  }
 
   Color _getStatusColor(String status) {
     switch (status) {
@@ -61,161 +80,120 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
   }
 
   Future<void> _selectStartDate() async {
+    final DateTime initialDate = fromDate ?? DateTime.now();
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _startDate ?? DateTime.now(),
+      initialDate: initialDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
     if (picked != null) {
       setState(() {
-        _startDate = picked;
+        fromDate = picked;
       });
     }
   }
 
   Future<void> _selectStartTime() async {
+    final TimeOfDay initialTime = startTime ?? TimeOfDay.now();
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: _startTime ?? TimeOfDay.now(),
+      initialTime: initialTime,
     );
     if (picked != null) {
       setState(() {
-        _startTime = picked;
+        startTime = picked;
       });
     }
   }
 
   Future<void> _selectEndDate() async {
+    final DateTime initialDate = toDate ?? DateTime.now();
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _endDate ?? DateTime.now(),
+      initialDate: initialDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
     if (picked != null) {
       setState(() {
-        _endDate = picked;
+        toDate = picked;
       });
     }
   }
 
   Future<void> _selectEndTime() async {
+    final TimeOfDay initialTime = endTime ?? TimeOfDay.now();
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: _endTime ?? TimeOfDay.now(),
+      initialTime: initialTime,
     );
     if (picked != null) {
       setState(() {
-        _endTime = picked;
+        endTime = picked;
       });
     }
   }
 
-  Future<void> _pickImages() async {
-    try {
-      final picker = ImagePicker();
-      final List<XFile>? images = await picker.pickMultiImage();
-      if (images != null && images.isNotEmpty) {
-        for (var image in images) {
-          var compressedImage = await FlutterImageCompress.compressAndGetFile(
-            image.path,
-            image.path + '_compressed.jpg',
-            quality: 50,
-          );
-          if (compressedImage != null) {
-            setState(() {
-              _selectedImages.add(compressedImage as File);
-            });
-          }
-        }
-      }
-    } catch (e) {
-      _showErrorDialog('Error picking images: $e');
-    }
-  }
-
-  Future<void> _navigateToAddMembers() async {
-    final selected = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SelectProcessingMembersPage(
-          projectId: widget.projectId,
-          baseUrl: widget.baseUrl,
-        ),
-      ),
+  Future<void> _pickFiles() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
     );
-    if (selected != null && selected is List<Map<String, dynamic>>) {
-      await _fetchMembersImages(selected);
-    } else {
-      _showErrorDialog('Failed to select members correctly.');
+
+    if (result != null) {
+      setState(() {
+        selectedFiles.addAll(result.files);
+      });
     }
   }
 
-  Future<void> _fetchMembersImages(List<Map<String, dynamic>> members) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    if (token == null) {
-      _showErrorDialog('Token is null. Please log in again.');
-      return;
-    }
-
-    List<Map<String, dynamic>> membersWithImages = [];
-    for (var member in members) {
-      try {
-        final response = await http.get(
-          Uri.parse('${widget.baseUrl}/api/profile/${member['employee_id']}'),
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        );
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> data =
-              jsonDecode(response.body)['results'] ?? {};
-          membersWithImages.add({
-            'employee_id': member['employee_id'],
-            'employee_name': member['name'],
-            'employee_surname': member['surname'],
-            'images': data['images'] ?? '',
-          });
-        } else {
-          membersWithImages.add({
-            'employee_id': member['employee_id'],
-            'employee_name': member['name'],
-            'employee_surname': member['surname'],
-            'images': '',
-          });
-        }
-      } catch (e) {
-        membersWithImages.add({
-          'employee_id': member['employee_id'],
-          'employee_name': member['name'],
-          'employee_surname': member['surname'],
-          'images': '',
-        });
-      }
-    }
-
+  Future<void> _removeFile(int index) async {
     setState(() {
-      _selectedMembers = membersWithImages;
+      selectedFiles.removeAt(index);
     });
   }
 
-  Future<void> _addProcessing() async {
-    if (!_formKey.currentState!.validate()) {
-      _showErrorDialog('Please correct the errors in the form.');
-      return;
-    }
-    if (_startDate == null || _endDate == null) {
-      _showErrorDialog('Please select both start and end dates.');
-      return;
-    }
-    if (_endDate!.isBefore(_startDate!)) {
-      _showErrorDialog('End date cannot be before start date.');
+  Future<void> _addProcessingItem() async {
+    if (_formKey.currentState?.validate() != true) {
       return;
     }
 
-    _formKey.currentState!.save();
+    // Validate dates and times
+    DateTime fromDateTime = DateTime(
+      fromDate!.year,
+      fromDate!.month,
+      fromDate!.day,
+      startTime?.hour ?? 0,
+      startTime?.minute ?? 0,
+    );
+
+    DateTime toDateTime = DateTime(
+      toDate!.year,
+      toDate!.month,
+      toDate!.day,
+      endTime?.hour ?? 0,
+      endTime?.minute ?? 0,
+    );
+
+    if (toDateTime.isBefore(fromDateTime)) {
+      _showAlertDialog(
+        title: 'Invalid Dates',
+        content: 'End date cannot be before start date.',
+        isError: true,
+      );
+      return;
+    }
+
+    // Ensure at least one member is selected
+    if (selectedMembers.isEmpty) {
+      _showAlertDialog(
+        title: 'No Members Selected',
+        content: 'Please select at least one member.',
+        isError: true,
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -223,7 +201,11 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     if (token == null) {
-      _showErrorDialog('Token is null. Please log in again.');
+      _showAlertDialog(
+        title: 'Authentication Error',
+        content: 'Token is null. Please log in again.',
+        isError: true,
+      );
       setState(() {
         _isLoading = false;
       });
@@ -231,69 +213,75 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     }
 
     try {
-      final fromDateStr = DateFormat('yyyy-MM-dd').format(_startDate!);
-      final toDateStr = DateFormat('yyyy-MM-dd').format(_endDate!);
-
-      String startTimeStr = _startTime != null
-          ? '${_startTime!.hour.toString().padLeft(2, '0')}:${_startTime!.minute.toString().padLeft(2, '0')}'
-          : '';
-      String endTimeStr = _endTime != null
-          ? '${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}'
-          : '';
-
-      List<Map<String, dynamic>> membersDetails = _selectedMembers
-          .map((member) => {"employee_id": member['employee_id']})
-          .toList();
-      String membersDetailsStr = jsonEncode(membersDetails);
-
       var uri = Uri.parse('${widget.baseUrl}/api/work-tracking/meeting/insert');
       var request = http.MultipartRequest('POST', uri);
       request.headers['Authorization'] = 'Bearer $token';
 
+      // Add form fields
       request.fields['project_id'] = widget.projectId;
-      request.fields['title'] = _title;
-      request.fields['descriptions'] = _description;
-      request.fields['status_id'] = _statusId;
-      request.fields['fromdate'] = fromDateStr;
-      request.fields['todate'] = toDateStr;
-      request.fields['start_time'] = startTimeStr;
-      request.fields['end_time'] = endTimeStr;
-      request.fields['membersDetails'] = membersDetailsStr;
+      request.fields['title'] = title;
+      request.fields['descriptions'] = description;
+      request.fields['status_id'] = _statusMap[status]!;
+      request.fields['fromdate'] =
+          DateFormat('yyyy-MM-dd').format(fromDate!);
+      request.fields['todate'] =
+          DateFormat('yyyy-MM-dd').format(toDate!);
+      request.fields['start_time'] = _formatTime(startTime!);
+      request.fields['end_time'] = _formatTime(endTime!);
+      // Add location and notification if needed
+      // request.fields['location'] = location;
+      // request.fields['notification'] = notification.toString();
 
-      if (_selectedImages.isNotEmpty) {
-        for (var image in _selectedImages) {
-          var stream = http.ByteStream(image.openRead());
-          var length = await image.length();
-          var multipartFile = http.MultipartFile(
+      // Add membersDetails
+      List<Map<String, String>> membersDetails = selectedMembers
+          .map((member) => {"employee_id": member['employee_id'].toString()})
+          .toList();
+      request.fields['membersDetails'] = jsonEncode(membersDetails);
+
+      // Add files
+      for (var file in selectedFiles) {
+        if (file.path != null) {
+          request.files.add(await http.MultipartFile.fromPath(
             'file_name',
-            stream,
-            length,
-            filename: image.path.split('/').last,
-          );
-          request.files.add(multipartFile);
+            file.path!,
+            filename: file.name,
+          ));
         }
       }
 
-      var response = await request.send();
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        _showSuccessDialog('Processing item added successfully.');
-        Navigator.pop(context, true);
+      // Send the request
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        _showAlertDialog(
+          title: 'Success',
+          content: 'Processing item added successfully.',
+          isError: false,
+          onOk: () {
+            Navigator.pop(context, true); // Indicate success to previous page
+          },
+        );
       } else {
         String errorMessage = 'Failed to add processing item.';
         try {
-          final contentType = response.headers['content-type'];
-          if (contentType != null && contentType.contains('application/json')) {
-            final responseBody = await response.stream.bytesToString();
-            final responseData = jsonDecode(responseBody);
-            errorMessage = responseData['message'] ?? errorMessage;
-          } else {
-            errorMessage = 'Server error: ${response.statusCode}';
+          final responseData = jsonDecode(response.body);
+          if (responseData['message'] != null) {
+            errorMessage = responseData['message'];
           }
-        } catch (e) {}
-        _showErrorDialog(errorMessage);
+        } catch (_) {}
+        _showAlertDialog(
+          title: 'Error',
+          content: errorMessage,
+          isError: true,
+        );
       }
     } catch (e) {
-      _showErrorDialog('Error adding processing item: $e');
+      _showAlertDialog(
+        title: 'Error',
+        content: 'Error adding processing item: $e',
+        isError: true,
+      );
     }
 
     setState(() {
@@ -301,19 +289,45 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     });
   }
 
-  void _showErrorDialog(String message) {
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  Future<void> _deleteMeeting() async {
+    // Implement delete functionality if needed
+  }
+
+  void _showAlertDialog({
+    required String title,
+    required String content,
+    required bool isError,
+    VoidCallback? onOk,
+  }) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Error'),
-          content: Text(message),
+          title: Text(title,
+              style: TextStyle(
+                  color: isError ? Colors.red : Colors.green,
+                  fontWeight: FontWeight.bold)),
+          content: Text(content),
           actions: [
             TextButton(
-              child: const Text('OK'),
               onPressed: () {
                 Navigator.of(context).pop();
+                if (!isError &&
+                    (title.toLowerCase().contains('success') ||
+                        title.toLowerCase().contains('added'))) {
+                  if (onOk != null) {
+                    onOk();
+                  }
+                }
               },
+              child: const Text('OK'),
             ),
           ],
         );
@@ -321,107 +335,112 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     );
   }
 
-  void _showSuccessDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Success'),
-          content: Text(message),
-          actions: [
-            TextButton(
-              child: const Text('OK'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
+  void _navigateToSelectMembers() async {
+    print('[_AddProcessingPageState] Navigating to SelectProcessingMembersPage with projectId: ${widget.projectId}');
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SelectProcessingMembersPage(
+          projectId: widget.projectId,
+          baseUrl: widget.baseUrl,
+          alreadySelectedMembers: selectedMembers,
+        ),
+      ),
     );
-  }
 
-  Widget _buildSelectedImages() {
-    if (_selectedImages.isEmpty) return Container();
-    return Wrap(
-      spacing: 8.0,
-      runSpacing: 8.0,
-      children: _selectedImages.map((image) {
-        return Stack(
-          children: [
-            Image.file(
-              image,
-              width: 100,
-              height: 100,
-              fit: BoxFit.cover,
-            ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedImages.remove(image);
-                  });
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      }).toList(),
-    );
+    if (result != null && result is List<Map<String, dynamic>>) {
+      setState(() {
+        selectedMembers = result;
+      });
+      print('[_AddProcessingPageState] Members selected: ${selectedMembers.map((m) => m['employee_id']).toList()}');
+    }
   }
 
   Widget _buildSelectedMembers() {
-    if (_selectedMembers.isEmpty) return Container();
+    if (selectedMembers.isEmpty) return const Text('No members selected.');
+    int displayCount = selectedMembers.length > 5 ? 5 : selectedMembers.length;
+    List<Widget> avatars = [];
+    for (int i = 0; i < displayCount; i++) {
+      avatars.add(
+        Padding(
+          padding: const EdgeInsets.only(right: 4.0),
+          child: CircleAvatar(
+            backgroundImage: selectedMembers[i]['image_url'] != null &&
+                selectedMembers[i]['image_url'].isNotEmpty
+                ? NetworkImage(selectedMembers[i]['image_url'])
+                : const AssetImage('assets/default_avatar.png') as ImageProvider,
+            radius: 20,
+            backgroundColor: Colors.grey[200],
+          ),
+        ),
+      );
+    }
+    if (selectedMembers.length > 5) {
+      avatars.add(
+        CircleAvatar(
+          backgroundColor: Colors.grey[300],
+          radius: 20,
+          child: Text(
+            '+${selectedMembers.length - 5}',
+            style: const TextStyle(color: Colors.black),
+          ),
+        ),
+      );
+    }
     return Wrap(
-      spacing: 8.0,
-      runSpacing: 8.0,
-      children: _selectedMembers.map((member) {
-        return Stack(
-          children: [
-            CircleAvatar(
-              backgroundImage: member['images'] != null && member['images'] != ''
-                  ? NetworkImage(member['images'])
-                  : const AssetImage('assets/default_avatar.png') as ImageProvider,
-              radius: 20,
+      children: avatars,
+    );
+  }
+
+  Widget _buildFilePicker() {
+    return Container(
+      padding: const EdgeInsets.all(12.0),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300, width: 1.5),
+        borderRadius: BorderRadius.circular(8.0),
+        color: Colors.grey.shade50,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text(
+            'Upload Files (Optional)',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          ElevatedButton.icon(
+            onPressed: _pickFiles,
+            icon: const Icon(Icons.attach_file, color: Colors.white),
+            label: const Text(
+              'Add Files',
+              style: TextStyle(color: Colors.white),
             ),
-            Positioned(
-              top: 0,
-              right: 0,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedMembers.remove(member);
-                  });
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2196F3), // Light Blue
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 20.0, vertical: 10.0),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.0),
               ),
+              elevation: 2,
             ),
-          ],
-        );
-      }).toList(),
+          ),
+          const SizedBox(height: 8),
+          selectedFiles.isEmpty
+              ? const Text('No files selected.')
+              : Wrap(
+            spacing: 8.0,
+            alignment: WrapAlignment.center,
+            children: List.generate(selectedFiles.length, (index) {
+              return Chip(
+                label: Text(selectedFiles[index].name),
+                deleteIcon: const Icon(Icons.close),
+                onDeleted: () => _removeFile(index),
+              );
+            }),
+          ),
+        ],
+      ),
     );
   }
 
@@ -429,6 +448,14 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
+
+    // Determine screen size for responsiveness
+    final Size screenSize = MediaQuery.of(context).size;
+
+    // Adjust horizontal padding based on screen width
+    double horizontalPadding = screenSize.width * 0.05; // 5% of screen width
+    horizontalPadding = horizontalPadding < 16.0 ? 16.0 : horizontalPadding;
+
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: Container(
@@ -471,117 +498,112 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
           : GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding, vertical: 30.0),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: _addProcessing,
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: const Text(
-                        'Add',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 25, vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18.0),
-                        ),
-                      ),
+                // 'Add' Button Positioned at Top Right
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton.icon(
+                    onPressed: _addProcessingItem,
+                    icon: const Icon(Icons.add, color: Colors.white),
+                    label: const Text(
+                      'Add',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
-                  ],
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFDBB342), // #DBB342
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20.0, vertical: 10.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      elevation: 4,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                // Title Input
                 TextFormField(
                   decoration: const InputDecoration(
                     labelText: 'Title',
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter title';
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Title is required.';
                     }
                     return null;
                   },
-                  onSaved: (value) {
-                    _title = value!;
+                  onChanged: (value) {
+                    setState(() {
+                      title = value;
+                    });
                   },
                 ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedStatus,
-                        decoration: const InputDecoration(
-                          labelText: 'Status',
-                          border: OutlineInputBorder(),
-                        ),
-                        icon: Image.asset(
-                          'assets/task.png',
-                          width: 24,
-                          height: 24,
-                        ),
-                        items: ['Processing', 'Pending', 'Finished', 'Error']
-                            .map<DropdownMenuItem<String>>((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.access_time,
-                                  color: _getStatusColor(value),
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(value),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _selectedStatus = newValue!;
-                            _statusId = _statusMap[_selectedStatus]!;
-                          });
-                        },
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please select status';
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    ElevatedButton.icon(
-                      onPressed: _pickImages,
-                      icon: const Icon(Icons.upload, color: Colors.white),
-                      label: const Text(
-                        'Upload Images',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 16),
+                // Description Input
+                TextFormField(
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 4,
+                  onChanged: (value) {
+                    setState(() {
+                      description = value;
+                    });
+                  },
                 ),
                 const SizedBox(height: 16),
-                _buildSelectedImages(),
-                const SizedBox(height: 24),
+                // Status Dropdown
+                DropdownButtonFormField<String>(
+                  value: status,
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
+                  ),
+                  icon: Image.asset(
+                    'assets/task.png',
+                    width: 24,
+                    height: 24,
+                  ),
+                  items: ['Processing', 'Pending', 'Finished', 'Error']
+                      .map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            color: _getStatusColor(value),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(value),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      status = newValue!;
+                      statusId = _statusMap[status]!;
+                    });
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Status is required.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Start Date-Time
                 Row(
                   children: [
                     Expanded(
@@ -598,22 +620,22 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                               ),
                             ),
                             validator: (value) {
-                              if (_startDate == null) {
-                                return 'Please select start date';
+                              if (fromDate == null) {
+                                return 'Start date is required.';
                               }
                               return null;
                             },
                             controller: TextEditingController(
-                              text: _startDate != null
+                              text: fromDate != null
                                   ? DateFormat('yyyy-MM-dd')
-                                  .format(_startDate!)
+                                  .format(fromDate!)
                                   : '',
                             ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: GestureDetector(
                         onTap: _selectStartTime,
@@ -627,9 +649,15 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                                 onPressed: _selectStartTime,
                               ),
                             ),
+                            validator: (value) {
+                              if (startTime == null) {
+                                return 'Start time is required.';
+                              }
+                              return null;
+                            },
                             controller: TextEditingController(
-                              text: _startTime != null
-                                  ? _startTime!.format(context)
+                              text: startTime != null
+                                  ? startTime!.format(context)
                                   : '',
                             ),
                           ),
@@ -638,7 +666,8 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                // End Date-Time
                 Row(
                   children: [
                     Expanded(
@@ -655,26 +684,22 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                               ),
                             ),
                             validator: (value) {
-                              if (_endDate == null) {
-                                return 'Please select end date';
-                              }
-                              if (_startDate != null &&
-                                  _endDate!.isBefore(_startDate!)) {
-                                return 'End date cannot be before start date';
+                              if (toDate == null) {
+                                return 'End date is required.';
                               }
                               return null;
                             },
                             controller: TextEditingController(
-                              text: _endDate != null
+                              text: toDate != null
                                   ? DateFormat('yyyy-MM-dd')
-                                  .format(_endDate!)
+                                  .format(toDate!)
                                   : '',
                             ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: GestureDetector(
                         onTap: _selectEndTime,
@@ -688,9 +713,15 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                                 onPressed: _selectEndTime,
                               ),
                             ),
+                            validator: (value) {
+                              if (endTime == null) {
+                                return 'End time is required.';
+                              }
+                              return null;
+                            },
                             controller: TextEditingController(
-                              text: _endTime != null
-                                  ? _endTime!.format(context)
+                              text: endTime != null
+                                  ? endTime!.format(context)
                                   : '',
                             ),
                           ),
@@ -699,49 +730,43 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                // Members Selection
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    const Text(
+                      'Selected Members',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     ElevatedButton.icon(
-                      onPressed: _navigateToAddMembers,
+                      onPressed: _navigateToSelectMembers,
                       icon: const Icon(Icons.person_add, color: Colors.white),
                       label: const Text(
-                        'Add People',
+                        'Select Members',
                         style: TextStyle(color: Colors.white),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
+                        backgroundColor: const Color(0xFF4CAF50), // Green
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                            horizontal: 16.0, vertical: 10.0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.0),
                         ),
+                        elevation: 3,
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildSelectedMembers(),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 5,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter description';
-                    }
-                    return null;
-                  },
-                  onSaved: (value) {
-                    _description = value!;
-                  },
-                ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
+                _buildSelectedMembers(),
+                const SizedBox(height: 20),
+                // File Upload
+                _buildFilePicker(),
+                const SizedBox(height: 16),
               ],
             ),
           ),

@@ -156,40 +156,57 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('View Project'),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/ready_bg.png'),
-              fit: BoxFit.cover,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(80.0),
+        child: AppBar(
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 12.0, top: 24.0),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () {
+                Navigator.pop(context);
+              },
             ),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
+          ),
+          title: const Padding(
+            padding: EdgeInsets.only(top: 30.0),
+            child: Text('View Project'),
+          ),
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/ready_bg.png'),
+                fit: BoxFit.cover,
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(30),
+                bottomRight: Radius.circular(30),
+              ),
             ),
           ),
         ),
       ),
+
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(12.0), // Reduced padding
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 20), // Reduced height
               _buildTextField(
                   'Created by', widget.project['create_project_by']),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               _buildTextField('Name of Project', widget.project['p_name']),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               _buildTextField('Department', widget.project['d_name']),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               _buildTextField('Branch', widget.project['b_name']),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               _buildTextField('Status', widget.project['s_name']),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               _buildDateField('Deadline', widget.project['dl']),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               _buildDateField('Extended Deadline', widget.project['extend']),
               const SizedBox(height: 20),
               const Text(
@@ -198,17 +215,17 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
               ),
               const SizedBox(height: 10),
               _buildProgressBar(widget.project['precent']),
-              const SizedBox(height: 20),
+              const SizedBox(height: 25),
               const Text(
                 'Project Members',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               projectMembers.isEmpty
                   ? const Text(
                 'No project members found',
-                style: TextStyle(
-                    fontSize: 14, fontStyle: FontStyle.italic),
+                style:
+                TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
               )
                   : _buildProjectMembersGrid(projectMembers),
             ],
@@ -227,11 +244,13 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
           style:
           const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 4), // Reduced height
         TextField(
           controller: TextEditingController(text: value ?? ''),
           readOnly: true,
           decoration: InputDecoration(
+            contentPadding:
+            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0), // Optimized padding
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.0),
             ),
@@ -250,12 +269,14 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
           style:
           const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 4), // Reduced height
         TextField(
           controller: TextEditingController(text: date ?? ''),
           readOnly: true,
           decoration: InputDecoration(
-            suffixIcon: const Icon(Icons.calendar_today),
+            suffixIcon: const Icon(Icons.calendar_today, size: 20),
+            contentPadding:
+            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0), // Optimized padding
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.0),
             ),
@@ -274,13 +295,14 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
             value: progress / 100,
             color: Colors.yellow,
             backgroundColor: Colors.grey.shade300,
+            minHeight: 8.0, // Slightly thicker for better visibility
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8), // Reduced width
         Text(
           '${progress.toStringAsFixed(0)}%',
           style: const TextStyle(
-            fontSize: 16,
+            fontSize: 14, // Slightly smaller font
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
@@ -290,12 +312,16 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
   }
 
   Widget _buildProjectMembersGrid(List<Map<String, dynamic>> members) {
+    // Determine the crossAxisCount based on screen width for responsiveness
+    int crossAxisCount = MediaQuery.of(context).size.width > 600 ? 6 : 4;
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        childAspectRatio: 1,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: 0.8, // Adjusted for better fit
+        crossAxisSpacing: 12.0, // Reduced spacing
       ),
       itemCount: members.length,
       itemBuilder: (context, index) {
@@ -308,13 +334,15 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
                 backgroundImage: NetworkImage(
                     member['profileImage'] ??
                         'https://via.placeholder.com/150'),
-                radius: 25,
+                radius: 22, // Reduced radius
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 4), // Reduced height
               Text(
                 member['name'] ?? 'Unknown',
                 style: const TextStyle(fontSize: 12),
                 textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis, // Handle long names gracefully
               ),
             ],
           ),

@@ -25,32 +25,50 @@ class AddProjectPageState extends State<AddProjectPage> {
     'Finished': 'e35569eb-75e1-4005-9232-bfb57303b8b3',
   };
 
-
   String _selectedStatus = 'Processing';
   String _selectedBranch = 'HQ Office';
   String _selectedDepartment = 'Digital Banking Dept';
   double _progress = 0.5;
   bool _isLoading = false;
 
+  @override
+  void dispose() {
+    _projectNameController.dispose();
+    _deadline1Controller.dispose();
+    _deadline2Controller.dispose();
+    super.dispose();
+  }
+
   Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-    if (picked != null) {
-      setState(() {
-        controller.text = "${picked.toLocal()}".split(' ')[0];
-      });
+    try {
+      print('Opening date picker for ${controller == _deadline1Controller ? 'Deadline' : 'Extended Deadline'}');
+      final DateTime? picked = await showDatePicker(
+        context: context,
+        initialDate: DateTime.now(),
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2101),
+      );
+      if (picked != null) {
+        setState(() {
+          controller.text = "${picked.toLocal()}".split(' ')[0];
+        });
+        print('Selected date for ${controller == _deadline1Controller ? 'Deadline' : 'Extended Deadline'}: ${controller.text}');
+      } else {
+        print('No date selected for ${controller == _deadline1Controller ? 'Deadline' : 'Extended Deadline'}');
+      }
+    } catch (e) {
+      print('Error selecting date: $e');
+      _showErrorDialog('Failed to select date. Please try again.');
     }
   }
 
   Future<void> _createProjectAndProceed() async {
+    print('Attempting to create project...');
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
+      print('Form is valid. Preparing data for API.');
 
       final newProject = {
         'project_name': _projectNameController.text.trim(),
@@ -62,21 +80,15 @@ class AddProjectPageState extends State<AddProjectPage> {
         'extended': _deadline2Controller.text.trim(),
       };
 
-      try {
-        // Create a new project and get the project ID directly
-        final projectId = await WorkTrackingService().addProject(newProject);
+      print('Project Data: $newProject');
 
-        // Debugging: print the projectId for confirmation
-        if (kDebugMode) {
-          print('Received project ID from addProject: $projectId');
-        }
+      try {
+        print('Sending project data to API...');
+        final projectId = await WorkTrackingService().addProject(newProject);
+        print('Received project ID from API: $projectId');
 
         if (projectId != null) {
-          // Debugging: print the projectId before navigation
-          if (kDebugMode) {
-            print('Navigating to AddPeoplePage with project ID: $projectId');
-          }
-
+          print('Navigating to AddPeoplePage with project ID: $projectId');
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -84,19 +96,25 @@ class AddProjectPageState extends State<AddProjectPage> {
             ),
           );
         } else {
+          print('API returned null project ID.');
           _showErrorDialog('Project created but failed to retrieve project ID. Please try again.');
         }
       } catch (e) {
-        _showErrorDialog(e.toString());
+        print('Error creating project: $e');
+        _showErrorDialog('Failed to create project. Error: $e');
       } finally {
         setState(() {
           _isLoading = false;
         });
+        print('Finished project creation process.');
       }
+    } else {
+      print('Form validation failed.');
     }
   }
 
   void _showErrorDialog(String message) {
+    print('Showing error dialog: $message');
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -104,7 +122,10 @@ class AddProjectPageState extends State<AddProjectPage> {
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              print('Error dialog dismissed.');
+              Navigator.of(context).pop();
+            },
             child: const Text('OK'),
           ),
         ],
@@ -147,6 +168,7 @@ class AddProjectPageState extends State<AddProjectPage> {
             size: 20,
           ),
           onPressed: () {
+            print('Back button pressed.');
             Navigator.pop(context);
           },
         ),
@@ -170,6 +192,7 @@ class AddProjectPageState extends State<AddProjectPage> {
                     isDarkMode: isDarkMode,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
+                        print('Validation failed: Project name is empty.');
                         return 'Please enter the project name';
                       }
                       return null;
@@ -184,6 +207,7 @@ class AddProjectPageState extends State<AddProjectPage> {
                       setState(() {
                         _selectedStatus = value!;
                       });
+                      print('Selected Status: $value');
                     },
                     isDarkMode: isDarkMode,
                   ),
@@ -196,6 +220,7 @@ class AddProjectPageState extends State<AddProjectPage> {
                       setState(() {
                         _selectedBranch = value!;
                       });
+                      print('Selected Branch: $value');
                     },
                     isDarkMode: isDarkMode,
                   ),
@@ -208,6 +233,7 @@ class AddProjectPageState extends State<AddProjectPage> {
                       setState(() {
                         _selectedDepartment = value!;
                       });
+                      print('Selected Department: $value');
                     },
                     isDarkMode: isDarkMode,
                   ),
@@ -257,7 +283,9 @@ class AddProjectPageState extends State<AddProjectPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isLoading ? null : _createProjectAndProceed,
+        onPressed: _isLoading ? () {
+          print('Button pressed but currently loading. Action is disabled.');
+        } : _createProjectAndProceed,
         backgroundColor: Colors.green,
         icon: _isLoading
             ? const CircularProgressIndicator(color: Colors.white)
@@ -384,6 +412,7 @@ class AddProjectPageState extends State<AddProjectPage> {
               setState(() {
                 _progress = value;
               });
+              print('Progress updated to: ${(_progress * 100).toStringAsFixed(0)}%');
             },
             min: 0,
             max: 1,

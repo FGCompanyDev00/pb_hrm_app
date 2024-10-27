@@ -316,7 +316,7 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
     return Scaffold(
       appBar: _buildAppBar(),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(30.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -324,30 +324,35 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Image.asset('assets/title.png', width: 24, height: 24),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Title: $title',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Image.asset('assets/title.png', width: 24, height: 24),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Title: $title',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 Row(
                   children: [
                     Container(
-                      width: 10,
-                      height: 10,
+                      width: 12, // Increased size for better visibility
+                      height: 12,
                       decoration: BoxDecoration(
                         color: statusColor,
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 6), // Increased spacing
                     Text(
                       'Status: $status',
                       style: TextStyle(
@@ -360,74 +365,53 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24), // Increased spacing between sections
+
             // From Date and Start Time
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Image.asset('assets/calendar-icon.png', width: 18, height: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'From: ${DateFormat('yyyy-MM-dd').format(fromDate)}',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Start: $startTime',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            // To Date and End Time
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Image.asset('assets/calendar-icon.png', width: 18, height: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'To: ${DateFormat('yyyy-MM-dd').format(toDate)}',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'End: $endTime',
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            _buildDateTimeRow(
+              iconPath: 'assets/calendar-icon.png',
+              dateLabel: 'From: ',
+              dateValue: DateFormat('yyyy-MM-dd').format(fromDate),
+              timeLabel: 'Start: ',
+              timeValue: startTime,
             ),
             const SizedBox(height: 16),
+
+            // To Date and End Time
+            _buildDateTimeRow(
+              iconPath: 'assets/calendar-icon.png',
+              dateLabel: 'To: ',
+              dateValue: DateFormat('yyyy-MM-dd').format(toDate),
+              timeLabel: 'End: ',
+              timeValue: endTime,
+            ),
+            const SizedBox(height: 24),
+
             // Days Remaining
             Row(
               children: [
-                const Text(
+                const Icon(Icons.timer, color: Colors.orange, size: 20),
+                const SizedBox(width: 8),
+                Text(
                   'Days Remaining: ',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isNearDue ? Colors.red : Colors.orange[800],
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 Text(
                   '$daysRemaining',
                   style: TextStyle(
                     fontSize: 16,
-                    color: isNearDue ? Colors.red : Colors.orange,
+                    color: isNearDue ? Colors.red : Colors.orange[800],
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+
             // Members
             const Text(
               'Members:',
@@ -436,32 +420,41 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             _members != null && _members!.isNotEmpty
                 ? Wrap(
-              spacing: 8.0,
+              spacing: 12.0, // Increased spacing between avatars
+              runSpacing: 12.0,
               children: _members!.map<Widget>((member) {
                 String imageUrl = member['image_url'] ??
                     'https://via.placeholder.com/150'; // Default image
+                String memberName = member['name'] ?? 'Member';
                 return Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     CircleAvatar(
                       backgroundImage: NetworkImage(imageUrl),
-                      radius: 25,
+                      radius: 30, // Increased size for better visibility
                       onBackgroundImageError: (_, __) {},
                       backgroundColor: Colors.grey[200],
                     ),
-                    const SizedBox(height: 4),
-                    // Text(
-                    //   member['employee_id'] ?? 'ID',
-                    //   style: const TextStyle(fontSize: 12),
-                    // ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: 70, // Fixed width for consistency
+                      child: Text(
+                        memberName,
+                        style: const TextStyle(fontSize: 12),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 );
               }).toList(),
             )
                 : const Text('No members assigned'),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+
             // Description and Download Button
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -473,39 +466,50 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                ElevatedButton(
+                ElevatedButton.icon(
                   onPressed: _downloadAll,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
                   ),
-                  child: const Text(
+                  icon: const Icon(Icons.download, color: Colors.black, size: 18),
+                  label: const Text(
                     'Download',
                     style: TextStyle(
                       color: Colors.black,
+
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(12.0),
+              padding: const EdgeInsets.all(16.0),
               decoration: BoxDecoration(
+                color: Colors.blue[50],
                 border: Border.all(color: Colors.blue),
-                borderRadius: BorderRadius.circular(8.0),
+                borderRadius: BorderRadius.circular(12.0),
               ),
               child: Text(
                 description.isNotEmpty
                     ? description.replaceAll(RegExp(r'<[^>]*>'), '')
                     : 'No Description',
                 style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
+                  color: Colors.black87,
+                  fontSize: 14,
                 ),
                 textAlign: TextAlign.justify,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
+
             // Files Section (Optional)
             _files != null && _files!.isNotEmpty
                 ? Column(
@@ -518,15 +522,24 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Column(
-                  children: _files!.map<Widget>((file) {
+                const SizedBox(height: 12),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _files!.length,
+                  separatorBuilder: (context, index) => const Divider(),
+                  itemBuilder: (context, index) {
+                    var file = _files![index];
                     String fileName = file['file_name'] ?? 'Unnamed File';
                     return ListTile(
-                      leading: const Icon(Icons.insert_drive_file),
-                      title: Text(fileName),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 0.0),
+                      leading: const Icon(Icons.insert_drive_file, color: Colors.blue),
+                      title: Text(
+                        fileName,
+                        style: const TextStyle(fontSize: 14),
+                      ),
                       trailing: IconButton(
-                        icon: const Icon(Icons.download),
+                        icon: const Icon(Icons.download, color: Colors.green),
                         onPressed: () async {
                           String fileUrl = file['file_url'] ?? '';
                           if (fileUrl.isNotEmpty) {
@@ -558,7 +571,7 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
                         },
                       ),
                     );
-                  }).toList(),
+                  },
                 ),
               ],
             )
@@ -566,6 +579,67 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
           ],
         ),
       ),
+    );
+  }
+
+  // Helper method to build Date and Time rows
+  Widget _buildDateTimeRow({
+    required String iconPath,
+    required String dateLabel,
+    required String dateValue,
+    required String timeLabel,
+    required String timeValue,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Image.asset(iconPath, width: 20, height: 20),
+        const SizedBox(width: 12), // Increased spacing
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RichText(
+                text: TextSpan(
+                  text: dateLabel,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: dateValue,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              RichText(
+                text: TextSpan(
+                  text: timeLabel,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: timeValue,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

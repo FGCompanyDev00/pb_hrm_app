@@ -17,7 +17,11 @@ class ProcessingSection extends StatefulWidget {
   final String projectId;
   final String baseUrl;
 
-  const ProcessingSection({super.key, required this.projectId, required this.baseUrl});
+  const ProcessingSection({
+    Key? key,
+    required this.projectId,
+    required this.baseUrl,
+  }) : super(key: key);
 
   @override
   State<ProcessingSection> createState() => _ProcessingSectionState();
@@ -43,6 +47,8 @@ class _ProcessingSectionState extends State<ProcessingSection> {
       _isLoading = true;
       _hasError = false;
     });
+
+    print('[_ProcessingSection] Fetching meetings for projectId: ${widget.projectId}');
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -79,7 +85,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load meetings')),
+          SnackBar(content: Text('Failed to load meetings: ${response.body}')),
         );
         setState(() {
           _isLoading = false;
@@ -111,6 +117,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
   }
 
   void _showAddProcessingPage() async {
+    print('[_ProcessingSection] Navigating to AddProcessingPage with projectId: ${widget.projectId}');
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -140,8 +147,12 @@ class _ProcessingSectionState extends State<ProcessingSection> {
   }
 
   Widget _buildProcessingTaskCard(Map<String, dynamic> meeting) {
-    final fromDate = meeting['from_date'] != null ? DateTime.parse(meeting['from_date']) : DateTime.now();
-    final toDate = meeting['to_date'] != null ? DateTime.parse(meeting['to_date']) : DateTime.now();
+    final fromDate = meeting['from_date'] != null
+        ? DateTime.parse(meeting['from_date'])
+        : DateTime.now();
+    final toDate = meeting['to_date'] != null
+        ? DateTime.parse(meeting['to_date'])
+        : DateTime.now();
     final now = DateTime.now();
     final daysRemaining = toDate.difference(now).inDays;
     Color daysColor;
@@ -417,11 +428,15 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      value: _statusOptions.contains(_selectedStatus) ? _selectedStatus : null,
+                      value: _statusOptions.contains(_selectedStatus)
+                          ? _selectedStatus
+                          : null,
                       icon: Image.asset('assets/task.png', width: 24, height: 24),
                       iconSize: 28,
                       elevation: 16,
-                      dropdownColor: isDarkMode ? const Color(0xFF424242) : Colors.white,
+                      dropdownColor: isDarkMode
+                          ? const Color(0xFF424242)
+                          : Colors.white,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black87,
                         fontWeight: FontWeight.bold,
@@ -432,12 +447,14 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                           _selectedStatus = newValue!;
                         });
                       },
-                      items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
+                      items: _statusOptions
+                          .map<DropdownMenuItem<String>>((String value) {
                         return DropdownMenuItem<String>(
                           value: value,
                           child: Row(
                             children: [
-                              Icon(Icons.access_time, color: _getStatusColor(value), size: 14),
+                              Icon(Icons.access_time,
+                                  color: _getStatusColor(value), size: 14),
                               const SizedBox(width: 10),
                               Text(value),
                             ],
@@ -480,7 +497,14 @@ class _ProcessingSectionState extends State<ProcessingSection> {
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _hasError
-              ? const Center(child: Text('Failed to load meetings'))
+              ? Center(
+            child: Text(
+              'Failed to load meetings.',
+              style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  fontSize: 16),
+            ),
+          )
               : filteredMeetings.isEmpty
               ? const Center(child: Text('No processing data to display'))
               : RefreshIndicator(

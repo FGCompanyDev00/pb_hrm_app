@@ -61,175 +61,209 @@ class WorkTrackingService {
     return null;
   }
 
-  // Fetch all available projects
+  /// Fetch all available projects.
   Future<List<Map<String, dynamic>>> fetchAllProjects() async {
     final headers = await _getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/proj/projects'),
-      headers: headers,
-    );
-
-    if (response.statusCode == 200) {
-      var body = json.decode(response.body);
-      if (body['result'] != null && body['result'] is List) {
-        return (body['result'] as List).map((item) =>
-        {
-          'project_id': item['project_id'],
-          'p_name': item['p_name'],
-          's_name': item['s_name'],
-          'precent': item['precent'],
-          'dl': item['dl'],
-          'extend': item['extend'],
-          'create_project_by': item['create_project_by'],
-          'd_name': item['d_name'],
-          'b_name': item['b_name'],
-        }).toList();
-      } else {
-        throw Exception('Unexpected response format');
-      }
-    } else {
-      throw Exception('Failed to load projects: ${response.reasonPhrase}');
+    final url = '$baseUrl/api/work-tracking/proj/projects';
+    if (kDebugMode) {
+      print('Fetching All Projects from: $url');
     }
-  }
 
-  // Add a new project
-  Future<String?> addProject(Map<String, dynamic> projectData) async {
-    final headers = await _getHeaders();
-    final response = await http.post(
-      Uri.parse('$baseUrl/api/work-tracking/proj/insert'),
-      headers: headers,
-      body: jsonEncode(projectData),
-    );
-
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      final responseBody = jsonDecode(response.body);
-
-      if (kDebugMode) {
-        print('API Response: $responseBody');
-      }
-
-      // Check if project_id exists in response
-      if (responseBody != null && responseBody['id'] != null) {
-        final String projectId = responseBody['id'];
-        if (kDebugMode) {
-          print('Project successfully created with ID: $projectId');
-        }
-        return projectId;
-      } else {
-        // For debugging: print a message if project_id is missing
-        if (kDebugMode) {
-          print('Project created but no project_id in response');
-        }
-        return null;
-      }
-    } else {
-      throw Exception('Failed to add project: ${response.reasonPhrase}');
-    }
-  }
-
-  // Update a project by its ID
-  Future<String> updateProject(String projectId,
-      Map<String, dynamic> projectData) async {
-    final headers = await _getHeaders();
-    final response = await http.put(
-      Uri.parse('$baseUrl/api/work-tracking/proj/update/$projectId'),
-      headers: headers,
-      body: jsonEncode(projectData),
-    );
-
-    if (response.statusCode == 200) {
-      return 'Project successfully updated.';
-    } else {
-      if (kDebugMode) {
-        print('Error: ${response.statusCode}, ${response.body}');
-      }
-      return 'Failed to update project: ${response
-          .reasonPhrase}. Details: ${response.body}';
-    }
-  }
-
-  // Delete a project by name
-  Future<void> deleteProjectByName(String projectName) async {
     try {
-      // Fetch the projects
-      List<Map<String, dynamic>> projects = await fetchMyProjects();
-
-      // Find the project by name
-      final projectToDelete = projects.firstWhere(
-            (project) => project['p_name'] == projectName,
-        orElse: () => {},
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
       );
 
-      if (projectToDelete.isNotEmpty) {
-        final String projectId = projectToDelete['project_id'];
-        await deleteProject(
-            projectId); // Call the deleteProject method with the project_id
-        if (kDebugMode) {
-          print('Project deleted successfully.');
+      if (kDebugMode) {
+        print('Response Status Code: ${response.statusCode}');
+        print('Response Body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        var body = json.decode(response.body);
+        if (body['result'] != null && body['result'] is List) {
+          List<Map<String, dynamic>> projects = List<Map<String, dynamic>>.from(body['result']);
+          if (kDebugMode) {
+            print('Fetched ${projects.length} all projects.');
+          }
+          return projects;
+        } else {
+          throw Exception('Unexpected response format for fetchAllProjects.');
         }
       } else {
-        if (kDebugMode) {
-          print('Project not found.');
-        }
+        throw Exception('Failed to fetch all projects: ${response.reasonPhrase}');
       }
     } catch (e) {
-      throw Exception('Failed to delete project: $e');
-    }
-  }
-
-  // Delete a project using its ID
-  Future<String> deleteProject(String projectId) async {
-    final headers = await _getHeaders();
-    final response = await http.put(
-      Uri.parse('$baseUrl/api/work-tracking/proj/delete'),
-      headers: headers,
-      body: jsonEncode({
-        "projectIDs": [
-          {"projectID": projectId}
-        ]
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      return 'Project successfully deleted.';
-    } else {
       if (kDebugMode) {
-        print('Error: ${response.statusCode}, ${response.body}');
+        print('Error in fetchAllProjects: $e');
       }
-      return 'Failed to delete project: ${response
-          .reasonPhrase}. Details: ${response.body}';
+      rethrow;
     }
   }
 
-  // Fetch and sort project members by project ID
-  Future<List<Map<String, dynamic>>> fetchMembersByProjectId(
-      String projectId) async {
+  /// Add a new project.
+  Future<String?> addProject(Map<String, dynamic> projectData) async {
     final headers = await _getHeaders();
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/work-tracking/project-member/members?project_id=$projectId'),
-      headers: headers,
-    );
+    final url = '$baseUrl/api/work-tracking/proj/insert';
+    if (kDebugMode) {
+      print('Adding Project to: $url');
+      print('Project Data: ${jsonEncode(projectData)}');
+    }
 
-    if (response.statusCode == 200) {
-      var body = json.decode(response.body);
-      if (body['results'] != null && body['results'] is List) {
-        List<Map<String, dynamic>> members = (body['results'] as List)
-            .map((item) => {
-          'employee_id': item['employee_id'],
-          'name': item['name'],
-          'email': item['email'],
-        })
-            .toList();
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(projectData),
+      );
 
-        // Sort members by name
-        members.sort((a, b) => a['name'].compareTo(b['name']));
-
-        return members;
-      } else {
-        throw Exception('Unexpected response format');
+      if (kDebugMode) {
+        print('Response Status Code: ${response.statusCode}');
+        print('Response Body: ${response.body}');
       }
-    } else {
-      throw Exception('Failed to load project members: ${response.reasonPhrase}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody != null && responseBody['id'] != null) {
+          final String projectId = responseBody['id'];
+          if (kDebugMode) {
+            print('Project successfully created with ID: $projectId');
+          }
+          return projectId;
+        } else {
+          if (kDebugMode) {
+            print('Project created but no project_id in response.');
+          }
+          return null;
+        }
+      } else {
+        throw Exception('Failed to add project: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in addProject: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Update a project by its ID.
+  Future<bool> updateProject(String projectId, Map<String, dynamic> projectData) async {
+    final headers = await _getHeaders();
+    final url = '$baseUrl/api/work-tracking/proj/update/$projectId';
+    if (kDebugMode) {
+      print('Updating Project at: $url');
+      print('Update Data: ${jsonEncode(projectData)}');
+    }
+
+    try {
+      final response = await http.put(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode(projectData),
+      );
+
+      if (kDebugMode) {
+        print('Response Status Code: ${response.statusCode}');
+        print('Response Body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        if (kDebugMode) {
+          print('Project successfully updated.');
+        }
+        return true;
+      } else {
+        throw Exception('Failed to update project: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in updateProject: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Delete a project by its ID.
+  Future<bool> deleteProject(String projectId) async {
+    final headers = await _getHeaders();
+    final url = '$baseUrl/api/work-tracking/proj/delete';
+    if (kDebugMode) {
+      print('Deleting Project at: $url');
+      print('Project ID to Delete: $projectId');
+    }
+
+    try {
+      final response = await http.put(
+        Uri.parse(url),
+        headers: headers,
+        body: jsonEncode({
+          "projectIDs": [
+            {"projectID": projectId}
+          ]
+        }),
+      );
+
+      if (kDebugMode) {
+        print('Response Status Code: ${response.statusCode}');
+        print('Response Body: ${response.body}');
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (kDebugMode) {
+          print('Project successfully deleted.');
+        }
+        return true;
+      } else {
+        throw Exception('Failed to delete project: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in deleteProject: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Fetch project members by project ID.
+  Future<List<Map<String, dynamic>>> fetchMembersByProjectId(String projectId) async {
+    final headers = await _getHeaders();
+    final url = '$baseUrl/api/work-tracking/proj/find-Member-By-ProjectId/$projectId';
+    if (kDebugMode) {
+      print('Fetching Members for Project ID: $projectId from: $url');
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: headers,
+      );
+
+      if (kDebugMode) {
+        print('Response Status Code: ${response.statusCode}');
+        print('Response Body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        var body = json.decode(response.body);
+        if (body['results'] != null && body['results'] is List) {
+          List<Map<String, dynamic>> members = List<Map<String, dynamic>>.from(body['results']);
+          if (kDebugMode) {
+            print('Fetched ${members.length} members for Project ID: $projectId');
+          }
+          return members;
+        } else {
+          throw Exception('Unexpected response format for fetchMembersByProjectId.');
+        }
+      } else {
+        throw Exception('Failed to fetch project members: ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in fetchMembersByProjectId: $e');
+      }
+      rethrow;
     }
   }
 
