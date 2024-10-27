@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_datetime_format/flutter_datetime_format.dart';
+import 'package:pb_hrsystem/core/widgets/calendar_day/events_utils.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/home_calendar.dart';
 
@@ -18,42 +19,73 @@ class CalendarDayWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentTime = DateTime.now();
-    int currentHour = currentTime.hour > 9 ? 11 : 7;
-    int untilEnd = currentTime.hour > 9 ? 19 : 10;
+    final currentTime = DateTime.utc(2024, 10, 27, 11, 0, 0);
+    // final currentTime = DateTime.now();
+    int currentHour = currentTime.hour > 9 ? 10 : 7;
+    int untilEnd = currentTime.hour > 9 ? 19 : 11;
 
     List<AdvancedDayEvent<String>> currentEvents = [];
     List<OverflowEventsRow<String>> currentOverflowEventsRow = [];
 
-    eventsCalendar.removeWhere((e) => e.startDateTime.hour == 0 || e.endDateTime.hour == 0);
+    // eventsCalendar.removeWhere((e) => e.startDateTime.hour == 0 || e.endDateTime.hour == 0);
 
     for (var e in eventsCalendar) {
-      DateTime endTime = DateTime.utc(e.startDateTime.year, e.startDateTime.month, e.startDateTime.day, e.endDateTime.hour, e.endDateTime.minute);
-      Duration storeHours = e.startDateTime.difference(endTime);
+      DateTime startTime = DateTime.utc(
+        currentTime.year,
+        currentTime.month,
+        currentTime.day,
+        e.startDateTime.hour == 0
+            ? currentTime.hour > 9
+                ? 11
+                : 7
+            : e.startDateTime.hour,
+        e.startDateTime.minute,
+      );
+      DateTime endTime = DateTime.utc(
+        currentTime.year,
+        currentTime.month,
+        currentTime.day,
+        e.endDateTime.hour == 0
+            ? currentTime.hour > 9
+                ? 17
+                : 9
+            : e.endDateTime.hour,
+        e.endDateTime.minute,
+      );
+      Duration storeHours = endTime.difference(startTime);
 
       if (currentTime.hour > 9) {
-        if (storeHours.inHours > 4) {
-          // int splitHoursStart = e.startDateTime.hour - storeHours.inHours;
-          int splitHours = endTime.hour - storeHours.inHours;
-          endTime = endTime.subtract(Duration(hours: splitHours));
+        if (storeHours.inHours < 4) {
+          // int splitHoursStart = storeHours.inHours - startTime.hour;
+          // int splitHours = endTime.hour - storeHours.inHours;
+          // endTime = endTime.subtract(Duration(hours: splitHours));
 
-          // startTime = startTime.add(const Duration(hours: 0));
+          // startTime = startTime.add(Duration(hours: splitHoursStart));
           currentEvents.add(AdvancedDayEvent(
             value: e.uid,
             title: e.title,
             desc: e.description,
-            start: e.startDateTime,
+            start: startTime,
             end: endTime,
             category: e.category,
             members: e.members,
             status: e.status,
           ));
         } else {
+          if (startTime.hour < 10) {
+            int addHours = 10 - startTime.hour;
+            startTime = startTime.add(Duration(hours: addHours));
+          }
+
+          if (endTime.hour > 19) {
+            int subHours = 19 - endTime.hour;
+            endTime = endTime.subtract(Duration(hours: subHours));
+          }
           currentEvents.add(AdvancedDayEvent(
             value: e.uid,
             title: e.title,
             desc: e.description,
-            start: e.startDateTime,
+            start: startTime,
             end: endTime,
             category: e.category,
             members: e.members,
@@ -61,28 +93,30 @@ class CalendarDayWidget extends StatelessWidget {
           ));
         }
       } else {
-        currentEvents.add(AdvancedDayEvent(
-          value: e.uid,
-          title: e.title,
-          desc: e.description,
-          start: e.startDateTime,
-          end: endTime,
-          category: e.category,
-          members: e.members,
-          status: e.status,
-        ));
+        if (startTime.hour < currentHour) {
+          // int splitHoursStart = e.startDateTime.hour - storeHours.inHours;
+          // startTime = startTime.add(const Duration(hours: 0));
+
+          currentEvents.add(AdvancedDayEvent(
+            value: e.uid,
+            title: e.title,
+            desc: e.description,
+            start: startTime,
+            end: endTime,
+            category: e.category,
+            members: e.members,
+            status: e.status,
+          ));
+        }
       }
     }
+    currentOverflowEventsRow = processOverflowEvents(
+      [...currentEvents]..sort((a, b) => a.compare(b)),
+      startOfDay: currentTime.copyTimeAndMinClean(TimeOfDay(hour: currentHour, minute: 0)),
+      endOfDay: currentTime.copyTimeAndMinClean(TimeOfDay(hour: untilEnd, minute: 0)),
+      cropBottomEvents: true,
+    );
 
-    for (var i in currentEvents) {
-      currentOverflowEventsRow.add(
-        OverflowEventsRow(
-          events: currentEvents,
-          start: i.start,
-          end: i.end ?? i.start.add(const Duration(minutes: 30)),
-        ),
-      );
-    }
     return OverFlowCalendarDayView(
       onTimeTap: (s) {},
       overflowEvents: currentOverflowEventsRow,
@@ -94,7 +128,7 @@ class CalendarDayWidget extends StatelessWidget {
       endOfDay: TimeOfDay(hour: untilEnd, minute: 0),
       renderRowAsListView: true,
       showCurrentTimeLine: true,
-      cropBottomEvents: true,
+      // cropBottomEvents: true,
       showMoreOnRowButton: true,
       timeTitleColumnWidth: 40,
       time12: true,

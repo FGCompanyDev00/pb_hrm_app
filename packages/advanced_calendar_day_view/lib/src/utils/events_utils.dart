@@ -1,7 +1,6 @@
 import '../extensions/date_time_extension.dart';
 
 import '../../calendar_day_view.dart';
-import '../models/overflow_event.dart';
 
 /// From List of AdvancedDayEvent process them into multiple OverflowEventRow
 ///
