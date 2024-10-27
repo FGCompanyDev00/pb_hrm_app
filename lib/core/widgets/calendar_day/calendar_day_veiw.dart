@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_datetime_format/flutter_datetime_format.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/events_utils.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/home_calendar.dart';
@@ -19,48 +20,40 @@ class CalendarDayWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentTime = DateTime.utc(2024, 10, 27, 11, 0, 0);
-    // final currentTime = DateTime.now();
+    final currentTime = DateTime.now().toUtc();
     int currentHour = currentTime.hour > 9 ? 10 : 7;
     int untilEnd = currentTime.hour > 9 ? 19 : 11;
 
     List<AdvancedDayEvent<String>> currentEvents = [];
     List<OverflowEventsRow<String>> currentOverflowEventsRow = [];
 
-    // eventsCalendar.removeWhere((e) => e.startDateTime.hour == 0 || e.endDateTime.hour == 0);
-
     for (var e in eventsCalendar) {
       DateTime startTime = DateTime.utc(
-        currentTime.year,
-        currentTime.month,
-        currentTime.day,
+        selectedDay!.year,
+        selectedDay!.month,
+        selectedDay!.day,
         e.startDateTime.hour == 0
             ? currentTime.hour > 9
-                ? 11
+                ? 10
                 : 7
             : e.startDateTime.hour,
         e.startDateTime.minute,
       );
       DateTime endTime = DateTime.utc(
-        currentTime.year,
-        currentTime.month,
-        currentTime.day,
+        selectedDay!.year,
+        selectedDay!.month,
+        selectedDay!.day,
         e.endDateTime.hour == 0
             ? currentTime.hour > 9
-                ? 17
-                : 9
+                ? 18
+                : 10
             : e.endDateTime.hour,
         e.endDateTime.minute,
       );
       Duration storeHours = endTime.difference(startTime);
 
-      if (currentTime.hour > 9) {
+      if (currentTime.hour > 10) {
         if (storeHours.inHours < 4) {
-          // int splitHoursStart = storeHours.inHours - startTime.hour;
-          // int splitHours = endTime.hour - storeHours.inHours;
-          // endTime = endTime.subtract(Duration(hours: splitHours));
-
-          // startTime = startTime.add(Duration(hours: splitHoursStart));
           currentEvents.add(AdvancedDayEvent(
             value: e.uid,
             title: e.title,
@@ -72,14 +65,14 @@ class CalendarDayWidget extends StatelessWidget {
             status: e.status,
           ));
         } else {
-          if (startTime.hour < 10) {
+          if (startTime.hour <= 10 && startTime.minute > 0) {
             int addHours = 10 - startTime.hour;
-            startTime = startTime.add(Duration(hours: addHours));
+            startTime = startTime.add(Duration(hours: addHours)).subtract(Duration(minutes: startTime.minute));
           }
 
-          if (endTime.hour > 19) {
-            int subHours = 19 - endTime.hour;
-            endTime = endTime.subtract(Duration(hours: subHours));
+          if (endTime.hour > 18 && endTime.minute > 0) {
+            int subHours = 18 - endTime.hour;
+            endTime = endTime.subtract(Duration(hours: subHours, minutes: endTime.minute));
           }
           currentEvents.add(AdvancedDayEvent(
             value: e.uid,
@@ -94,8 +87,16 @@ class CalendarDayWidget extends StatelessWidget {
         }
       } else {
         if (startTime.hour < currentHour) {
-          // int splitHoursStart = e.startDateTime.hour - storeHours.inHours;
-          // startTime = startTime.add(const Duration(hours: 0));
+          if (startTime.hour < 7) {
+            int addHours = 7 - startTime.hour;
+
+            startTime = startTime.add(Duration(hours: addHours)).subtract(Duration(minutes: startTime.minute));
+          }
+
+          if (endTime.hour >= 10 && endTime.minute > 0) {
+            int subHours = endTime.hour - 11;
+            endTime = endTime.subtract(Duration(hours: subHours, minutes: endTime.minute));
+          }
 
           currentEvents.add(AdvancedDayEvent(
             value: e.uid,
@@ -112,9 +113,9 @@ class CalendarDayWidget extends StatelessWidget {
     }
     currentOverflowEventsRow = processOverflowEvents(
       [...currentEvents]..sort((a, b) => a.compare(b)),
-      startOfDay: currentTime.copyTimeAndMinClean(TimeOfDay(hour: currentHour, minute: 0)),
-      endOfDay: currentTime.copyTimeAndMinClean(TimeOfDay(hour: untilEnd, minute: 0)),
-      cropBottomEvents: true,
+      startOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: currentHour, minute: 0)),
+      endOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: untilEnd, minute: 0)),
+      // cropBottomEvents: true,
     );
 
     return OverFlowCalendarDayView(
@@ -128,21 +129,13 @@ class CalendarDayWidget extends StatelessWidget {
       endOfDay: TimeOfDay(hour: untilEnd, minute: 0),
       renderRowAsListView: true,
       showCurrentTimeLine: true,
-      // cropBottomEvents: true,
+      cropBottomEvents: true,
       showMoreOnRowButton: true,
       timeTitleColumnWidth: 40,
       time12: true,
       overflowItemBuilder: (context, constraints, itemIndex, event) {
-        Color statusColor = Colors.orange;
-        if (event.category.contains('Meeting Room Bookings')) {
-          statusColor = Colors.green;
-        } else if (event.category.contains('Booking Car')) {
-          statusColor = Colors.blue.shade300;
-        } else if (event.category.contains('Add Meeting')) {
-          statusColor = Colors.orange.shade500;
-        } else {
-          statusColor = Colors.red;
-        }
+        Color statusColor = categoryColors[event.category] ?? Colors.grey;
+        IconData? iconCategory = categoryIcon[event.category];
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -210,7 +203,7 @@ class CalendarDayWidget extends StatelessWidget {
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.connect_without_contact, size: 15),
+                                iconCategory != null ? Icon(iconCategory, size: 15) : const SizedBox.shrink(),
                                 const SizedBox(width: 5),
                                 Text(event.desc, style: const TextStyle(fontSize: 10)),
                               ],
