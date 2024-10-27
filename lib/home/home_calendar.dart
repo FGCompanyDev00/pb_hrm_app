@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/core/standard/color.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
@@ -605,14 +607,6 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     return categoryColors[event.category] ?? Colors.grey;
   }
 
-  // Category colors mapping
-  final Map<String, Color> categoryColors = {
-    'Meetings': Colors.blue,
-    'Leave Requests': Colors.red,
-    'Meeting Room Bookings': Colors.green,
-    'Car Bookings': Colors.purple,
-  };
-
   /// Displays a popup to choose between adding personal or office events
   void _showAddEventOptionsPopup() {
     showDialog(
@@ -785,7 +779,6 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
                   if (_showFiltersAndSearchBar) _buildSearchBar(),
                   _buildCalendar(context, isDarkMode),
                   _buildSectionSeparator(),
-                  // _buildCalendarView(context, _eventsForDay),
                   _eventsForDay.isEmpty
                       ? const Text(
                           'No events for this day.',
