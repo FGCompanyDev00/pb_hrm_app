@@ -20,16 +20,12 @@ class NotificationDetailPage extends StatefulWidget {
   _NotificationDetailPageState createState() => _NotificationDetailPageState();
 }
 
-class _NotificationDetailPageState extends State<NotificationDetailPage>
-    with SingleTickerProviderStateMixin {
+class _NotificationDetailPageState extends State<NotificationDetailPage> {
   final TextEditingController _descriptionController = TextEditingController();
   bool isLoading = true;
   bool isFinalized = false;
   Map<String, dynamic>? approvalData;
   String? requestorImage;
-  String? userResponse;
-  late AnimationController _animationController;
-  late Animation<double> _animation;
 
   final String _imageBaseUrl =
       'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
@@ -38,12 +34,6 @@ class _NotificationDetailPageState extends State<NotificationDetailPage>
   void initState() {
     super.initState();
     _fetchApprovalDetails();
-    _animationController = AnimationController(
-      duration: const Duration(seconds: 1),
-      vsync: this,
-    );
-    _animation =
-        CurvedAnimation(parent: _animationController, curve: Curves.easeOut);
   }
 
   Future<void> _fetchApprovalDetails() async {
@@ -62,8 +52,6 @@ class _NotificationDetailPageState extends State<NotificationDetailPage>
         apiUrl = '$baseUrl/api/leave_request/all/${widget.id}';
       } else if (widget.type == 'car') {
         apiUrl = '$baseUrl/api/office-administration/car_permit/${widget.id}';
-      } else if (widget.type == 'meeting') {
-        apiUrl = '$baseUrl/api/office-administration/book_meeting_room/${widget.id}';
       } else {
         throw Exception('Unknown type: ${widget.type}');
       }
@@ -91,8 +79,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage>
               if (imgPath != null && imgPath.isNotEmpty) {
                 requestorImage = imgPath;
               } else {
-                requestorImage =
-                'https://via.placeholder.com/150';
+                requestorImage = 'https://via.placeholder.com/150';
               }
             } else {
               String? imgName =
@@ -115,11 +102,6 @@ class _NotificationDetailPageState extends State<NotificationDetailPage>
               } else {
                 requestorImage = 'https://via.placeholder.com/150';
               }
-            }
-
-            if (widget.type == 'meeting') {
-              userResponse =
-                  approvalData!['user_response']?.toString().toLowerCase();
             }
 
             isLoading = false;
@@ -211,18 +193,14 @@ class _NotificationDetailPageState extends State<NotificationDetailPage>
             const SizedBox(height: 5),
             _buildDetailsSection(),
             const SizedBox(height: 30),
-            if (widget.type == 'meeting') ...[
-              _buildMeetingActionButtons(),
-            ] else ...[
-              if (isPendingStatus(status)) ...[
-                _buildCommentInputSection(),
-                const SizedBox(height: 22),
-                _buildActionButtons(),
-              ],
-              if (!isPendingStatus(status) &&
-                  status.toLowerCase() == 'reject')
-                _buildDenyReasonSection(),
+            if (isPendingStatus(status)) ...[
+              _buildCommentInputSection(),
+              const SizedBox(height: 22),
+              _buildActionButtons(),
             ],
+            if (!isPendingStatus(status) &&
+                status.toLowerCase() == 'reject')
+              _buildDenyReasonSection(),
           ],
         ),
       ),
@@ -338,8 +316,6 @@ class _NotificationDetailPageState extends State<NotificationDetailPage>
       return 'LEAVE REQUEST';
     } else if (widget.type == 'car') {
       return 'CAR BOOKING REQUEST';
-    } else if (widget.type == 'meeting') {
-      return 'MEETING ROOM BOOKING REQUEST';
     } else {
       return 'Approval Details';
     }
@@ -350,8 +326,6 @@ class _NotificationDetailPageState extends State<NotificationDetailPage>
       return _buildLeaveDetails();
     } else if (widget.type == 'car') {
       return _buildCarDetails();
-    } else if (widget.type == 'meeting') {
-      return _buildMeetingDetails();
     } else {
       return const Center(
         child: Text(
@@ -428,40 +402,6 @@ class _NotificationDetailPageState extends State<NotificationDetailPage>
     );
   }
 
-  Widget _buildMeetingDetails() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInfoRow('Meeting ID',
-            approvalData?['meeting_id']?.toString() ?? 'N/A',
-            Icons.meeting_room, Colors.green),
-        const SizedBox(height: 8),
-        _buildInfoRow('Title', approvalData?['title'] ?? 'N/A', Icons.title,
-            Colors.blue),
-        const SizedBox(height: 8),
-        _buildInfoRow(
-            'From Date',
-            formatDate(approvalData?['from_date_time'], includeDay: true),
-            Icons.calendar_today,
-            Colors.blue),
-        const SizedBox(height: 8),
-        _buildInfoRow(
-            'To Date',
-            formatDate(approvalData?['to_date_time'], includeDay: true),
-            Icons.calendar_today,
-            Colors.blue),
-        const SizedBox(height: 8),
-        _buildInfoRow('Room Name',
-            approvalData?['room_name']?.toString() ?? 'N/A', Icons.room,
-            Colors.orange),
-        const SizedBox(height: 8),
-        _buildInfoRow('Status',
-            approvalData?['status']?.toString() ?? 'Pending', Icons.stairs,
-            Colors.red),
-      ],
-    );
-  }
-
   Widget _buildInfoRow(
       String title, String content, IconData icon, Color color) {
     return Row(
@@ -487,8 +427,8 @@ class _NotificationDetailPageState extends State<NotificationDetailPage>
         TextField(
           controller: _descriptionController,
           decoration: InputDecoration(
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20)),
+            border:
+            OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
             hintText: 'Enter approval/rejection comments',
           ),
           maxLines: 3,
@@ -541,93 +481,6 @@ class _NotificationDetailPageState extends State<NotificationDetailPage>
     );
   }
 
-  Widget _buildMeetingActionButtons() {
-    bool alreadyResponded = userResponse != null;
-    String responseLabel = '';
-    Color buttonColor = Colors.grey;
-    IconData buttonIcon = Icons.check;
-
-    if (userResponse == 'join') {
-      responseLabel = 'Joined';
-      buttonColor = Colors.blue;
-      buttonIcon = Icons.check;
-    } else if (userResponse == 'decline') {
-      responseLabel = 'Declined';
-      buttonColor = Colors.red;
-      buttonIcon = Icons.close;
-    } else if (userResponse == 'undecided') {
-      responseLabel = 'Undecided';
-      buttonColor = Colors.orange;
-      buttonIcon = Icons.help_outline;
-    }
-
-    return Column(
-      children: [
-        alreadyResponded
-            ? Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            OutlinedButton.icon(
-              onPressed: null,
-              style: OutlinedButton.styleFrom(
-                backgroundColor: buttonColor,
-                side: BorderSide.none,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30)),
-              ),
-              icon:
-              Icon(buttonIcon, color: Colors.white, size: 20),
-              label: Text(responseLabel,
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white)),
-            ),
-          ],
-        )
-            : Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          alignment: WrapAlignment.center,
-          children: [
-            _buildResponsiveButton(
-              label: 'Join',
-              icon: Icons.person_add,
-              backgroundColor: Colors.blue,
-              textColor: Colors.white,
-              onPressed: () => _handleMeetingAction('join'),
-            ),
-            _buildResponsiveButton(
-              label: 'Decline',
-              icon: Icons.close,
-              backgroundColor: Colors.red,
-              textColor: Colors.white,
-              onPressed: () => _handleMeetingAction('decline'),
-            ),
-            _buildResponsiveButton(
-              label: 'Undecided',
-              icon: Icons.help_outline,
-              backgroundColor: Colors.orange,
-              textColor: Colors.white,
-              onPressed: () => _handleMeetingAction('undecided'),
-            ),
-          ],
-        ),
-        if (_animationController.isAnimating)
-          ScaleTransition(
-            scale: _animation,
-            child: const Icon(
-              Icons.celebration,
-              color: Colors.pink,
-              size: 50,
-            ),
-          ),
-      ],
-    );
-  }
-
   Widget _buildStyledButton({
     required String label,
     required IconData icon,
@@ -653,106 +506,12 @@ class _NotificationDetailPageState extends State<NotificationDetailPage>
     );
   }
 
-  Widget _buildResponsiveButton({
-    required String label,
-    required IconData icon,
-    required Color backgroundColor,
-    required Color textColor,
-    required VoidCallback onPressed,
-  }) {
-    return SizedBox(
-      width: MediaQuery.of(context).size.width * 0.28,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          padding:
-          const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30)),
-        ),
-        icon: Icon(icon, color: textColor, size: 20),
-        label: Text(label,
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: textColor)),
-      ),
-    );
-  }
-
   Future<void> _handleApprove() async {
     await _sendApprovalStatus('approve');
   }
 
   Future<void> _handleReject() async {
     await _sendApprovalStatus('reject');
-  }
-
-  Future<void> _handleMeetingAction(String action) async {
-    final String uid = widget.id;
-    final String baseUrl = 'https://demo-application-api.flexiflows.co';
-
-    String endpoint;
-
-    if (action == 'join') {
-      endpoint = '$baseUrl/api/office-administration/book_meeting_room/yes/$uid';
-    } else if (action == 'decline' || action == 'undecided') {
-      endpoint = '$baseUrl/api/office-administration/book_meeting_room/no/$uid';
-    } else {
-      _showErrorDialog('Error', 'Invalid action.');
-      return;
-    }
-
-    setState(() {
-      isFinalized = true;
-    });
-
-    try {
-      final String? token = await _getToken();
-      if (token == null) {
-        _showErrorDialog(
-            'Authentication Error', 'Token not found. Please log in again.');
-        setState(() {
-          isFinalized = false;
-        });
-        return;
-      }
-
-      final response = await http.put(
-        Uri.parse(endpoint),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        setState(() {
-          userResponse = action;
-        });
-        _animationController.forward().then((_) {
-          _animationController.reset();
-        });
-        _showSuccessDialog(
-            'Success',
-            'You have successfully ${action == 'join' ? 'joined' : 'responded to'} the meeting invite.');
-        Navigator.of(context).pop(true);
-      } else {
-        final responseBody = jsonDecode(response.body);
-        String errorMessage =
-            responseBody['message'] ?? 'Failed to $action the meeting invite.';
-        _showErrorDialog('Error', errorMessage);
-        setState(() {
-          isFinalized = false;
-        });
-      }
-    } catch (e) {
-      _showErrorDialog('Error', 'An unexpected error occurred.');
-      setState(() {
-        isFinalized = false;
-      });
-    }
   }
 
   Future<void> _sendApprovalStatus(String action) async {
@@ -868,9 +627,6 @@ class _NotificationDetailPageState extends State<NotificationDetailPage>
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              if (widget.type == 'meeting') {
-                Navigator.of(context).pop(true);
-              }
             },
             child: const Text('OK'),
           ),

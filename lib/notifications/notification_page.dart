@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/notifications/notification_detail_page.dart';
+import 'package:pb_hrsystem/notifications/notification_meeting_section_detail_page.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -163,7 +164,8 @@ class _NotificationPageState extends State<NotificationPage> {
 
     if (response.statusCode == 200) {
       final responseBody = jsonDecode(response.body);
-      if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+      if (responseBody['statusCode'] == 200 &&
+          responseBody['results'] != null) {
         final List<dynamic> meetingData = responseBody['results'];
         final List<Map<String, dynamic>> formattedMeetingData =
         meetingData.map((item) {
@@ -177,7 +179,8 @@ class _NotificationPageState extends State<NotificationPage> {
           _meetingInvites = formattedMeetingData;
         });
       } else {
-        throw Exception(responseBody['message'] ?? 'Failed to load meeting invites');
+        throw Exception(
+            responseBody['message'] ?? 'Failed to load meeting invites');
       }
     } else {
       throw Exception('Failed to load meeting invites: ${response.statusCode}');
@@ -234,16 +237,18 @@ class _NotificationPageState extends State<NotificationPage> {
                   : ListView(
                 padding: const EdgeInsets.all(16.0),
                 children: [
-                  ..._pendingItems.map((item) => _buildItemCard(
-                    context,
-                    item,
-                    isHistory: false,
-                  )),
-                  ..._historyItems.map((item) => _buildItemCard(
-                    context,
-                    item,
-                    isHistory: true,
-                  )),
+                  ..._pendingItems.map((item) =>
+                      _buildItemCard(
+                        context,
+                        item,
+                        isHistory: false,
+                      )),
+                  ..._historyItems.map((item) =>
+                      _buildItemCard(
+                        context,
+                        item,
+                        isHistory: true,
+                      )),
                 ],
               ),
             ),
@@ -403,13 +408,15 @@ class _NotificationPageState extends State<NotificationPage> {
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     try {
-      String type = (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
+      String type =
+      (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
       if (!_knownTypes.contains(type)) {
         return const SizedBox.shrink();
       }
 
       String status = (item['status']?.toString() ?? 'Pending').trim();
-      String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
+      String employeeName =
+      (item['employee_name']?.toString() ?? 'N/A').trim();
 
       String id = '';
       if (type == 'leave') {
@@ -437,8 +444,7 @@ class _NotificationPageState extends State<NotificationPage> {
       } else if (imgName.isNotEmpty) {
         employeeImage = '$_imageBaseUrl$imgName';
       } else {
-        employeeImage =
-        'https://via.placeholder.com/150';
+        employeeImage = 'https://via.placeholder.com/150';
       }
 
       Color typeColor = _getTypeColor(type);
@@ -469,7 +475,8 @@ class _NotificationPageState extends State<NotificationPage> {
         startDate = item['date_out']?.toString() ?? '';
         endDate = item['date_in']?.toString() ?? '';
         detailLabel = 'Requestor Name';
-        detailValue = _removeDuplicateNames(item['requestor_name']?.toString() ?? 'N/A');
+        detailValue =
+            _removeDuplicateNames(item['requestor_name']?.toString() ?? 'N/A');
       } else {
         return const SizedBox.shrink();
       }
@@ -483,18 +490,33 @@ class _NotificationPageState extends State<NotificationPage> {
             return;
           }
 
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => NotificationDetailPage(
-                id: id,
-                type: type,
+          if (type == 'meeting') {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => NotificationMeetingDetailsPage(
+                  id: id,
+                ),
               ),
-            ),
-          );
+            );
 
-          if (result == true) {
-            _fetchInitialData();
+            if (result == true) {
+              _fetchInitialData();
+            }
+          } else {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => NotificationDetailPage(
+                  id: id,
+                  type: type,
+                ),
+              ),
+            );
+
+            if (result == true) {
+              _fetchInitialData();
+            }
           }
         },
         child: Card(
@@ -520,8 +542,8 @@ class _NotificationPageState extends State<NotificationPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: Padding(
-                  padding:
-                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 12.0, horizontal: 8.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
