@@ -276,7 +276,7 @@ class _TimeTableDayViewState<T extends Object> extends State<TimeTableDayView> {
               final width = eventColumnWith / oEvents.events.length;
               final topGap = event.minutesFrom(oEvents.start) * heightUnit;
 
-              final tileHeight = (widget.cropBottomEvents && event.end!.isAfter(timeEnd)) ? (maxHeight - topGap) : (event.durationInMins * heightUnit);
+              final tileHeight = (widget.cropBottomEvents && event.end.isAfter(timeEnd)) ? (maxHeight - topGap) : (event.durationInMins * heightUnit);
 
               final tileConstraints = BoxConstraints(
                 maxHeight: tileHeight,

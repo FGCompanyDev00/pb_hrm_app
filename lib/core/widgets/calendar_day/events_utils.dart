@@ -15,13 +15,6 @@ List<OverflowEventsRow<T>> processOverflowEvents<T extends Object>(
   final Map<DateTime, OverflowEventsRow<T>> oM = {};
 
   for (var event in sortedEvents) {
-    // if (event.start.isBefore(startOfDay) || event.start.isAfter(endOfDay)) {
-    //   continue;
-    // }
-    // if (event.end!.isAfter(endOfDay)) {
-    //   event = event.copyWith(end: endOfDay);
-    // }
-
     if (event.start.earlierThan(end)) {
       oM.update(
         start,
@@ -41,6 +34,48 @@ List<OverflowEventsRow<T>> processOverflowEvents<T extends Object>(
       start = event.start.cleanSec();
       end = event.end!;
       oM[start] = OverflowEventsRow(events: [event], start: event.start, end: event.end!);
+    }
+  }
+
+  return oM.values.toList();
+}
+
+List<OverTimeEventsRow<T>> processOverTimeEvents<T extends Object>(
+  List<TimetableItem> sortedEvents, {
+  required DateTime startOfDay,
+  required DateTime endOfDay,
+  bool cropBottomEvents = false,
+}) {
+  if (sortedEvents.isEmpty) return [];
+
+  var start = sortedEvents.first.start.cleanSec();
+  var end = sortedEvents.first.end;
+
+  final Map<DateTime, OverTimeEventsRow<T>> oM = {};
+
+  for (var event in sortedEvents) {
+    // if (event.start.isBefore(startOfDay) || event.start.isAfter(endOfDay)) {
+    //   continue;
+    // }
+    if (event.start.earlierThan(end)) {
+      oM.update(
+        start,
+        (value) => value.copyWith(events: [...value.events, event]),
+        ifAbsent: () => OverTimeEventsRow(events: [event], start: event.start, end: event.end),
+      );
+
+      if (event.end.laterThan(end)) {
+        if (cropBottomEvents) {
+          end = event.end.isBefore(endOfDay) ? event.end : endOfDay;
+        } else {
+          end = event.end;
+        }
+        oM[start] = oM[start]!.copyWith(end: end);
+      }
+    } else {
+      start = event.start.cleanSec();
+      end = event.end;
+      oM[start] = OverTimeEventsRow(events: [event], start: event.start, end: event.end);
     }
   }
 

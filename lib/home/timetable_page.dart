@@ -52,8 +52,6 @@ class TimetablePageState extends State<TimetablePage> {
           return dateData.day == selectedDate.day;
         }).toList();
         for (var item in results) {
-          final DateTime startDate = item['take_leave_from'] != null ? DateTime.parse(item['take_leave_from']) : DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 8);
-          final DateTime endDate = item['take_leave_to'] != null ? DateTime.parse(item['take_leave_to']) : DateTime(selectedDate.year, selectedDate.month, selectedDate.day, 17);
           final DateTime updatedOn = item['updated_at'] != null ? DateTime.parse(item['updated_at']) : DateTime.parse(item['created_at']);
           final eventTitle = item['name'];
           final eventReason = item['take_leave_reason'] ?? 'Approval Pending';
@@ -69,24 +67,24 @@ class TimetablePageState extends State<TimetablePage> {
 
           // Create TimetableItems for each day of the event
           // if (startDate.hour > 0 && endDate.hour > 0) {
-          for (var day = startDate; day.isBefore(endDate.add(const Duration(days: 1))); day = day.add(const Duration(days: 1))) {
-            fetchedEvents.add(
-              TimetableItem(
-                id: item['take_leave_request_id'],
-                value: item['pID'],
-                title: eventTitle,
-                reason: eventReason,
-                name: item['requestor_name'],
-                updatedOn: updatedOn,
-                leaveTypeID: item['leave_type_id'],
-                days: eventDays.toDouble(),
-                start: DateTime(day.year, day.month, day.day, 12, 0),
-                end: DateTime(day.year, day.month, day.day, 15, 0),
-                category: 'AL',
-                status: item['is_approve'],
-              ),
-            );
-          }
+
+          fetchedEvents.add(
+            TimetableItem(
+              id: item['take_leave_request_id'],
+              value: item['pID'],
+              title: eventTitle,
+              reason: eventReason,
+              name: item['requestor_name'],
+              updatedOn: updatedOn,
+              leaveTypeID: item['leave_type_id'],
+              days: eventDays.toDouble(),
+              start: DateTime.utc(selectedDate.year, selectedDate.month, selectedDate.day, 8, 0),
+              end: DateTime.utc(selectedDate.year, selectedDate.month, selectedDate.day, 17, 0),
+              category: 'AL',
+              status: item['is_approve'],
+            ),
+          );
+
           // }
         }
 
@@ -218,12 +216,6 @@ class TimetablePageState extends State<TimetablePage> {
             eventsTimeTable: currentEvents,
             selectedDay: selectedDate,
           ),
-          // Expanded(
-          //   child: ListView(
-          //     padding: const EdgeInsets.symmetric(horizontal: 16),
-          //     children: _buildEventSlotsForDay(selectedDate),
-          //   ),
-          // ),
         ],
       ),
     );

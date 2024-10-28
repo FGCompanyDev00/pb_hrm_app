@@ -81,4 +81,23 @@ extension TimetableExtension on TimetableItem {
   int get timeGapFromZero => start.hour * 60 + start.minute;
 
   int minutesFrom(DateTime timePoint) => start.difference(timePoint).inMinutes;
+
+  bool isInThisGap(DateTime timePoint, int gap) {
+    final dif = start.copyWith(second: 00).difference(timePoint.copyWith(second: 00)).inSeconds;
+    return dif <= gap && dif >= 0;
+    // return start.hour == timePoint.hour &&
+    //     (start.minute >= timePoint.minute &&
+    //         start.minute < (timePoint.minute + gap));
+  }
+
+  bool startInThisGap(DateTime timePoint, int gap) {
+    return start.isAfter(timePoint) && start.isBefore(timePoint.add(Duration(minutes: gap)));
+  }
+
+  bool startAt(DateTime timePoint) => start.hour == timePoint.hour && timePoint.minute == start.minute;
+  bool startAtHour(DateTime timePoint) => start.hour == timePoint.hour;
+
+  int compare(TimetableItem other) {
+    return start.isBefore(other.start) ? -1 : 1;
+  }
 }

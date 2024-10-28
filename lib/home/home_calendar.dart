@@ -88,6 +88,17 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     super.dispose();
   }
 
+  void addEvent(DateTime date, Event event) {
+    final detectDate = _normalizeDate(date);
+    if (_events.value.containsKey(detectDate)) {
+      // If the date already has events, add to the list
+      _events.value[detectDate]!.add(event);
+    } else {
+      // Otherwise, create a new list with this event
+      _events.value[detectDate] = [event];
+    }
+  }
+
   /// Fetches all required data concurrently
   Future<void> _fetchData() async {
     setState(() {
@@ -165,7 +176,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final List<dynamic> results = json.decode(response.body)['results'];
       final leaveRequests = List<Map<String, dynamic>>.from(results);
 
-      final Map<DateTime, List<Event>> approvalEvents = {};
       for (var item in leaveRequests) {
         // Adjusted field names to match API response
         final DateTime startDate = item['take_leave_from'] != null ? _normalizeDate(DateTime.parse(item['take_leave_from'])) : _normalizeDate(DateTime.now());
@@ -188,21 +198,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         );
 
         for (var day = startDate; day.isBefore(endDate.add(const Duration(days: 1))); day = day.add(const Duration(days: 1))) {
-          final normalizedDay = _normalizeDate(day);
-          if (approvalEvents.containsKey(normalizedDay)) {
-            if (!approvalEvents[normalizedDay]!.any((e) => e.uid == event.uid)) {
-              approvalEvents[normalizedDay]!.add(event);
-            }
-          } else {
-            approvalEvents[normalizedDay] = [event];
-          }
+          addEvent(day, event);
         }
       }
-
-      setState(() {
-        _events.value = {..._events.value, ...approvalEvents};
-        _filterAndSearchEvents();
-      });
     } catch (e) {
       _showSnackBar('Error parsing leave requests: $e');
     }
@@ -237,7 +235,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       }
 
       final List<dynamic> results = data['results'];
-      final Map<DateTime, List<Event>> meetingEvents = {};
 
       for (var item in results) {
         // Ensure necessary fields are present
@@ -252,7 +249,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         try {
           // Parse 'from_date' and 'start_time' separately and combine
           DateTime fromDate = DateTime.parse(item['from_date']);
-          List<String> startTimeParts = item['start_time'].split(':');
+          List<String> startTimeParts = item['start_time'] != "" ? item['start_time'].split(':') : ["00", "00"];
           if (startTimeParts.length != 2) {
             throw const FormatException('Invalid start_time format');
           }
@@ -266,7 +263,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
           // Parse 'to_date' and 'end_time' separately and combine
           DateTime toDate = DateTime.parse(item['to_date']);
-          List<String> endTimeParts = item['end_time'].split(':');
+          List<String> endTimeParts = item['end_time'] != "" ? item['end_time'].split(':') : ["00", "00"];
           if (endTimeParts.length != 2) {
             throw const FormatException('Invalid end_time format');
           }
@@ -314,20 +311,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         final normalizedEndDay = _normalizeDate(endDateTime);
 
         for (var day = normalizedStartDay; !day.isAfter(normalizedEndDay); day = day.add(const Duration(days: 1))) {
-          if (meetingEvents.containsKey(day)) {
-            if (!meetingEvents[day]!.any((e) => e.uid == event.uid)) {
-              meetingEvents[day]!.add(event);
-            }
-          } else {
-            meetingEvents[day] = [event];
-          }
+          addEvent(day, event);
         }
       }
-
-      setState(() {
-        _events.value = {..._events.value, ...meetingEvents};
-        _filterAndSearchEvents();
-      });
     } catch (e) {
       _showSnackBar('Error parsing meeting data: $e');
     }
@@ -359,7 +345,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final List<dynamic> results = json.decode(response.body)['results'] ?? [];
       final meetingRoomBookings = List<Map<String, dynamic>>.from(results);
 
-      final Map<DateTime, List<Event>> bookingEvents = {};
       for (var item in meetingRoomBookings) {
         final DateTime? startDateTime = item['from_date_time'] != null ? DateTime.parse(item['from_date_time']) : null;
         final DateTime? endDateTime = item['to_date_time'] != null ? DateTime.parse(item['to_date_time']) : null;
@@ -389,20 +374,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         );
 
         for (var day = _normalizeDate(startDateTime); !day.isAfter(_normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
-          if (bookingEvents.containsKey(day)) {
-            if (!bookingEvents[day]!.any((e) => e.uid == event.uid)) {
-              bookingEvents[day]!.add(event);
-            }
-          } else {
-            bookingEvents[day] = [event];
-          }
+          addEvent(day, event);
         }
       }
-
-      setState(() {
-        _events.value = {..._events.value, ...bookingEvents};
-        _filterAndSearchEvents();
-      });
     } catch (e) {
       _showSnackBar('Error parsing meeting room bookings: $e');
     }
@@ -431,7 +405,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final List<dynamic> results = json.decode(response.body)['results'] ?? [];
       final carBookings = List<Map<String, dynamic>>.from(results);
 
-      final Map<DateTime, List<Event>> carEvents = {};
       for (var item in carBookings) {
         if (item['date_out'] == null || item['date_in'] == null) {
           _showSnackBar('Missing date_out or date_in in car booking.');
@@ -497,20 +470,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         );
 
         for (var day = _normalizeDate(startDateTime); !day.isAfter(_normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
-          if (carEvents.containsKey(day)) {
-            if (!carEvents[day]!.any((e) => e.uid == event.uid)) {
-              carEvents[day]!.add(event);
-            }
-          } else {
-            carEvents[day] = [event];
-          }
+          addEvent(day, event);
         }
       }
-
-      setState(() {
-        _events.value = {..._events.value, ...carEvents};
-        _filterAndSearchEvents();
-      });
     } catch (e) {
       _showSnackBar('Error parsing car bookings: $e');
     }
@@ -1066,7 +1028,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           Consumer<DateProvider>(
             builder: (context, dateProvider, child) {
               return Text(
-                DateFormat.yMMMM().format(dateProvider.selectedDate),
+                DateFormat.MMMM().format(dateProvider.selectedDate),
                 style: TextStyle(
                   fontSize: 16.0,
                   fontWeight: FontWeight.bold,
