@@ -1,3 +1,5 @@
+// ready_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';

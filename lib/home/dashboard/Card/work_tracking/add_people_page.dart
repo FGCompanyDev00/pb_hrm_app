@@ -223,12 +223,19 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        flexibleSpace: Image.asset(
-          'assets/background.png',
-          fit: BoxFit.cover,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/background.png'),
+              fit: BoxFit.cover,
+            ),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
+            ),
+          ),
         ),
+        centerTitle: true,
         title: const Text(
           'Add Member',
           style: TextStyle(
@@ -237,7 +244,20 @@ class _AddPeoplePageState extends State<AddPeoplePage> {
             fontSize: 24,
           ),
         ),
-        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.black,
+            size: 20,
+          ),
+          onPressed: () {
+            print('Back button pressed.');
+            Navigator.pop(context);
+          },
+        ),
+        toolbarHeight: 80,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
         actions: [
           IconButton(
             icon: const Icon(Icons.check, color: Colors.black),

@@ -1,8 +1,11 @@
+// myprofile_page.dart
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // Import localization
 
 class MyProfilePage extends StatefulWidget {
   const MyProfilePage({super.key});
@@ -25,7 +28,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
     final String? token = prefs.getString('token');
 
     if (token == null) {
-      throw Exception('No token found');
+      throw Exception(AppLocalizations.of(context)!.noTokenFound);
     }
 
     // Fetch user profile details (without roles)
@@ -40,7 +43,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
     if (response.statusCode == 200) {
       final responseBody = jsonDecode(response.body);
       if (responseBody['results'] == null || responseBody['results'].isEmpty) {
-        throw Exception('No user profile data found');
+        throw Exception(AppLocalizations.of(context)!.noUserProfileData);
       }
       final userProfile = UserProfile.fromJson(responseBody['results'][0]);
 
@@ -59,12 +62,12 @@ class _MyProfilePageState extends State<MyProfilePage> {
           userProfile.roles = rolesBody['results'][0]['roles']; // Set the roles from the second API
         }
       } else {
-        throw Exception('Failed to load roles');
+        throw Exception(AppLocalizations.of(context)!.failedToLoadRoles);
       }
 
       return userProfile;
     } else {
-      throw Exception('Failed to load user profile: ${response.reasonPhrase}');
+      throw Exception(AppLocalizations.of(context)!.failedToLoadUserProfile(response.reasonPhrase as Object));
     }
   }
 
@@ -74,6 +77,10 @@ class _MyProfilePageState extends State<MyProfilePage> {
   }
 
   Widget buildRolesSection(String roles) {
+    if (roles.trim().isEmpty) {
+      roles = AppLocalizations.of(context)!.noRolesAvailable;
+    }
+
     List<String> roleList = roles.split(',');
 
     return Padding(
@@ -81,9 +88,9 @@ class _MyProfilePageState extends State<MyProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Roles:',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          Text(
+            AppLocalizations.of(context)!.rolesLabel,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 4),
           Wrap(
@@ -91,7 +98,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
             runSpacing: 4.0,
             children: roleList.map((role) {
               return Chip(
-                label: Text(role),
+                label: Text(role.trim()),
                 backgroundColor: Colors.green[100],
               );
             }).toList(),
@@ -117,9 +124,9 @@ class _MyProfilePageState extends State<MyProfilePage> {
             ),
           ),
         ),
-        title: const Text(
-          'My Profile',
-          style: TextStyle(
+        title: Text(
+          AppLocalizations.of(context)!.myProfile,
+          style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
           ),
@@ -144,7 +151,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
           } else if (snapshot.hasData) {
             return SingleChildScrollView(
               child: Padding(
@@ -162,21 +169,53 @@ class _MyProfilePageState extends State<MyProfilePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ProfileInfoRow(icon: Icons.person, label: 'Gender', value: snapshot.data!.gender),
+                            ProfileInfoRow(
+                              icon: Icons.person,
+                              label: AppLocalizations.of(context)!.gender,
+                              value: snapshot.data!.gender.isNotEmpty ? snapshot.data!.gender : AppLocalizations.of(context)!.notAvailable,
+                            ),
                             const SizedBox(height: 10.0),
-                            ProfileInfoRow(icon: Icons.badge, label: 'Name & Surname', value: '${snapshot.data!.name} ${snapshot.data!.surname}'),
+                            ProfileInfoRow(
+                              icon: Icons.badge,
+                              label: AppLocalizations.of(context)!.nameAndSurname,
+                              value: '${snapshot.data!.name} ${snapshot.data!.surname}',
+                            ),
                             const SizedBox(height: 10.0),
-                            ProfileInfoRow(icon: Icons.date_range, label: 'Date Start Work', value: formatDate(snapshot.data!.createAt)),
+                            ProfileInfoRow(
+                              icon: Icons.date_range,
+                              label: AppLocalizations.of(context)!.dateStartWork,
+                              value: formatDate(snapshot.data!.createAt),
+                            ),
                             const SizedBox(height: 10.0),
-                            ProfileInfoRow(icon: Icons.date_range, label: 'Passes Probation Date', value: formatDate(snapshot.data!.updateAt)),
+                            ProfileInfoRow(
+                              icon: Icons.date_range,
+                              label: AppLocalizations.of(context)!.probationEndDate,
+                              value: formatDate(snapshot.data!.updateAt),
+                            ),
                             const SizedBox(height: 10.0),
-                            ProfileInfoRow(icon: Icons.account_balance, label: 'Department', value: snapshot.data!.departmentName),
+                            ProfileInfoRow(
+                              icon: Icons.account_balance,
+                              label: AppLocalizations.of(context)!.department,
+                              value: snapshot.data!.departmentName.isNotEmpty ? snapshot.data!.departmentName : AppLocalizations.of(context)!.notAvailable,
+                            ),
                             const SizedBox(height: 10.0),
-                            ProfileInfoRow(icon: Icons.location_on, label: 'Branch', value: snapshot.data!.branchName),
+                            ProfileInfoRow(
+                              icon: Icons.location_on,
+                              label: AppLocalizations.of(context)!.branch,
+                              value: snapshot.data!.branchName.isNotEmpty ? snapshot.data!.branchName : AppLocalizations.of(context)!.notAvailable,
+                            ),
                             const SizedBox(height: 10.0),
-                            ProfileInfoRow(icon: Icons.phone, label: 'Tel.', value: snapshot.data!.tel),
+                            ProfileInfoRow(
+                              icon: Icons.phone,
+                              label: AppLocalizations.of(context)!.telephone,
+                              value: snapshot.data!.tel.isNotEmpty ? snapshot.data!.tel : AppLocalizations.of(context)!.notAvailable,
+                            ),
                             const SizedBox(height: 10.0),
-                            ProfileInfoRow(icon: Icons.email, label: 'Emails', value: snapshot.data!.email),
+                            ProfileInfoRow(
+                              icon: Icons.email,
+                              label: AppLocalizations.of(context)!.emails,
+                              value: snapshot.data!.email.isNotEmpty ? snapshot.data!.email : AppLocalizations.of(context)!.notAvailable,
+                            ),
                           ],
                         ),
                       ),
@@ -197,13 +236,12 @@ class _MyProfilePageState extends State<MyProfilePage> {
               ),
             );
           } else {
-            return const Center(child: Text('No data available'));
+            return Center(child: Text(AppLocalizations.of(context)!.noDataAvailable));
           }
         },
       ),
     );
   }
-
 }
 
 class UserProfile {

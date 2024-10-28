@@ -1,3 +1,4 @@
+// attendance_screen.dart
 
 import 'dart:async';
 import 'dart:convert';
@@ -14,6 +15,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:flutter_background/flutter_background.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'monthly_attendance_record.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // Import localization
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -207,18 +209,25 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     Position? currentPosition = await _getCurrentPosition();
 
     if (currentPosition == null) {
-      _showCustomDialog(context, 'Location Error', 'Unable to retrieve your location.');
+      _showCustomDialog(
+        context,
+        AppLocalizations.of(context)!.locationError,
+        AppLocalizations.of(context)!.unableToRetrieveLocation,
+      );
       return;
     }
 
     // Check for valid device ID
-    if (_deviceId == null || _deviceId.isEmpty) {
-      _showCustomDialog(context, 'Device ID Error', 'Device ID is missing or invalid.');
+    if (_deviceId.isEmpty) {
+      _showCustomDialog(
+        context,
+        AppLocalizations.of(context)!.error,
+        AppLocalizations.of(context)!.deviceIdError,
+      );
       return;
     }
 
     final Map<String, dynamic> requestBody = {
-      'device_id': _deviceId,
       'device_id': _deviceId,
       'latitude': currentPosition.latitude.toString(),
       'longitude': currentPosition.longitude.toString(),
@@ -244,12 +253,20 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
       if (response.statusCode == 202 || response.statusCode == 201) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
-        _showCustomDialog(context, 'Success', responseData['message'] ?? 'Check-in/check-out successful');
+        _showCustomDialog(
+          context,
+          AppLocalizations.of(context)!.success,
+          responseData['message'] ?? AppLocalizations.of(context)!.checkInOutSuccessful,
+        );
       } else {
         throw Exception('Failed with status code ${response.statusCode}');
       }
     } catch (error) {
-      _showCustomDialog(context, 'Error', 'Failed to check in/check out: $error');
+      _showCustomDialog(
+        context,
+        AppLocalizations.of(context)!.error,
+        '${AppLocalizations.of(context)!.failedToCheckInOut}: $error',
+      );
     }
   }
 
@@ -262,7 +279,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       String? token = prefs.getString('token');
 
       if (token == null) {
-        throw Exception('No token found');
+        throw Exception(AppLocalizations.of(context)!.noTokenFound);
       }
 
       final response = await http.get(
@@ -287,12 +304,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           }).toList();
         });
       } else {
-        throw Exception('Failed to load weekly records');
+        throw Exception(AppLocalizations.of(context)!.failedToLoadWeeklyRecords);
       }
     } catch (e) {
       if (kDebugMode) {
         print('Error fetching weekly records: $e');
       }
+      // Optionally, show a dialog or snackbar
     }
   }
 
@@ -351,7 +369,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
-
   void _startTimerForLiveTime() {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {}); // Update the UI every second
@@ -402,21 +419,32 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     String? workingHoursStr = prefs.getString('workingHours');
     if (workingHoursStr != null) {
       List<String> parts = workingHoursStr.split(':');
-      return Duration(hours: int.parse(parts[0]), minutes: int.parse(parts[1]), seconds: int.parse(parts[2]));
+      return Duration(
+          hours: int.parse(parts[0]),
+          minutes: int.parse(parts[1]),
+          seconds: int.parse(parts[2]));
     }
     return null;
   }
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
     if (!_biometricEnabled) {
-      _showCustomDialog(context, 'Biometric Not Enabled', 'Please enable biometric authentication in the settings first.');
+      _showCustomDialog(
+        context,
+        AppLocalizations.of(context)!.biometricNotEnabled,
+        AppLocalizations.of(context)!.enableBiometricFirst,
+      );
       return;
     }
 
     bool didAuthenticate = await _authenticateWithBiometrics();
 
     if (!didAuthenticate) {
-      _showCustomDialog(context, 'Authentication Failed', 'You must authenticate to continue.');
+      _showCustomDialog(
+        context,
+        AppLocalizations.of(context)!.authenticationFailed,
+        AppLocalizations.of(context)!.authenticateToContinue,
+      );
       return;
     }
 
@@ -430,7 +458,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Future<bool> _authenticateWithBiometrics() async {
     try {
       return await auth.authenticate(
-        localizedReason: 'Please authenticate to Check-In or Check-Out',
+        localizedReason: AppLocalizations.of(context)!.authenticateToLogin,
         options: const AuthenticationOptions(
           useErrorDialogs: true,
           stickyAuth: true,
@@ -489,9 +517,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       size: 60,
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      "Location Detected",
-                      style: TextStyle(
+                    Text(
+                      AppLocalizations.of(context)!.locationDetected,
+                      style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -503,7 +531,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  "You are currently at ${isHome ? 'Home' : 'the Office'}.",
+                  AppLocalizations.of(context)!.youAreCurrentlyAt(
+                      isHome ? AppLocalizations.of(context)!.home : AppLocalizations.of(context)!.office),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 18,
@@ -527,9 +556,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     shadowColor: Colors.black.withOpacity(0.25),
                     elevation: 8,
                   ),
-                  child: const Text(
-                    "OK",
-                    style: TextStyle(
+                  child: Text(
+                    AppLocalizations.of(context)!.ok,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -593,7 +622,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-                child: const Text('Close'),
+                child: Text(
+                  AppLocalizations.of(context)!.close,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -614,16 +646,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             children: [
               const Icon(Icons.access_time, color: Colors.blue, size: 50),
               const SizedBox(height: 16),
-              const Text(
-                'Work Summary',
-                style: TextStyle(
+              Text(
+                AppLocalizations.of(context)!.workSummary,
+                style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 16),
               Text(
-                'You worked for ${_workingHours.toString().split('.').first.padLeft(8, '0')} hours today.',
+                AppLocalizations.of(context)!.youWorkedForHoursToday(
+                    _workingHours.toString().split('.').first.padLeft(8, '0')),
                 style: const TextStyle(fontSize: 18),
               ),
               const SizedBox(height: 16),
@@ -637,7 +670,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-                child: const Text('Close'),
+                child: Text(
+                  AppLocalizations.of(context)!.close,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ],
           ),
@@ -659,9 +695,15 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         subtitle: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildAttendanceItem('Check In', record['checkIn']!, isHome ? Colors.orange : Colors.green),
-            _buildAttendanceItem('Check Out', record['checkOut']!, isOffice ? Colors.green : Colors.red),
-            _buildAttendanceItem('Working Hours', record['workingHours']!, Colors.blue),
+            _buildAttendanceItem(
+                AppLocalizations.of(context)!.checkIn, record['checkIn']!,
+                isHome ? Colors.orange : Colors.green),
+            _buildAttendanceItem(
+                AppLocalizations.of(context)!.checkOut, record['checkOut']!,
+                isOffice ? Colors.green : Colors.red),
+            _buildAttendanceItem(
+                AppLocalizations.of(context)!.workingHours, record['workingHours']!,
+                Colors.blue),
           ],
         ),
       ),
@@ -706,28 +748,48 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           if (now.isBefore(checkInTimeAllowed) || now.isAfter(checkInDisabledTime)) {
             _showCustomDialog(
               context,
-              'Check-In Not Allowed',
-              'Check in time can not be late by 13:00.',
+              AppLocalizations.of(context)!.checkInNotAllowed,
+              AppLocalizations.of(context)!.checkInLateNotAllowed,
             );
           } else if (isCheckInEnabled) {
             bool isAuthenticated = await _authenticateWithBiometrics();
             if (isAuthenticated) {
               _performCheckIn(DateTime.now());
-              _showCustomDialog(context, 'Check-In Success', 'You have successfully checked in.');
+              _showCustomDialog(
+                context,
+                AppLocalizations.of(context)!.checkInSuccess,
+                AppLocalizations.of(context)!.checkInSuccessMessage,
+              );
             } else {
-              _showCustomDialog(context, 'Authentication Failed', 'Please authenticate to check in.');
+              _showCustomDialog(
+                context,
+                AppLocalizations.of(context)!.authenticationFailed,
+                AppLocalizations.of(context)!.authenticateToContinue,
+              );
             }
           }
         } else if (_isCheckInActive && isCheckOutEnabled) {
           bool isAuthenticated = await _authenticateWithBiometrics();
           if (isAuthenticated) {
             _performCheckOut(DateTime.now());
-            _showCustomDialog(context, 'Check-Out Success', 'You have successfully checked out.');
+            _showCustomDialog(
+              context,
+              AppLocalizations.of(context)!.checkOutSuccess,
+              AppLocalizations.of(context)!.checkOutSuccessMessage,
+            );
           } else {
-            _showCustomDialog(context, 'Authentication Failed', 'Please authenticate to check out.');
+            _showCustomDialog(
+              context,
+              AppLocalizations.of(context)!.authenticationFailed,
+              AppLocalizations.of(context)!.authenticateToContinue,
+            );
           }
         } else if (_isCheckInActive) {
-          _showCustomDialog(context, 'Already Checked In', 'You have already checked in.');
+          _showCustomDialog(
+            context,
+            AppLocalizations.of(context)!.alreadyCheckedIn,
+            AppLocalizations.of(context)!.alreadyCheckedInMessage,
+          );
         }
       },
       child: Container(
@@ -764,7 +826,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   BoxShadow(
                     color: Colors.black26,
                     blurRadius: 10,
-                    offset: Offset(0, 4),
+                    offset: Offset(0, 5),
                   ),
                 ],
               ),
@@ -778,29 +840,31 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
             // Check In/Check Out button text
             Text(
-              _isCheckInActive ? 'Check Out' : 'Check In',
+              _isCheckInActive
+                  ? AppLocalizations.of(context)!.checkOut
+                  : AppLocalizations.of(context)!.checkIn,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             const Divider(
-            height: 20,
-            thickness: 1,
-            indent: 1,
-            endIndent: 0,
-            color: Colors.grey,
-          ),
+              height: 20,
+              thickness: 1,
+              indent: 1,
+              endIndent: 0,
+              color: Colors.grey,
+            ),
             // Register presence text
-            const Text(
-              'Register Your Presence and Start Your Work',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            Text(
+              AppLocalizations.of(context)!.registerPresenceStartWork,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
             ),
             const Divider(
-            height: 20,
-            thickness: 1,
-            indent: 1,
-            endIndent: 0,
-            color: Colors.grey,
-          ),
+              height: 20,
+              thickness: 1,
+              indent: 1,
+              endIndent: 0,
+              color: Colors.grey,
+            ),
             const SizedBox(height: 16),
 
             // Month and Year display (e.g., February - 2024)
@@ -814,9 +878,24 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildSummaryItem('Check In', _checkInTime, Icons.login, Colors.green),
-                _buildSummaryItem('Check Out', _checkOutTime, Icons.logout, Colors.red),
-                _buildSummaryItem('Working Hours', _workingHours.toString().split('.').first.padLeft(8, '0'), Icons.timer, Colors.blue),
+                _buildSummaryItem(
+                  AppLocalizations.of(context)!.checkIn,
+                  _checkInTime,
+                  Icons.login,
+                  Colors.green,
+                ),
+                _buildSummaryItem(
+                  AppLocalizations.of(context)!.checkOut,
+                  _checkOutTime,
+                  Icons.logout,
+                  Colors.red,
+                ),
+                _buildSummaryItem(
+                  AppLocalizations.of(context)!.workingHours,
+                  _workingHours.toString().split('.').first.padLeft(8, '0'),
+                  Icons.timer,
+                  Colors.blue,
+                ),
               ],
             ),
           ],
@@ -834,7 +913,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           time,
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 8),
         Text(
           title,
           style: const TextStyle(color: Colors.black),
@@ -850,22 +928,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           decoration: BoxDecoration(
             gradient: _selectedIndex == 1
                 ? LinearGradient(
-                    colors: [
-                      Colors.red.shade50,
-                      Colors.red.shade100,
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  )
+              colors: [
+                Colors.red.shade50,
+                Colors.red.shade100,
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            )
                 : LinearGradient(
-                    colors: [
-                      Colors.orange.shade50,
-                      Colors.green.shade50,
-                    ],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    stops: const [0.5, 0.5],
-                  ),
+              colors: [
+                Colors.orange.shade50,
+                Colors.green.shade50,
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              stops: const [0.5, 0.5],
+            ),
           ),
         ),
         Column(
@@ -891,10 +969,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Widget _buildWeeklyRecordsList() {
     if (_weeklyRecords.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'No weekly records found.',
-          style: TextStyle(color: Colors.black),
+          AppLocalizations.of(context)!.noWeeklyRecordsFound,
+          style: const TextStyle(color: Colors.black),
         ),
       );
     }
@@ -915,30 +993,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ),
             ],
           ),
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               Expanded(
                 child: Center(
                   child: Text(
-                    'Check In',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                    AppLocalizations.of(context)!.checkIn,
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                 ),
               ),
               Expanded(
                 child: Center(
                   child: Text(
-                    'Check Out',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                    AppLocalizations.of(context)!.checkOut,
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                 ),
               ),
               Expanded(
                 child: Center(
                   child: Text(
-                    'Working Hours',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                    AppLocalizations.of(context)!.workingHours,
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                 ),
               ),
@@ -996,7 +1074,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Home',
+                            AppLocalizations.of(context)!.home,
                             style: TextStyle(
                               color: (_currentSection == 'Home' && _selectedIndex != 1)
                                   ? Colors.white
@@ -1044,7 +1122,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Office',
+                            AppLocalizations.of(context)!.office,
                             style: TextStyle(
                               color: (_currentSection == 'Office' && _selectedIndex != 1)
                                   ? Colors.white
@@ -1086,7 +1164,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Offsite',
+                    AppLocalizations.of(context)!.offsite,
                     style: TextStyle(
                       color: _selectedIndex == 1 ? Colors.white : Colors.black,
                       fontWeight: FontWeight.bold,
@@ -1165,9 +1243,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   backgroundColor: Colors.green.withOpacity(0.5),
                   elevation: 0,
                 ),
-                child: const Text(
-                  'View All',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                child: Text(
+                  AppLocalizations.of(context)!.viewAll,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),

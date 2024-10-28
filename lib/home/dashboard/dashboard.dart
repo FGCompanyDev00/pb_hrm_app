@@ -1,3 +1,5 @@
+// dashboard.dart
+
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
@@ -15,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // Import localization
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -74,10 +77,10 @@ class _DashboardState extends State<Dashboard> {
         final userProfile = UserProfile.fromJson(userJson);
         return userProfile;
       } else {
-        throw Exception('No user data found');
+        throw Exception(AppLocalizations.of(context)!.noDataAvailable);
       }
     } else {
-      throw Exception('Failed to load user profile');
+      throw Exception(AppLocalizations.of(context)!.errorWithDetails('Status Code: ${response.statusCode}'));
     }
   }
 
@@ -97,7 +100,7 @@ class _DashboardState extends State<Dashboard> {
       final List<dynamic> results = jsonDecode(response.body)['results'];
       return results.map<String>((file) => file['files'] as String).toList();
     } else {
-      throw Exception('Failed to load banners');
+      throw Exception(AppLocalizations.of(context)!.failedToLoadWeeklyRecords);
     }
   }
 
@@ -131,7 +134,7 @@ class _DashboardState extends State<Dashboard> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return AppBar();
               } else if (snapshot.hasError) {
-                return AppBar(title: Text('Error: ${snapshot.error}'));
+                return AppBar(title: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
               } else if (snapshot.hasData) {
                 return AppBar(
                   automaticallyImplyLeading: false,
@@ -185,7 +188,7 @@ class _DashboardState extends State<Dashboard> {
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        'Hi, ${snapshot.data!.name}!',
+                                        AppLocalizations.of(context)!.greeting(snapshot.data!.name),
                                         style: const TextStyle(
                                           color: Colors.black,
                                           fontWeight: FontWeight.bold,
@@ -210,7 +213,7 @@ class _DashboardState extends State<Dashboard> {
                   ),
                 );
               } else {
-                return AppBar(title: const Text('No data available')); // Fallback if no data
+                return AppBar(title: Text(AppLocalizations.of(context)!.noDataAvailable)); // Fallback if no data
               }
             },
           ),
@@ -242,7 +245,7 @@ class _DashboardState extends State<Dashboard> {
                               if (snapshot.connectionState == ConnectionState.waiting) {
                                 return const Center(child: CircularProgressIndicator());
                               } else if (snapshot.hasError) {
-                                return Center(child: Text('Error: ${snapshot.error}'));
+                                return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
                               } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                                 return PageView.builder(
                                   controller: _pageController,
@@ -273,7 +276,7 @@ class _DashboardState extends State<Dashboard> {
                                   },
                                 );
                               } else {
-                                return const Center(child: Text('No banners available'));
+                                return Center(child: Text(AppLocalizations.of(context)!.noBannersAvailable));
                               }
                             },
                           ),
@@ -290,7 +293,7 @@ class _DashboardState extends State<Dashboard> {
                                 margin: const EdgeInsets.only(right: 8),
                               ),
                               Text(
-                                'Action Menu',
+                                AppLocalizations.of(context)!.actionMenu,
                                 style: TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
@@ -299,7 +302,7 @@ class _DashboardState extends State<Dashboard> {
                               ),
                               const Spacer(),
                               Text(
-                                'Notification',
+                                AppLocalizations.of(context)!.notification,
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: isDarkMode ? Colors.white : Colors.black,
@@ -360,24 +363,42 @@ class _DashboardState extends State<Dashboard> {
                                   mainAxisSpacing: 10,
                                   crossAxisSpacing: 10,
                                   children: [
-                                    _buildActionCard(context, 'assets/data-2.png', 'History', isDarkMode, () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => const HistoryPage()),
-                                      );
-                                    }),
-                                    _buildActionCard(context, 'assets/people.png', 'Approvals', isDarkMode, () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
-                                      );
-                                    }),
-                                    _buildActionCard(context, 'assets/status-up.png', 'Work Tracking', isDarkMode, () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
-                                      );
-                                    }),
+                                    _buildActionCard(
+                                      context,
+                                      'assets/data-2.png',
+                                      AppLocalizations.of(context)!.history,
+                                      isDarkMode,
+                                          () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => const HistoryPage()),
+                                        );
+                                      },
+                                    ),
+                                    _buildActionCard(
+                                      context,
+                                      'assets/people.png',
+                                      AppLocalizations.of(context)!.approvals,
+                                      isDarkMode,
+                                          () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
+                                        );
+                                      },
+                                    ),
+                                    _buildActionCard(
+                                      context,
+                                      'assets/status-up.png',
+                                      AppLocalizations.of(context)!.workTracking,
+                                      isDarkMode,
+                                          () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
+                                        );
+                                      },
+                                    ),
                                   ],
                                 ));
                           },
@@ -443,16 +464,16 @@ class _DashboardState extends State<Dashboard> {
               children: [
                 const Icon(Icons.lock, size: 60, color: Colors.orange),
                 const SizedBox(height: 16),
-                const Text(
-                  'LOGOUT',
-                  style: TextStyle(
+                Text(
+                  AppLocalizations.of(context)!.logoutTitle,
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: Colors.orange,
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text('Are you sure you want to log out?'),
+                Text(AppLocalizations.of(context)!.logoutConfirmation),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -468,7 +489,7 @@ class _DashboardState extends State<Dashboard> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: const Text('Cancel'),
+                      child: Text(AppLocalizations.of(context)!.cancel),
                     ),
                     ElevatedButton(
                       onPressed: () {
@@ -487,7 +508,7 @@ class _DashboardState extends State<Dashboard> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: const Text('Yes, Logout'),
+                      child: Text(AppLocalizations.of(context)!.yesLogout),
                     ),
                   ],
                 ),

@@ -17,7 +17,11 @@ class AssignmentSection extends StatefulWidget {
   final String projectId;
   final String baseUrl;
 
-  const AssignmentSection({super.key, required this.projectId, required this.baseUrl});
+  const AssignmentSection({
+    Key? key,
+    required this.projectId,
+    required this.baseUrl,
+  }) : super(key: key);
 
   @override
   State<AssignmentSection> createState() => _AssignmentSectionState();
@@ -43,6 +47,8 @@ class _AssignmentSectionState extends State<AssignmentSection> {
       _isLoading = true;
       _hasError = false;
     });
+
+    print('[_AssignmentSection] Fetching assignments for projectId: ${widget.projectId}');
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -76,24 +82,31 @@ class _AssignmentSectionState extends State<AssignmentSection> {
           }).toList();
           _isLoading = false;
         });
+
+        print('[_AssignmentSection] Successfully fetched assignments.');
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load assignments')),
+          SnackBar(content: Text('Failed to load assignments: ${response.body}')),
         );
         setState(() {
           _isLoading = false;
           _hasError = true;
         });
+
+        print('[_AssignmentSection] Failed to load assignments: ${response.body}');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Failed to load assignment data: $e');
+        print('[_AssignmentSection] Failed to load assignment data: $e');
       }
       setState(() {
         _isLoading = false;
         _hasError = true;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('An error occurred while loading assignments.')),
+      );
     }
   }
 
@@ -111,6 +124,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
   }
 
   void _showAddAssignmentPage() async {
+    print('[_AssignmentSection] Navigating to AddAssignmentPage with projectId: ${widget.projectId}');
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -122,6 +136,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
     );
 
     if (result == true) {
+      print('[_AssignmentSection] New assignment added. Refreshing data.');
       _fetchAssignmentData();
     }
   }
@@ -141,13 +156,17 @@ class _AssignmentSectionState extends State<AssignmentSection> {
 
   Widget _buildAssignmentCard(Map<String, dynamic> assignment) {
     final createdAt = assignment['created_at'] != null ? DateTime.parse(assignment['created_at']) : DateTime.now();
-    final updatedAt = assignment['updated_at'] != null ? DateTime.parse(assignment['updated_at']) : DateTime.now();
     final now = DateTime.now();
-    // Assuming there are 'due_date' or similar fields; adjust accordingly
-    // Since the API response doesn't provide 'from_date' and 'to_date', adjust the date-related logic
-    // For demonstration, let's use 'created_at' as start date and assume 'due_date' is 'created_at' + some days
-    // Adjust based on actual API response
-    final dueDate = createdAt.add(const Duration(days: 7)); // Example: due in 7 days
+
+    // Assuming there's a 'due_date' field in the API response. Adjust accordingly.
+    DateTime dueDate;
+    if (assignment.containsKey('due_date') && assignment['due_date'] != null) {
+      dueDate = DateTime.parse(assignment['due_date']);
+    } else {
+      // If 'due_date' is not provided, default to created_at + 7 days
+      dueDate = createdAt.add(const Duration(days: 7));
+    }
+
     final daysRemaining = dueDate.difference(now).inDays;
     Color daysColor;
 
@@ -219,6 +238,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                             ),
                           ).then((value) {
                             if (value == true) {
+                              print('[_AssignmentSection] Assignment updated. Refreshing data.');
                               _fetchAssignmentData();
                             }
                           });
@@ -242,6 +262,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                             ),
                           ).then((value) {
                             if (value == true) {
+                              print('[_AssignmentSection] Assignment updated. Refreshing data.');
                               _fetchAssignmentData();
                             }
                           });
@@ -486,7 +507,15 @@ class _AssignmentSectionState extends State<AssignmentSection> {
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _hasError
-              ? const Center(child: Text('Failed to load assignments'))
+              ? Center(
+            child: Text(
+              'Failed to load assignments.',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+                fontSize: 16,
+              ),
+            ),
+          )
               : filteredAssignments.isEmpty
               ? const Center(child: Text('No assignment data to display'))
               : RefreshIndicator(

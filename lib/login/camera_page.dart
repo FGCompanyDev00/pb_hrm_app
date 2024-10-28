@@ -1,3 +1,5 @@
+// camera_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/login/ready_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -33,8 +35,8 @@ class CameraPage extends StatelessWidget {
         return AlertDialog(
           title: Text(AppLocalizations.of(context)!.permissionDenied),
           content: Text(isPermanentlyDenied
-              ? 'Camera access is permanently denied. Please open your settings to enable it.'
-              : 'We need camera access to proceed.'),
+              ? AppLocalizations.of(context)!.cameraAccessPermanentlyDenied
+              : AppLocalizations.of(context)!.cameraPermissionRequired),
           actions: [
             TextButton(
               onPressed: () {
@@ -123,10 +125,10 @@ class CameraPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              const Center(
+              Center(
                 child: Text(
-                  "3 of 3",
-                  style: TextStyle(fontSize: 16, color: Colors.black),
+                  AppLocalizations.of(context)!.pageIndicator3of3,
+                  style: const TextStyle(fontSize: 16, color: Colors.black),
                 ),
               ),
               const SizedBox(height: 10),

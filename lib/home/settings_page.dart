@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // Import localization
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -27,7 +28,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _biometricEnabled = false;
   bool _notificationEnabled = false;
   late Future<UserProfile> futureUserProfile;
-  String _appVersion = 'PSBV Next Demo v1.0.15'; // Updated version
+  String _appVersion = 'PSBV Next Demo v1.0.16'; // Updated version
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
   FlutterLocalNotificationsPlugin();
@@ -56,7 +57,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadAppVersion() async {
     setState(() {
-      _appVersion = 'PSBV Next Demo v1.0.15';
+      _appVersion = 'PSBV Next Demo v1.0.16';
       // _appVersion = 'PSBV Next v${packageInfo.version}';
     });
   }
@@ -69,7 +70,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadNotificationSetting() async {
-    bool? isEnabled = await _storage.read(key: 'notificationEnabled') == 'true';
+    bool? isEnabled =
+        await _storage.read(key: 'notificationEnabled') == 'true';
     setState(() {
       _notificationEnabled = isEnabled;
     });
@@ -93,15 +95,16 @@ class _SettingsPageState extends State<SettingsPage> {
       bool canCheckBiometrics = await auth.canCheckBiometrics;
       if (!canCheckBiometrics) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Biometric authentication is not available.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.biometricNotAvailable),
           ),
         );
         return;
       }
       try {
         bool authenticated = await auth.authenticate(
-          localizedReason: 'Please authenticate to enable biometric login',
+          localizedReason:
+          AppLocalizations.of(context)!.authenticateToEnableBiometrics,
           options: const AuthenticationOptions(
             stickyAuth: true,
             useErrorDialogs: true,
@@ -117,6 +120,11 @@ class _SettingsPageState extends State<SettingsPage> {
         if (kDebugMode) {
           print('Error enabling biometrics: $e');
         }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.errorEnablingBiometrics(e.toString())),
+          ),
+        );
       }
     } else {
       setState(() {
@@ -159,8 +167,8 @@ class _SettingsPageState extends State<SettingsPage> {
       NotificationDetails(android: androidPlatformChannelSpecifics);
       await flutterLocalNotificationsPlugin.show(
         0,
-        'Example Notification',
-        'This is an example notification',
+        AppLocalizations.of(context)!.exampleNotificationTitle,
+        AppLocalizations.of(context)!.exampleNotificationBody,
         platformChannelSpecifics,
         payload: 'item x',
       );
@@ -191,7 +199,7 @@ class _SettingsPageState extends State<SettingsPage> {
       final userProfile = UserProfile.fromJson(results[0]);
       return userProfile;
     } else {
-      throw Exception('Failed to load user profile');
+      throw Exception(AppLocalizations.of(context)!.failedToLoadUserProfile);
     }
   }
 
@@ -219,20 +227,16 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           centerTitle: true,
-          title: const Text(
-            'Settings', // Fixed missing quote
-            style: TextStyle(
+          title: Text(
+            AppLocalizations.of(context)!.settings,
+            style: const TextStyle(
               color: Colors.black,
               fontSize: 22,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.bold,
             ),
           ),
           leading: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new,
-              color: Colors.black,
-              size: 20,
-            ),
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
             onPressed: () {
               Navigator.pop(context);
             },
@@ -248,7 +252,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: ListView(
                   padding: const EdgeInsets.all(16.0),
                   children: [
-                    // 4. Add account settings icon
+                    // Account Settings Header
                     Row(
                       children: [
                         Image.asset(
@@ -258,7 +262,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          'Account Settings',
+                          AppLocalizations.of(context)!.accountSettings,
                           style: themeNotifier.textStyle.copyWith(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -268,10 +272,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    // 3. Change Password Tile
+                    // Change Password Tile
                     _buildSettingsTile(
                       context,
-                      title: 'Change Password',
+                      title: AppLocalizations.of(context)!.changePassword,
                       icon: Icons.arrow_forward_ios,
                       onTap: () {
                         Navigator.push(
@@ -281,10 +285,10 @@ class _SettingsPageState extends State<SettingsPage> {
                         );
                       },
                     ),
-                    // 3. Edit Profile Tile
+                    // Edit Profile Tile
                     _buildSettingsTile(
                       context,
-                      title: 'Edit Profile',
+                      title: AppLocalizations.of(context)!.editProfile,
                       icon: Icons.arrow_forward_ios,
                       onTap: () {
                         Navigator.push(
@@ -294,11 +298,10 @@ class _SettingsPageState extends State<SettingsPage> {
                         );
                       },
                     ),
-
-                    // 4. biometric and notification settings
+                    // Enable Biometric Authentication Switch
                     _buildSettingsTile(
                       context,
-                      title: 'Enable Touch ID / Face ID',
+                      title: AppLocalizations.of(context)!.enableBiometricAuth,
                       trailing: Switch(
                         value: _biometricEnabled,
                         onChanged: (bool value) {
@@ -307,9 +310,10 @@ class _SettingsPageState extends State<SettingsPage> {
                         activeColor: Colors.green,
                       ),
                     ),
+                    // Notification Tile
                     _buildSettingsTile(
                       context,
-                      title: 'Notification',
+                      title: AppLocalizations.of(context)!.notification,
                       icon: Icons.arrow_forward_ios,
                       onTap: () {
                         Navigator.push(
@@ -319,27 +323,11 @@ class _SettingsPageState extends State<SettingsPage> {
                         );
                       },
                     ),
-                    // 5. Remove Test Notification Tile
-                    // Removed the following block:
-                    /*
-                    _buildSettingsTile(
-                      context,
-                      title: 'Test Notification',
-                      icon: Icons.arrow_forward_ios,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  const TestNotificationWidget()),
-                        );
-                      },
-                    ),
-                    */
+                    // Display App Version
                     const SizedBox(height: 20),
                     Center(
                       child: Text(
-                        _appVersion, // Updated to v1.0.7
+                        _appVersion,
                         style: themeNotifier.textStyle
                             .copyWith(fontSize: 14, color: Colors.grey),
                       ),
@@ -353,7 +341,6 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
-
 
   Widget _buildSettingsTile(BuildContext context,
       {required String title,

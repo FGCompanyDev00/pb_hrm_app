@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // Import localization
 
 class AddMemberPage extends StatefulWidget {
   const AddMemberPage({super.key});
@@ -58,10 +59,10 @@ class _AddMemberPageState extends State<AddMemberPage> {
           _filteredMembers = _members;
         });
       } else {
-        throw Exception('Failed to load members');
+        throw Exception(AppLocalizations.of(context)!.failedToLoadMembers);
       }
     } catch (e) {
-      _showErrorMessage('Error fetching members: $e');
+      _showErrorMessage(AppLocalizations.of(context)!.errorFetchingMembers(e.toString()));
     }
   }
 
@@ -88,10 +89,10 @@ class _AddMemberPageState extends State<AddMemberPage> {
           }).toList();
         });
       } else {
-        throw Exception('Failed to load groups');
+        throw Exception(AppLocalizations.of(context)!.failedToLoadGroups);
       }
     } catch (e) {
-      _showErrorMessage('Error fetching groups: $e');
+      _showErrorMessage(AppLocalizations.of(context)!.errorFetchingGroups(e.toString()));
     }
   }
 
@@ -148,8 +149,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
 
   /// Selects a group and adds its members
   void _selectGroup(String groupId) {
-    final group = _groups.firstWhere(
-            (element) => element['groupId'] == groupId,
+    final group = _groups.firstWhere((element) => element['groupId'] == groupId,
         orElse: () => {});
     if (group.isNotEmpty) {
       List<dynamic> employees = group['employees'];
@@ -186,7 +186,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
   Widget _buildGroupDropdown() {
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
-        labelText: 'Select Group',
+        labelText: AppLocalizations.of(context)!.selectGroup,
         prefixIcon: const Icon(Icons.group),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(30.0),
@@ -211,7 +211,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Office Event Add Members'),
+        title: Text(AppLocalizations.of(context)!.officeEventAddMembers),
         backgroundColor: Colors.transparent,
         elevation: 0,
         toolbarHeight: 90,
@@ -240,16 +240,14 @@ class _AddMemberPageState extends State<AddMemberPage> {
                   Expanded(
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      itemCount: _selectedMembers.length > 3
-                          ? 3
-                          : _selectedMembers.length,
+                      itemCount:
+                      _selectedMembers.length > 3 ? 3 : _selectedMembers.length,
                       itemBuilder: (context, index) {
                         final member = _selectedMembers[index];
                         return FutureBuilder<String?>(
                           future: _fetchProfileImage(member['employee_id']),
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.done &&
+                            if (snapshot.connectionState == ConnectionState.done &&
                                 snapshot.hasData) {
                               return Padding(
                                 padding:
@@ -281,7 +279,8 @@ class _AddMemberPageState extends State<AddMemberPage> {
                       child: CircleAvatar(
                         radius: 25,
                         backgroundColor: Colors.grey[300],
-                        child: Text('+${_selectedMembers.length - 3}',
+                        child: Text(
+                            '+${_selectedMembers.length - 3}',
                             style: const TextStyle(color: Colors.black)),
                       ),
                     ),
@@ -297,9 +296,9 @@ class _AddMemberPageState extends State<AddMemberPage> {
                           borderRadius: BorderRadius.circular(20.0),
                         ),
                       ),
-                      child: const Text(
-                        '+ Add',
-                        style: TextStyle(color: Colors.black, fontSize: 18),
+                      child: Text(
+                        AppLocalizations.of(context)!.addButton,
+                        style: const TextStyle(color: Colors.black, fontSize: 18),
                       ),
                     ),
                   ),
@@ -314,7 +313,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                 _filterMembers(value);
               },
               decoration: InputDecoration(
-                labelText: 'Search',
+                labelText: AppLocalizations.of(context)!.search,
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30.0),

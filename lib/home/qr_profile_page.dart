@@ -17,6 +17,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/home/myprofile_page.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // Import localization
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -142,7 +143,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final String? token = prefs.getString('token');
 
       if (token == null || token.isEmpty) {
-        throw Exception('No token found. Please log in again.');
+        throw Exception(AppLocalizations.of(context)!.noTokenFound);
       }
 
       final response = await http.get(
@@ -159,17 +160,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             responseBody['results'] is Map<String, dynamic>) {
           return responseBody['results'];
         } else {
-          throw Exception('Invalid response structure');
+          throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
         }
       } else {
         debugPrint(
             'Failed to load profile data - Status Code: ${response.statusCode}');
         debugPrint('Response Body: ${response.body}');
-        throw Exception('Failed to load profile data');
+        throw Exception(AppLocalizations.of(context)!.failedToLoadProfileData);
       }
     } catch (e) {
       debugPrint('Error in _fetchProfileData: $e');
-      throw Exception('Failed to load profile data');
+      throw Exception(AppLocalizations.of(context)!.failedToLoadProfileData);
     }
   }
 
@@ -179,7 +180,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final String? token = prefs.getString('token');
 
       if (token == null || token.isEmpty) {
-        throw Exception('No token found. Please log in again.');
+        throw Exception(AppLocalizations.of(context)!.noTokenFound);
       }
 
       final response = await http.get(
@@ -197,17 +198,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             responseBody['results'].isNotEmpty) {
           return responseBody['results'][0];
         } else {
-          throw Exception('Invalid response structure');
+          throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
         }
       } else {
         debugPrint(
             'Failed to load display data - Status Code: ${response.statusCode}');
         debugPrint('Response Body: ${response.body}');
-        throw Exception('Failed to load display data');
+        throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
       }
     } catch (e) {
       debugPrint('Error in _fetchDisplayData: $e');
-      throw Exception('Failed to load display data');
+      throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
     }
   }
 
@@ -223,11 +224,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final file = await File('${tempDir.path}/qr_code.png').create();
       await file.writeAsBytes(uint8List);
 
-      await Share.shareXFiles([XFile(file.path)], text: 'Check out my QR code!');
+      await Share.shareXFiles([XFile(file.path)], text: AppLocalizations.of(context)!.shareQRCodeText);
     } catch (e) {
       debugPrint('Error sharing QR code: $e');
       Fluttertoast.showToast(
-        msg: "Error sharing QR code",
+        msg: AppLocalizations.of(context)!.errorSharingQRCode,
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.BOTTOM,
       );
@@ -242,7 +243,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (boundary == null) {
         Fluttertoast.showToast(
-          msg: "QR Code is not rendered yet. Please wait and try again.",
+          msg: AppLocalizations.of(context)!.qrCodeNotRendered,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
@@ -266,20 +267,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (result.isSuccess) {
         Fluttertoast.showToast(
-          msg: "QR Code downloaded successfully",
+          msg: AppLocalizations.of(context)!.qrCodeDownloadedSuccess,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
       } else {
         Fluttertoast.showToast(
-          msg: "Error downloading QR code. Please try again.",
+          msg: AppLocalizations.of(context)!.errorDownloadingQRCodeGeneral,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
       }
     } catch (e) {
       Fluttertoast.showToast(
-        msg: "Error downloading QR code: ${e.toString()}",
+        msg: AppLocalizations.of(context)!.errorDownloadingQRCode(e.toString()),
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.BOTTOM,
       );
@@ -294,7 +295,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (boundary == null) {
         Fluttertoast.showToast(
-          msg: "QR Code is not rendered yet. Please wait and try again.",
+          msg: AppLocalizations.of(context)!.qrCodeNotRendered,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
@@ -314,20 +315,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (result.isSuccess) {
         Fluttertoast.showToast(
-          msg: "QR Code saved to gallery",
+          msg: AppLocalizations.of(context)!.qrCodeSavedToGallery,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
       } else {
         Fluttertoast.showToast(
-          msg: "Error saving QR code. Please try again.",
+          msg: AppLocalizations.of(context)!.errorSavingQRCodeGeneral,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
       }
     } catch (e) {
       Fluttertoast.showToast(
-        msg: "Error saving QR code: ${e.toString()}",
+        msg: AppLocalizations.of(context)!.errorSavingQRCode(e.toString()),
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.BOTTOM,
       );
@@ -356,9 +357,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         centerTitle: true,
-        title: const Text(
-          'QR My Profile',
-          style: TextStyle(
+        title: Text(
+          AppLocalizations.of(context)!.qrMyProfile,
+          style: const TextStyle(
             color: Colors.black,
             fontSize: 24,
             fontWeight: FontWeight.w500,
@@ -391,7 +392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
+              return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
             } else if (snapshot.hasData) {
               final data = snapshot.data!;
 
@@ -408,307 +409,371 @@ END:VCARD
 
               debugPrint(vCardData);
 
-              return Stack(
-                  children: [
-                  if (_isQRCodeFullScreen)
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _isQRCodeFullScreen = false;
-                  });
-                },
-                onLongPress: () async {
-                  final shouldSave = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Save Image'),
-                      content: const Text(
-                          'Do you want to save this image to your gallery?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () =>
-                              Navigator.of(context).pop(false),
-                          child: const Text('Cancel'),
+              return Stack(children: [
+                if (_isQRCodeFullScreen)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isQRCodeFullScreen = false;
+                      });
+                    },
+                    onLongPress: () async {
+                      final shouldSave = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text(AppLocalizations.of(context)!.saveImageTitle),
+                          content: Text(AppLocalizations.of(context)!.saveImageConfirmation),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(context).pop(false),
+                              child: Text(AppLocalizations.of(context)!.cancel),
+                            ),
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(context).pop(true),
+                              child: Text(AppLocalizations.of(context)!.save),
+                            ),
+                          ],
                         ),
-                        TextButton(
-                          onPressed: () =>
-                              Navigator.of(context).pop(true),
-                          child: const Text('Save'),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (shouldSave ?? false) {
-                    _saveQRCodeToGallery();
-                  }
-                },
-                child: Container(
-                  color: Colors.black.withOpacity(0.9),
-                  child: Center(
+                      );
+                      if (shouldSave ?? false) {
+                        _saveQRCodeToGallery();
+                      }
+                    },
                     child: Container(
-                      decoration: BoxDecoration(
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.5),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
+                      color: Colors.black.withOpacity(0.9),
+                      child: Center(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.5),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: RepaintBoundary(
-                        key: qrFullScreenKey, // Use separate key
-                        child: QrImageView(
-                          data: vCardData,
-                          version: QrVersions.auto,
-                          size: size.width * 0.8,
-                          gapless: false,
-                          embeddedImage:
-                          const AssetImage('assets/playstore.png'),
-                          embeddedImageStyle: const QrEmbeddedImageStyle(
-                            size: Size(40, 40),
-                          ),
-                          backgroundColor: Colors.white,
-                          eyeStyle: const QrEyeStyle(
-                            eyeShape: QrEyeShape.circle,
-                            color: Colors.black,
-                          ),
-                          dataModuleStyle: const QrDataModuleStyle(
-                            dataModuleShape: QrDataModuleShape.square,
-                            color: Colors.black,
+                          child: RepaintBoundary(
+                            key: qrFullScreenKey, // Use separate key
+                            child: QrImageView(
+                              data: vCardData,
+                              version: QrVersions.auto,
+                              size: size.width * 0.8,
+                              gapless: false,
+                              embeddedImage:
+                              const AssetImage('assets/playstore.png'),
+                              embeddedImageStyle: const QrEmbeddedImageStyle(
+                                size: Size(40, 40),
+                              ),
+                              backgroundColor: Colors.white,
+                              eyeStyle: const QrEyeStyle(
+                                eyeShape: QrEyeShape.circle,
+                                color: Colors.black,
+                              ),
+                              dataModuleStyle: const QrDataModuleStyle(
+                                dataModuleShape: QrDataModuleShape.square,
+                                color: Colors.black,
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-              )
-            else
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints:
-                      BoxConstraints(maxHeight: size.height * 0.8),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Stack(
+                  )
+                else
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: SingleChildScrollView(
+                        child: ConstrainedBox(
+                          constraints:
+                          BoxConstraints(maxHeight: size.height * 0.8),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Center(
-                                child: CircleAvatar(
-                                  radius: size.width * 0.10,
-                                  backgroundColor: Colors.grey[200],
-                                  child: CircleAvatar(
-                                    radius: size.width * 0.09,
-                                    backgroundImage:
-                                    NetworkImage(data['images']),
+                              Stack(
+                                children: [
+                                  Center(
+                                    child: CircleAvatar(
+                                      radius: size.width * 0.10,
+                                      backgroundColor: Colors.grey[200],
+                                      child: CircleAvatar(
+                                        radius: size.width * 0.09,
+                                        backgroundImage:
+                                        NetworkImage(data['images']),
+                                      ),
+                                    ),
                                   ),
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    bottom: 0,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                            const MyProfilePage(),
+                                          ),
+                                        );
+                                      },
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            AppLocalizations.of(context)!.more,
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                          const Icon(
+                                            Icons.arrow_forward_ios,
+                                            size: 24,
+                                            color: Colors.black,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                AppLocalizations.of(context)!.greeting(data['employee_name']),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                  Colors.black54, // Subtle text color
                                 ),
                               ),
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                bottom: 0,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                        const MyProfilePage(),
+                              const SizedBox(height: 16),
+                              ClipPath(
+                                clipper: TicketShapeClipper(),
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.lightGreenAccent[100],
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 4),
                                       ),
-                                    );
-                                  },
-                                  child: const Row(
+                                    ],
+                                  ),
+                                  child: Column(
                                     children: [
                                       Text(
-                                        "More",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
+                                        AppLocalizations.of(context)!.scanToSaveContact,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
                                           color: Colors.black,
                                         ),
                                       ),
-                                      Icon(
-                                        Icons.arrow_forward_ios,
-                                        size: 24,
-                                        color: Colors.black,
+                                      const SizedBox(height: 15),
+                                      const DashedLine(
+                                        dashWidth: 12,
+                                        dashHeight: 8,
+                                        color: Colors.yellow,
                                       ),
+                                      const SizedBox(height: 18),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color:
+                                              Colors.black.withOpacity(0.3),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 5),
+                                            ),
+                                          ],
+                                        ),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _isQRCodeFullScreen = true;
+                                            });
+                                          },
+                                          child: RepaintBoundary(
+                                            key: qrKey, // Assign to embedded QR code
+                                            child: QrImageView(
+                                              data: vCardData,
+                                              version: QrVersions.auto,
+                                              size: size.width * 0.45,
+                                              gapless: false,
+                                              embeddedImage: const AssetImage(
+                                                  'assets/playstore.png'),
+                                              embeddedImageStyle:
+                                              const QrEmbeddedImageStyle(
+                                                size: Size(40, 40),
+                                              ),
+                                              backgroundColor: Colors.white,
+                                              eyeStyle: const QrEyeStyle(
+                                                eyeShape: QrEyeShape.circle,
+                                                color: Colors.black,
+                                              ),
+                                              dataModuleStyle:
+                                              const QrDataModuleStyle(
+                                                dataModuleShape:
+                                                QrDataModuleShape.square,
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 20),
                                     ],
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'Hi, ${data['employee_name']}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color:
-                              Colors.black54, // Subtle text color
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          ClipPath(
-                            clipper: TicketShapeClipper(),
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.lightGreenAccent[100],
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black26,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const Text(
-                                    'Scan to Save Contact',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 15),
-                                  const DashedLine(
-                                    dashWidth: 12,
-                                    dashHeight: 8,
-                                    color: Colors.yellow,
-                                  ),
-                                  const SizedBox(height: 18),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color:
-                                          Colors.black.withOpacity(0.3),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 5),
+                                  // Share Button
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: _shareQRCode,
+                                      icon: const Icon(
+                                        Icons.share_outlined,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                      label: Text(AppLocalizations.of(context)!.share),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.grey[700],
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 14),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                          BorderRadius.circular(12),
                                         ),
-                                      ],
-                                    ),
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          _isQRCodeFullScreen = true;
-                                        });
-                                      },
-                                      child: RepaintBoundary(
-                                        key: qrKey, // Assign to embedded QR code
-                                        child: QrImageView(
-                                          data: vCardData,
-                                          version: QrVersions.auto,
-                                          size: size.width * 0.45,
-                                          gapless: false,
-                                          embeddedImage: const AssetImage(
-                                              'assets/playstore.png'),
-                                          embeddedImageStyle:
-                                          const QrEmbeddedImageStyle(
-                                            size: Size(40, 40),
-                                          ),
-                                          backgroundColor: Colors.white,
-                                          eyeStyle: const QrEyeStyle(
-                                            eyeShape: QrEyeShape.circle,
-                                            color: Colors.black,
-                                          ),
-                                          dataModuleStyle:
-                                          const QrDataModuleStyle(
-                                            dataModuleShape:
-                                            QrDataModuleShape.square,
-                                            color: Colors.black,
-                                          ),
-                                        ),
+                                        elevation: 4,
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(height: 20),
+                                  const SizedBox(width: 20),
+                                  // Download Button
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: _downloadQRCode,
+                                      icon: const Icon(
+                                        Icons.download_outlined,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                      label: Text(AppLocalizations.of(context)!.download),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.amber[700],
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 14),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                          BorderRadius.circular(12),
+                                        ),
+                                        elevation: 4,
+                                      ),
+                                    ),
+                                  ),
                                 ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Share Button
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: _shareQRCode,
-                                  icon: const Icon(
-                                    Icons.share_outlined,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                  label: const Text(
-                                    'Share',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.grey[700],
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                      BorderRadius.circular(12),
-                                    ),
-                                    elevation: 4,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 20),
-                              // Download Button
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: _downloadQRCode,
-                                  icon: const Icon(
-                                    Icons.download_outlined,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                  label: const Text(
-                                    'Download',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.amber[700],
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                      BorderRadius.circular(12),
-                                    ),
-                                    elevation: 4,
-                                  ),
-                                ),
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              )],
-              );
-          } else {
-            return const Center(child: Text('No data available'));
+                  )
+              ]);
+            } else {
+              return Center(
+                  child: Text(AppLocalizations.of(context)!.noDataAvailable));
             }
           },
         ),
+      ),
+    );
+  }
+}
+
+class UserProfile {
+  final String id;
+  final String employeeId;
+  final String name;
+  final String surname;
+  final String images;
+  final String employee_tel;
+  final String employee_email;
+  String gender; // Assuming this is part of the profile
+  String roles;
+
+  UserProfile({
+    required this.id,
+    required this.employeeId,
+    required this.name,
+    required this.surname,
+    required this.images,
+    required this.employee_tel,
+    required this.employee_email,
+    this.gender = 'N/A',
+    this.roles = 'No roles available',
+  });
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) {
+    return UserProfile(
+      id: json['id'] ?? '',
+      employeeId: json['employee_id'] ?? 'N/A',
+      name: json['employee_name'] ?? 'N/A',
+      surname: json['employee_surname'] ?? 'N/A',
+      images: json['images'] ?? 'default_avatar.jpg',
+      employee_tel: json['employee_tel'] ?? 'N/A',
+      employee_email: json['employee_email'] ?? 'N/A',
+      gender: json['gender'] ?? 'N/A',
+      roles: json['roles'] ?? 'No roles available',
+    );
+  }
+}
+
+class ProfileInfoRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const ProfileInfoRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.green),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(value),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,3 +1,5 @@
+// notification_permission_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -176,10 +178,10 @@ class _NotificationPermissionPageState extends State<NotificationPermissionPage>
                 ),
               ),
               const SizedBox(height: 10),
-              const Center(
+              Center(
                 child: Text(
-                  "1 of 3",
-                  style: TextStyle(fontSize: 16, color: Colors.black),
+                  AppLocalizations.of(context)!.pageIndicator1of3, // Ensure this key exists
+                  style: const TextStyle(fontSize: 16, color: Colors.black),
                 ),
               ),
               const SizedBox(height: 10),
