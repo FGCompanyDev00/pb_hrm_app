@@ -31,11 +31,6 @@ class TimeTableDayWidget extends StatelessWidget {
 
       if (currentTime.hour > 9) {
         if (storeHours.inHours > 4) {
-          // int splitHoursStart = e.startDateTime.hour - storeHours.inHours;
-          int splitHours = endTime.hour - storeHours.inHours;
-          endTime = endTime.subtract(Duration(hours: splitHours));
-
-          // startTime = startTime.add(const Duration(hours: 0));
           currentEvents.add(e);
         } else {
           currentEvents.add(e);

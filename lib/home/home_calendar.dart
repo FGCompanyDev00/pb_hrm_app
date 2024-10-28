@@ -1,10 +1,8 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw.dart';
-import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
 import 'package:pb_hrsystem/login/date.dart';
@@ -23,10 +21,10 @@ class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
 
   @override
-  _HomeCalendarState createState() => _HomeCalendarState();
+  HomeCalendarState createState() => HomeCalendarState();
 }
 
-class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin {
+class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin {
   // Base URL for API endpoints
   final String baseUrl = 'https://demo-application-api.flexiflows.co';
 
@@ -256,7 +254,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           DateTime fromDate = DateTime.parse(item['from_date']);
           List<String> startTimeParts = item['start_time'].split(':');
           if (startTimeParts.length != 2) {
-            throw FormatException('Invalid start_time format');
+            throw const FormatException('Invalid start_time format');
           }
           startDateTime = DateTime(
             fromDate.year,
@@ -270,7 +268,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           DateTime toDate = DateTime.parse(item['to_date']);
           List<String> endTimeParts = item['end_time'].split(':');
           if (endTimeParts.length != 2) {
-            throw FormatException('Invalid end_time format');
+            throw const FormatException('Invalid end_time format');
           }
           endDateTime = DateTime(
             toDate.year,
@@ -453,7 +451,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           DateTime outDate = DateTime.parse(dateOutStr);
           List<String> timeOutParts = timeOutStr.split(':');
           if (timeOutParts.length != 2) {
-            throw FormatException('Invalid time_out format');
+            throw const FormatException('Invalid time_out format');
           }
           startDateTime = DateTime(
             outDate.year,
@@ -466,7 +464,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
           DateTime inDate = DateTime.parse(dateInStr);
           List<String> timeInParts = timeInStr.split(':');
           if (timeInParts.length != 2) {
-            throw FormatException('Invalid time_in format');
+            throw const FormatException('Invalid time_in format');
           }
           endDateTime = DateTime(
             inDate.year,
@@ -1118,148 +1116,6 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
       ],
     );
   }
-
-  /// Builds the list view for events on the selected day
-  Widget _buildCalendarView(BuildContext context, List<Event> events) {
-    if (_selectedDay == null) return const SizedBox.shrink();
-    String selectedDateString = DateFormat('EEEE, MMMM d, yyyy').format(_selectedDay!);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center, // Centered alignment
-        children: [
-          Text(
-            selectedDateString,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-            textAlign: TextAlign.center, // Centered text
-          ),
-          const SizedBox(height: 10),
-          events.isEmpty
-              ? const Text(
-                  'No events for this day.',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center, // Centered text
-                )
-              : ListView.separated(
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: events.length,
-                  separatorBuilder: (context, index) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final event = events[index];
-
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EventDetailView(
-                              event: {
-                                'title': event.title,
-                                'description': event.description,
-                                'startDateTime': event.startDateTime.toString(),
-                                'endDateTime': event.endDateTime.toString(),
-                                'isMeeting': event.isMeeting,
-                                'createdBy': event.createdBy ?? '',
-                                'location': event.location ?? '',
-                                'status': event.status,
-                                'img_name': event.imgName ?? '',
-                                'created_at': event.createdAt ?? '',
-                                'is_repeat': event.isRepeat ?? '',
-                                'video_conference': event.videoConference ?? '',
-                                'uid': event.uid,
-                                'members': event.members ?? [],
-                                'category': event.category,
-                              },
-                            ),
-                          ),
-                        );
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: getEventColor(event).withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: getEventColor(event).withOpacity(0.3),
-                              offset: const Offset(0, 4),
-                              blurRadius: 8,
-                            ),
-                          ],
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          title: Text(
-                            event.title,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 4),
-                              Text(
-                                '${DateFormat.Hm().format(event.startDateTime)} - ${DateFormat.Hm().format(event.endDateTime)}',
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              if (event.location != null && event.location!.isNotEmpty)
-                                Row(
-                                  children: [
-                                    const Icon(Icons.location_on, color: Colors.white70, size: 16),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        event.location!,
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 14,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              const SizedBox(height: 4),
-                              Text(
-                                event.description,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                          trailing: const Icon(
-                            Icons.chevron_right,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ],
-      ),
-    );
-  }
 }
 
 /// Gradient animated line widget
@@ -1267,10 +1123,10 @@ class GradientAnimationLine extends StatefulWidget {
   const GradientAnimationLine({super.key});
 
   @override
-  _GradientAnimationLineState createState() => _GradientAnimationLineState();
+  GradientAnimationLineState createState() => GradientAnimationLineState();
 }
 
-class _GradientAnimationLineState extends State<GradientAnimationLine> with SingleTickerProviderStateMixin {
+class GradientAnimationLineState extends State<GradientAnimationLine> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<Color?> _colorAnimation1;
   late final Animation<Color?> _colorAnimation2;

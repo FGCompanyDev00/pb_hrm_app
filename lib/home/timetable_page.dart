@@ -82,8 +82,6 @@ class TimetablePageState extends State<TimetablePage> {
                 days: eventDays.toDouble(),
                 start: DateTime(day.year, day.month, day.day, 12, 0),
                 end: DateTime(day.year, day.month, day.day, 15, 0),
-                // start: DateTime(day.year, day.month, day.day, startDate.hour, startDate.minute),
-                // end: DateTime(day.year, day.month, day.day, endDate.hour, endDate.minute),
                 category: 'AL',
                 status: item['is_approve'],
               ),
