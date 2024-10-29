@@ -126,7 +126,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     Color snackBarColor;
 
     // Only 'Meeting' events have response functionality
-    if (_eventType == 'Meeting') {
+    if (_eventType == 'Add Meeting') {
       switch (responseType) {
         case 'yes':
           endpoint = '/api/work-tracking/out-meeting/outmeeting/yes/$uid';
@@ -364,7 +364,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     };
   }
 
-  Widget _buildMembersList(List<dynamic> members) {
+  Widget _buildMembersList(List<dynamic> members, {bool isDownload = false}) {
     if (members.isEmpty) return const SizedBox.shrink();
 
     List<Widget> membersList = [];
@@ -380,12 +380,26 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
         children: [
           Row(children: membersList),
           const SizedBox(height: 15),
-          const Text(
-            'Description:',
-            textAlign: TextAlign.left,
-            style: TextStyle(
-              fontSize: 16,
-            ),
+          Row(
+            children: [
+              const Text(
+                'Description:',
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  fontSize: 16,
+                ),
+              ),
+              Visibility(
+                visible: isDownload,
+                child: ElevatedButton(
+                  style: const ButtonStyle(backgroundColor: WidgetStatePropertyAll<Color>(Colors.green)),
+                  onPressed: () {},
+                  child: const Text(
+                    'Download',
+                  ),
+                ),
+              )
+            ],
           ),
           const SizedBox(height: 15),
           Text(
@@ -544,30 +558,6 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     );
   }
 
-  /// Builds the event title widget.
-  Widget _buildEventRequestor() {
-    return Column(
-      children: [
-        const Text(
-          'Requestor',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        Row(
-          children: [
-            CircleAvatar(backgroundImage: NetworkImage(widget.event['img_name'])),
-            Text(
-              widget.event['created_by_name'],
-            )
-          ],
-        ),
-      ],
-    );
-  }
-
   /// Builds the event type widget.
   Widget _buildEventType() {
     return Container(
@@ -586,6 +576,62 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
         ),
         textAlign: TextAlign.center,
       ),
+    );
+  }
+
+  /// Builds the list of event details.
+  Widget _buildMinutesOfMeetingEventDetails() {
+    final details = _getEventDetails();
+    String? title = widget.event['title'];
+    final startDate = DateTime.parse(widget.event['startDateTime']);
+    final endDate = DateTime.parse(widget.event['endDateTime']);
+    String startDisplay12 = "${(startDate.hour % 12 == 0 ? 12 : startDate.hour % 12).toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')} ${startDate.hour >= 12 ? 'PM' : 'AM'}";
+    String endDisplay12 = "${(endDate.hour % 12 == 0 ? 12 : endDate.hour % 12).toString().padLeft(2, '0')}:${endDate.minute.toString().padLeft(2, '0')} ${endDate.hour >= 12 ? 'PM' : 'AM'}";
+    return Column(
+      children: [
+        if (widget.event['status'] != "")
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              const Text(
+                'Status:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Icon(
+                  Icons.access_time,
+                  color: ColorStandardization().colorDarkGold,
+                ),
+              ),
+              Text(
+                widget.event['status'],
+                style: TextStyle(
+                  color: ColorStandardization().colorDarkGold,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+            ],
+          ),
+        const SizedBox(height: 20),
+        if (title != null)
+          titleCustom(
+            'Title : ${widget.event['title']}',
+            Icons.bookmark_add_outlined,
+          ),
+        if (details['formattedStartDate']!.isNotEmpty)
+          titleCustom(
+            'Date : ${startDate.year}-${startDate.month}-${startDate.day} - ${endDate.year}-${endDate.month}-${endDate.day}',
+            Icons.free_cancellation_outlined,
+          ),
+        if (details['formattedEndDate']!.isNotEmpty)
+          titleCustom(
+            'Time : $startDisplay12 - $endDisplay12',
+            Icons.punch_clock_outlined,
+          ),
+      ],
     );
   }
 
@@ -633,8 +679,8 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
   /// Builds the main content of the Event Detail View.
   Widget _buildContent(BuildContext context) {
     final details = _getEventDetails();
+    final isMinutesOfMeeting = _eventType == 'Minutes Of Meeting';
     final isMeeting = _eventType != 'Minutes Of Meeting';
-    final isHiddenButton = (_eventType == 'Leave' || _eventType == "Minutes Of Meeting") == true;
     final members = widget.event['members'] ?? [];
     final size = MediaQuery.sizeOf(context);
 
@@ -642,20 +688,27 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       padding: const EdgeInsets.only(top: 50),
       constraints: BoxConstraints(maxWidth: size.width * 0.8),
       child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            if (isMeeting) _buildCreatorSection(details),
-            const SizedBox(height: 8),
-            _buildEventType(),
-            const SizedBox(height: 20),
-            _buildEventDetails(),
-            const SizedBox(height: 20),
-            if (members.isNotEmpty) _buildMembersList(members),
-            const SizedBox(height: 30),
-            if (!isHiddenButton) _buildActionButtons(2),
-          ],
-        ),
+        child: isMinutesOfMeeting
+            ? Column(
+                children: [
+                  const SizedBox(height: 20),
+                  _buildMinutesOfMeetingEventDetails(),
+                  const SizedBox(height: 20),
+                  if (members.isNotEmpty) _buildMembersList(members),
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (isMeeting) _buildCreatorSection(details),
+                  const SizedBox(height: 8),
+                  _buildEventType(),
+                  const SizedBox(height: 20),
+                  _buildEventDetails(),
+                  const SizedBox(height: 20),
+                  if (members.isNotEmpty) _buildMembersList(members),
+                ],
+              ),
       ),
     );
   }
@@ -663,7 +716,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
   @override
   Widget build(BuildContext context) {
     double horizontalPadding = MediaQuery.of(context).size.width * 0.07;
-    final isMeeting = (_eventType.contains('Leave Minutes of Meeting'));
+    final isHiddenButton = (_eventType == 'Leave' || _eventType == 'Minutes Of Meeting');
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -676,7 +729,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
               child: _buildAnimatedContent(_buildContent(context)),
             ),
           ),
-          if (isMeeting) _buildActionButtons(horizontalPadding),
+          if (!isHiddenButton) _buildActionButtons(horizontalPadding),
         ],
       ),
     );
