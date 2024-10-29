@@ -150,6 +150,44 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           });
           return;
       }
+    } else if (_eventType == 'Booking Car') {
+      switch (responseType) {
+        case 'yes':
+          endpoint = '/api/office-administration/car_permit/yes/$uid';
+          successMessage = 'Successfully joined the booking car.';
+          snackBarColor = Colors.green;
+          break;
+        case 'no':
+          endpoint = '/api/office-administration/car_permit/no/$uid';
+          successMessage = 'You have rejected the booking car.';
+          snackBarColor = Colors.red;
+          break;
+        default:
+          _showSnackBar('Invalid response type.', Colors.red);
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+      }
+    } else if (_eventType == 'Meeting Room Bookings') {
+      switch (responseType) {
+        case 'yes':
+          endpoint = '/api/office-administration/book_meeting_room/yes/$uid';
+          successMessage = 'Successfully joined the meeting.';
+          snackBarColor = Colors.green;
+          break;
+        case 'no':
+          endpoint = '/api/office-administration/book_meeting_room/no/$uid';
+          successMessage = 'You have rejected the meeting.';
+          snackBarColor = Colors.red;
+          break;
+        default:
+          _showSnackBar('Invalid response type.', Colors.red);
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+      }
     } else {
       // For other event types, responding is not supported
       _showSnackBar(
@@ -596,6 +634,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
   Widget _buildContent(BuildContext context) {
     final details = _getEventDetails();
     final isMeeting = _eventType != 'Minutes Of Meeting';
+    final isHiddenButton = (_eventType == 'Leave' || _eventType == "Minutes Of Meeting") == true;
     final members = widget.event['members'] ?? [];
     final size = MediaQuery.sizeOf(context);
 
@@ -614,7 +653,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
             const SizedBox(height: 20),
             if (members.isNotEmpty) _buildMembersList(members),
             const SizedBox(height: 30),
-            _buildActionButtons(2),
+            if (!isHiddenButton) _buildActionButtons(2),
           ],
         ),
       ),

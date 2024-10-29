@@ -44,7 +44,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   // Filters and Search
   bool _showFiltersAndSearchBar = false;
   String _selectedCategory = 'All';
-  final List<String> _categories = ['All', 'Meetings', 'Leave Requests', 'Meeting Room Bookings', 'Booking Car'];
+  final List<String> _categories = ['All', 'Meeting', 'Leave', 'Meeting Room Bookings', 'Booking Car'];
   String _searchQuery = '';
 
   // Animation Controller
@@ -194,7 +194,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (status == 'Cancelled') continue;
 
         final event = Event(
-          title: item['name'] ?? 'Leave Request',
+          title: item['name'] ?? 'Leave',
           startDateTime: startDate,
           endDateTime: endDate,
           description: item['take_leave_reason'] ?? 'Approval Pending',
@@ -313,7 +313,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? _parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
-          category: 'Meetings',
+          category: 'Meeting',
           members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
         );
 
@@ -374,7 +374,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (status == 'Cancelled') continue;
 
         final event = Event(
-          title: item['title'] ?? 'Meeting Room Booking',
+          title: item['title'] ?? 'Meeting Room Bookings',
           startDateTime: startDateTime,
           endDateTime: endDateTime,
           description: item['remark'] ?? 'Booking Pending',
