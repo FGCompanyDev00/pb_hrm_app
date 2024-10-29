@@ -218,7 +218,14 @@ class CalendarDayWidget extends HookWidget {
                     color: ColorStandardization().colorDarkGold,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(displayTime.value),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(displayTime.value),
+                      const SizedBox(width: 10),
+                      const Icon(Icons.change_circle_outlined),
+                    ],
+                  ),
                 ),
               );
             }),
