@@ -3,15 +3,15 @@ import 'package:flutter/material.dart';
 
 final Map<String, Color> categoryColors = {
   'Meetings': Colors.blue,
-  'Leave Requests': Colors.red,
+  'Leave': Colors.red,
   'Meeting Room Bookings': Colors.green,
-  'Car Bookings': Colors.purple,
+  'Booking Car': Colors.purple,
 };
 
 //Category icon mapping
 final Map<String, IconData> categoryIcon = {
   'Meetings': Icons.connect_without_contact,
-  'Leave Requests': Icons.work_off,
+  'Leave': Icons.work_off,
   'Meeting Room Bookings': Icons.meeting_room,
-  'Car Bookings': Icons.car_rental,
+  'Booking Car': Icons.car_rental,
 };

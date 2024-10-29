@@ -25,12 +25,11 @@ class CalendarDayWidget extends HookWidget {
   @override
   Widget build(BuildContext context) {
     final currentHour = useState(7);
-    final untilEnd = useState(10);
+    final untilEnd = useState(11);
     final selectedSlot = useState(1);
     final displayTime = useState('7AM-10AM');
     final ValueNotifier<List<AdvancedDayEvent<String>>> currentEvents = useState([]);
     final ValueNotifier<List<OverflowEventsRow<String>>> currentOverflowEventsRow = useState([]);
-    DateTime currentTime = DateTime.now().toUtc();
 
     autoEventsSlot() {
       currentEvents.value.clear();
@@ -61,7 +60,7 @@ class CalendarDayWidget extends HookWidget {
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          e.endDateTime.hour == 0 ? (untilEnd.value - 1) : e.endDateTime.hour,
+          e.endDateTime.hour == 0 ? untilEnd.value : e.endDateTime.hour,
           e.endDateTime.minute,
         );
 
@@ -78,10 +77,18 @@ class CalendarDayWidget extends HookWidget {
             startTime = startTime.add(Duration(hours: addHours)).subtract(Duration(minutes: startTime.minute));
           }
 
-          if (endTime.hour >= (untilEnd.value) && endTime.minute > 0) {
-            int subHours = endTime.hour - untilEnd.value;
-            endTime = endTime.subtract(Duration(hours: subHours, minutes: endTime.minute));
+          if (endTime.isAtSameMomentAs(slotEndTime.add(const Duration(hours: 1)))) {
+            endTime = endTime.subtract(const Duration(hours: 1));
           }
+
+          if (endTime.hour >= slotEndTime.hour && endTime.minute > 0) {
+            int subHours = endTime.hour - (untilEnd.value - 1);
+            endTime = endTime.subtract(Duration(hours: subHours));
+            if (endTime.minute > 0) {
+              endTime = endTime.subtract(Duration(minutes: endTime.minute));
+            }
+          }
+
           currentEvents.value.add(AdvancedDayEvent(
             value: e.uid,
             title: e.title,
@@ -122,11 +129,9 @@ class CalendarDayWidget extends HookWidget {
           currentHour.value = 7;
           untilEnd.value = 10;
       }
-
-      autoEventsSlot();
     }
 
-    useEffect(() => switchSlot(selectedSlot.value));
+    useEffect(() => switchSlot(selectedSlot.value), autoEventsSlot());
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,12 +157,15 @@ class CalendarDayWidget extends HookWidget {
                             style: ButtonStyle(
                               backgroundColor: WidgetStateProperty.all<Color>(selected == 1 ? ColorStandardization().colorDarkGold : Colors.green.shade300),
                             ),
-                            child: const Text(
-                              '7AM-10AM',
-                              style: TextStyle(fontSize: 16),
+                            child: const Padding(
+                              padding: EdgeInsets.all(10.0),
+                              child: Text(
+                                '7AM - 10AM',
+                                style: TextStyle(fontSize: 20),
+                              ),
                             )),
                         const SizedBox(
-                          height: 10,
+                          height: 15,
                         ),
                         ElevatedButton(
                           onPressed: () {
@@ -167,13 +175,16 @@ class CalendarDayWidget extends HookWidget {
                           style: ButtonStyle(
                             backgroundColor: WidgetStateProperty.all<Color>(selected == 2 ? ColorStandardization().colorDarkGold : Colors.green.shade300),
                           ),
-                          child: const Text(
-                            '10AM-2PM',
-                            style: TextStyle(fontSize: 16),
+                          child: const Padding(
+                            padding: EdgeInsets.all(10.0),
+                            child: Text(
+                              '10AM - 2PM',
+                              style: TextStyle(fontSize: 20),
+                            ),
                           ),
                         ),
                         const SizedBox(
-                          height: 10,
+                          height: 15,
                         ),
                         ElevatedButton(
                           onPressed: () {
@@ -185,9 +196,12 @@ class CalendarDayWidget extends HookWidget {
                           style: ButtonStyle(
                             backgroundColor: WidgetStateProperty.all<Color>(selected == 3 ? ColorStandardization().colorDarkGold : Colors.green.shade300),
                           ),
-                          child: const Text(
-                            '2PM-6PM',
-                            style: TextStyle(fontSize: 16),
+                          child: const Padding(
+                            padding: EdgeInsets.all(10.0),
+                            child: Text(
+                              '2PM - 6PM',
+                              style: TextStyle(fontSize: 20),
+                            ),
                           ),
                         ),
                       ],
@@ -208,195 +222,199 @@ class CalendarDayWidget extends HookWidget {
                 ),
               );
             }),
-        OverFlowCalendarDayView(
-          onTimeTap: (s) {},
-          overflowEvents: currentOverflowEventsRow.value,
-          events: UnmodifiableListView(currentEvents.value),
-          dividerColor: Colors.black,
-          currentDate: selectedDay ?? DateTime.now(),
-          heightPerMin: 1.5,
-          startOfDay: TimeOfDay(hour: currentHour.value, minute: 0),
-          endOfDay: TimeOfDay(hour: untilEnd.value, minute: 0),
-          renderRowAsListView: true,
-          cropBottomEvents: true,
-          showMoreOnRowButton: true,
-          timeTitleColumnWidth: 40,
-          time12: true,
-          overflowItemBuilder: (context, constraints, itemIndex, event) {
-            Color statusColor = categoryColors[event.category] ?? Colors.grey;
-            IconData? iconCategory = categoryIcon[event.category];
+        ValueListenableBuilder(
+            valueListenable: currentOverflowEventsRow,
+            builder: (context, flowEvent, child) {
+              return OverFlowCalendarDayView(
+                onTimeTap: (s) {},
+                overflowEvents: flowEvent,
+                events: UnmodifiableListView(currentEvents.value),
+                dividerColor: Colors.black,
+                currentDate: selectedDay ?? DateTime.now(),
+                heightPerMin: 1.5,
+                startOfDay: TimeOfDay(hour: currentHour.value, minute: 0),
+                endOfDay: TimeOfDay(hour: untilEnd.value, minute: 0),
+                renderRowAsListView: true,
+                cropBottomEvents: true,
+                showMoreOnRowButton: true,
+                timeTitleColumnWidth: 40,
+                time12: true,
+                overflowItemBuilder: (context, constraints, itemIndex, event) {
+                  Color statusColor = categoryColors[event.category] ?? Colors.grey;
+                  IconData? iconCategory = categoryIcon[event.category];
 
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              key: ValueKey(event.hashCode),
-              onDoubleTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TimetablePage(
-                    date: selectedDay!,
-                  ),
-                ),
-              ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => EventDetailView(
-                      event: {
-                        'title': event.title,
-                        'description': eventsCalendar[itemIndex].description,
-                        'startDateTime': eventsCalendar[itemIndex].startDateTime.toString(),
-                        'endDateTime': eventsCalendar[itemIndex].endDateTime.toString(),
-                        'isMeeting': eventsCalendar[itemIndex].isMeeting,
-                        'createdBy': eventsCalendar[itemIndex].createdBy ?? '',
-                        'location': eventsCalendar[itemIndex].location ?? '',
-                        'status': event.status,
-                        'img_name': eventsCalendar[itemIndex].imgName ?? '',
-                        'created_at': eventsCalendar[itemIndex].createdAt ?? '',
-                        'is_repeat': eventsCalendar[itemIndex].isRepeat ?? '',
-                        'video_conference': eventsCalendar[itemIndex].videoConference ?? '',
-                        'uid': eventsCalendar[itemIndex].uid,
-                        'members': event.members ?? [],
-                        'category': event.category,
-                      },
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    key: ValueKey(event.hashCode),
+                    onDoubleTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TimetablePage(
+                          date: selectedDay!,
+                        ),
+                      ),
                     ),
-                  ),
-                );
-              },
-              child: event.status == 'Cancelled'
-                  ? const SizedBox.shrink()
-                  : event.status == 'Approved'
-                      ? Container(
-                          margin: const EdgeInsets.only(right: 3, left: 3),
-                          padding: const EdgeInsets.all(8.0),
-                          height: constraints.maxHeight,
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.2),
-                            border: Border(
-                              left: BorderSide(color: statusColor, width: 4),
-                              right: BorderSide(color: statusColor),
-                              top: BorderSide(color: statusColor),
-                              bottom: BorderSide(color: statusColor),
-                            ),
-                            borderRadius: const BorderRadius.all(Radius.circular(10)),
-                          ),
-                          child: Row(
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.window_rounded, size: 15),
-                                      const SizedBox(width: 5),
-                                      Text(event.category),
-                                    ],
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(children: _buildMembersAvatars(event, context)),
-                                      const SizedBox(height: 20),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              iconCategory != null ? Icon(iconCategory, size: 15) : const SizedBox.shrink(),
-                                              const SizedBox(width: 5),
-                                              Text(event.desc, style: const TextStyle(fontSize: 10)),
-                                            ],
-                                          ),
-                                          const SizedBox(width: 20),
-                                          Row(
-                                            children: [
-                                              const Icon(Icons.access_time, size: 15),
-                                              const SizedBox(width: 5),
-                                              Text(
-                                                '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
-                                                style: const TextStyle(fontSize: 10),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      )
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        )
-                      : Container(
-                          margin: const EdgeInsets.only(right: 3, left: 3),
-                          height: constraints.maxHeight,
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.2),
-                            borderRadius: const BorderRadius.all(Radius.circular(10)),
-                          ),
-                          child: DottedBorder(
-                            color: statusColor,
-                            strokeWidth: 3,
-                            dashPattern: const <double>[5, 5],
-                            borderType: BorderType.RRect,
-                            radius: const Radius.circular(12),
-                            padding: const EdgeInsets.symmetric(horizontal: 5),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Row(
-                                children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.window_rounded, size: 15),
-                                          const SizedBox(width: 5),
-                                          Text(event.category),
-                                        ],
-                                      ),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(children: _buildMembersAvatars(event, context)),
-                                          const SizedBox(height: 20),
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  iconCategory != null ? Icon(iconCategory, size: 15) : const SizedBox.shrink(),
-                                                  const SizedBox(width: 5),
-                                                  Text(event.desc, style: const TextStyle(fontSize: 10)),
-                                                ],
-                                              ),
-                                              const SizedBox(width: 20),
-                                              Row(
-                                                children: [
-                                                  const Icon(Icons.access_time, size: 15),
-                                                  const SizedBox(width: 5),
-                                                  Text(
-                                                    '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
-                                                    style: const TextStyle(fontSize: 10),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          )
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EventDetailView(
+                            event: {
+                              'title': event.title,
+                              'description': eventsCalendar[itemIndex].description,
+                              'startDateTime': eventsCalendar[itemIndex].startDateTime.toString(),
+                              'endDateTime': eventsCalendar[itemIndex].endDateTime.toString(),
+                              'isMeeting': eventsCalendar[itemIndex].isMeeting,
+                              'createdBy': eventsCalendar[itemIndex].createdBy ?? '',
+                              'location': eventsCalendar[itemIndex].location ?? '',
+                              'status': event.status,
+                              'img_name': eventsCalendar[itemIndex].imgName ?? '',
+                              'created_at': eventsCalendar[itemIndex].createdAt ?? '',
+                              'is_repeat': eventsCalendar[itemIndex].isRepeat ?? '',
+                              'video_conference': eventsCalendar[itemIndex].videoConference ?? '',
+                              'uid': eventsCalendar[itemIndex].uid,
+                              'members': event.members ?? [],
+                              'category': event.category,
+                            },
                           ),
                         ),
-            );
-          },
-        ),
+                      );
+                    },
+                    child: event.status == 'Cancelled'
+                        ? const SizedBox.shrink()
+                        : event.status == 'Approved'
+                            ? Container(
+                                margin: const EdgeInsets.only(right: 3, left: 3),
+                                padding: const EdgeInsets.all(8.0),
+                                height: constraints.maxHeight,
+                                decoration: BoxDecoration(
+                                  color: statusColor.withOpacity(0.2),
+                                  border: Border(
+                                    left: BorderSide(color: statusColor, width: 4),
+                                    right: BorderSide(color: statusColor),
+                                    top: BorderSide(color: statusColor),
+                                    bottom: BorderSide(color: statusColor),
+                                  ),
+                                  borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.window_rounded, size: 15),
+                                            const SizedBox(width: 5),
+                                            Text(event.category),
+                                          ],
+                                        ),
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(children: _buildMembersAvatars(event, context)),
+                                            const SizedBox(height: 20),
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    iconCategory != null ? Icon(iconCategory, size: 15) : const SizedBox.shrink(),
+                                                    const SizedBox(width: 5),
+                                                    Text(event.desc, style: const TextStyle(fontSize: 10)),
+                                                  ],
+                                                ),
+                                                const SizedBox(width: 20),
+                                                Row(
+                                                  children: [
+                                                    const Icon(Icons.access_time, size: 15),
+                                                    const SizedBox(width: 5),
+                                                    Text(
+                                                      '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                      style: const TextStyle(fontSize: 10),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            )
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : Container(
+                                margin: const EdgeInsets.only(right: 3, left: 3),
+                                height: constraints.maxHeight,
+                                decoration: BoxDecoration(
+                                  color: statusColor.withOpacity(0.2),
+                                  borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                ),
+                                child: DottedBorder(
+                                  color: statusColor,
+                                  strokeWidth: 3,
+                                  dashPattern: const <double>[5, 5],
+                                  borderType: BorderType.RRect,
+                                  radius: const Radius.circular(12),
+                                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Row(
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.window_rounded, size: 15),
+                                                const SizedBox(width: 5),
+                                                Text(event.category),
+                                              ],
+                                            ),
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(children: _buildMembersAvatars(event, context)),
+                                                const SizedBox(height: 20),
+                                                Row(
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        iconCategory != null ? Icon(iconCategory, size: 15) : const SizedBox.shrink(),
+                                                        const SizedBox(width: 5),
+                                                        Text(event.desc, style: const TextStyle(fontSize: 10)),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(width: 20),
+                                                    Row(
+                                                      children: [
+                                                        const Icon(Icons.access_time, size: 15),
+                                                        const SizedBox(width: 5),
+                                                        Text(
+                                                          '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                          style: const TextStyle(fontSize: 10),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                )
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                  );
+                },
+              );
+            }),
       ],
     );
   }

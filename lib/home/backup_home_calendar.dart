@@ -33,7 +33,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
   late final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   bool _showFiltersAndSearchBar = false;
   String _selectedCategory = 'All';
-  final List<String> _categories = ['All', 'Meetings', 'Leave Requests', 'Meeting Room Bookings', 'Car Bookings'];
+  final List<String> _categories = ['All', 'Meetings', 'Leave Requests', 'Meeting Room Bookings', 'Booking Car'];
   String _searchQuery = '';
   late final AnimationController _animationController;
   Timer? _doubleTapTimer;
@@ -352,7 +352,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
             item['purpose'] ?? 'Car Booking Pending',
             status: status,
             isMeeting: false,
-            category: 'Car Bookings',
+            category: 'Booking Car',
             uid: uid,
           );
           for (var day = startDate; day.isBefore(endDate.add(const Duration(days: 1))); day = day.add(const Duration(days: 1))) {
@@ -489,7 +489,7 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
     'Meetings': Colors.blue,
     'Leave Requests': Colors.red,
     'Meeting Room Bookings': Colors.green,
-    'Car Bookings': Colors.orange,
+    'Booking Car': Colors.orange,
   };
 
   Color getEventColor(Event event) {

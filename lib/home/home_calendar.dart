@@ -44,7 +44,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   // Filters and Search
   bool _showFiltersAndSearchBar = false;
   String _selectedCategory = 'All';
-  final List<String> _categories = ['All', 'Meetings', 'Leave Requests', 'Meeting Room Bookings', 'Car Bookings'];
+  final List<String> _categories = ['All', 'Meetings', 'Leave Requests', 'Meeting Room Bookings', 'Booking Car'];
   String _searchQuery = '';
 
   // Animation Controller
@@ -110,7 +110,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         _fetchLeaveRequests(),
         _fetchMeetingRoomBookings(),
         _fetchCarBookings(),
-      ]);
+      ]).whenComplete(() => _filterAndSearchEvents());
     } catch (e) {
       _showSnackBar('Error fetching data: $e');
     } finally {
@@ -181,6 +181,13 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         final DateTime startDate = item['take_leave_from'] != null ? _normalizeDate(DateTime.parse(item['take_leave_from'])) : _normalizeDate(DateTime.now());
         final DateTime endDate = item['take_leave_to'] != null ? _normalizeDate(DateTime.parse(item['take_leave_to'])) : _normalizeDate(DateTime.now());
         final String uid = 'leave_${item['id']}';
+        double days;
+
+        if (item['days'].runtimeType == int) {
+          days = double.parse(item['days'].toString());
+        } else {
+          days = item['days'];
+        }
 
         String status = item['is_approve'] != null ? _mapLeaveStatus(item['is_approve'].toString()) : 'Pending';
 
@@ -193,8 +200,12 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           description: item['take_leave_reason'] ?? 'Approval Pending',
           status: status,
           isMeeting: false,
-          category: 'Leave Requests',
+          category: 'Leave',
           uid: uid,
+          imgName: item['img_name'],
+          createdAt: item['updated_at'],
+          createdBy: item['requestor_id'],
+          days: days,
         );
 
         for (var day = startDate; day.isBefore(endDate.add(const Duration(days: 1))); day = day.add(const Duration(days: 1))) {
@@ -317,6 +328,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     } catch (e) {
       _showSnackBar('Error parsing meeting data: $e');
     }
+
+    return;
   }
 
   /// Maps API meeting status to human-readable status
@@ -369,6 +382,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           isMeeting: true,
           category: 'Meeting Room Bookings',
           uid: uid,
+          imgName: item['img_name'],
+          createdBy: item['employee_name'],
+          createdAt: item['date_create'],
           location: item['room_name'] ?? 'Meeting Room',
           members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
         );
@@ -380,6 +396,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     } catch (e) {
       _showSnackBar('Error parsing meeting room bookings: $e');
     }
+    return;
   }
 
   /// Maps API booking status to human-readable status
@@ -464,9 +481,12 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           description: item['place'] ?? 'Car Booking Pending',
           status: status,
           isMeeting: false,
-          category: 'Car Bookings',
+          category: 'Booking Car',
           uid: uid,
           location: item['place'] ?? '',
+          imgName: item['img_name'],
+          createdBy: item['requestor_name'],
+          createdAt: item['updated_at'],
         );
 
         for (var day = _normalizeDate(startDateTime); !day.isAfter(_normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
@@ -474,8 +494,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      _showSnackBar('Error parsing car bookings: $e');
+      _showSnackBar('Error parsing booking car: $e');
     }
+    return;
   }
 
   /// Maps API car status to human-readable status
@@ -1163,6 +1184,7 @@ class Event {
   final Color? backgroundColor;
   final String? outmeetingUid;
   final String category;
+  final double? days;
   final List<Map<String, dynamic>>? members;
 
   Event({
@@ -1182,6 +1204,7 @@ class Event {
     this.backgroundColor,
     this.outmeetingUid,
     required this.category,
+    this.days,
     this.members,
   });
 

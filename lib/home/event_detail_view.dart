@@ -1,7 +1,5 @@
 // event_detail_view.dart
 
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
@@ -15,10 +13,10 @@ class EventDetailView extends StatefulWidget {
   const EventDetailView({super.key, required this.event});
 
   @override
-  _EventDetailViewState createState() => _EventDetailViewState();
+  EventDetailViewState createState() => EventDetailViewState();
 }
 
-class _EventDetailViewState extends State<EventDetailView> with SingleTickerProviderStateMixin {
+class EventDetailViewState extends State<EventDetailView> with SingleTickerProviderStateMixin {
   // State variables
   bool _isLoading = false;
   bool _hasResponded = false;
@@ -43,7 +41,7 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
 
   /// Determines the type of event based on its category.
   void _determineEventType() {
-    _eventType = widget.event['category'] == 'Meetings' ? 'Meeting' : 'Other';
+    _eventType = widget.event['category'] ?? 'Other';
   }
 
   /// Initializes the animation controller and animations.
@@ -310,7 +308,7 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
       }
     }
 
-    String formattedCreatedAt = _formatDate(createdAt.toString(), format: 'MMM dd, yyyy');
+    String formattedCreatedAt = _formatDate(createdAt.toString(), format: 'MMM dd, yyyy - hh:mm:00');
     String formattedStartDate = '';
     String formattedEndDate = '';
 
@@ -348,9 +346,10 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
             'Description:',
             textAlign: TextAlign.left,
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 16,
             ),
           ),
+          const SizedBox(height: 15),
           Text(
             widget.event['description'],
           ),
@@ -379,20 +378,6 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
       opacity: _fadeAnimation,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 25),
-        // decoration: BoxDecoration(
-        //   color: Colors.white,
-        //   boxShadow: [
-        //     BoxShadow(
-        //       color: Colors.black12.withOpacity(0.05),
-        //       blurRadius: 15,
-        //       offset: const Offset(0, -3),
-        //     ),
-        //   ],
-        //   borderRadius: const BorderRadius.only(
-        //     topLeft: Radius.circular(25),
-        //     topRight: Radius.circular(25),
-        //   ),
-        // ),
         child: _isLoading
             ? const Center(
                 child: CircularProgressIndicator(),
@@ -448,7 +433,7 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
         backgroundColor: color,
         padding: const EdgeInsets.symmetric(vertical: 12),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(15),
         ),
         elevation: onPressed != null ? 6 : 0,
       ),
@@ -470,12 +455,13 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
   Widget _buildCreatorSection(Map<String, String> details) {
     return Column(
       children: [
-        const Center(
+        const Padding(
+          padding: EdgeInsets.only(bottom: 10),
           child: Text(
             'Requestor',
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
             ),
             textAlign: TextAlign.center,
           ),
@@ -483,11 +469,11 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
         Row(
           children: [
             CircleAvatar(
-              radius: 35,
+              radius: 30,
               backgroundImage: details['imageUrl']!.isNotEmpty ? NetworkImage(details['imageUrl']!) : const AssetImage('assets/default_avatar.png') as ImageProvider,
             ),
             const SizedBox(
-              width: 20,
+              width: 15,
             ),
             Column(
               mainAxisAlignment: MainAxisAlignment.start,
@@ -500,11 +486,14 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
                   ),
                   textAlign: TextAlign.center,
                 ),
+                const SizedBox(
+                  height: 7,
+                ),
                 if (details['formattedCreatedAt']!.isNotEmpty)
                   Text(
                     'Submitted on ${details['formattedCreatedAt']}',
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       color: Colors.grey,
                     ),
                     textAlign: TextAlign.center,
@@ -545,17 +534,17 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
   Widget _buildEventType() {
     return Container(
       margin: const EdgeInsets.only(top: 5),
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.blueAccent.withOpacity(0.1),
+        color: Colors.lightBlue.shade100,
         borderRadius: BorderRadius.circular(20),
       ),
+      width: double.maxFinite,
       child: Text(
         _eventType,
         style: const TextStyle(
           fontSize: 16,
-          color: Colors.blueAccent,
-          fontWeight: FontWeight.w600,
+          color: Colors.black,
         ),
         textAlign: TextAlign.center,
       ),
@@ -567,7 +556,6 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
     final details = _getEventDetails();
     String? title = widget.event['title'];
     String? location = widget.event['location'];
-    String? category = widget.event['category'];
     final startDate = DateTime.parse(widget.event['startDateTime']);
     final endDate = DateTime.parse(widget.event['endDateTime']);
     String startDisplay12 = "${(startDate.hour % 12 == 0 ? 12 : startDate.hour % 12).toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')} ${startDate.hour >= 12 ? 'PM' : 'AM'}";
@@ -589,26 +577,17 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
             'Time : $startDisplay12 - $endDisplay12',
             Icons.punch_clock_outlined,
           ),
-        if (location != null)
-          titleCustom(
-            'Location : ${widget.event['location']}',
-            Icons.location_on_rounded,
-          ),
-        if (category != null)
-          titleCustom(
-            'Type : $category',
-            Icons.stream_outlined,
-          ),
-        const ListTile(
-          leading: SizedBox.shrink(),
-          title: Text(
-            'Room: Back can yon 2F',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.orange,
+        if (location != "" && location != null)
+          ListTile(
+            leading: const SizedBox.shrink(),
+            title: Text(
+              'Room: ${widget.event['location']}',
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.orange,
+              ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -616,7 +595,7 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
   /// Builds the main content of the Event Detail View.
   Widget _buildContent(BuildContext context) {
     final details = _getEventDetails();
-    final isMeeting = _eventType == 'Meeting';
+    final isMeeting = _eventType != 'Minutes Of Meeting';
     final members = widget.event['members'] ?? [];
     final size = MediaQuery.sizeOf(context);
 
@@ -632,8 +611,10 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
             _buildEventType(),
             const SizedBox(height: 20),
             _buildEventDetails(),
+            const SizedBox(height: 20),
             if (members.isNotEmpty) _buildMembersList(members),
             const SizedBox(height: 30),
+            _buildActionButtons(2),
           ],
         ),
       ),
@@ -643,7 +624,7 @@ class _EventDetailViewState extends State<EventDetailView> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     double horizontalPadding = MediaQuery.of(context).size.width * 0.07;
-    final isMeeting = _eventType == 'Meeting';
+    final isMeeting = (_eventType.contains('Leave Minutes of Meeting'));
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
