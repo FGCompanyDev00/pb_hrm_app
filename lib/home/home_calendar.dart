@@ -16,6 +16,7 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:http/http.dart' as http;
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
