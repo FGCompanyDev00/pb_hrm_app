@@ -65,6 +65,8 @@ class CalendarDayWidget extends HookWidget {
         );
 
         if (slotEndTime.isBefore(startTime)) {
+        } else if (endTime.isBefore(slotStartTime)) {
+        } else if (startTime.isAfter(endTime)) {
         } else if (startTime.isBefore(slotStartTime)) {
           int subHours = currentHour.value - startTime.hour;
           startTime = startTime.add(Duration(hours: subHours));
@@ -94,7 +96,6 @@ class CalendarDayWidget extends HookWidget {
             members: e.members,
             status: e.status,
           ));
-        } else if (startTime.isAfter(endTime)) {
         } else {
           final timeDuration = endTime.difference(startTime);
           if (timeDuration.inMinutes < 30) {
