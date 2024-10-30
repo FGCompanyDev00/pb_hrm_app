@@ -68,29 +68,31 @@ class _EditProjectPageState extends State<EditProjectPage> {
       return;
     }
 
-    // Update project details with valid status_id
     final updatedProject = {
       "project_name": _nameController.text.trim(),
       "department_id": "147",
       "branch_id": "1",
-      "status_id": statusMap[_status]!,  // Get the correct status_id
+      "status_id": statusMap[_status]!,
       "precent_of_project": (_progress * 100).toStringAsFixed(0),
       "deadline": _deadline1Controller.text.trim(),
       "extended": _deadline2Controller.text.trim(),
     };
 
     try {
-      await WorkTrackingService().updateProject(widget.project['project_id'], updatedProject);
-      widget.onUpdate(updatedProject);
+      final response = await WorkTrackingService().updateProject(widget.project['project_id'], updatedProject);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Project "${_nameController.text}" has been successfully updated.'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-
-      Navigator.pop(context);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        widget.onUpdate(updatedProject);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Project "${_nameController.text}" has been successfully updated.'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        _showErrorDialog('Failed to update project: ${response.reasonPhrase}');
+      }
     } catch (e) {
       _showErrorDialog(e.toString());
     }

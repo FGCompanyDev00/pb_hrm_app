@@ -64,7 +64,7 @@ class WorkTrackingService {
   /// Fetch all available projects.
   Future<List<Map<String, dynamic>>> fetchAllProjects() async {
     final headers = await _getHeaders();
-    final url = '$baseUrl/api/work-tracking/proj/projects';
+    const url = '$baseUrl/api/work-tracking/proj/projects';
     if (kDebugMode) {
       print('Fetching All Projects from: $url');
     }
@@ -105,7 +105,7 @@ class WorkTrackingService {
   /// Add a new project.
   Future<String?> addProject(Map<String, dynamic> projectData) async {
     final headers = await _getHeaders();
-    final url = '$baseUrl/api/work-tracking/proj/insert';
+    const url = '$baseUrl/api/work-tracking/proj/insert';
     if (kDebugMode) {
       print('Adding Project to: $url');
       print('Project Data: ${jsonEncode(projectData)}');
@@ -149,7 +149,7 @@ class WorkTrackingService {
   }
 
   /// Update a project by its ID.
-  Future<bool> updateProject(String projectId, Map<String, dynamic> projectData) async {
+  Future<http.Response> updateProject(String projectId, Map<String, dynamic> projectData) async {
     final headers = await _getHeaders();
     final url = '$baseUrl/api/work-tracking/proj/update/$projectId';
     if (kDebugMode) {
@@ -169,14 +169,15 @@ class WorkTrackingService {
         print('Response Body: ${response.body}');
       }
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         if (kDebugMode) {
           print('Project successfully updated.');
         }
-        return true;
       } else {
         throw Exception('Failed to update project: ${response.reasonPhrase}');
       }
+
+      return response; // Return the actual response
     } catch (e) {
       if (kDebugMode) {
         print('Error in updateProject: $e');
@@ -188,7 +189,7 @@ class WorkTrackingService {
   /// Delete a project by its ID.
   Future<bool> deleteProject(String projectId) async {
     final headers = await _getHeaders();
-    final url = '$baseUrl/api/work-tracking/proj/delete';
+    const url = '$baseUrl/api/work-tracking/proj/delete';
     if (kDebugMode) {
       print('Deleting Project at: $url');
       print('Project ID to Delete: $projectId');

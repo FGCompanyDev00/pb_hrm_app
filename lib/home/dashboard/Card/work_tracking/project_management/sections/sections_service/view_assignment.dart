@@ -328,7 +328,7 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
               const Icon(Icons.update, color: Colors.pink),
               const SizedBox(width: 8),
               Text(
-                'Updated by: ${updatedBy != 'Unknown' ? updatedBy : 'N/A'}',
+                'Updated by: ${updatedBy != 'Unknown' ? updatedBy : 'No new update yet'}',
                 style: const TextStyle(
                   fontSize: 14,
                 ),
