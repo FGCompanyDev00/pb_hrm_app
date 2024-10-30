@@ -783,7 +783,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       ),
       centerTitle: true,
       title: Text(
-        widget.event['category'],
+        _eventType,
         // 'Event Details',
         style: const TextStyle(
           color: Colors.black,
