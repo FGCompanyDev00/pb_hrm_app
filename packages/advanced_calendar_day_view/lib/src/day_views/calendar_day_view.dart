@@ -165,6 +165,7 @@ class _OverFlowCalendarDayViewState<T extends Object> extends State<OverFlowCale
       final eventColumnWith = viewWidth - widget.timeTitleColumnWidth;
 
       return SafeArea(
+        top: false,
         child: SingleChildScrollView(
           primary: widget.primary,
           controller: widget.controller,

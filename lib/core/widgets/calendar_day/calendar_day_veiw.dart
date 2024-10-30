@@ -259,6 +259,9 @@ class CalendarDayWidget extends HookWidget {
                 ),
               );
             }),
+        const SizedBox(
+          height: 10,
+        ),
         ValueListenableBuilder(
             valueListenable: currentOverflowEventsRow,
             builder: (context, flowEvent, child) {
