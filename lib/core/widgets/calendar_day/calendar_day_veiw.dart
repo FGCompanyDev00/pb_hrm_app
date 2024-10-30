@@ -134,7 +134,7 @@ class CalendarDayWidget extends HookWidget {
     useEffect(() => switchSlot(selectedSlot.value), autoEventsSlot());
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         ValueListenableBuilder(
             valueListenable: selectedSlot,
@@ -258,9 +258,7 @@ class CalendarDayWidget extends HookWidget {
                           onDoubleTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => TimetablePage(
-                                date: selectedDay!,
-                              ),
+                              builder: (context) => TimetablePage(date: selectedDay!),
                             ),
                           ),
                           onTap: () {
@@ -309,9 +307,7 @@ class CalendarDayWidget extends HookWidget {
                           onDoubleTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => TimetablePage(
-                                date: selectedDay!,
-                              ),
+                              builder: (context) => TimetablePage(date: selectedDay!),
                             ),
                           ),
                           onTap: () {

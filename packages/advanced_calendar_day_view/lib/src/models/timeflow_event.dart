@@ -1,42 +1,59 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 class TimetableItem<T> {
   TimetableItem({
-    required this.id,
-    required this.value,
+    required this.uid,
     required this.start,
     required this.end,
-    required this.leaveTypeID,
-    required this.days,
+    this.id,
+    this.days,
+    this.leaveTypeID,
     this.data,
     this.requestorID,
     this.imgName,
     this.imgPath,
     this.name,
     this.title,
+    this.desc,
+    this.location,
     this.reason,
     this.denyReason,
     this.category,
     this.status,
-    this.updatedOn,
+    this.createdAt,
+    this.createdBy,
+    this.isRepeat,
+    this.videoConference,
+    this.backgroundColor,
+    this.outmeetingUid,
+    this.members,
   });
-  final int id;
+  final int? id;
   final DateTime start;
   final DateTime end;
   final T? data;
   final String? requestorID;
   final String? imgName;
   final String? imgPath;
-  final int leaveTypeID;
+  final int? leaveTypeID;
   final String? name;
   final String? title;
+  final String? desc;
+  final String? location;
   final String? reason;
-  final double days;
+  final double? days;
   final String? denyReason;
   final String? category;
-  final T value;
   final String? status;
-  final DateTime? updatedOn;
+  final DateTime? createdAt;
+  final String? createdBy;
+  final String uid;
+  final String? isRepeat;
+  final String? videoConference;
+  final Color? backgroundColor;
+  final String? outmeetingUid;
+  final List<Map<String, dynamic>>? members;
 }
 
 class OverTimeEventsRow<T extends Object> {

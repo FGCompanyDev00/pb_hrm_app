@@ -454,13 +454,10 @@ class _HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMix
   }
 
   void _showDayView(DateTime selectedDay) {
-    final List<Event> dayEvents = _getEventsForDay(selectedDay);
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TimetablePage(
-          date: selectedDay,
-        ),
+        builder: (context) => TimetablePage(date: selectedDay),
       ),
     );
   }

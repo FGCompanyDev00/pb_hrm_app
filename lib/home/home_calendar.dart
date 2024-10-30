@@ -2,11 +2,13 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
+import 'package:pb_hrsystem/core/standard/extension.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw.dart';
+import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
 import 'package:pb_hrsystem/login/date.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pb_hrsystem/services/http_service.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -14,7 +16,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
-import 'package:http/http.dart' as http;
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -26,9 +27,6 @@ class HomeCalendar extends StatefulWidget {
 }
 
 class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin {
-  // Base URL for API endpoints
-  final String baseUrl = 'https://demo-application-api.flexiflows.co';
-
   // ValueNotifier to hold events mapped by date
   late final ValueNotifier<Map<DateTime, List<Event>>> _events;
 
@@ -90,7 +88,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   }
 
   void addEvent(DateTime date, Event event) {
-    final detectDate = _normalizeDate(date);
+    final detectDate = normalizeDate(date);
     if (_events.value.containsKey(detectDate)) {
       // If the date already has events, add to the list
       _events.value[detectDate]!.add(event);
@@ -122,56 +120,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     }
   }
 
-  /// Retrieves the authentication token from SharedPreferences
-  Future<String?> _getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token');
-  }
-
-  /// Helper method to handle HTTP GET requests with error handling
-  Future<http.Response?> _getRequest(String endpoint) async {
-    final token = await _getToken();
-    if (token == null) {
-      _showSnackBar('Authentication Error: Token is null. Please log in again.');
-      return null;
-    }
-
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl$endpoint'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (response.statusCode == 200) {
-        return response;
-      } else {
-        _showSnackBar('Failed to load data. Status Code: ${response.statusCode}. Message: ${response.reasonPhrase}');
-        return null;
-      }
-    } catch (e) {
-      _showSnackBar('Network Error: $e');
-      return null;
-    }
-  }
-
   /// Displays a SnackBar with the provided message
   void _showSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.redAccent,
-      ),
-    );
-  }
-
-  /// Normalizes the date by removing the time component
-  DateTime _normalizeDate(DateTime date) {
-    return DateTime(date.year, date.month, date.day);
+    showSnackBar(context, message);
   }
 
   /// Fetches leave requests from the API
   Future<void> _fetchLeaveRequests() async {
-    final response = await _getRequest('/api/leave_requests');
+    final response = await getRequest(context, '/api/leave_requests');
     if (response == null) return;
 
     try {
@@ -180,8 +136,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
       for (var item in leaveRequests) {
         // Adjusted field names to match API response
-        final DateTime startDate = item['take_leave_from'] != null ? _normalizeDate(DateTime.parse(item['take_leave_from'])) : _normalizeDate(DateTime.now());
-        final DateTime endDate = item['take_leave_to'] != null ? _normalizeDate(DateTime.parse(item['take_leave_to'])) : _normalizeDate(DateTime.now());
+        final DateTime startDate = item['take_leave_from'] != null ? normalizeDate(DateTime.parse(item['take_leave_from'])) : normalizeDate(DateTime.now());
+        final DateTime endDate = item['take_leave_to'] != null ? normalizeDate(DateTime.parse(item['take_leave_to'])) : normalizeDate(DateTime.now());
         final String uid = 'leave_${item['id']}';
         double days;
 
@@ -236,7 +192,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Fetches meeting data from the API
   Future<void> _fetchMeetingData() async {
-    final response = await _getRequest('/api/work-tracking/meeting/get-all-meeting');
+    final response = await getRequest(context, '/api/work-tracking/meeting/get-all-meeting');
     if (response == null) return;
 
     try {
@@ -295,7 +251,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         // Handle possible nulls with default values
         final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
 
-        String status = item['s_name'] != null ? _mapMeetingStatus(item['s_name'].toString()) : 'Pending';
+        String status = item['s_name'] != null ? mapMeetingStatus(item['s_name'].toString()) : 'Pending';
 
         if (status == 'Cancelled') continue;
 
@@ -313,15 +269,15 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           uid: uid,
           isRepeat: item['is_repeat']?.toString(),
           videoConference: item['video_conference']?.toString(),
-          backgroundColor: item['backgroundColor'] != null ? _parseColor(item['backgroundColor']) : Colors.blue,
+          backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
           category: 'Add Meeting',
           members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
         );
 
         // Normalize the start and end dates for event mapping
-        final normalizedStartDay = _normalizeDate(startDateTime);
-        final normalizedEndDay = _normalizeDate(endDateTime);
+        final normalizedStartDay = normalizeDate(startDateTime);
+        final normalizedEndDay = normalizeDate(endDateTime);
 
         for (var day = normalizedStartDay; !day.isAfter(normalizedEndDay); day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
@@ -334,26 +290,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     return;
   }
 
-  /// Maps API meeting status to human-readable status
-  String _mapMeetingStatus(String apiStatus) {
-    switch (apiStatus.toLowerCase()) {
-      case 'approved':
-        return 'Approved';
-      case 'processing':
-      case 'waiting':
-        return 'Pending';
-      case 'disapproved':
-        return 'Cancelled';
-      case 'finished':
-        return 'Finished';
-      default:
-        return 'Pending';
-    }
-  }
-
   /// Fetches meeting room bookings from the API
   Future<void> _fetchMinutesOfMeeting() async {
-    final response = await _getRequest('/api/work-tracking/meeting/assignment/my-metting');
+    final response = await getRequest(context, '/api/work-tracking/meeting/assignment/my-metting');
     if (response == null) return;
 
     try {
@@ -364,8 +303,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         // final DateTime? startDateTime = item['from_date'] != null ? DateTime.parse(item['from_date']) : null;
         // final DateTime? endDateTime = item['to_date'] != null ? DateTime.parse(item['to_date']) : null;
 
-        String dateFrom = _formatDateString(item['from_date'].toString());
-        String dateTo = _formatDateString(item['to_date'].toString());
+        String dateFrom = formatDateString(context, item['from_date'].toString());
+        String dateTo = formatDateString(context, item['to_date'].toString());
         String startTime = item['start_time'] != "" ? item['start_time'].toString() : '00:00';
         String endTime = item['end_time'] != "" ? item['end_time'].toString() : '23:59';
 
@@ -433,7 +372,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           createdAt: item['updated_at'],
         );
 
-        for (var day = _normalizeDate(startDateTime); !day.isAfter(_normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+        for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
@@ -445,7 +384,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Fetches meeting room bookings from the API
   Future<void> _fetchMeetingRoomBookings() async {
-    final response = await _getRequest('/api/office-administration/book_meeting_room/my-requests');
+    final response = await getRequest(context, '/api/office-administration/book_meeting_room/my-requests');
     if (response == null) return;
 
     try {
@@ -463,7 +402,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         final String uid = item['uid']?.toString() ?? UniqueKey().toString();
 
-        String status = item['status'] != null ? _mapBookingStatus(item['status'].toString()) : 'Pending';
+        String status = item['status'] != null ? mapMeetingStatus(item['status'].toString()) : 'Pending';
 
         if (status == 'Cancelled') continue;
 
@@ -483,7 +422,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
         );
 
-        for (var day = _normalizeDate(startDateTime); !day.isAfter(_normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+        for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
@@ -493,23 +432,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     return;
   }
 
-  /// Maps API booking status to human-readable status
-  String _mapBookingStatus(String apiStatus) {
-    switch (apiStatus.toLowerCase()) {
-      case 'approved':
-        return 'Approved';
-      case 'waiting':
-        return 'Pending';
-      case 'disapproved':
-        return 'Cancelled';
-      default:
-        return 'Pending';
-    }
-  }
-
   /// Fetches car bookings from the API
   Future<void> _fetchCarBookings() async {
-    final response = await _getRequest('/api/office-administration/car_permits/me');
+    final response = await getRequest(context, '/api/office-administration/car_permits/me');
     if (response == null) return;
 
     try {
@@ -522,8 +447,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           continue;
         }
 
-        String dateOutStr = _formatDateString(item['date_out'].toString());
-        String dateInStr = _formatDateString(item['date_in'].toString());
+        String dateOutStr = formatDateString(context, item['date_out'].toString());
+        String dateInStr = formatDateString(context, item['date_in'].toString());
         String timeOutStr = item['time_out']?.toString() ?? '00:00';
         String timeInStr = item['time_in']?.toString() ?? '23:59';
 
@@ -564,7 +489,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         final String uid = 'car_${item['uid']?.toString() ?? UniqueKey().toString()}';
 
-        String status = item['status'] != null ? _mapCarStatus(item['status'].toString()) : 'Pending';
+        String status = item['status'] != null ? mapMeetingStatus(item['status'].toString()) : 'Pending';
 
         if (status == 'Cancelled') continue;
 
@@ -583,7 +508,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           createdAt: item['updated_at'],
         );
 
-        for (var day = _normalizeDate(startDateTime); !day.isAfter(_normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+        for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
@@ -591,32 +516,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       _showSnackBar('Error parsing booking car: $e');
     }
     return;
-  }
-
-  /// Maps API car status to human-readable status
-  String _mapCarStatus(String apiStatus) {
-    switch (apiStatus.toLowerCase()) {
-      case 'approved':
-        return 'Approved';
-      case 'waiting':
-        return 'Pending';
-      case 'cancel':
-        return 'Cancelled';
-      default:
-        return 'Pending';
-    }
-  }
-
-  /// Formats date strings to ensure consistency
-  String _formatDateString(String dateStr) {
-    try {
-      // Assuming the date is in 'yyyy-MM-dd' or 'yyyy-MM-dd HH:mm:ss' format
-      DateTime parsedDate = DateFormat('yyyy-MM-dd').parse(dateStr);
-      return DateFormat('yyyy-MM-dd').format(parsedDate);
-    } catch (e) {
-      _showSnackBar('Error formatting date string: $e');
-      return dateStr;
-    }
   }
 
   /// Handles pull-to-refresh action
@@ -627,18 +526,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     });
   }
 
-  /// Parses color from hex string
-  Color _parseColor(String colorString) {
-    try {
-      return Color(int.parse(colorString.replaceFirst('#', '0xff')));
-    } catch (_) {
-      return Colors.blueAccent;
-    }
-  }
-
   /// Retrieves events for a specific day
   List<Event> _getEventsForDay(DateTime day) {
-    final normalizedDay = _normalizeDate(day);
+    final normalizedDay = normalizeDate(day);
     return _events.value[normalizedDay] ?? [];
   }
 
@@ -670,9 +560,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TimetablePage(
-          date: selectedDay,
-        ),
+        builder: (context) => TimetablePage(date: selectedDay),
       ),
     );
   }
@@ -820,7 +708,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       category: category,
       uid: uid,
     );
-    final normalizedDay = _normalizeDate(startDateTime);
+    final normalizedDay = normalizeDate(startDateTime);
     setState(() {
       if (_events.value.containsKey(normalizedDay)) {
         if (!_events.value[normalizedDay]!.any((e) => e.uid == uid)) {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../backup_home_calendar.dart';
+import '../home_calendar.dart';
 
 class EventDetailsPopup extends StatelessWidget {
   final Event event;
