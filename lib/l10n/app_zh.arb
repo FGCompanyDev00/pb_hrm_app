@@ -310,81 +310,43 @@
   "invalidResponseStructure": "从服务器接收到的响应结构无效。",
   "failedToLoadProfileData": "加载个人资料数据失败。",
   "failedToLoadDisplayData": "加载显示数据失败。",
-   "errorWithDetails": "发生错误: {error}",
-  
+  "errorWithDetails": "发生错误: {error}",
   "authenticationErrorTokenNull": "认证错误: Token 为空。",
-  
   "failedToLoadDataStatusCode": "加载数据失败。状态码: {statusCode}。消息: {message}。",
-  
   "networkErrorMessage": "网络错误。请再试一次。",
-  
   "errorParsingLeaveRequests": "解析请假请求时出错: {error}。",
-  
   "approved": "已批准",
-  
   "pending": "待定",
-  
   "cancelled": "已取消",
-  
   "finished": "已完成",
-  
   "leave": "请假",
-  
   "approvalPending": "审批待定。",
-  
   "addMeeting": "添加会议",
-  
   "meetingRoom": "会议室",
-  
   "errorParsingMeetingData": "解析会议数据时出错: {error}。",
-  
   "invalidMeetingDataFormat": "会议数据格式无效。",
-  
   "missingDateOrTimeFieldsMeetingData": "会议数据中缺少日期或时间字段。",
-  
   "errorParsingCarBookingDates": "解析汽车预订日期时出错: {error}。",
-  
   "success": "成功",
-  
   "noTitle": "无标题",
-  
   "carBookingPending": "汽车预订待定。",
-  
   "carBookingLocation": "汽车预订地点",
-  
   "bookingPending": "预订待定。",
-  
   "errorParsingBookingCar": "解析汽车预订时出错: {error}。",
-  
   "errorParsingMeetingRoomBookings": "解析会议室预订时出错: {error}。",
-  
   "previousMonth": "上个月",
-  
   "nextMonth": "下个月",
-  
   "calendar": "日历",
-  
   "personalOption": "个人",
-  
   "officeOption": "办公室",
-  
   "newEvent": "新事件",
-  
   "eventCreatedSuccessfully": "事件创建成功。",
-  
   "searchEvents": "搜索事件",
-  
   "noEventsForThisDay": "今天没有事件。",
-  
   "addEvent": "添加事件",
-  
   "meetings": "会议",
-  
   "minutesOfMeeting": "会议纪要",
-  
   "minutesOfMeetingPending": "会议纪要待定。",
-  
   "errorFormattingDateString": "格式化日期字符串时出错: {error}。",
-  
   "bookingCar": "汽车预订"
 }
