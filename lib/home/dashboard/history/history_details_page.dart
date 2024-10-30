@@ -891,7 +891,7 @@ class _DetailsPageState extends State<DetailsPage> {
 
         case 'meeting':
           response = await http.put(
-            Uri.parse('$baseUrl/api/work-tracking/meeting/delete/$id'),
+            Uri.parse('$baseUrl/api/work-tracking/meeting/delete/${data?['uid'] ?? id}'),
             headers: {
               'Authorization': 'Bearer $tokenValue',
               'Content-Type': 'application/json',
@@ -903,6 +903,9 @@ class _DetailsPageState extends State<DetailsPage> {
             _showErrorDialog('Error',
                 'Failed to delete meeting: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
+
+          print('Full response body: ${response.body}');
+
           break;
 
         default:
