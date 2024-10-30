@@ -66,6 +66,34 @@ class CalendarDayWidget extends HookWidget {
 
         if (slotEndTime.isBefore(startTime)) {
         } else if (startTime.isBefore(slotStartTime)) {
+          int subHours = currentHour.value - startTime.hour;
+          startTime = startTime.add(Duration(hours: subHours));
+          if (startTime.minute > 0) {
+            startTime = startTime.subtract(Duration(minutes: startTime.minute));
+          }
+
+          if (endTime.isAtSameMomentAs(slotEndTime.add(const Duration(hours: 1)))) {
+            endTime = endTime.subtract(const Duration(hours: 1));
+          }
+
+          if (endTime.hour >= slotEndTime.hour) {
+            int subHours = endTime.hour - (untilEnd.value - 1);
+            endTime = endTime.subtract(Duration(hours: subHours));
+            if (endTime.minute > 0) {
+              endTime = endTime.subtract(Duration(minutes: endTime.minute));
+            }
+          }
+
+          currentEvents.value.add(AdvancedDayEvent(
+            value: e.uid,
+            title: e.title,
+            desc: e.description,
+            start: startTime,
+            end: endTime,
+            category: e.category,
+            members: e.members,
+            status: e.status,
+          ));
         } else if (startTime.isAfter(endTime)) {
         } else {
           final timeDuration = endTime.difference(startTime);
@@ -81,7 +109,7 @@ class CalendarDayWidget extends HookWidget {
             endTime = endTime.subtract(const Duration(hours: 1));
           }
 
-          if (endTime.hour >= slotEndTime.hour && endTime.minute > 0) {
+          if (endTime.hour >= slotEndTime.hour) {
             int subHours = endTime.hour - (untilEnd.value - 1);
             endTime = endTime.subtract(Duration(hours: subHours));
             if (endTime.minute > 0) {
@@ -282,6 +310,7 @@ class CalendarDayWidget extends HookWidget {
                                     'uid': eventsCalendar[itemIndex].uid,
                                     'members': event.members ?? [],
                                     'category': event.category,
+                                    'leave_type': eventsCalendar[itemIndex].leaveType ?? '',
                                   },
                                 ),
                               ),
@@ -331,6 +360,7 @@ class CalendarDayWidget extends HookWidget {
                                     'uid': eventsCalendar[itemIndex].uid,
                                     'members': event.members ?? [],
                                     'category': event.category,
+                                    'leave_type': eventsCalendar[itemIndex].leaveType,
                                   },
                                 ),
                               ),

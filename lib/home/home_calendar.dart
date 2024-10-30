@@ -135,10 +135,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final leaveRequests = List<Map<String, dynamic>>.from(results);
 
       for (var item in leaveRequests) {
+        final responseType = await getRequest(context, '/api/leave-type/${item['leave_type_id']}');
+        final List<dynamic> resultType = json.decode(responseType!.body)['results'];
+
         // Adjusted field names to match API response
         final DateTime startDate = item['take_leave_from'] != null ? normalizeDate(DateTime.parse(item['take_leave_from'])) : normalizeDate(DateTime.now());
         final DateTime endDate = item['take_leave_to'] != null ? normalizeDate(DateTime.parse(item['take_leave_to'])) : normalizeDate(DateTime.now());
         final String uid = 'leave_${item['id']}';
+        final String? leaveType = resultType.firstOrNull['name'];
         double days;
 
         if (item['days'].runtimeType == int) {
@@ -164,6 +168,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           createdAt: item['updated_at'],
           createdBy: item['requestor_id'],
           days: days,
+          leaveType: leaveType,
         );
 
         for (var day = startDate; day.isBefore(endDate.add(const Duration(days: 1))); day = day.add(const Duration(days: 1))) {
@@ -302,6 +307,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       for (var item in minutesMeeting) {
         // final DateTime? startDateTime = item['from_date'] != null ? DateTime.parse(item['from_date']) : null;
         // final DateTime? endDateTime = item['to_date'] != null ? DateTime.parse(item['to_date']) : null;
+        final responseMembers = await getRequest(context, '/api/work-tracking/meeting/get-meeting/${item['meeting_uid']}');
+        final List<dynamic> resultMembers = json.decode(responseMembers!.body)['result'];
 
         String dateFrom = formatDateString(context, item['from_date'].toString());
         String dateTo = formatDateString(context, item['to_date'].toString());
@@ -370,6 +377,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           imgName: item['img_name'],
           createdBy: item['member_name'],
           createdAt: item['updated_at'],
+          // members: List<Map<String, dynamic>>.from(resultMembers),
         );
 
         for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
@@ -1165,6 +1173,7 @@ class Event {
   final String? videoConference;
   final Color? backgroundColor;
   final String? outmeetingUid;
+  final String? leaveType;
   final String category;
   final double? days;
   final List<Map<String, dynamic>>? members;
@@ -1185,6 +1194,7 @@ class Event {
     this.videoConference,
     this.backgroundColor,
     this.outmeetingUid,
+    this.leaveType,
     required this.category,
     this.days,
     this.members,

@@ -70,6 +70,7 @@ class TimeTableDayWidget extends HookWidget {
             category: e.category ?? '',
             members: e.members,
             status: e.status,
+            leaveType: e.leaveType,
           ));
         }
       }
@@ -136,6 +137,7 @@ class TimeTableDayWidget extends HookWidget {
                               'uid': eventsTimeTable[itemIndex].uid,
                               'members': const [],
                               'category': event.category,
+                              'leave_type': event.leaveType,
                             },
                           ),
                         ),

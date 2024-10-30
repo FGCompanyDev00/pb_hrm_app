@@ -640,6 +640,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     final details = _getEventDetails();
     String? title = widget.event['title'];
     String? location = widget.event['location'];
+    String? leaveType = widget.event['leave_type'];
     final startDate = DateTime.parse(widget.event['startDateTime']);
     final endDate = DateTime.parse(widget.event['endDateTime']);
     String startDisplay12 = "${(startDate.hour % 12 == 0 ? 12 : startDate.hour % 12).toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')} ${startDate.hour >= 12 ? 'PM' : 'AM'}";
@@ -665,7 +666,18 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           ListTile(
             leading: const SizedBox.shrink(),
             title: Text(
-              'Room: ${widget.event['location']}',
+              'Room: $location',
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.orange,
+              ),
+            ),
+          ),
+        if (leaveType != "" && leaveType != null)
+          ListTile(
+            leading: const SizedBox.shrink(),
+            title: Text(
+              'Type of leave: $leaveType',
               style: const TextStyle(
                 fontSize: 18,
                 color: Colors.orange,

@@ -205,15 +205,18 @@ class TimetablePageState extends State<TimetablePage> {
 
       if (response.statusCode == 200) {
         List<dynamic> results = json.decode(response.body)['results'];
-        final List<TimetableItem<String>> fetchedEvents = [];
         results = results.where((e) {
           DateTime dateData = DateTime.parse(e['take_leave_from']);
           return dateData.day == selectedDate.day;
         }).toList();
         for (var item in results) {
+          final responseType = await getRequest(context, '/api/leave-type/${item['leave_type_id']}');
+          final List<dynamic> resultType = json.decode(responseType!.body)['results'];
+
           final DateTime updatedOn = item['updated_at'] != null ? DateTime.parse(item['updated_at']) : DateTime.parse(item['created_at']);
           final eventTitle = item['name'];
           final eventReason = item['take_leave_reason'] ?? 'Approval Pending';
+          final String? leaveType = resultType.firstOrNull['name'];
           double eventDays = 0;
 
           if (item['days'].runtimeType == double) {
@@ -240,6 +243,7 @@ class TimetablePageState extends State<TimetablePage> {
             end: DateTime.utc(selectedDate.year, selectedDate.month, selectedDate.day, 17, 0),
             category: 'Leave',
             status: item['is_approve'],
+            leaveType: leaveType,
           );
 
           addEvent(
@@ -409,7 +413,8 @@ class TimetablePageState extends State<TimetablePage> {
       for (var item in minutesMeeting) {
         // final DateTime? startDateTime = item['from_date'] != null ? DateTime.parse(item['from_date']) : null;
         // final DateTime? endDateTime = item['to_date'] != null ? DateTime.parse(item['to_date']) : null;
-
+        final responseMembers = await getRequest(context, '/api/work-tracking/meeting/get-meeting/${item['meeting_uid']}');
+        final List<dynamic> resultMembers = json.decode(responseMembers!.body)['result'];
         String dateFrom = formatDateString(context, item['from_date'].toString());
         String dateTo = formatDateString(context, item['to_date'].toString());
         String startTime = item['start_time'] != "" ? item['start_time'].toString() : '00:00';
@@ -476,7 +481,7 @@ class TimetablePageState extends State<TimetablePage> {
           category: 'Minutes Of Meeting',
           uid: uid,
           imgName: item['img_name'],
-          members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
+          // members:  List<Map<String, dynamic>>.from(resultMembers),
           createdAt: createdOn,
         );
 

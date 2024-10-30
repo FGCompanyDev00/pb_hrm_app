@@ -28,6 +28,7 @@ class TimetableItem<T> {
     this.backgroundColor,
     this.outmeetingUid,
     this.members,
+    this.leaveType,
   });
   final int? id;
   final DateTime start;
@@ -53,6 +54,7 @@ class TimetableItem<T> {
   final String? videoConference;
   final Color? backgroundColor;
   final String? outmeetingUid;
+  final String? leaveType;
   final List<Map<String, dynamic>>? members;
 }
 
