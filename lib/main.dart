@@ -109,9 +109,9 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: Colors.black,
             textTheme: GoogleFonts.oxaniumTextTheme(
               Theme.of(context).textTheme.apply(
-                bodyColor: Colors.white,
-                displayColor: Colors.white,
-              ),
+                    bodyColor: Colors.white,
+                    displayColor: Colors.white,
+                  ),
             ),
           ),
           themeMode: themeNotifier.currentTheme,
@@ -135,7 +135,7 @@ class MyApp extends StatelessWidget {
 }
 
 class LanguageNotifier with ChangeNotifier {
-  Locale _currentLocale = const Locale('en');
+  Locale _currentLocale = const Locale('lo');
 
   Locale get currentLocale => _currentLocale;
 
@@ -185,8 +185,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<bool> _onWillPop() async {
-    final isFirstRouteInCurrentTab =
-    !await _navigatorKeys[_selectedIndex].currentState!.maybePop();
+    final isFirstRouteInCurrentTab = !await _navigatorKeys[_selectedIndex].currentState!.maybePop();
     if (isFirstRouteInCurrentTab) {
       return true;
     } else {
@@ -272,19 +271,16 @@ Future<void> _fetchAndDisplayNotifications() async {
 }
 
 Future<void> _showNotification(Map<String, dynamic> notification) async {
-  const AndroidNotificationDetails androidPlatformChannelSpecifics =
-  AndroidNotificationDetails(
+  const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
     'psbv_next_channel', // Updated channel ID for app
     'PSBV Next Notifications', // Updated channel name
-    channelDescription:
-    'Notifications about assignments, project updates, and member changes in PSBV Next app.', // Updated channel description
+    channelDescription: 'Notifications about assignments, project updates, and member changes in PSBV Next app.', // Updated channel description
     importance: Importance.max,
     priority: Priority.high,
     showWhen: true,
     icon: '@mipmap/playstore',
   );
-  const NotificationDetails platformChannelSpecifics =
-  NotificationDetails(android: androidPlatformChannelSpecifics);
+  const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
   await FlutterLocalNotificationsPlugin().show(
     notification['id'],
     'New Notification',

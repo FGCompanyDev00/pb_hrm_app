@@ -6,6 +6,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/events_utils.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class TimeTableDayWidget extends HookWidget {
   const TimeTableDayWidget({
@@ -23,6 +24,7 @@ class TimeTableDayWidget extends HookWidget {
     final ValueNotifier<List<OverTimeEventsRow<String>>> currentOverflowEventsRow = useState([]);
     int currentHour = 7;
     int untilEnd = 19;
+    late String _eventType;
 
     autoEventsSlot() {
       currentEvents.value.clear();
@@ -113,6 +115,21 @@ class TimeTableDayWidget extends HookWidget {
 
                   statusColor = categoryColors[event.category] ?? Colors.orange;
 
+                  switch (event.category) {
+                    case 'Add Meeting':
+                      _eventType = AppLocalizations.of(context)!.meetingTitle;
+                    case 'Leave':
+                      _eventType = AppLocalizations.of(context)!.leave;
+                    case 'Meeting Room Bookings':
+                      _eventType = AppLocalizations.of(context)!.meetingRoomBookings;
+                    case 'Booking Car':
+                      _eventType = AppLocalizations.of(context)!.bookingCar;
+                    case 'Minutes Of Meeting':
+                      _eventType = AppLocalizations.of(context)!.minutesOfMeeting;
+                    default:
+                      _eventType = AppLocalizations.of(context)!.other;
+                  }
+
                   return GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     key: ValueKey(event.hashCode),
@@ -156,7 +173,7 @@ class TimeTableDayWidget extends HookWidget {
                         borderRadius: const BorderRadius.all(Radius.circular(10)),
                       ),
                       child: Text(
-                        event.category ?? '',
+                        _eventType,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 12,

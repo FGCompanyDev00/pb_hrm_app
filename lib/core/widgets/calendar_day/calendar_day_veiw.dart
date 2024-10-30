@@ -11,6 +11,7 @@ import 'package:pb_hrsystem/core/widgets/calendar_day/events_utils.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/home_calendar.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class CalendarDayWidget extends HookWidget {
   const CalendarDayWidget({
@@ -280,6 +281,23 @@ class CalendarDayWidget extends HookWidget {
                   IconData? iconCategory = categoryIcon[event.category];
                   Widget child;
 
+                  String eventCategory = '';
+
+                  switch (event.category) {
+                    case 'Add Meeting':
+                      eventCategory = AppLocalizations.of(context)!.meetingTitle;
+                    case 'Leave':
+                      eventCategory = AppLocalizations.of(context)!.leave;
+                    case 'Meeting Room Bookings':
+                      eventCategory = AppLocalizations.of(context)!.meetingRoomBookings;
+                    case 'Booking Car':
+                      eventCategory = AppLocalizations.of(context)!.bookingCar;
+                    case 'Minutes Of Meeting':
+                      eventCategory = AppLocalizations.of(context)!.minutesOfMeeting;
+                    default:
+                      eventCategory = AppLocalizations.of(context)!.other;
+                  }
+
                   event.category == "Minutes Of Meeting"
                       ? child = GestureDetector(
                           behavior: HitTestBehavior.opaque,
@@ -328,7 +346,7 @@ class CalendarDayWidget extends HookWidget {
                                     color: ColorStandardization().colorDarkGold,
                                     borderRadius: const BorderRadius.all(Radius.circular(10)),
                                   ),
-                                  child: const Text('Minutes Of Meeting'),
+                                  child: Text(eventCategory),
                                 ),
                         )
                       : child = GestureDetector(
@@ -394,7 +412,7 @@ class CalendarDayWidget extends HookWidget {
                                                 children: [
                                                   const Icon(Icons.window_rounded, size: 15),
                                                   const SizedBox(width: 5),
-                                                  Text(event.category),
+                                                  Text(eventCategory),
                                                 ],
                                               ),
                                               Column(
@@ -458,7 +476,7 @@ class CalendarDayWidget extends HookWidget {
                                                     children: [
                                                       const Icon(Icons.window_rounded, size: 15),
                                                       const SizedBox(width: 5),
-                                                      Text(event.category),
+                                                      Text(eventCategory),
                                                     ],
                                                   ),
                                                   Column(
@@ -571,7 +589,7 @@ class CalendarDayWidget extends HookWidget {
         onTap: () => showDialog(
             context: context,
             builder: (context) => AlertDialog(
-                  title: const Text('Attendant'),
+                  title: Text(AppLocalizations.of(context)!.attendant),
                   content: Column(
                     children: avatarList,
                   ),

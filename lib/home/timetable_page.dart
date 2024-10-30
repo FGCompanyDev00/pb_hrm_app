@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import 'package:table_calendar/table_calendar.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class TimetablePage extends StatefulWidget {
   final DateTime date;
@@ -531,10 +532,12 @@ class TimetablePageState extends State<TimetablePage> {
             ),
           ),
         ),
+
+        // 'Detail Calendar Event'
         centerTitle: true,
-        title: const Text(
-          'Detail Calendar Event',
-          style: TextStyle(
+        title: Text(
+          AppLocalizations.of(context)!.detailCalendarEvent,
+          style: const TextStyle(
             color: Colors.black,
             fontSize: 24,
             fontWeight: FontWeight.w500,
