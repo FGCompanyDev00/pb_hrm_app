@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
+import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -134,7 +135,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     final token = prefs.getString('token');
 
     if (token == null) {
-      _showSnackBar(
+      showSnackBarEvent(
         'Authentication Error. Please log in again.',
         Colors.red,
       );
@@ -167,7 +168,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           snackBarColor = Colors.orange;
           break;
         default:
-          _showSnackBar('Invalid response type.', Colors.red);
+          showSnackBarEvent('Invalid response type.', Colors.red);
           setState(() {
             _isLoading = false;
           });
@@ -186,7 +187,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           snackBarColor = Colors.red;
           break;
         default:
-          _showSnackBar('Invalid response type.', Colors.red);
+          showSnackBarEvent('Invalid response type.', Colors.red);
           setState(() {
             _isLoading = false;
           });
@@ -205,7 +206,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           snackBarColor = Colors.red;
           break;
         default:
-          _showSnackBar('Invalid response type.', Colors.red);
+          showSnackBarEvent('Invalid response type.', Colors.red);
           setState(() {
             _isLoading = false;
           });
@@ -213,7 +214,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       }
     } else {
       // For other event types, responding is not supported
-      _showSnackBar(
+      showSnackBarEvent(
         'Responding to this event type is not supported.',
         Colors.red,
       );
@@ -239,15 +240,15 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
         final responses = prefs.getStringList('eventResponses') ?? [];
         responses.add('$uid:$responseType');
         await prefs.setStringList('eventResponses', responses);
-        _showSnackBar(successMessage, snackBarColor);
+        showSnackBarEvent(successMessage, snackBarColor);
       } else {
-        _showSnackBar(
+        showSnackBarEvent(
           'Failed to respond. Status: ${response.statusCode}',
           Colors.red,
         );
       }
     } catch (error) {
-      _showSnackBar('An unexpected error occurred.', Colors.red);
+      showSnackBarEvent('An unexpected error occurred.', Colors.red);
     } finally {
       if (mounted) {
         setState(() {
@@ -327,22 +328,6 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           },
         ) ??
         false;
-  }
-
-  /// Displays a SnackBar with a custom message and color.
-  void _showSnackBar(String message, Color color) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
   /// Formats a given date string into a readable format.

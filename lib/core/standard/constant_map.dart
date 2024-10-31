@@ -20,7 +20,7 @@ final Map<String, IconData> categoryIcon = {
 };
 
 /// Maps API meeting status to human-readable status
-String mapMeetingStatus(String apiStatus) {
+String mapEventStatus(String apiStatus) {
   switch (apiStatus.toLowerCase()) {
     case 'approved':
       return 'Approved';

@@ -32,6 +32,7 @@ class TimetablePageState extends State<TimetablePage> {
   late DateTime selectedDate = widget.date;
   List<TimetableItem> events = [];
   List<TimetableItem> currentEvents = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -69,7 +70,7 @@ class TimetablePageState extends State<TimetablePage> {
   /// Fetches all required data concurrently
   Future<void> fetchData() async {
     setState(() {
-      // _isLoading = true;
+      _isLoading = true;
     });
     try {
       await Future.wait([
@@ -80,10 +81,10 @@ class TimetablePageState extends State<TimetablePage> {
         fetchMinutesOfMeeting(),
       ]).whenComplete(() => filterDate());
     } catch (e) {
-      if (context.mounted) showSnackBar('Error fetching data: $e');
+      showSnackBar('Error fetching data: $e');
     } finally {
       setState(() {
-        // _isLoading = false;
+        _isLoading = false;
       });
     }
   }
@@ -97,7 +98,7 @@ class TimetablePageState extends State<TimetablePage> {
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-        if (context.mounted) showSnackBar('Invalid meeting data format.');
+        showSnackBar('Invalid meeting data format.');
         return;
       }
 
@@ -106,7 +107,7 @@ class TimetablePageState extends State<TimetablePage> {
       for (var item in results) {
         // Ensure necessary fields are present
         if (item['from_date'] == null || item['to_date'] == null || item['start_time'] == null || item['end_time'] == null) {
-          if (context.mounted) showSnackBar('Missing date or time fields in meeting data.');
+          showSnackBar('Missing date or time fields in meeting data.');
           continue;
         }
 
@@ -143,7 +144,7 @@ class TimetablePageState extends State<TimetablePage> {
             int.parse(endTimeParts[1]),
           );
         } catch (e) {
-          if (context.mounted) showSnackBar('Error parsing meeting dates or times: $e');
+          showSnackBar('Error parsing meeting dates or times: $e');
           continue;
         }
 
@@ -151,7 +152,7 @@ class TimetablePageState extends State<TimetablePage> {
         final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
         final DateTime createdOn = DateTime.parse(item['created_at']);
 
-        String status = item['s_name'] != null ? mapMeetingStatus(item['s_name'].toString()) : 'Pending';
+        String status = item['s_name'] != null ? mapEventStatus(item['s_name'].toString()) : 'Pending';
 
         if (status == 'Cancelled') continue;
 
@@ -183,7 +184,7 @@ class TimetablePageState extends State<TimetablePage> {
         }
       }
     } catch (e) {
-      if (context.mounted) showSnackBar('Error parsing meeting data: $e');
+      showSnackBar('Error parsing meeting data: $e');
     }
 
     return;
@@ -286,7 +287,7 @@ class TimetablePageState extends State<TimetablePage> {
         final String uid = item['uid']?.toString() ?? UniqueKey().toString();
         final DateTime? createdOn = DateTime.parse(item['date_create']);
 
-        String status = item['status'] != null ? mapMeetingStatus(item['status'].toString()) : 'Pending';
+        String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
 
         if (status == 'Cancelled') continue;
 
@@ -310,7 +311,7 @@ class TimetablePageState extends State<TimetablePage> {
         }
       }
     } catch (e) {
-      if (context.mounted) showSnackBar('Error parsing meeting room bookings: $e');
+      showSnackBar('Error parsing meeting room bookings: $e');
     }
     return;
   }
@@ -366,13 +367,13 @@ class TimetablePageState extends State<TimetablePage> {
             int.parse(timeInParts[1]),
           );
         } catch (e) {
-          if (context.mounted) showSnackBar('Error parsing car booking dates: $e');
+          showSnackBar('Error parsing car booking dates: $e');
           continue;
         }
 
         final String uid = 'car_${item['uid']?.toString() ?? UniqueKey().toString()}';
 
-        String status = item['status'] != null ? mapMeetingStatus(item['status'].toString()) : 'Pending';
+        String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
 
         if (status == 'Cancelled') continue;
 
@@ -520,17 +521,32 @@ class TimetablePageState extends State<TimetablePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background.png'),
-              fit: BoxFit.cover,
+        flexibleSpace: Stack(
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/background.png'),
+                  fit: BoxFit.cover,
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
+                ),
+              ),
             ),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
-            ),
-          ),
+            if (_isLoading)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.width,
+                  height: 10,
+                  child: const LinearProgressIndicator(),
+                ),
+              ),
+          ],
         ),
 
         // 'Detail Calendar Event'

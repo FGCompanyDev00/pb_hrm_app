@@ -17,7 +17,6 @@ import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -254,7 +253,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         // Handle possible nulls with default values
         final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
 
-        String status = item['s_name'] != null ? mapMeetingStatus(item['s_name'].toString()) : 'Pending';
+        String status = item['s_name'] != null ? mapEventStatus(item['s_name'].toString()) : 'Pending';
 
         if (status == 'Cancelled') continue;
 
@@ -408,7 +407,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         final String uid = item['uid']?.toString() ?? UniqueKey().toString();
 
-        String status = item['status'] != null ? mapMeetingStatus(item['status'].toString()) : 'Pending';
+        String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
 
         if (status == 'Cancelled') continue;
 
@@ -495,7 +494,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         final String uid = 'car_${item['uid']?.toString() ?? UniqueKey().toString()}';
 
-        String status = item['status'] != null ? mapMeetingStatus(item['status'].toString()) : 'Pending';
+        String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
 
         if (status == 'Cancelled') continue;
 

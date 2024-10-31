@@ -1,6 +1,7 @@
 import 'dart:collection';
 
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
+import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
@@ -110,6 +111,7 @@ class TimeTableDayWidget extends HookWidget {
                 time12: true,
                 timeViewItemBuilder: (context, constraints, itemIndex, event) {
                   Color statusColor;
+                  Widget statusChild = const SizedBox.shrink();
 
                   debugPrint(event.category);
 
@@ -128,6 +130,61 @@ class TimeTableDayWidget extends HookWidget {
                       _eventType = AppLocalizations.of(context)!.minutesOfMeeting;
                     default:
                       _eventType = AppLocalizations.of(context)!.other;
+                  }
+
+                  switch (event.status) {
+                    case 'Approved':
+                      statusChild = Container(
+                        margin: const EdgeInsets.only(right: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 2,
+                          vertical: 10,
+                        ),
+                        height: constraints.maxHeight,
+                        width: 60,
+                        decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.2),
+                            borderRadius: const BorderRadius.all(Radius.circular(10)),
+                            border: Border.all(
+                              color: statusColor,
+                              width: 3,
+                            )),
+                        child: Text(
+                          _eventType,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      );
+                    case 'Pending':
+                      statusChild = Container(
+                        margin: const EdgeInsets.only(right: 10),
+                        height: constraints.maxHeight,
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.2),
+                          borderRadius: const BorderRadius.all(Radius.circular(10)),
+                        ),
+                        width: 60,
+                        child: DottedBorder(
+                          color: statusColor,
+                          strokeWidth: 3,
+                          dashPattern: const <double>[5, 5],
+                          borderType: BorderType.RRect,
+                          radius: const Radius.circular(12),
+                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
+                          child: Text(
+                            _eventType,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      );
+                    default:
                   }
 
                   return GestureDetector(
@@ -160,27 +217,7 @@ class TimeTableDayWidget extends HookWidget {
                         ),
                       );
                     },
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 3, left: 3),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 2,
-                        vertical: 10,
-                      ),
-                      height: constraints.maxHeight,
-                      width: 60,
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.8),
-                        borderRadius: const BorderRadius.all(Radius.circular(10)),
-                      ),
-                      child: Text(
-                        _eventType,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                    child: statusChild,
                   );
                 },
               );

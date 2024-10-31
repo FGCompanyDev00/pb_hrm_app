@@ -10,3 +10,18 @@ void showSnackBar(String message) {
     ),
   );
 }
+
+/// Displays a SnackBar with a custom message and color.
+void showSnackBarEvent(String message, Color color) {
+  ScaffoldMessenger.of(NavigationService.ctx!).showSnackBar(
+    SnackBar(
+      content: Text(message),
+      backgroundColor: color,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
