@@ -913,7 +913,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 availableCalendarFormats: const {
                   CalendarFormat.month: 'Month',
                 },
-                headerVisible: false, // Hide the default header
+                headerVisible: false,
                 selectedDayPredicate: (day) {
                   return isSameDay(dateProvider.selectedDate, day);
                 },
