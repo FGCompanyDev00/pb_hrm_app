@@ -112,7 +112,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         _fetchMinutesOfMeeting(),
       ]).whenComplete(() => _filterAndSearchEvents());
     } catch (e) {
-      _showSnackBar('Error fetching data: $e');
+      showSnackBar('Error fetching data: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -120,14 +120,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     }
   }
 
-  /// Displays a SnackBar with the provided message
-  void _showSnackBar(String message) {
-    showSnackBar(context, message);
-  }
-
   /// Fetches leave requests from the API
   Future<void> _fetchLeaveRequests() async {
-    final response = await getRequest(context, '/api/leave_requests');
+    final response = await getRequest('/api/leave_requests');
     if (response == null) return;
 
     try {
@@ -179,7 +174,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      _showSnackBar('Error parsing leave requests: $e');
+      showSnackBar('Error parsing leave requests: $e');
     }
   }
 
@@ -200,14 +195,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Fetches meeting data from the API
   Future<void> _fetchMeetingData() async {
-    final response = await getRequest(context, '/api/work-tracking/meeting/get-all-meeting');
+    final response = await getRequest('/api/work-tracking/meeting/get-all-meeting');
     if (response == null) return;
 
     try {
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-        _showSnackBar('Invalid meeting data format.');
+        showSnackBar('Invalid meeting data format.');
         return;
       }
 
@@ -216,7 +211,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       for (var item in results) {
         // Ensure necessary fields are present
         if (item['from_date'] == null || item['to_date'] == null || item['start_time'] == null || item['end_time'] == null) {
-          _showSnackBar('Missing date or time fields in meeting data.');
+          showSnackBar('Missing date or time fields in meeting data.');
           continue;
         }
 
@@ -252,7 +247,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             int.parse(endTimeParts[1]),
           );
         } catch (e) {
-          _showSnackBar('Error parsing meeting dates or times: $e');
+          showSnackBar('Error parsing meeting dates or times: $e');
           continue;
         }
 
@@ -292,7 +287,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      _showSnackBar('Error parsing meeting data: $e');
+      showSnackBar('Error parsing meeting data: $e');
     }
 
     return;
@@ -300,7 +295,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Fetches meeting room bookings from the API
   Future<void> _fetchMinutesOfMeeting() async {
-    final response = await getRequest(context, '/api/work-tracking/meeting/assignment/my-metting');
+    final response = await getRequest('/api/work-tracking/meeting/assignment/my-metting');
     if (response == null) return;
 
     try {
@@ -310,16 +305,16 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       for (var item in minutesMeeting) {
         // final DateTime? startDateTime = item['from_date'] != null ? DateTime.parse(item['from_date']) : null;
         // final DateTime? endDateTime = item['to_date'] != null ? DateTime.parse(item['to_date']) : null;
-        final responseMembers = await getRequest(context, '/api/work-tracking/meeting/get-meeting/${item['meeting_uid']}');
+        final responseMembers = await getRequest('/api/work-tracking/meeting/get-meeting/${item['meeting_uid']}');
         final List<dynamic> resultMembers = json.decode(responseMembers!.body)['result'];
 
-        String dateFrom = formatDateString(context, item['from_date'].toString());
-        String dateTo = formatDateString(context, item['to_date'].toString());
+        String dateFrom = formatDateString(item['from_date'].toString());
+        String dateTo = formatDateString(item['to_date'].toString());
         String startTime = item['start_time'] != "" ? item['start_time'].toString() : '00:00';
         String endTime = item['end_time'] != "" ? item['end_time'].toString() : '23:59';
 
         if (dateFrom.isEmpty || dateTo.isEmpty) {
-          _showSnackBar('Missing from_date or to_date in minutes of meeting.');
+          showSnackBar('Missing from_date or to_date in minutes of meeting.');
           continue;
         }
 
@@ -354,7 +349,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             int.parse(timeInParts[1]),
           );
         } catch (e) {
-          _showSnackBar('Error parsing car booking dates: $e');
+          showSnackBar('Error parsing car booking dates: $e');
           continue;
         }
 
@@ -388,14 +383,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      _showSnackBar('Error parsing meeting room bookings: $e');
+      showSnackBar('Error parsing meeting room bookings: $e');
     }
     return;
   }
 
   /// Fetches meeting room bookings from the API
   Future<void> _fetchMeetingRoomBookings() async {
-    final response = await getRequest(context, '/api/office-administration/book_meeting_room/my-requests');
+    final response = await getRequest('/api/office-administration/book_meeting_room/my-requests');
     if (response == null) return;
 
     try {
@@ -407,7 +402,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         final DateTime? endDateTime = item['to_date_time'] != null ? DateTime.parse(item['to_date_time']) : null;
 
         if (startDateTime == null || endDateTime == null) {
-          _showSnackBar('Missing from_date_time or to_date_time in meeting room booking.');
+          showSnackBar('Missing from_date_time or to_date_time in meeting room booking.');
           continue;
         }
 
@@ -438,14 +433,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      _showSnackBar('Error parsing meeting room bookings: $e');
+      showSnackBar('Error parsing meeting room bookings: $e');
     }
     return;
   }
 
   /// Fetches car bookings from the API
   Future<void> _fetchCarBookings() async {
-    final response = await getRequest(context, '/api/office-administration/car_permits/me');
+    final response = await getRequest('/api/office-administration/car_permits/me');
     if (response == null) return;
 
     try {
@@ -454,12 +449,12 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
       for (var item in carBookings) {
         if (item['date_out'] == null || item['date_in'] == null) {
-          _showSnackBar('Missing date_out or date_in in car booking.');
+          showSnackBar('Missing date_out or date_in in car booking.');
           continue;
         }
 
-        String dateOutStr = formatDateString(context, item['date_out'].toString());
-        String dateInStr = formatDateString(context, item['date_in'].toString());
+        String dateOutStr = formatDateString(item['date_out'].toString());
+        String dateInStr = formatDateString(item['date_in'].toString());
         String timeOutStr = item['time_out']?.toString() ?? '00:00';
         String timeInStr = item['time_in']?.toString() ?? '23:59';
 
@@ -494,7 +489,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             int.parse(timeInParts[1]),
           );
         } catch (e) {
-          _showSnackBar('Error parsing car booking dates: $e');
+          showSnackBar('Error parsing car booking dates: $e');
           continue;
         }
 
@@ -524,7 +519,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      _showSnackBar('Error parsing booking car: $e');
+      showSnackBar('Error parsing booking car: $e');
     }
     return;
   }

@@ -80,7 +80,7 @@ class TimetablePageState extends State<TimetablePage> {
         fetchMinutesOfMeeting(),
       ]).whenComplete(() => filterDate());
     } catch (e) {
-      if (context.mounted) showSnackBar(context, 'Error fetching data: $e');
+      if (context.mounted) showSnackBar('Error fetching data: $e');
     } finally {
       setState(() {
         // _isLoading = false;
@@ -90,14 +90,14 @@ class TimetablePageState extends State<TimetablePage> {
 
   /// Fetches meeting data from the API
   Future<void> fetchMeetingData() async {
-    final response = await getRequest(context, '/api/work-tracking/meeting/get-all-meeting');
+    final response = await getRequest('/api/work-tracking/meeting/get-all-meeting');
     if (response == null) return;
 
     try {
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-        if (context.mounted) showSnackBar(context, 'Invalid meeting data format.');
+        if (context.mounted) showSnackBar('Invalid meeting data format.');
         return;
       }
 
@@ -106,7 +106,7 @@ class TimetablePageState extends State<TimetablePage> {
       for (var item in results) {
         // Ensure necessary fields are present
         if (item['from_date'] == null || item['to_date'] == null || item['start_time'] == null || item['end_time'] == null) {
-          if (context.mounted) showSnackBar(context, 'Missing date or time fields in meeting data.');
+          if (context.mounted) showSnackBar('Missing date or time fields in meeting data.');
           continue;
         }
 
@@ -143,7 +143,7 @@ class TimetablePageState extends State<TimetablePage> {
             int.parse(endTimeParts[1]),
           );
         } catch (e) {
-          if (context.mounted) showSnackBar(context, 'Error parsing meeting dates or times: $e');
+          if (context.mounted) showSnackBar('Error parsing meeting dates or times: $e');
           continue;
         }
 
@@ -183,7 +183,7 @@ class TimetablePageState extends State<TimetablePage> {
         }
       }
     } catch (e) {
-      if (context.mounted) showSnackBar(context, 'Error parsing meeting data: $e');
+      if (context.mounted) showSnackBar('Error parsing meeting data: $e');
     }
 
     return;
@@ -211,7 +211,7 @@ class TimetablePageState extends State<TimetablePage> {
           return dateData.day == selectedDate.day;
         }).toList();
         for (var item in results) {
-          final responseType = await getRequest(context, '/api/leave-type/${item['leave_type_id']}');
+          final responseType = await getRequest('/api/leave-type/${item['leave_type_id']}');
           final List<dynamic> resultType = json.decode(responseType!.body)['results'];
 
           final DateTime updatedOn = item['updated_at'] != null ? DateTime.parse(item['updated_at']) : DateTime.parse(item['created_at']);
@@ -267,7 +267,7 @@ class TimetablePageState extends State<TimetablePage> {
 
   /// Fetches meeting room bookings from the API
   Future<void> fetchMeetingRoomBookings() async {
-    final response = await getRequest(context, '/api/office-administration/book_meeting_room/my-requests');
+    final response = await getRequest('/api/office-administration/book_meeting_room/my-requests');
     if (response == null) return;
 
     try {
@@ -279,7 +279,7 @@ class TimetablePageState extends State<TimetablePage> {
         final DateTime? endDateTime = item['to_date_time'] != null ? DateTime.parse(item['to_date_time']) : null;
 
         if (startDateTime == null || endDateTime == null) {
-          showSnackBar(context, 'Missing from_date_time or to_date_time in meeting room booking.');
+          showSnackBar('Missing from_date_time or to_date_time in meeting room booking.');
           continue;
         }
 
@@ -310,14 +310,14 @@ class TimetablePageState extends State<TimetablePage> {
         }
       }
     } catch (e) {
-      if (context.mounted) showSnackBar(context, 'Error parsing meeting room bookings: $e');
+      if (context.mounted) showSnackBar('Error parsing meeting room bookings: $e');
     }
     return;
   }
 
   /// Fetches car bookings from the API
   Future<void> fetchCarBookings() async {
-    final response = await getRequest(context, '/api/office-administration/car_permits/me');
+    final response = await getRequest('/api/office-administration/car_permits/me');
     if (response == null) return;
 
     try {
@@ -326,12 +326,12 @@ class TimetablePageState extends State<TimetablePage> {
 
       for (var item in carBookings) {
         if (item['date_out'] == null || item['date_in'] == null) {
-          showSnackBar(context, 'Missing date_out or date_in in car booking.');
+          showSnackBar('Missing date_out or date_in in car booking.');
           continue;
         }
 
-        String dateOutStr = formatDateString(context, item['date_out'].toString());
-        String dateInStr = formatDateString(context, item['date_in'].toString());
+        String dateOutStr = formatDateString(item['date_out'].toString());
+        String dateInStr = formatDateString(item['date_in'].toString());
         String timeOutStr = item['time_out']?.toString() ?? '00:00';
         String timeInStr = item['time_in']?.toString() ?? '23:59';
 
@@ -366,7 +366,7 @@ class TimetablePageState extends State<TimetablePage> {
             int.parse(timeInParts[1]),
           );
         } catch (e) {
-          if (context.mounted) showSnackBar(context, 'Error parsing car booking dates: $e');
+          if (context.mounted) showSnackBar('Error parsing car booking dates: $e');
           continue;
         }
 
@@ -397,14 +397,14 @@ class TimetablePageState extends State<TimetablePage> {
         }
       }
     } catch (e) {
-      showSnackBar(context, 'Error parsing booking car: $e');
+      showSnackBar('Error parsing booking car: $e');
     }
     return;
   }
 
   /// Fetches meeting room bookings from the API
   Future<void> fetchMinutesOfMeeting() async {
-    final response = await getRequest(context, '/api/work-tracking/meeting/assignment/my-metting');
+    final response = await getRequest('/api/work-tracking/meeting/assignment/my-metting');
     if (response == null) return;
 
     try {
@@ -414,15 +414,15 @@ class TimetablePageState extends State<TimetablePage> {
       for (var item in minutesMeeting) {
         // final DateTime? startDateTime = item['from_date'] != null ? DateTime.parse(item['from_date']) : null;
         // final DateTime? endDateTime = item['to_date'] != null ? DateTime.parse(item['to_date']) : null;
-        final responseMembers = await getRequest(context, '/api/work-tracking/meeting/get-meeting/${item['meeting_uid']}');
+        final responseMembers = await getRequest('/api/work-tracking/meeting/get-meeting/${item['meeting_uid']}');
         final List<dynamic> resultMembers = json.decode(responseMembers!.body)['result'];
-        String dateFrom = formatDateString(context, item['from_date'].toString());
-        String dateTo = formatDateString(context, item['to_date'].toString());
+        String dateFrom = formatDateString(item['from_date'].toString());
+        String dateTo = formatDateString(item['to_date'].toString());
         String startTime = item['start_time'] != "" ? item['start_time'].toString() : '00:00';
         String endTime = item['end_time'] != "" ? item['end_time'].toString() : '23:59';
 
         if (dateFrom.isEmpty || dateTo.isEmpty) {
-          showSnackBar(context, 'Missing from_date or to_date in minutes of meeting.');
+          showSnackBar('Missing from_date or to_date in minutes of meeting.');
           continue;
         }
 
@@ -457,7 +457,7 @@ class TimetablePageState extends State<TimetablePage> {
             int.parse(timeInParts[1]),
           );
         } catch (e) {
-          showSnackBar(context, 'Error parsing car booking dates: $e');
+          showSnackBar('Error parsing car booking dates: $e');
           continue;
         }
 
@@ -491,7 +491,7 @@ class TimetablePageState extends State<TimetablePage> {
         }
       }
     } catch (e) {
-      showSnackBar(context, 'Error parsing meeting room bookings: $e');
+      showSnackBar('Error parsing meeting room bookings: $e');
     }
     return;
   }
