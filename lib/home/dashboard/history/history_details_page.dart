@@ -890,8 +890,8 @@ class _DetailsPageState extends State<DetailsPage> {
           break;
 
         case 'meeting':
-          response = await http.put(
-            Uri.parse('$baseUrl/api/work-tracking/meeting/delete/${data?['uid'] ?? id}'),
+          response = await http.delete(
+            Uri.parse('$baseUrl/api/office-administration/book_meeting_room/${data?['uid'] ?? id}'),
             headers: {
               'Authorization': 'Bearer $tokenValue',
               'Content-Type': 'application/json',

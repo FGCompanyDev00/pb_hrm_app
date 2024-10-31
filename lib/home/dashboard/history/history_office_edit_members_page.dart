@@ -22,7 +22,6 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
   List<Map<String, dynamic>> _allMembers = [];
   List<Map<String, dynamic>> _filteredMembers = [];
   List<Map<String, dynamic>> _selectedMembers = [];
-
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -33,13 +32,11 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
     _fetchAllMembers();
   }
 
-  /// Fetches the stored token from SharedPreferences
   Future<String> _fetchToken() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString('token') ?? '';
   }
 
-  /// Fetches all members from the API
   Future<void> _fetchAllMembers() async {
     setState(() {
       _isLoading = true;
@@ -72,9 +69,10 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
             _allMembers = List<Map<String, dynamic>>.from(data.map((item) => {
               'employee_id': item['employee_id'],
               'employee_name': '${item['name']} ${item['surname']}',
-              'img_name': item['img_name'],
+              'img_name': null, // Placeholder, will fetch actual image later
             }));
             _filteredMembers = List<Map<String, dynamic>>.from(_allMembers);
+            _fetchImages();
           });
         } else {
           throw Exception('Invalid members data');
@@ -96,7 +94,38 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
     }
   }
 
-  /// Filters the members based on the search query
+  Future<void> _fetchImages() async {
+    for (var member in _allMembers) {
+      try {
+        String token = await _fetchToken();
+        String url = 'https://demo-application-api.flexiflows.co/api/profile/${member['employee_id']}';
+
+        final response = await http.get(
+          Uri.parse(url),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final profileData = jsonDecode(response.body)['results'];
+          setState(() {
+            member['img_name'] = profileData['images'] ?? 'https://www.w3schools.com/howto/img_avatar.png';
+          });
+        } else {
+          if (kDebugMode) {
+            print('Failed to fetch image for ${member['employee_id']}');
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error fetching image for ${member['employee_id']}: $e');
+        }
+      }
+    }
+  }
+
   void _filterMembers(String query) {
     List<Map<String, dynamic>> filteredList = _allMembers
         .where((member) =>
@@ -109,7 +138,6 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
     });
   }
 
-  /// Handles member selection
   void _onMemberSelected(bool? selected, Map<String, dynamic> member) {
     setState(() {
       if (selected == true) {
@@ -124,12 +152,10 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
     });
   }
 
-  /// Returns to the previous screen with the selected members
   void _onAddButtonPressed() {
     Navigator.pop(context, _selectedMembers);
   }
 
-  /// Builds the members list
   Widget _buildMembersList() {
     return _filteredMembers.isNotEmpty
         ? ListView.builder(
@@ -146,10 +172,8 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
                 member['img_name'] ??
                     'https://www.w3schools.com/howto/img_avatar.png'),
             onBackgroundImageError: (_, __) {
-              // Handle image load error by setting default avatar
               setState(() {
-                member['img_name'] =
-                'https://www.w3schools.com/howto/img_avatar.png';
+                member['img_name'] = 'https://www.w3schools.com/howto/img_avatar.png';
               });
             },
           ),
@@ -192,7 +216,7 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
             ),
           ),
         ),
-        iconTheme: const IconThemeData(color: Colors.black), // Back button color
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -208,7 +232,26 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Search Box
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: _onAddButtonPressed,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDBB342),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 40.0, vertical: 15.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20.0),
+                  ),
+                ),
+                child: const Text(
+                  '+ Add',
+                  style:
+                  TextStyle(color: Colors.black, fontSize: 18),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16.0),
             TextField(
               onChanged: (value) {
                 _filterMembers(value);
@@ -222,27 +265,9 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
               ),
             ),
             const SizedBox(height: 16.0),
-            // Members List
             Expanded(
               child: SingleChildScrollView(
                 child: _buildMembersList(),
-              ),
-            ),
-            // Add Button
-            ElevatedButton(
-              onPressed: _onAddButtonPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.yellow[700],
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 40.0, vertical: 15.0),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20.0),
-                ),
-              ),
-              child: const Text(
-                '+ Add',
-                style:
-                TextStyle(color: Colors.black, fontSize: 18),
               ),
             ),
           ],
