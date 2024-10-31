@@ -25,6 +25,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
   late String _eventType;
+  late String autoLanguageType;
 
   @override
   void initState() {
@@ -49,19 +50,20 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
 
   /// Determines the type of event based on its category.
   void _determineEventType() {
-    switch (widget.event['category']) {
+    _eventType = widget.event['category'];
+    switch (_eventType) {
       case 'Add Meeting':
-        _eventType = AppLocalizations.of(context)!.meetingTitle;
+        autoLanguageType = AppLocalizations.of(context)!.meetingTitle;
       case 'Leave':
-        _eventType = AppLocalizations.of(context)!.leave;
+        autoLanguageType = AppLocalizations.of(context)!.leave;
       case 'Meeting Room Bookings':
-        _eventType = AppLocalizations.of(context)!.meetingRoomBookings;
+        autoLanguageType = AppLocalizations.of(context)!.meetingRoomBookings;
       case 'Booking Car':
-        _eventType = AppLocalizations.of(context)!.bookingCar;
+        autoLanguageType = AppLocalizations.of(context)!.bookingCar;
       case 'Minutes Of Meeting':
-        _eventType = AppLocalizations.of(context)!.minutesOfMeeting;
+        autoLanguageType = AppLocalizations.of(context)!.minutesOfMeeting;
       default:
-        _eventType = AppLocalizations.of(context)!.other;
+        autoLanguageType = AppLocalizations.of(context)!.other;
     }
   }
 
@@ -456,17 +458,6 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Join Button
-
-                  // Maybe Button
-                  // Expanded(
-                  //   child: _buildResponsiveButton(
-                  //     label: 'Maybe',
-                  //     color: _hasResponded ? Colors.grey : Colors.orange,
-                  //     onPressed: _hasResponded ? null : () => _respondToMeeting('maybe'),
-                  //   ),
-                  // ),
-                  // const SizedBox(width: 15),
                   // Reject Button
                   Expanded(
                     child: _buildResponsiveButton(
@@ -476,7 +467,23 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
                       icon: Icons.clear,
                     ),
                   ),
-                  const SizedBox(width: 35),
+                  const SizedBox(width: 15),
+
+                  // Maybe Button
+                  Visibility(
+                    visible: _eventType == 'Meeting Room',
+                    child: Expanded(
+                      child: _buildResponsiveButton(
+                        label: 'Maybe',
+                        color: _hasResponded ? Colors.grey : Colors.orange,
+                        onPressed: _hasResponded ? null : () => _respondToMeeting('maybe'),
+                        icon: Icons.question_mark,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+
+                  // Join Button
                   Expanded(
                     child: _buildResponsiveButton(
                       label: AppLocalizations.of(context)!.join,
@@ -588,7 +595,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       ),
       width: double.maxFinite,
       child: Text(
-        _eventType,
+        autoLanguageType,
         style: const TextStyle(
           fontSize: 16,
           color: Colors.black,
@@ -783,7 +790,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       ),
       centerTitle: true,
       title: Text(
-        _eventType,
+        autoLanguageType,
         // 'Event Details',
         style: const TextStyle(
           color: Colors.black,

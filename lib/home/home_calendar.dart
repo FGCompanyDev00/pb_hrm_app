@@ -133,16 +133,19 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     try {
       final List<dynamic> results = json.decode(response.body)['results'];
       final leaveRequests = List<Map<String, dynamic>>.from(results);
-
+      // List<dynamic> resultType;
+      String? leaveType;
       for (var item in leaveRequests) {
-        final responseType = await getRequest(context, '/api/leave-type/${item['leave_type_id']}');
-        final List<dynamic> resultType = json.decode(responseType!.body)['results'];
+        // final responseType = await getRequest(context, '/api/leave-type/${item['leave_type_id']}');
+        // if (responseType != null) {
+        //   resultType = json.decode(responseType.body)['results'];
+        //   leaveType = resultType.firstOrNull['name'];
+        // }
 
         // Adjusted field names to match API response
         final DateTime startDate = item['take_leave_from'] != null ? normalizeDate(DateTime.parse(item['take_leave_from'])) : normalizeDate(DateTime.now());
         final DateTime endDate = item['take_leave_to'] != null ? normalizeDate(DateTime.parse(item['take_leave_to'])) : normalizeDate(DateTime.now());
         final String uid = 'leave_${item['id']}';
-        final String? leaveType = resultType.firstOrNull['name'];
         double days;
 
         if (item['days'].runtimeType == int) {

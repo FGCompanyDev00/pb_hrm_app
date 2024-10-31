@@ -135,7 +135,7 @@ class MyApp extends StatelessWidget {
 }
 
 class LanguageNotifier with ChangeNotifier {
-  Locale _currentLocale = const Locale('lo');
+  Locale _currentLocale = const Locale('en');
 
   Locale get currentLocale => _currentLocale;
 

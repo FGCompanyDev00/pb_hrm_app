@@ -28,7 +28,7 @@ Future<http.Response?> getRequest(BuildContext context, String endpoint) async {
     if (response.statusCode == 200) {
       return response;
     } else {
-      if (context.mounted) showSnackBar(context, 'Failed to load data. Status Code: ${response.statusCode}. Message: ${response.reasonPhrase}');
+      if (context.mounted) showSnackBar(context, 'Failed to load data. Status Code: ${response.statusCode}. Message: ${response.body}');
       return null;
     }
   } catch (e) {
