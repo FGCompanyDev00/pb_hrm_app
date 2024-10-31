@@ -418,7 +418,7 @@ class _DashboardState extends State<Dashboard> {
   Widget _buildActionCard(BuildContext context, String imagePath, String title, bool isDarkMode, VoidCallback onTap) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate icon and font sizes dynamically based on available width
+
         double iconSize = constraints.maxWidth * 0.5;
         double fontSize = constraints.maxWidth * 0.1;
 
