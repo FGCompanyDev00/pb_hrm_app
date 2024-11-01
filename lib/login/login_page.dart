@@ -5,13 +5,13 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/login/date.dart';
-import 'package:pb_hrsystem/login/forgot_password_page.dart';
 import 'package:pb_hrsystem/login/notification_permission_page.dart';
 import 'package:pb_hrsystem/main.dart';
+import 'package:pb_hrsystem/services/service_locator.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -42,6 +42,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    _checkLocale();
     _startGradientAnimation();
     _loadSavedCredentials();
     _loadBiometricSetting();
@@ -66,6 +67,8 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
+  void _checkLocale() => _selectedLanguage = sl<UserPreferences>().getDefaultLanguage() ?? _selectedLanguage;
+
   Future<void> _loadBiometricSetting() async {
     String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
     setState(() {
@@ -78,11 +81,7 @@ class _LoginPageState extends State<LoginPage> {
     final String password = _passwordController.text.trim();
 
     if (username.isEmpty || password.isEmpty) {
-      _showCustomDialog(
-          context,
-          AppLocalizations.of(context)!.loginFailed,
-          AppLocalizations.of(context)!.emptyFieldsMessage
-      );
+      _showCustomDialog(context, AppLocalizations.of(context)!.loginFailed, AppLocalizations.of(context)!.emptyFieldsMessage);
       return;
     }
 
@@ -135,18 +134,13 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } else {
-      _showCustomDialog(
-          context,
-          AppLocalizations.of(context)!.loginFailed,
-          '${AppLocalizations.of(context)!.loginFailedMessage} ${response.reasonPhrase}'
-      );
+      _showCustomDialog(context, AppLocalizations.of(context)!.loginFailed, '${AppLocalizations.of(context)!.loginFailedMessage} ${response.reasonPhrase}');
     }
   }
 
   Future<void> _authenticate({bool useBiometric = true}) async {
     if (!_biometricEnabled) {
-      _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled,
-          AppLocalizations.of(context)!.enableBiometric);
+      _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled, AppLocalizations.of(context)!.enableBiometric);
       return;
     }
 
@@ -219,8 +213,7 @@ class _LoginPageState extends State<LoginPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -330,8 +323,7 @@ class _LoginPageState extends State<LoginPage> {
               showModalBottomSheet(
                 context: context,
                 shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(30.0)),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(30.0)),
                 ),
                 builder: (BuildContext context) {
                   return Container(
@@ -351,8 +343,7 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.close,
-                                  color: isDarkMode ? Colors.white : Colors.black),
+                              icon: Icon(Icons.close, color: isDarkMode ? Colors.white : Colors.black),
                               onPressed: () {
                                 Navigator.pop(context);
                               },
@@ -402,9 +393,7 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: BoxDecoration(
                     color: isDarkMode ? Colors.black54 : Colors.white,
                     shape: BoxShape.circle,
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black12, blurRadius: 8)
-                    ],
+                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
                   ),
                   child: Center(
                     child: Image.asset(
@@ -501,7 +490,6 @@ class _LoginPageState extends State<LoginPage> {
       ],
     );
   }
-
 
   Widget _buildCustomDateRow(double screenWidth) {
     return GestureDetector(
@@ -646,10 +634,8 @@ class _LoginPageState extends State<LoginPage> {
             onTap: _biometricEnabled
                 ? () => _authenticate(useBiometric: true)
                 : () {
-              _showCustomDialog(
-                  context, AppLocalizations.of(context)!.biometricDisabled,
-                  AppLocalizations.of(context)!.enableBiometric);
-            },
+                    _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled, AppLocalizations.of(context)!.enableBiometric);
+                  },
             child: Container(
               width: screenWidth * 0.35,
               height: screenWidth * 0.125,

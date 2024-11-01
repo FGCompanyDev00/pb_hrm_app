@@ -448,7 +448,6 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
         statusColor = Colors.green;
       case 'No':
         statusColor = Colors.red;
-
       default:
         statusColor = Colors.grey;
     }
@@ -487,7 +486,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           visible: _eventType == 'Meeting Room Bookings',
           child: Expanded(
             child: _buildResponsiveButton(
-              label: 'Maybe',
+              label: AppLocalizations.of(context)!.maybe,
               color: _hasResponded ? Colors.grey : Colors.orange,
               onPressed: _hasResponded ? null : () => _respondToMeeting('maybe'),
               icon: Icons.question_mark,

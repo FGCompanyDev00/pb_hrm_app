@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
+import 'package:pb_hrsystem/services/service_locator.dart';
 import 'package:pb_hrsystem/user_model.dart'; // Updated import
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -24,6 +26,7 @@ import 'package:http/http.dart' as http;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
+  await startup();
 
   // Initialize the FlutterLocalNotificationsPlugin
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -135,23 +138,31 @@ class MyApp extends StatelessWidget {
 }
 
 class LanguageNotifier with ChangeNotifier {
-  Locale _currentLocale = const Locale('en');
+  Locale _currentLocale = sl<UserPreferences>().getLocalizeSupport();
 
   Locale get currentLocale => _currentLocale;
 
-  void changeLanguage(String languageCode) {
+  void changeLanguage(String languageCode) async {
     switch (languageCode) {
       case 'English':
         _currentLocale = const Locale('en');
+        await sl<UserPreferences>().setLocalizeSupport('en');
+        await sl<UserPreferences>().setDefaultLanguage('English');
         break;
       case 'Laos':
         _currentLocale = const Locale('lo');
+        await sl<UserPreferences>().setLocalizeSupport('lo');
+        await sl<UserPreferences>().setDefaultLanguage('Laos');
         break;
       case 'Chinese':
         _currentLocale = const Locale('zh');
+        await sl<UserPreferences>().setLocalizeSupport('zh');
+        await sl<UserPreferences>().setDefaultLanguage('Chinese');
         break;
       default:
         _currentLocale = const Locale('en');
+        await sl<UserPreferences>().setLocalizeSupport('en');
+        await sl<UserPreferences>().setDefaultLanguage('English');
     }
     notifyListeners();
   }
