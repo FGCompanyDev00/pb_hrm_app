@@ -24,6 +24,7 @@ import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'models/attendance_record.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_offline/flutter_offline.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

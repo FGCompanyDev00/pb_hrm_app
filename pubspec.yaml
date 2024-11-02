@@ -81,10 +81,10 @@ dependencies:
   internet_connection_checker: ^0.0.1+4
   cached_network_image: ^3.4.1
   flutter_svg: ^2.0.10+1
+  flutter_offline: ^4.0.0
   flutter_datetime_format: ^0.0.1
   advanced_calendar_day_view:
     path: "packages/advanced_calendar_day_view"
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
