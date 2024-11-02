@@ -652,11 +652,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                isSuccess ? Icons.check_circle : Icons.error,
-                color: isSuccess ? Colors.green : Colors.red,
-                size: 50,
-              ),
               const SizedBox(height: 16),
               Text(
                 title,
