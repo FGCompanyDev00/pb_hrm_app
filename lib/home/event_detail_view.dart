@@ -22,14 +22,10 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
   // State variables
   bool _isLoading = false;
   bool _hasResponded = false;
-  bool _joined = false;
-  bool _rejected = false;
-  bool _maybe = false;
   late AnimationController _animationController;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
   late String _eventType;
-  late String eventStatus;
   late String autoLanguageType;
 
   @override
@@ -56,7 +52,6 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
   /// Determines the type of event based on its category.
   void _determineEventType() {
     _eventType = widget.event['category'];
-    eventStatus = widget.event['status'];
     switch (_eventType) {
       case 'Add Meeting':
         autoLanguageType = AppLocalizations.of(context)!.meetingTitle;
@@ -105,7 +100,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     final uid = widget.event['uid'] ?? widget.event['outmeeting_uid'] ?? '';
 
     final response = responses.firstWhere(
-      (resp) {
+          (resp) {
         final parts = resp.split(':');
         return parts.length == 2 && parts[0] == uid;
       },
@@ -113,18 +108,6 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     );
 
     if (response.isNotEmpty) {
-      final answer = response.split(':');
-      final detectStatus = answer[1];
-      switch (detectStatus) {
-        case 'no':
-          _rejected = true;
-        case 'yes':
-          _joined = true;
-        case 'maybe':
-          _maybe = true;
-        default:
-          debugPrint("Can't detect the answer");
-      }
       setState(() {
         _hasResponded = true;
       });
@@ -222,11 +205,6 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           successMessage = 'You have rejected the meeting.';
           snackBarColor = Colors.red;
           break;
-        case 'maybe':
-          endpoint = '/api/office-administration/book_meeting_room/maybe/$uid';
-          successMessage = 'You have rejected the meeting.';
-          snackBarColor = Colors.red;
-          break;
         default:
           showSnackBarEvent('Invalid response type.', Colors.red);
           setState(() {
@@ -305,50 +283,50 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     }
 
     return await showDialog<bool>(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Row(
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: dialogColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              content: Text(
-                content,
-                style: const TextStyle(color: Colors.black87),
-              ),
-              actions: [
-                TextButton(
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  onPressed: () => Navigator.of(context).pop(false),
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: dialogColor,
+                  fontWeight: FontWeight.bold,
                 ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: dialogColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Confirm'),
-                  onPressed: () => Navigator.of(context).pop(true),
+              ),
+            ],
+          ),
+          content: Text(
+            content,
+            style: const TextStyle(color: Colors.black87),
+          ),
+          actions: [
+            TextButton(
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey),
+              ),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: dialogColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ],
-            );
-          },
-        ) ??
+              ),
+              child: const Text('Confirm'),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    ) ??
         false;
   }
 
@@ -400,7 +378,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     List<Widget> membersList = [];
 
     for (var v in members) {
-      membersList.add(_avatarUser(v['img_name'], v['status']));
+      membersList.add(_avatarUser(v['img_name']));
     }
 
     return Padding(
@@ -438,23 +416,10 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     );
   }
 
-  Widget _avatarUser(String link, String status) {
-    Color statusColor;
-
-    switch (status) {
-      case 'Pending':
-        statusColor = Colors.orange;
-      case 'Yes':
-        statusColor = Colors.green;
-      case 'No':
-        statusColor = Colors.red;
-      default:
-        statusColor = Colors.grey;
-    }
-
+  Widget _avatarUser(String link) {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: statusColor),
+        border: Border.all(color: Colors.green),
         borderRadius: BorderRadius.circular(50),
       ),
       margin: const EdgeInsets.only(right: 3),
@@ -467,98 +432,53 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
 
   /// Builds the action buttons (Join, Maybe, Reject).
   Widget _buildActionButtons(double horizontalPadding) {
-    Widget statusResult = Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Reject Button
-        Expanded(
-          child: _buildResponsiveButton(
-            label: AppLocalizations.of(context)!.reject,
-            color: _hasResponded ? Colors.grey : Colors.grey,
-            onPressed: _hasResponded ? null : () => _respondToMeeting('no'),
-            icon: Icons.clear,
-          ),
-        ),
-        const SizedBox(width: 15),
-
-        // Maybe Button
-        Visibility(
-          visible: _eventType == 'Meeting Room Bookings',
-          child: Expanded(
-            child: _buildResponsiveButton(
-              label: AppLocalizations.of(context)!.maybe,
-              color: _hasResponded ? Colors.grey : Colors.orange,
-              onPressed: _hasResponded ? null : () => _respondToMeeting('maybe'),
-              icon: Icons.question_mark,
-            ),
-          ),
-        ),
-        const SizedBox(width: 15),
-
-        // Join Button
-        Expanded(
-          child: _buildResponsiveButton(
-            label: AppLocalizations.of(context)!.join,
-            color: _hasResponded ? Colors.grey : ColorStandardization().colorDarkGold,
-            onPressed: _hasResponded ? null : () => _respondToMeeting('yes'),
-            icon: Icons.check_circle_outline,
-          ),
-        ),
-      ],
-    );
-
-    if (_joined) {
-      statusResult = Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.blue,
-            borderRadius: BorderRadius.circular(50),
-          ),
-          child: const Text('Joined',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-              )));
-    }
-    if (_rejected) {
-      statusResult = Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.red,
-            borderRadius: BorderRadius.circular(50),
-          ),
-          child: const Text('Rejected',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-              )));
-    }
-    if (_maybe) {
-      statusResult = Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Colors.green,
-            borderRadius: BorderRadius.circular(50),
-          ),
-          child: const Text('Maybe',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-              )));
-    }
-
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 25),
         child: _isLoading
             ? const Center(
-                child: CircularProgressIndicator(),
-              )
-            : statusResult,
+          child: CircularProgressIndicator(),
+        )
+            : Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Reject Button
+            Expanded(
+              child: _buildResponsiveButton(
+                label: AppLocalizations.of(context)!.reject,
+                color: _hasResponded ? Colors.grey : Colors.grey,
+                onPressed: _hasResponded ? null : () => _respondToMeeting('no'),
+                icon: Icons.clear,
+              ),
+            ),
+            const SizedBox(width: 15),
+
+            // Maybe Button
+            Visibility(
+              visible: _eventType == 'Meeting Room',
+              child: Expanded(
+                child: _buildResponsiveButton(
+                  label: 'Maybe',
+                  color: _hasResponded ? Colors.grey : Colors.orange,
+                  onPressed: _hasResponded ? null : () => _respondToMeeting('maybe'),
+                  icon: Icons.question_mark,
+                ),
+              ),
+            ),
+            const SizedBox(width: 15),
+
+            // Join Button
+            Expanded(
+              child: _buildResponsiveButton(
+                label: AppLocalizations.of(context)!.join,
+                color: _hasResponded ? Colors.grey : ColorStandardization().colorDarkGold,
+                onPressed: _hasResponded ? null : () => _respondToMeeting('yes'),
+                icon: Icons.check_circle_outline,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -680,7 +600,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     String endDisplay12 = "${(endDate.hour % 12 == 0 ? 12 : endDate.hour % 12).toString().padLeft(2, '0')}:${endDate.minute.toString().padLeft(2, '0')} ${endDate.hour >= 12 ? 'PM' : 'AM'}";
     return Column(
       children: [
-        if (eventStatus != "")
+        if (widget.event['status'] != "")
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -698,7 +618,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
                 ),
               ),
               Text(
-                eventStatus,
+                widget.event['status'],
                 style: TextStyle(
                   color: ColorStandardization().colorDarkGold,
                   fontWeight: FontWeight.bold,
@@ -793,25 +713,25 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       child: SingleChildScrollView(
         child: isMinutesOfMeeting
             ? Column(
-                children: [
-                  const SizedBox(height: 20),
-                  _buildMinutesOfMeetingEventDetails(),
-                  const SizedBox(height: 20),
-                  if (members.isNotEmpty) _buildMembersList(members),
-                ],
-              )
+          children: [
+            const SizedBox(height: 20),
+            _buildMinutesOfMeetingEventDetails(),
+            const SizedBox(height: 20),
+            if (members.isNotEmpty) _buildMembersList(members),
+          ],
+        )
             : Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (isMeeting) _buildCreatorSection(details),
-                  const SizedBox(height: 8),
-                  _buildEventType(),
-                  const SizedBox(height: 20),
-                  _buildEventDetails(),
-                  const SizedBox(height: 20),
-                  if (members.isNotEmpty) _buildMembersList(members),
-                ],
-              ),
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (isMeeting) _buildCreatorSection(details),
+            const SizedBox(height: 8),
+            _buildEventType(),
+            const SizedBox(height: 20),
+            _buildEventDetails(),
+            const SizedBox(height: 20),
+            if (members.isNotEmpty) _buildMembersList(members),
+          ],
+        ),
       ),
     );
   }
@@ -819,13 +739,12 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
   @override
   Widget build(BuildContext context) {
     double horizontalPadding = MediaQuery.of(context).size.width * 0.07;
-    final isHiddenButton = (_eventType == 'Leave' || _eventType == 'Minutes Of Meeting') || eventStatus == 'Pending';
+    final isHiddenButton = (_eventType == 'Leave' || _eventType == 'Minutes Of Meeting');
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: _buildAppBar(),
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
             child: Padding(
