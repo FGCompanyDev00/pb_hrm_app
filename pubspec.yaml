@@ -84,6 +84,7 @@ dependencies:
   flutter_datetime_format: ^0.0.1
   advanced_calendar_day_view:
     path: "packages/advanced_calendar_day_view"
+  get_it: ^8.0.2
 
 dev_dependencies:
   flutter_test:

@@ -217,7 +217,31 @@ class TimeTableDayWidget extends HookWidget {
                         ),
                       );
                     },
-                    child: statusChild,
+                    // child: statusChild,
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 2,
+                        vertical: 10,
+                      ),
+                      height: constraints.maxHeight,
+                      width: 60,
+                      decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.2),
+                          borderRadius: const BorderRadius.all(Radius.circular(10)),
+                          border: Border.all(
+                            color: statusColor,
+                            width: 3,
+                          )),
+                      child: Text(
+                        _eventType,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   );
                 },
               );

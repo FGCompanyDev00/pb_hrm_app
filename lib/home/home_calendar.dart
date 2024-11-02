@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/standard/extension.dart';
+import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
 import 'package:pb_hrsystem/login/date.dart';
+import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/services/http_service.dart';
+import 'package:pb_hrsystem/services/service_locator.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -17,6 +20,7 @@ import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -362,23 +366,27 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (status == 'Cancelled') continue;
 
-        final event = Event(
-          title: item['project_name'] ?? 'Minutes Of Meeting',
-          startDateTime: startDateTime,
-          endDateTime: endDateTime,
-          description: item['descriptions'] ?? 'Minutes Of Meeting Pending',
-          status: status,
-          isMeeting: true,
-          category: 'Minutes Of Meeting',
-          uid: uid,
-          imgName: item['img_name'],
-          createdBy: item['member_name'],
-          createdAt: item['updated_at'],
-          // members: List<Map<String, dynamic>>.from(resultMembers),
-        );
+        Event? event;
+
+        if (mounted) {
+          event = Event(
+            title: item['project_name'] ?? 'Minutes Of Meeting',
+            startDateTime: startDateTime,
+            endDateTime: endDateTime,
+            description: item['descriptions'] ?? 'Minutes Of Meeting Pending',
+            status: status,
+            isMeeting: true,
+            category: 'Minutes Of Meeting',
+            uid: uid,
+            imgName: item['img_name'],
+            createdBy: item['member_name'],
+            createdAt: item['updated_at'],
+            // members: List<Map<String, dynamic>>.from(resultMembers),
+          );
+        }
 
         for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
-          addEvent(day, event);
+          addEvent(day, event!);
         }
       }
     } catch (e) {
@@ -411,24 +419,28 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (status == 'Cancelled') continue;
 
-        final event = Event(
-          title: item['title'] ?? 'Meeting Room Bookings',
-          startDateTime: startDateTime,
-          endDateTime: endDateTime,
-          description: item['remark'] ?? 'Booking Pending',
-          status: status,
-          isMeeting: true,
-          category: 'Meeting Room Bookings',
-          uid: uid,
-          imgName: item['img_name'],
-          createdBy: item['employee_name'],
-          createdAt: item['date_create'],
-          location: item['room_name'] ?? 'Meeting Room',
-          members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
-        );
+        Event? event;
+
+        if (mounted) {
+          event = Event(
+            title: item['title'] ?? AppLocalizations.of(context)!.meetingRoomBookings,
+            startDateTime: startDateTime,
+            endDateTime: endDateTime,
+            description: item['remark'] ?? 'Booking Pending',
+            status: status,
+            isMeeting: true,
+            category: 'Meeting Room Bookings',
+            uid: uid,
+            imgName: item['img_name'],
+            createdBy: item['employee_name'],
+            createdAt: item['date_create'],
+            location: item['room_name'] ?? 'Meeting Room',
+            members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
+          );
+        }
 
         for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
-          addEvent(day, event);
+          addEvent(day, event!);
         }
       }
     } catch (e) {
@@ -498,23 +510,27 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (status == 'Cancelled') continue;
 
-        final event = Event(
-          title: item['purpose'] ?? 'No Title',
-          startDateTime: startDateTime,
-          endDateTime: endDateTime,
-          description: item['place'] ?? 'Car Booking Pending',
-          status: status,
-          isMeeting: false,
-          category: 'Booking Car',
-          uid: uid,
-          location: item['place'] ?? '',
-          imgName: item['img_name'],
-          createdBy: item['requestor_name'],
-          createdAt: item['updated_at'],
-        );
+        Event? event;
+
+        if (mounted) {
+          Event(
+            title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
+            startDateTime: startDateTime,
+            endDateTime: endDateTime,
+            description: item['place'] ?? 'Car Booking Pending',
+            status: status,
+            isMeeting: false,
+            category: 'Booking Car',
+            uid: uid,
+            location: item['place'] ?? '',
+            imgName: item['img_name'],
+            createdBy: item['requestor_name'],
+            createdAt: item['updated_at'],
+          );
+        }
 
         for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
-          addEvent(day, event);
+          addEvent(day, event!);
         }
       }
     } catch (e) {
@@ -607,7 +623,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                     children: [
                       _buildPopupOption(
                         icon: Icons.person,
-                        label: '1. Personal',
+                        label: '1. ${AppLocalizations.of(context)!.personal}',
                         onTap: () {
                           Navigator.pop(context);
                           _navigateToAddEvent('Personal');
@@ -616,7 +632,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                       const Divider(height: 1),
                       _buildPopupOption(
                         icon: Icons.work,
-                        label: '2. Office',
+                        label: '2. ${AppLocalizations.of(context)!.office}',
                         onTap: () {
                           Navigator.pop(context);
                           _navigateToAddEvent('Office');
@@ -671,23 +687,25 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         ),
       );
       if (newEvent != null) {
-        _addEvent(
-          title: newEvent['title'] ?? 'New Event',
-          startDateTime: DateTime.parse(newEvent['startDateTime']),
-          endDateTime: DateTime.parse(newEvent['endDateTime']),
-          description: newEvent['description'] ?? '',
-          status: 'Pending',
-          isMeeting: true,
-          category: 'Meetings',
-          uid: newEvent['uid'] ?? UniqueKey().toString(),
-        );
-        Fluttertoast.showToast(
-          msg: "Event Created Successfully",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-          backgroundColor: Colors.green[600],
-          textColor: Colors.white,
-        );
+        if (mounted) {
+          _addEvent(
+            title: newEvent['title'] ?? AppLocalizations.of(context)!.newEvent,
+            startDateTime: DateTime.parse(newEvent['startDateTime']),
+            endDateTime: DateTime.parse(newEvent['endDateTime']),
+            description: newEvent['description'] ?? '',
+            status: 'Pending',
+            isMeeting: true,
+            category: 'Meetings',
+            uid: newEvent['uid'] ?? UniqueKey().toString(),
+          );
+          Fluttertoast.showToast(
+            msg: AppLocalizations.of(context)!.eventCreatedSuccessfully,
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            backgroundColor: Colors.green[600],
+            textColor: Colors.white,
+          );
+        }
       }
     }
   }
@@ -748,9 +766,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                   _buildCalendar(context, isDarkMode),
                   _buildSectionSeparator(),
                   _eventsForDay.isEmpty
-                      ? const Text(
-                          'No events for this day.',
-                          style: TextStyle(
+                      ? Text(
+                          AppLocalizations.of(context)!.noEventsForThisDay,
+                          style: const TextStyle(
                             fontSize: 16,
                             color: Colors.grey,
                             fontWeight: FontWeight.w500,
@@ -800,7 +818,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               children: [
                 const SizedBox(height: 70),
                 Text(
-                  'Calendar',
+                  AppLocalizations.of(context)!.calender,
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black,
                     fontSize: 30,
@@ -814,11 +832,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             top: 75,
             right: 18,
             child: IconButton(
-              icon: const Icon(
+              icon: Icon(
                 Icons.add_circle,
                 size: 55,
                 color: Colors.green,
-                semanticLabel: 'Add Event',
+                semanticLabel: AppLocalizations.of(context)!.addEvent,
               ),
               onPressed: _showAddEventOptionsPopup,
             ),
@@ -872,7 +890,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: TextField(
         decoration: InputDecoration(
-          labelText: 'Search Events',
+          labelText: AppLocalizations.of(context)!.searchEvents,
           prefixIcon: const Icon(Icons.search),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
         ),
@@ -897,10 +915,12 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       child: Column(
         children: [
           // Custom Header
-          _buildCustomHeader(isDarkMode),
+          _buildCustomHeader(
+            isDarkMode,
+          ),
           // TableCalendar without the default header
-          Consumer<DateProvider>(
-            builder: (context, dateProvider, child) {
+          Consumer2<DateProvider, LanguageNotifier>(
+            builder: (context, dateProvider, languageNotifier, child) {
               return TableCalendar<Event>(
                 rowHeight: 38,
                 firstDay: DateTime.utc(2010, 10, 16),
@@ -910,6 +930,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 availableCalendarFormats: const {
                   CalendarFormat.month: 'Month',
                 },
+                locale: languageNotifier.currentLocale.languageCode,
                 headerVisible: false,
                 selectedDayPredicate: (day) {
                   return isSameDay(dateProvider.selectedDate, day);
@@ -1028,7 +1049,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 Icons.chevron_left,
                 size: 20,
                 color: isDarkMode ? Colors.white : Colors.black,
-                semanticLabel: 'Previous Month',
+                semanticLabel: AppLocalizations.of(context)!.previousMonth,
               ),
             ),
           ),
@@ -1036,7 +1057,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           Consumer<DateProvider>(
             builder: (context, dateProvider, child) {
               return Text(
-                DateFormat.MMMM().format(dateProvider.selectedDate),
+                DateFormat.MMMM(sl<UserPreferences>().getLocalizeSupport().languageCode).format(dateProvider.selectedDate),
                 style: TextStyle(
                   fontSize: 16.0,
                   fontWeight: FontWeight.bold,
@@ -1066,7 +1087,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 Icons.chevron_right,
                 size: 20,
                 color: isDarkMode ? Colors.white : Colors.black,
-                semanticLabel: 'Next Month',
+                semanticLabel: AppLocalizations.of(context)!.nextMonth,
               ),
             ),
           ),
