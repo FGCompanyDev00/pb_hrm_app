@@ -308,10 +308,5 @@
   "failedToLoadUserProfile": "Failed to load user profile: {reasonPhrase}",
   "invalidResponseStructure": "Invalid response structure received from the server.",
   "failedToLoadProfileData": "Failed to load profile data.",
-  "failedToLoadDisplayData": "Failed to load display data.",
-  "incorrectCredentials": "Incorrect username or password.",
-  "offlineMode": "Offline Mode",
-  "checkInSavedOffline": "Your check-in has been saved and will be synced when you're back online.",
-  "checkOutSavedOffline": "Your check-out has been saved and will be synced when you're back online.",
-  "loginErrorMessage": "Login failed. Please check your credentials and try again."
+  "failedToLoadDisplayData": "Failed to load display data."
 }

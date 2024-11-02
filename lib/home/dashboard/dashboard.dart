@@ -4,12 +4,11 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_main_page.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/qr_profile_page.dart';
-import 'package:pb_hrsystem/notifications/notification_page.dart';
+import 'package:pb_hrsystem/notifications/notification_page.dart'; // Updated import
 import 'package:pb_hrsystem/roles.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
@@ -18,7 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart'; // Import localization
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -61,51 +60,27 @@ class _DashboardState extends State<Dashboard> {
   Future<UserProfile> fetchUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
-    final userProfileBox = Hive.box<String>('userProfileBox'); // Access the already opened box as a String box
 
-    try {
-      // Fetch profile data online
-      final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+    final response = await http.get(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseJson = jsonDecode(response.body);
-        final List<dynamic> results = responseJson['results'];
-        if (results.isNotEmpty) {
-          final Map<String, dynamic> userJson = results[0];
-          final userProfile = UserProfile.fromJson(userJson);
-
-          // Save the profile as a JSON string to Hive
-          await userProfileBox.put('userProfile', jsonEncode(userProfile.toJson()));
-
-          print("Fetched and saved user profile to Hive successfully.");
-          return userProfile;
-        } else {
-          print("Error: No data available in the response.");
-          throw Exception(AppLocalizations.of(context)!.noDataAvailable);
-        }
-      } else {
-        print("Error: Failed to fetch data. Status Code: ${response.statusCode}");
-        throw Exception(AppLocalizations.of(context)!.errorWithDetails('Status Code: ${response.statusCode}'));
-      }
-    } catch (e) {
-      print("Network error: $e. Attempting to retrieve profile from Hive.");
-
-      // Retrieve profile from Hive if network request fails
-      final cachedProfileJson = userProfileBox.get('userProfile');
-      if (cachedProfileJson != null) {
-        final userProfile = UserProfile.fromJson(jsonDecode(cachedProfileJson));
-        print("Retrieved user profile from Hive successfully.");
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseJson = jsonDecode(response.body);
+      final List<dynamic> results = responseJson['results'];
+      if (results.isNotEmpty) {
+        final Map<String, dynamic> userJson = results[0];
+        final userProfile = UserProfile.fromJson(userJson);
         return userProfile;
       } else {
-        print("Error: No cached profile data available in Hive.");
         throw Exception(AppLocalizations.of(context)!.noDataAvailable);
       }
+    } else {
+      throw Exception(AppLocalizations.of(context)!.errorWithDetails('Status Code: ${response.statusCode}'));
     }
   }
 
@@ -113,30 +88,19 @@ class _DashboardState extends State<Dashboard> {
     final prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
 
-    try {
-      final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/app/promotions/files/active'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+    final response = await http.get(
+      Uri.parse('https://demo-application-api.flexiflows.co/api/app/promotions/files/active'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-      if (response.statusCode == 200) {
-        final results = jsonDecode(response.body)['results'];
-        final banners = results.map<String>((file) => file['files'] as String).toList();
-
-        final bannersBox = await Hive.openBox<List<String>>('bannersBox');
-        await bannersBox.put('banners', banners); // Save to Hive
-
-        return banners;
-      } else {
-        throw Exception("Failed to load banners");
-      }
-    } catch (e) {
-      // Retrieve from Hive if network request fails
-      final bannersBox = await Hive.openBox<List<String>>('bannersBox');
-      return bannersBox.get('banners') ?? [];
+    if (response.statusCode == 200) {
+      final List<dynamic> results = jsonDecode(response.body)['results'];
+      return results.map<String>((file) => file['files'] as String).toList();
+    } else {
+      throw Exception(AppLocalizations.of(context)!.failedToLoadWeeklyRecords);
     }
   }
 
@@ -170,14 +134,8 @@ class _DashboardState extends State<Dashboard> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return AppBar();
               } else if (snapshot.hasError) {
-                return AppBar(
-                  title: Text(
-                    AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString()),
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                );
+                return AppBar(title: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
               } else if (snapshot.hasData) {
-                final userProfile = snapshot.data!;
                 return AppBar(
                   automaticallyImplyLeading: false,
                   backgroundColor: Colors.transparent,
@@ -223,14 +181,14 @@ class _DashboardState extends State<Dashboard> {
                                     children: [
                                       CircleAvatar(
                                         radius: 25,
-                                        backgroundImage: userProfile.imgName != 'default_avatar.jpg'
-                                            ? NetworkImage(userProfile.imgName)
+                                        backgroundImage: snapshot.data!.imgName != 'default_avatar.jpg'
+                                            ? NetworkImage(snapshot.data!.imgName)
                                             : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
                                         backgroundColor: Colors.white,
                                       ),
                                       const SizedBox(height: 8),
                                       Text(
-                                        AppLocalizations.of(context)!.greeting(userProfile.name),
+                                        AppLocalizations.of(context)!.greeting(snapshot.data!.name),
                                         style: const TextStyle(
                                           color: Colors.black,
                                           fontWeight: FontWeight.bold,
@@ -255,9 +213,7 @@ class _DashboardState extends State<Dashboard> {
                   ),
                 );
               } else {
-                return AppBar(
-                  title: Text(AppLocalizations.of(context)!.noDataAvailable),
-                );
+                return AppBar(title: Text(AppLocalizations.of(context)!.noDataAvailable)); // Fallback if no data
               }
             },
           ),
@@ -598,6 +554,7 @@ class UserProfile {
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
+    // Ensure that roles are parsed as a List<String>
     List<String> rolesList = [];
     if (json['roles'] is List) {
       rolesList = List<String>.from(json['roles']);
@@ -614,16 +571,4 @@ class UserProfile {
       roles: rolesList,
     );
   }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'employee_name': name,
-      'employee_surname': surname,
-      'employee_email': email,
-      'images': imgName,
-      'roles': roles,
-    };
-  }
 }
-

@@ -1,16 +1,14 @@
-// lib/main.dart
+// main.dart
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
-import 'package:pb_hrsystem/services/offline_service.dart';
-import 'package:pb_hrsystem/services/services_locator.dart';
-import 'package:pb_hrsystem/user_model.dart';
+import 'package:pb_hrsystem/user_model.dart'; // Updated import
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
@@ -19,42 +17,26 @@ import 'splash/splashscreen.dart';
 import 'theme/theme.dart';
 import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
-import 'login/notification_permission_page.dart';
-import 'package:hive/hive.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'models/attendance_record.dart';
-import 'package:flutter/services.dart';
+import 'package:pb_hrsystem/login/notification_permission_page.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:http/http.dart' as http;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize Hive
-  await Hive.initFlutter();
-  Hive.registerAdapter(AttendanceRecordAdapter());
-
-  await Hive.openBox<AttendanceRecord>('pending_attendance');
-  await Hive.openBox<String>('userProfileBox');
-  await Hive.openBox<List<String>>('bannersBox');
-
-  // Initialize Service Locator
-  await setupServiceLocator();
+  Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
 
   // Initialize the FlutterLocalNotificationsPlugin
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-  FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
   // Android initialization settings
-  const AndroidInitializationSettings initializationSettingsAndroid =
-  AndroidInitializationSettings('@mipmap/playstore');
+  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
 
   // iOS/macOS initialization settings
-  DarwinInitializationSettings initializationSettingsDarwin =
-  DarwinInitializationSettings(
+  DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings(
     requestAlertPermission: false, // Do not request permissions here
     requestBadgePermission: false,
     requestSoundPermission: false,
-    onDidReceiveLocalNotification:
-        (int id, String? title, String? body, String? payload) async {
+    onDidReceiveLocalNotification: (int id, String? title, String? body, String? payload) async {
       // Handle notification received in foreground
       if (kDebugMode) {
         print("iOS Local Notification received: $title $body $payload");
@@ -74,17 +56,13 @@ void main() async {
     initializationSettings,
     onDidReceiveNotificationResponse: (NotificationResponse response) async {
       if (response.payload != null && response.payload!.isNotEmpty) {
-        // Navigate to NotificationPermissionPage on click
+        // Navigate to NotificationPage on click
         navigatorKey.currentState?.push(MaterialPageRoute(
           builder: (context) => const NotificationPermissionPage(),
         ));
       }
     },
   );
-
-  // Initialize Offline Service
-  final OfflineService offlineService = sl<OfflineService>();
- offlineService.initialize();
 
   runApp(
     MultiProvider(
@@ -93,7 +71,6 @@ void main() async {
         ChangeNotifierProvider(create: (_) => LanguageNotifier()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => DateProvider()),
-        Provider.value(value: offlineService),
       ],
       child: const MyApp(),
     ),
@@ -118,8 +95,7 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             primarySwatch: Colors.green,
             visualDensity: VisualDensity.adaptivePlatformDensity,
-            textTheme:
-            GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme),
+            textTheme: GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
@@ -133,9 +109,9 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: Colors.black,
             textTheme: GoogleFonts.oxaniumTextTheme(
               Theme.of(context).textTheme.apply(
-                bodyColor: Colors.white,
-                displayColor: Colors.white,
-              ),
+                    bodyColor: Colors.white,
+                    displayColor: Colors.white,
+                  ),
             ),
           ),
           themeMode: themeNotifier.currentTheme,
@@ -163,39 +139,19 @@ class LanguageNotifier with ChangeNotifier {
 
   Locale get currentLocale => _currentLocale;
 
-  LanguageNotifier() {
-    _loadLocale();
-  }
-
-  Future<void> _loadLocale() async {
-    Locale? locale = await sl<UserPreferences>().getLocalizeSupport();
-    if (locale != null) {
-      _currentLocale = locale;
-      notifyListeners();
-    }
-  }
-
-  void changeLanguage(String languageCode) async {
+  void changeLanguage(String languageCode) {
     switch (languageCode) {
       case 'English':
         _currentLocale = const Locale('en');
-        await sl<UserPreferences>().setLocalizeSupport('en');
-        await sl<UserPreferences>().setDefaultLanguage('English');
         break;
       case 'Laos':
         _currentLocale = const Locale('lo');
-        await sl<UserPreferences>().setLocalizeSupport('lo');
-        await sl<UserPreferences>().setDefaultLanguage('Laos');
         break;
       case 'Chinese':
         _currentLocale = const Locale('zh');
-        await sl<UserPreferences>().setLocalizeSupport('zh');
-        await sl<UserPreferences>().setDefaultLanguage('Chinese');
         break;
       default:
         _currentLocale = const Locale('en');
-        await sl<UserPreferences>().setLocalizeSupport('en');
-        await sl<UserPreferences>().setDefaultLanguage('English');
     }
     notifyListeners();
   }
@@ -229,8 +185,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<bool> _onWillPop() async {
-    final isFirstRouteInCurrentTab =
-    !await _navigatorKeys[_selectedIndex].currentState!.maybePop();
+    final isFirstRouteInCurrentTab = !await _navigatorKeys[_selectedIndex].currentState!.maybePop();
     if (isFirstRouteInCurrentTab) {
       return true;
     } else {
@@ -249,8 +204,7 @@ class _MainScreenState extends State<MainScreen> {
             Navigator(
               key: _navigatorKeys[0],
               onGenerateRoute: (routeSettings) {
-                return MaterialPageRoute(
-                    builder: (context) => const AttendanceScreen());
+                return MaterialPageRoute(builder: (context) => const AttendanceScreen());
               },
             ),
             Navigator(
@@ -283,4 +237,55 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    await _fetchAndDisplayNotifications();
+    return Future.value(true);
+  });
+}
 
+Future<void> _fetchAndDisplayNotifications() async {
+  const String baseUrl = 'https://demo-application-api.flexiflows.co';
+  const String endpoint = '$baseUrl/api/work-tracking/proj/notifications';
+
+  try {
+    final response = await http.get(Uri.parse(endpoint));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final List notifications = data['results'];
+      for (var notification in notifications) {
+        if (notification['status'] == 0) {
+          await _showNotification(notification);
+        }
+      }
+    } else {
+      if (kDebugMode) {
+        print('Failed to fetch notifications');
+      }
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('Error fetching notifications: $e');
+    }
+  }
+}
+
+Future<void> _showNotification(Map<String, dynamic> notification) async {
+  const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
+    'psbv_next_channel', // Updated channel ID for app
+    'PSBV Next Notifications', // Updated channel name
+    channelDescription: 'Notifications about assignments, project updates, and member changes in PSBV Next app.', // Updated channel description
+    importance: Importance.max,
+    priority: Priority.high,
+    showWhen: true,
+    icon: '@mipmap/playstore',
+  );
+  const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+  await FlutterLocalNotificationsPlugin().show(
+    notification['id'],
+    'New Notification',
+    notification['message'],
+    platformChannelSpecifics,
+    payload: notification['id'].toString(),
+  );
+}

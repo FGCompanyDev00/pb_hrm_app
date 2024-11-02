@@ -314,10 +314,5 @@
   "failedToLoadUserProfile": "ລົ້ມເຫລວໃນການໂຫຼດຂໍ້ມູນຜູ້ໃຊ້: {reasonPhrase}",
   "invalidResponseStructure": "ໂຄງແບບການຕອບກັບຂອງ API ບໍ່ຖືກຕ້ອງ.",
   "failedToLoadProfileData": "ລົ້ມເຫລວໃນການໂຫຼດຂໍ້ມູນໂປຣຟາຍ.",
-  "failedToLoadDisplayData": "ລົ້ມເຫລວໃນການໂຫຼດຂໍ້ມູນການສະແດງ.",
-  "incorrectCredentials": "ຊື່ຜູ້ໃຊ້ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ.",
-  "offlineMode": "ໂມດຊອບໄລນ",
-  "checkInSavedOffline": "ການເຂົ້າລາຍຊື່ຂອງທ່ານໄດ້ຖືກບັນທຶກແລ້ວ ແລະຈະຖືກສະແດງເມື່ອທ່ານກັບຄືນໄປມີອິນເຕີເນັດ.",
-  "checkOutSavedOffline": "ການອອກລາຍຊື່ຂອງທ່ານໄດ້ຖືກບັນທຶກແລ້ວ ແລະຈະຖືກສະແດງເມື່ອທ່ານກັບຄືນໄປມີອິນເຕີເນັດ.",
-  "loginErrorMessage": "登录失败。请检查您的凭据并重试."
+  "failedToLoadDisplayData": "ລົ້ມເຫລວໃນການໂຫຼດຂໍ້ມູນການສະແດງ."
 }
