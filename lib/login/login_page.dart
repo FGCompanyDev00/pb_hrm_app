@@ -1,23 +1,26 @@
-// login_page.dart
+// lib/login_page.dart
 
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:internet_connection_checker/internet_connection_checker.dart';
+import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/login/date.dart';
-import 'package:pb_hrsystem/login/forgot_password_page.dart';
 import 'package:pb_hrsystem/login/notification_permission_page.dart';
 import 'package:pb_hrsystem/main.dart';
+import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:flutter/services.dart';
-import 'package:pb_hrsystem/user_model.dart'; // Updated import
+import 'package:pb_hrsystem/user_model.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -26,7 +29,7 @@ class LoginPage extends StatefulWidget {
   _LoginPageState createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
   bool _gradientAnimation = false;
   String _selectedLanguage = 'English';
   final List<String> _languages = ['English', 'Laos', 'Chinese'];
@@ -35,6 +38,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _isPasswordVisible = false;
   bool _biometricEnabled = false;
   late Timer _timer;
+  late AnimationController _animationController;
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _storage = const FlutterSecureStorage();
@@ -42,6 +46,13 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+
+    _checkLocale();
     _startGradientAnimation();
     _loadSavedCredentials();
     _loadBiometricSetting();
@@ -53,6 +64,7 @@ class _LoginPageState extends State<LoginPage> {
     _timer.cancel();
     _usernameController.dispose();
     _passwordController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -66,14 +78,25 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
+  Future<void> _checkLocale() async {
+    String? defaultLanguage = await sl<UserPreferences>().getDefaultLanguage();
+    setState(() {
+      _selectedLanguage = defaultLanguage ?? 'English';
+    });
+  }
+
   Future<void> _loadBiometricSetting() async {
+    bool canCheckBiometrics = await auth.canCheckBiometrics;
+    bool isDeviceSupported = await auth.isDeviceSupported();
+
     String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
     setState(() {
-      _biometricEnabled = biometricEnabled == 'true';
+      _biometricEnabled = (biometricEnabled == 'true') && canCheckBiometrics && isDeviceSupported;
     });
   }
 
   Future<void> _login() async {
+    bool isOnline = await InternetConnectionChecker().hasConnection;
     final String username = _usernameController.text.trim();
     final String password = _passwordController.text.trim();
 
@@ -81,71 +104,173 @@ class _LoginPageState extends State<LoginPage> {
       _showCustomDialog(
           context,
           AppLocalizations.of(context)!.loginFailed,
-          AppLocalizations.of(context)!.emptyFieldsMessage
-      );
+          AppLocalizations.of(context)!.emptyFieldsMessage);
       return;
     }
 
-    final response = await http.post(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/login'),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonEncode(<String, String>{
-        'username': username,
-        'password': password,
-      }),
-    );
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> responseBody = jsonDecode(response.body);
-      final String token = responseBody['token'];
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', token);
-      await prefs.setBool('isLoggedIn', true); // Set isLoggedIn to true
-
-      if (_rememberMe) {
-        _saveCredentials();
-      } else {
-        _clearCredentials();
-      }
-
-      if (_biometricEnabled) {
-        await _storage.write(key: 'username', value: username);
-        await _storage.write(key: 'password', value: password);
-        await _storage.write(key: 'biometricEnabled', value: 'true');
-      }
-
-      // Update UserProvider
-      Provider.of<UserProvider>(context, listen: false).login(token);
-
-      bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
-
-      if (isFirstLogin) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const NotificationPermissionPage()),
+    if (isOnline) {
+      try {
+        final response = await http.post(
+          Uri.parse('https://demo-application-api.flexiflows.co/api/login'),
+          headers: <String, String>{
+            'Content-Type': 'application/json; charset=UTF-8',
+          },
+          body: jsonEncode(<String, String>{
+            'username': username,
+            'password': password,
+          }),
         );
-        await prefs.setBool('isFirstLogin', false);
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainScreen()),
-        );
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> responseBody = jsonDecode(response.body);
+          final String token = responseBody['token'];
+
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', token);
+          await prefs.setBool('isLoggedIn', true);
+
+          if (_rememberMe) {
+            await _saveCredentials(username, password, token);
+          } else {
+            await _clearCredentials();
+          }
+
+          if (_biometricEnabled) {
+            await _storage.write(key: 'username', value: username);
+            await _storage.write(key: 'password', value: password);
+            await _storage.write(key: 'biometricEnabled', value: 'true');
+          }
+
+          Provider.of<UserProvider>(context, listen: false).login(token);
+
+          bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
+
+          if (isFirstLogin) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const NotificationPermissionPage()),
+            );
+            await prefs.setBool('isFirstLogin', false);
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const MainScreen()),
+            );
+          }
+        } else {
+          _showOfflineOptionModal('API Error', 'The API is currently unavailable.');
+        }
+      } catch (e) {
+        _showOfflineOptionModal('API Error', 'There is an issue with the server.');
       }
     } else {
+      _showOfflineOptionModal('No Internet', 'You are currently offline.');
+    }
+  }
+
+  Future<void> _showOfflineOptionModal(String title, String message) async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              image: const DecorationImage(
+                image: AssetImage('assets/background.png'),
+                fit: BoxFit.cover,
+              ),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                RotationTransition(
+                  turns: Tween(begin: -0.05, end: 0.05).animate(_animationController),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.red,
+                    size: 80,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  title,
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 18),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Do you want to use offline mode?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel', style: TextStyle(fontSize: 16)),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await _offlineLogin();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: const Text("Okay, let's go", style: TextStyle(fontSize: 16)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _offlineLogin() async {
+    final box = await Hive.openBox('loginBox');
+    final storedUsername = box.get('username');
+    final storedPassword = box.get('password');
+    final token = box.get('token');
+
+    if (storedUsername == _usernameController.text.trim() &&
+        storedPassword == _passwordController.text.trim() &&
+        token != null) {
+      Provider.of<UserProvider>(context, listen: false).login(token);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainScreen()),
+      );
+    } else {
       _showCustomDialog(
-          context,
-          AppLocalizations.of(context)!.loginFailed,
-          '${AppLocalizations.of(context)!.loginFailedMessage} ${response.reasonPhrase}'
+        context,
+        AppLocalizations.of(context)!.loginFailed,
+        AppLocalizations.of(context)!.incorrectCredentials,
       );
     }
   }
 
   Future<void> _authenticate({bool useBiometric = true}) async {
     if (!_biometricEnabled) {
-      _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled,
+      _showCustomDialog(
+          context,
+          AppLocalizations.of(context)!.biometricDisabled,
           AppLocalizations.of(context)!.enableBiometric);
       return;
     }
@@ -153,9 +278,9 @@ class _LoginPageState extends State<LoginPage> {
     bool authenticated = false;
     try {
       authenticated = await auth.authenticate(
-        localizedReason: 'Authenticate to login',
-        options: AuthenticationOptions(
-          biometricOnly: useBiometric,
+        localizedReason: AppLocalizations.of(context)!.authenticateToLogin,
+        options: const AuthenticationOptions(
+          biometricOnly: true,
           stickyAuth: true,
         ),
       );
@@ -174,43 +299,48 @@ class _LoginPageState extends State<LoginPage> {
         _login();
       }
     } else {
-      _showCustomDialog(context, AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.tryAgain);
+      _showCustomDialog(
+          context,
+          AppLocalizations.of(context)!.authenticationFailed,
+          AppLocalizations.of(context)!.authenticateToContinue);
     }
   }
 
-  Future<void> _saveCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.setString('username', _usernameController.text);
-    prefs.setString('password', _passwordController.text);
-    prefs.setBool('rememberMe', _rememberMe);
+  Future<void> _saveCredentials(String username, String password, String token) async {
+    final box = await Hive.openBox('loginBox');
+    await box.put('username', username);
+    await box.put('password', password);
+    await box.put('token', token);
   }
 
   Future<void> _loadSavedCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
+    final box = await Hive.openBox('loginBox');
     setState(() {
-      _usernameController.text = prefs.getString('username') ?? '';
-      _passwordController.text = prefs.getString('password') ?? '';
-      _rememberMe = prefs.getBool('rememberMe') ?? false;
+      _usernameController.text = box.get('username', defaultValue: '') as String;
+      _passwordController.text = box.get('password', defaultValue: '') as String;
+      _rememberMe = true;
     });
   }
 
   Future<void> _clearCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    prefs.remove('username');
-    prefs.remove('password');
-    prefs.remove('rememberMe');
+    final box = await Hive.openBox('loginBox');
+    await box.delete('username');
+    await box.delete('password');
+    await box.delete('token');
   }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: Provider.of<DateProvider>(context, listen: false).selectedDate,
+      initialDate:
+      Provider.of<DateProvider>(context, listen: false).selectedDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
 
     if (pickedDate != null) {
-      Provider.of<DateProvider>(context, listen: false).updateSelectedDate(pickedDate);
+      Provider.of<DateProvider>(context, listen: false)
+          .updateSelectedDate(pickedDate);
     }
   }
 
@@ -219,8 +349,7 @@ class _LoginPageState extends State<LoginPage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -249,7 +378,7 @@ class _LoginPageState extends State<LoginPage> {
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-                child: const Text('Close'),
+                child: Text(AppLocalizations.of(context)!.close),
               ),
             ],
           ),
@@ -296,7 +425,8 @@ class _LoginPageState extends State<LoginPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         SizedBox(height: screenHeight * 0.045),
-                        _buildLanguageDropdown(languageNotifier, isDarkMode, screenWidth),
+                        _buildLanguageDropdown(
+                            languageNotifier, isDarkMode, screenWidth),
                         SizedBox(height: screenHeight * 0.005),
                         _buildLogoAndText(screenWidth, screenHeight),
                         SizedBox(height: screenHeight * 0.06),
@@ -319,7 +449,8 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildLanguageDropdown(LanguageNotifier languageNotifier, bool isDarkMode, double screenWidth) {
+  Widget _buildLanguageDropdown(
+      LanguageNotifier languageNotifier, bool isDarkMode, double screenWidth) {
     return Align(
       alignment: Alignment.topRight,
       child: Column(
@@ -330,8 +461,8 @@ class _LoginPageState extends State<LoginPage> {
               showModalBottomSheet(
                 context: context,
                 shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(30.0)),
+                  borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(30.0)),
                 ),
                 builder: (BuildContext context) {
                   return Container(
@@ -343,7 +474,8 @@ class _LoginPageState extends State<LoginPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              AppLocalizations.of(context)!.chooseLanguage, // Localized Text
+                              AppLocalizations.of(context)!.chooseLanguage,
+                              // Localized Text
                               style: TextStyle(
                                 fontSize: screenWidth * 0.045,
                                 fontWeight: FontWeight.bold,
@@ -352,7 +484,8 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                             IconButton(
                               icon: Icon(Icons.close,
-                                  color: isDarkMode ? Colors.white : Colors.black),
+                                  color:
+                                  isDarkMode ? Colors.white : Colors.black),
                               onPressed: () {
                                 Navigator.pop(context);
                               },
@@ -402,9 +535,7 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: BoxDecoration(
                     color: isDarkMode ? Colors.black54 : Colors.white,
                     shape: BoxShape.circle,
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black12, blurRadius: 8)
-                    ],
+                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
                   ),
                   child: Center(
                     child: Image.asset(
@@ -502,7 +633,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-
   Widget _buildCustomDateRow(double screenWidth) {
     return GestureDetector(
       onTap: () {
@@ -590,7 +720,9 @@ class _LoginPageState extends State<LoginPage> {
               prefixIcon: const Icon(Icons.lock_outline, color: Colors.black),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _isPasswordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  _isPasswordVisible
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                   color: Colors.black,
                 ),
                 onPressed: () {
@@ -647,7 +779,8 @@ class _LoginPageState extends State<LoginPage> {
                 ? () => _authenticate(useBiometric: true)
                 : () {
               _showCustomDialog(
-                  context, AppLocalizations.of(context)!.biometricDisabled,
+                  context,
+                  AppLocalizations.of(context)!.biometricDisabled,
                   AppLocalizations.of(context)!.enableBiometric);
             },
             child: Container(
@@ -660,9 +793,11 @@ class _LoginPageState extends State<LoginPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.face, size: screenWidth * 0.09, color: Colors.orange),
+                  Icon(Icons.face,
+                      size: screenWidth * 0.09, color: Colors.orange),
                   SizedBox(width: screenWidth * 0.025),
-                  Icon(Icons.fingerprint, size: screenWidth * 0.1, color: Colors.orange),
+                  Icon(Icons.fingerprint,
+                      size: screenWidth * 0.1, color: Colors.orange),
                 ],
               ),
             ),
