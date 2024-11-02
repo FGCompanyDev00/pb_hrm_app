@@ -2,7 +2,7 @@ name: pb_hrsystem
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.19+19
+version: 1.0.20+20
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -74,7 +74,11 @@ dependencies:
   syncfusion_flutter_datagrid: ^26.2.13
   location: ^6.0.2
   connectivity_plus: ^6.0.5
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
   logger: ^2.4.0
+  get_it: ^7.2.0
+  internet_connection_checker: ^0.0.1+4
   cached_network_image: ^3.4.1
   flutter_svg: ^2.0.10+1
   flutter_datetime_format: ^0.0.1
@@ -87,6 +91,7 @@ dev_dependencies:
   flutter_lints: ^4.0.0
   build_runner: ^2.1.7
   intl_generator: any
+  hive_generator: ^2.0.0
 
 flutter:
   generate: true
