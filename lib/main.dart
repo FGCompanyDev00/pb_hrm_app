@@ -86,7 +86,8 @@ void main() async {
   await Hive.openBox<String>('userProfileBox');
   await Hive.openBox<List<String>>('bannersBox');
   await Hive.openBox('loginBox');
-  await Hive.openBox('eventsBox');
+  await Hive.openBox('calendarEventsRecordBox');
+  await Hive.openBox('UserProfileRecordBox');
 
   await setupServiceLocator();
 

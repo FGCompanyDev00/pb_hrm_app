@@ -122,8 +122,6 @@ class TicketShapeClipper extends CustomClipper<Path> {
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<Map<String, dynamic>> _profileData;
   late Future<Map<String, dynamic>> _displayData;
-
-  // Define two separate GlobalKeys
   final GlobalKey qrKey = GlobalKey();
   final GlobalKey qrFullScreenKey = GlobalKey();
 
