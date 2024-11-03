@@ -64,8 +64,6 @@ dependencies:
   flutter_secure_storage: ^9.2.2
   flutter_timetable: ^1.1.6
   timetable: ^1.0.0-alpha.14
-  flutter_foreground_service: ^0.4.1
-  flutter_foreground_task: ^8.13.0
   photo_view: ^0.15.0
   multi_image_picker_view: ^1.1.0
   calendar_day_view: ^3.3.2

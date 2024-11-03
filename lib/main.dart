@@ -10,6 +10,7 @@ import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
+import 'package:pb_hrsystem/splash/splashscreen.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -263,7 +264,7 @@ class _MyAppState extends State<MyApp> {
             Locale('zh'),
           ],
           locale: languageNotifier.currentLocale,
-          home: const MainScreen(),
+          home: const SplashScreen(),
         );
       },
     );

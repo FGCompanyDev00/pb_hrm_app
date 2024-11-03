@@ -51,11 +51,6 @@
             android:windowSoftInputMode="adjustResize"
             tools:ignore="MissingClass">
 
-            <service
-                android:name="be.tramckrijte.workmanager.BackgroundWorker"
-                android:permission="android.permission.BIND_JOB_SERVICE"
-                android:exported="true"/>
-
             <!-- Metadata for Flutter engine -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
@@ -67,6 +62,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name="be.tramckrijte.workmanager.BackgroundWorker"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="true"/>
 
         <!-- Flutter metadata -->
         <meta-data
