@@ -2,7 +2,6 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
@@ -20,52 +19,21 @@ import 'package:flutter_offline/flutter_offline.dart';
 import 'theme/theme.dart';
 import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
-import 'login/notification_permission_page.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'models/attendance_record.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:workmanager/workmanager.dart';
 
 void callbackDispatcher() {
-  // Background task function
   Workmanager().executeTask((task, inputData) async {
     try {
       if (kDebugMode) print("Background Task Started: Checking connectivity");
 
       await Hive.initFlutter();
-      final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-
-      const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
-      const DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings();
-      const InitializationSettings initializationSettings = InitializationSettings(
-        android: initializationSettingsAndroid,
-        iOS: initializationSettingsDarwin,
-        macOS: initializationSettingsDarwin,
-      );
-
-      await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
       var connectivityResult = await Connectivity().checkConnectivity();
       if (connectivityResult == ConnectivityResult.none) {
         if (kDebugMode) print("No internet connection detected");
-
-        const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-          'connectivity_channel',
-          'Connectivity Notifications',
-          channelDescription: 'Notifies when the device is offline',
-          importance: Importance.max,
-          priority: Priority.high,
-          showWhen: false,
-        );
-
-        const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
-
-        await flutterLocalNotificationsPlugin.show(
-          0,
-          'No Internet Connection',
-          'You are currently offline.',
-          notificationDetails,
-        );
       } else {
         if (kDebugMode) print("Connected to the internet");
       }
@@ -91,27 +59,6 @@ void main() async {
   await Hive.openBox('UserProfileRecordBox');
 
   await setupServiceLocator();
-
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-
-  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
-  const DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings();
-  const InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-    iOS: initializationSettingsDarwin,
-    macOS: initializationSettingsDarwin,
-  );
-
-  await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings,
-    onDidReceiveNotificationResponse: (NotificationResponse response) async {
-      if (response.payload != null && response.payload!.isNotEmpty) {
-        navigatorKey.currentState?.push(MaterialPageRoute(
-          builder: (context) => const NotificationPermissionPage(),
-        ));
-      }
-    },
-  );
 
   Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
 
@@ -146,7 +93,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late StreamSubscription<ConnectivityResult> _connectivitySubscription;
-  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
   @override
   void initState() {
@@ -161,64 +107,18 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _initializeConnectivityMonitoring() async {
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
-    const DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings();
-    const InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsDarwin,
-      macOS: initializationSettingsDarwin,
-    );
-
-    await _flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) async {
-        if (response.payload != null && response.payload!.isNotEmpty) {
-          navigatorKey.currentState?.push(MaterialPageRoute(
-            builder: (context) => const NotificationPermissionPage(),
-          ));
-        }
-      },
-    );
-
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
       if (result == ConnectivityResult.none) {
-        _showNoConnectionNotification();
+        if (kDebugMode) print("No Internet Connection");
       } else {
-        _removeNoConnectionNotification();
+        if (kDebugMode) print("Connected to the Internet");
       }
     } as void Function(List<ConnectivityResult> event)?) as StreamSubscription<ConnectivityResult>;
 
     var initialResult = await Connectivity().checkConnectivity();
     if (initialResult == ConnectivityResult.none) {
-      _showNoConnectionNotification();
+      if (kDebugMode) print("No Internet Connection");
     }
-  }
-
-  Future<void> _showNoConnectionNotification() async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'connectivity_channel',
-      'Connectivity Notifications',
-      channelDescription: 'Notifies when the device is offline',
-      importance: Importance.max,
-      priority: Priority.high,
-      ongoing: true,
-      autoCancel: false,
-      ticker: 'No Internet Connection',
-    );
-
-    const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
-
-    await _flutterLocalNotificationsPlugin.show(
-      1,
-      'No Internet Connection',
-      'You are currently offline.',
-      notificationDetails,
-      payload: 'connectivity_payload',
-    );
-  }
-
-  Future<void> _removeNoConnectionNotification() async {
-    await _flutterLocalNotificationsPlugin.cancel(1);
   }
 
   @override
@@ -284,7 +184,7 @@ class LanguageNotifier with ChangeNotifier {
     Locale? locale = sl<UserPreferences>().getLocalizeSupport();
     _currentLocale = locale;
     notifyListeners();
-    }
+  }
 
   void changeLanguage(String languageCode) async {
     switch (languageCode) {

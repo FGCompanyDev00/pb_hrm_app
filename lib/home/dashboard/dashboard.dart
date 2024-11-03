@@ -554,7 +554,10 @@ class _DashboardState extends State<Dashboard> {
                       ),
                       ElevatedButton(
                         onPressed: () {
-                          Navigator.of(context).pop();
+                          // Call logout method in UserProvider to clear session data
+                          Provider.of<UserProvider>(context, listen: false).logout();
+
+                          // Redirect to LoginPage and remove all other pages from the stack
                           Navigator.of(context).pushAndRemoveUntil(
                             MaterialPageRoute(builder: (context) => const LoginPage()),
                                 (Route<dynamic> route) => false,

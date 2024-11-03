@@ -1,5 +1,3 @@
-// user_model.dart
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -23,20 +21,34 @@ class UserProvider extends ChangeNotifier {
   User _currentUser = User(id: '1', name: 'Default User', roles: ['User']);
   bool _isLoggedIn = false;
   String _token = '';
+  DateTime? _loginTime;
 
   User get currentUser => _currentUser;
   bool get isLoggedIn => _isLoggedIn;
   String get token => _token;
 
   UserProvider() {
-    _loadUser();
+    loadUser();
   }
 
-  // Load user login status and token from shared preferences
-  Future<void> _loadUser() async {
+  // Public method to load user login status and token from shared preferences
+  Future<void> loadUser() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
     _token = prefs.getString('token') ?? '';
+    _loginTime = DateTime.tryParse(prefs.getString('loginTime') ?? '');
+    notifyListeners();
+  }
+
+  bool get isSessionValid {
+    if (_loginTime == null) return false;
+    return DateTime.now().difference(_loginTime!).inHours < 8;
+  }
+
+  Future<void> setLoginTime() async {
+    _loginTime = DateTime.now();
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('loginTime', _loginTime.toString());
     notifyListeners();
   }
 
@@ -92,6 +104,7 @@ class UserProvider extends ChangeNotifier {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', true);
     await prefs.setString('token', token);
+    await setLoginTime(); // Save login time immediately after login
     notifyListeners();
   }
 
@@ -99,9 +112,12 @@ class UserProvider extends ChangeNotifier {
   Future<void> logout() async {
     _isLoggedIn = false;
     _token = '';
+    _loginTime = null;
+
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('isLoggedIn');
     await prefs.remove('token');
-    notifyListeners();
-  }
-}
+    await prefs.remove('loginTime');
+
+    notifyListeners(); // Notify listeners to refresh UI based on the new state
+  }}

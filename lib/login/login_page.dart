@@ -141,6 +141,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             await _storage.write(key: 'biometricEnabled', value: 'true');
           }
 
+          // Call UserProvider's login method, which also sets the login time
           Provider.of<UserProvider>(context, listen: false).login(token);
 
           bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
