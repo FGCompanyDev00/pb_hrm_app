@@ -34,10 +34,13 @@ class _AddMemberPageState extends State<AddMemberPage> {
     return prefs.getString('token') ?? '';
   }
 
-  /// Fetches the list of members from the API
+  /// Fetches the list of members from the API, excluding the current logged-in user
   Future<void> _fetchMembers() async {
     try {
       String token = await _fetchToken();
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? currentUserEmployeeId = prefs.getString('employee_id');
+
       final response = await http.get(
         Uri.parse(
             'https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
@@ -49,13 +52,16 @@ class _AddMemberPageState extends State<AddMemberPage> {
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body)['results'];
         setState(() {
-          _members = data.map((item) => {
+          _members = data
+              .where((item) => item['employee_id'] != currentUserEmployeeId)
+              .map((item) => {
             'id': item['id'],
             'name': item['name'],
             'surname': item['surname'],
             'email': item['email'],
             'employee_id': item['employee_id'],
-          }).toList();
+          })
+              .toList();
           _filteredMembers = _members;
         });
       } else {

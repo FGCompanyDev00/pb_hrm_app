@@ -22,6 +22,8 @@ import 'package:pb_hrsystem/user_model.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import '../home/home_calendar.dart';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -79,7 +81,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _checkLocale() async {
-    String? defaultLanguage = await sl<UserPreferences>().getDefaultLanguage();
+    String? defaultLanguage = sl<UserPreferences>().getDefaultLanguage();
     setState(() {
       _selectedLanguage = defaultLanguage ?? 'English';
     });
@@ -124,9 +126,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseBody = jsonDecode(response.body);
           final String token = responseBody['token'];
+          final String employeeId = responseBody['id'];  // Get the employee id
 
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('token', token);
+          await prefs.setString('employee_id', employeeId);  // Save employee id as current user id
           await prefs.setBool('isLoggedIn', true);
 
           if (_rememberMe) {
@@ -141,7 +145,6 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             await _storage.write(key: 'biometricEnabled', value: 'true');
           }
 
-          // Call UserProvider's login method, which also sets the login time
           Provider.of<UserProvider>(context, listen: false).login(token);
 
           bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
@@ -292,12 +295,36 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     }
 
     if (authenticated) {
+      // Attempt to retrieve stored credentials
       String? username = await _storage.read(key: 'username');
       String? password = await _storage.read(key: 'password');
+
       if (username != null && password != null) {
+        // Use locally stored credentials for login
         _usernameController.text = username;
         _passwordController.text = password;
-        _login();
+
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('token');
+
+        // Proceed with direct login if token exists
+        if (token != null) {
+          Provider.of<UserProvider>(context, listen: false).login(token);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomeCalendar()),
+          );
+        } else {
+          _showCustomDialog(
+              context,
+              AppLocalizations.of(context)!.loginFailed,
+              AppLocalizations.of(context)!.incorrectCredentials);
+        }
+      } else {
+        _showCustomDialog(
+            context,
+            AppLocalizations.of(context)!.loginFailed,
+            AppLocalizations.of(context)!.incorrectCredentials);
       }
     } else {
       _showCustomDialog(
