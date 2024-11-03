@@ -4,9 +4,11 @@ import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/standard/extension.dart';
+import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/core/widgets/timetable_day/timetable_day_veiw.dart';
 import 'package:pb_hrsystem/services/http_service.dart';
+import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -285,7 +287,7 @@ class TimetablePageState extends State<TimetablePage> {
         }
 
         final String uid = item['uid']?.toString() ?? UniqueKey().toString();
-        final DateTime? createdOn = DateTime.parse(item['date_create']);
+        final DateTime createdOn = DateTime.parse(item['date_create']);
 
         String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
 
@@ -466,29 +468,33 @@ class TimetablePageState extends State<TimetablePage> {
 
         String status = item['statuss'] != null
             ? item['statuss'] == 1
-            ? 'Success'
-            : 'Pending'
+                ? 'Success'
+                : 'Pending'
             : 'Pending';
 
         if (status == 'Cancelled') continue;
 
         final DateTime createdOn = DateTime.parse(item['updated_at']);
 
-        final event = TimetableItem(
-          title: item['project_name'] ?? 'Minutes Of Meeting',
-          start: startDateTime,
-          end: endDateTime,
-          desc: item['descriptions'] ?? 'Minutes Of Meeting Pending',
-          status: status,
-          category: 'Minutes Of Meeting',
-          uid: uid,
-          imgName: item['img_name'],
-          // members:  List<Map<String, dynamic>>.from(resultMembers),
-          createdAt: createdOn,
-        );
+        TimetableItem? event;
+
+        if (mounted) {
+          event = TimetableItem(
+            title: item['project_name'] ?? AppLocalizations.of(context)!.minutesOfMeeting,
+            start: startDateTime,
+            end: endDateTime,
+            desc: item['descriptions'] ?? 'Minutes Of Meeting Pending',
+            status: status,
+            category: 'Minutes Of Meeting',
+            uid: uid,
+            imgName: item['img_name'],
+            // members:  List<Map<String, dynamic>>.from(resultMembers),
+            createdAt: createdOn,
+          );
+        }
 
         for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
-          addEvent(day, event);
+          addEvent(day, event!);
         }
       }
     } catch (e) {
@@ -580,7 +586,7 @@ class TimetablePageState extends State<TimetablePage> {
               horizontal: 25,
             ),
             child: Text(
-              DateFormat('y MMMM').format(selectedDate),
+              DateFormat.yMMMM(sl<UserPreferences>().getLocalizeSupport().languageCode).format(selectedDate),
               textAlign: TextAlign.left,
               style: const TextStyle(
                 fontSize: 18,
@@ -597,7 +603,7 @@ class TimetablePageState extends State<TimetablePage> {
                 final day = selectedDate.add(Duration(days: index - 3));
                 final hasEvent = events.any((event) => event.start.day == day.day && event.start.month == day.month && event.start.year == day.year);
                 return _buildDateItem(
-                  DateFormat.E().format(day),
+                  DateFormat.E(sl<UserPreferences>().getLocalizeSupport().languageCode).format(day),
                   day.day,
                   isSelected: day.day == selectedDate.day,
                   hasEvent: hasEvent,
@@ -649,8 +655,8 @@ class TimetablePageState extends State<TimetablePage> {
           color: isSelected
               ? const Color(0xFFD4A017)
               : hasEvent
-              ? Colors.green.withOpacity(0.5)
-              : Colors.white,
+                  ? Colors.green.withOpacity(0.5)
+                  : Colors.white,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(

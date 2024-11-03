@@ -4,31 +4,25 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 
 class UserPreferences {
-  /// Retrieves the default language as a String.
-  Future<String?> getDefaultLanguage() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('defaultLanguage');
-  }
+  UserPreferences(this.prefs);
 
-  /// Sets the default language.
-  Future<void> setDefaultLanguage(String language) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('defaultLanguage', language);
-  }
+  final SharedPreferences prefs;
 
-  /// Retrieves the supported locale.
-  Future<Locale?> getLocalizeSupport() async {
-    final prefs = await SharedPreferences.getInstance();
-    String? localeCode = prefs.getString('localizeSupport');
-    if (localeCode != null) {
-      return Locale(localeCode);
+  static const String _defaultLang = "DEFAULT_LANGUAGE";
+  static const String _defaultLocale = "DEFAULT_Locale";
+
+  Future<void> setDefaultLanguage(String lang) => prefs.setString(_defaultLang, lang);
+
+  String? getDefaultLanguage() => prefs.getString(_defaultLang);
+
+  Future<void> setLocalizeSupport(String langCode) => prefs.setString(_defaultLocale, langCode);
+
+  Locale getLocalizeSupport() {
+    String getLocal = prefs.getString(_defaultLocale) ?? 'en';
+    if (getLocal.isEmpty) {
+      return const Locale('en');
+    } else {
+      return Locale(getLocal);
     }
-    return null;
-  }
-
-  /// Sets the supported locale.
-  Future<void> setLocalizeSupport(String localeCode) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('localizeSupport', localeCode);
   }
 }
