@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/standard/extension.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
@@ -21,6 +22,8 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_offline/flutter_offline.dart';
+import 'package:flutter_background/flutter_background.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -30,6 +33,9 @@ class HomeCalendar extends StatefulWidget {
 }
 
 class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin {
+
+  late Box eventsBox;
+
   // ValueNotifier to hold events mapped by date
   late final ValueNotifier<Map<DateTime, List<Event>>> _events;
 
@@ -58,6 +64,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   // Loading State
   bool _isLoading = false;
+
+  // Connectivity State Tracking for Flutter Offline
+  bool _wasConnected = true;
 
   @override
   void initState() {
@@ -308,8 +317,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       for (var item in minutesMeeting) {
         // final DateTime? startDateTime = item['from_date'] != null ? DateTime.parse(item['from_date']) : null;
         // final DateTime? endDateTime = item['to_date'] != null ? DateTime.parse(item['to_date']) : null;
-        final responseMembers = await getRequest('/api/work-tracking/meeting/get-meeting/${item['meeting_uid']}');
-        final List<dynamic> resultMembers = json.decode(responseMembers!.body)['result'];
 
         String dateFrom = formatDateString(item['from_date'].toString());
         String dateTo = formatDateString(item['to_date'].toString());
@@ -746,47 +753,95 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          RefreshIndicator(
-            onRefresh: _onRefresh,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _buildCalendarHeader(isDarkMode),
-                  if (_showFiltersAndSearchBar) _buildFilters(),
-                  if (_showFiltersAndSearchBar) _buildSearchBar(),
-                  _buildCalendar(context, isDarkMode),
-                  _buildSectionSeparator(),
-                  _eventsForDay.isEmpty
-                      ? Text(
-                          AppLocalizations.of(context)!.noEventsForThisDay,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center, // Centered text
-                        )
-                      : CalendarDayWidget(
-                          selectedDay: _selectedDay,
-                          eventsCalendar: _eventsForDay,
-                        ),
-                ],
+    bool isConnected = true;
+
+    return OfflineBuilder(
+      connectivityBuilder: (context, connectivity, child) {
+        final bool isConnected = connectivity != ConnectivityResult.none;
+
+        if (isConnected != _wasConnected) {
+          final message = isConnected
+              ? "You're online!"
+              : "Lost internet connection, you're offline now...";
+          final backgroundColor = isConnected ? Colors.green : Colors.red;
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(message),
+                backgroundColor: backgroundColor,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          });
+
+          _wasConnected = isConnected;
+        }
+
+        return Stack(
+          children: [
+            Positioned(
+              height: 24.0,
+              left: 0.0,
+              right: 0.0,
+              child: Container(
+                color: isConnected ? Colors.green : Colors.red,
+                child: Center(
+                  child: Text(
+                    isConnected ? 'ONLINE' : 'OFFLINE',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
               ),
             ),
-          ),
-          if (_isLoading)
-            const Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: LinearProgressIndicator(),
+            child,
+          ],
+        );
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            RefreshIndicator(
+              onRefresh: _onRefresh,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildCalendarHeader(isDarkMode),
+                    if (_showFiltersAndSearchBar) _buildFilters(),
+                    if (_showFiltersAndSearchBar) _buildSearchBar(),
+                    _buildCalendar(context, isDarkMode),
+                    _buildSectionSeparator(),
+                    _eventsForDay.isEmpty
+                        ? Text(
+                      AppLocalizations.of(context)!.noEventsForThisDay,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    )
+                        : CalendarDayWidget(
+                      selectedDay: _selectedDay,
+                      eventsCalendar: _eventsForDay,
+                    ),
+                  ],
+                ),
+              ),
             ),
-        ],
+            if (_isLoading)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: LinearProgressIndicator(
+                  backgroundColor: isConnected ? Colors.blue : Colors.orange,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

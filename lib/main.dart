@@ -1,5 +1,6 @@
 // lib/main.dart
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,74 +9,101 @@ import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
-import 'package:pb_hrsystem/services/offline_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'splash/splashscreen.dart';
+import 'package:flutter_offline/flutter_offline.dart';
 import 'theme/theme.dart';
 import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
 import 'login/notification_permission_page.dart';
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'models/attendance_record.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_offline/flutter_offline.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:workmanager/workmanager.dart';
+
+void callbackDispatcher() {
+  // Background task function
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      if (kDebugMode) print("Background Task Started: Checking connectivity");
+
+      await Hive.initFlutter();
+      final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+      const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
+      const DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings();
+      const InitializationSettings initializationSettings = InitializationSettings(
+        android: initializationSettingsAndroid,
+        iOS: initializationSettingsDarwin,
+        macOS: initializationSettingsDarwin,
+      );
+
+      await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+      var connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult == ConnectivityResult.none) {
+        if (kDebugMode) print("No internet connection detected");
+
+        const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+          'connectivity_channel',
+          'Connectivity Notifications',
+          channelDescription: 'Notifies when the device is offline',
+          importance: Importance.max,
+          priority: Priority.high,
+          showWhen: false,
+        );
+
+        const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
+
+        await flutterLocalNotificationsPlugin.show(
+          0,
+          'No Internet Connection',
+          'You are currently offline.',
+          notificationDetails,
+        );
+      } else {
+        if (kDebugMode) print("Connected to the internet");
+      }
+    } catch (e) {
+      if (kDebugMode) print("Error in callbackDispatcher: $e");
+    }
+
+    if (kDebugMode) print("Background Task Completed");
+    return Future.value(true);
+  });
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Hive
   await Hive.initFlutter();
   Hive.registerAdapter(AttendanceRecordAdapter());
-
   await Hive.openBox<AttendanceRecord>('pending_attendance');
   await Hive.openBox<String>('userProfileBox');
   await Hive.openBox<List<String>>('bannersBox');
+  await Hive.openBox('loginBox');
+  await Hive.openBox('eventsBox');
 
-  // Initialize Service Locator
   await setupServiceLocator();
 
-  // Initialize the FlutterLocalNotificationsPlugin
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-  FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
-  // Android initialization settings
-  const AndroidInitializationSettings initializationSettingsAndroid =
-  AndroidInitializationSettings('@mipmap/playstore');
-
-  // iOS/macOS initialization settings
-  DarwinInitializationSettings initializationSettingsDarwin =
-  DarwinInitializationSettings(
-    requestAlertPermission: false, // Do not request permissions here
-    requestBadgePermission: false,
-    requestSoundPermission: false,
-    onDidReceiveLocalNotification:
-        (int id, String? title, String? body, String? payload) async {
-      // Handle notification received in foreground
-      if (kDebugMode) {
-        print("iOS Local Notification received: $title $body $payload");
-      }
-    },
-  );
-
-  // Combine Android and iOS/macOS settings
-  final InitializationSettings initializationSettings = InitializationSettings(
+  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
+  const DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings();
+  const InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
     iOS: initializationSettingsDarwin,
     macOS: initializationSettingsDarwin,
   );
 
-  // Initialize the plugin with the settings
   await flutterLocalNotificationsPlugin.initialize(
     initializationSettings,
     onDidReceiveNotificationResponse: (NotificationResponse response) async {
       if (response.payload != null && response.payload!.isNotEmpty) {
-        // Navigate to NotificationPermissionPage on click
         navigatorKey.currentState?.push(MaterialPageRoute(
           builder: (context) => const NotificationPermissionPage(),
         ));
@@ -83,9 +111,14 @@ void main() async {
     },
   );
 
-  // Initialize Offline Service
-  final OfflineService offlineService = sl<OfflineService>();
-  offlineService.initialize();
+  Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
+
+  Workmanager().registerPeriodicTask(
+    "1",
+    "backgroundConnectivityCheck",
+    frequency: const Duration(minutes: 15),
+    constraints: Constraints(networkType: NetworkType.connected),
+  );
 
   runApp(
     MultiProvider(
@@ -94,7 +127,6 @@ void main() async {
         ChangeNotifierProvider(create: (_) => LanguageNotifier()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => DateProvider()),
-        Provider.value(value: offlineService),
       ],
       child: const MyApp(),
     ),
@@ -103,8 +135,89 @@ void main() async {
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late StreamSubscription<ConnectivityResult> _connectivitySubscription;
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeConnectivityMonitoring();
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
+  }
+
+  void _initializeConnectivityMonitoring() async {
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
+    const DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings();
+    const InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsDarwin,
+      macOS: initializationSettingsDarwin,
+    );
+
+    await _flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) async {
+        if (response.payload != null && response.payload!.isNotEmpty) {
+          navigatorKey.currentState?.push(MaterialPageRoute(
+            builder: (context) => const NotificationPermissionPage(),
+          ));
+        }
+      },
+    );
+
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+      if (result == ConnectivityResult.none) {
+        _showNoConnectionNotification();
+      } else {
+        _removeNoConnectionNotification();
+      }
+    } as void Function(List<ConnectivityResult> event)?) as StreamSubscription<ConnectivityResult>;
+
+    var initialResult = await Connectivity().checkConnectivity();
+    if (initialResult == ConnectivityResult.none) {
+      _showNoConnectionNotification();
+    }
+  }
+
+  Future<void> _showNoConnectionNotification() async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'connectivity_channel',
+      'Connectivity Notifications',
+      channelDescription: 'Notifies when the device is offline',
+      importance: Importance.max,
+      priority: Priority.high,
+      ongoing: true,
+      autoCancel: false,
+      ticker: 'No Internet Connection',
+    );
+
+    const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
+
+    await _flutterLocalNotificationsPlugin.show(
+      1,
+      'No Internet Connection',
+      'You are currently offline.',
+      notificationDetails,
+      payload: 'connectivity_payload',
+    );
+  }
+
+  Future<void> _removeNoConnectionNotification() async {
+    await _flutterLocalNotificationsPlugin.cancel(1);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -112,15 +225,12 @@ class MyApp extends StatelessWidget {
       builder: (context, themeNotifier, languageNotifier, child) {
         return MaterialApp(
           navigatorKey: navigatorKey,
-          builder: (context, child) {
-            return EasyLoading.init()(context, child!);
-          },
+          builder: EasyLoading.init(),
           title: 'PSBV Next Demo',
           theme: ThemeData(
             primarySwatch: Colors.green,
             visualDensity: VisualDensity.adaptivePlatformDensity,
-            textTheme:
-            GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme),
+            textTheme: GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
@@ -152,7 +262,7 @@ class MyApp extends StatelessWidget {
             Locale('zh'),
           ],
           locale: languageNotifier.currentLocale,
-          home: const SplashScreen(),
+          home: const MainScreen(),
         );
       },
     );
@@ -169,34 +279,28 @@ class LanguageNotifier with ChangeNotifier {
   }
 
   Future<void> _loadLocale() async {
-    Locale? locale = await sl<UserPreferences>().getLocalizeSupport();
-    if (locale != null) {
-      _currentLocale = locale;
-      notifyListeners();
+    Locale? locale = sl<UserPreferences>().getLocalizeSupport();
+    _currentLocale = locale;
+    notifyListeners();
     }
-  }
 
   void changeLanguage(String languageCode) async {
     switch (languageCode) {
       case 'English':
         _currentLocale = const Locale('en');
         await sl<UserPreferences>().setLocalizeSupport('en');
-        await sl<UserPreferences>().setDefaultLanguage('English');
         break;
       case 'Laos':
         _currentLocale = const Locale('lo');
         await sl<UserPreferences>().setLocalizeSupport('lo');
-        await sl<UserPreferences>().setDefaultLanguage('Laos');
         break;
       case 'Chinese':
         _currentLocale = const Locale('zh');
         await sl<UserPreferences>().setLocalizeSupport('zh');
-        await sl<UserPreferences>().setDefaultLanguage('Chinese');
         break;
       default:
         _currentLocale = const Locale('en');
         await sl<UserPreferences>().setLocalizeSupport('en');
-        await sl<UserPreferences>().setDefaultLanguage('English');
     }
     notifyListeners();
   }
@@ -211,13 +315,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 1;
-
-  final List<GlobalKey<NavigatorState>> _navigatorKeys = [
-    GlobalKey<NavigatorState>(),
-    GlobalKey<NavigatorState>(),
-    GlobalKey<NavigatorState>(),
-    GlobalKey<NavigatorState>(),
-  ];
+  final List<GlobalKey<NavigatorState>> _navigatorKeys = List.generate(4, (index) => GlobalKey<NavigatorState>());
 
   void _onItemTapped(int index) {
     if (index != _selectedIndex) {
@@ -230,58 +328,62 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<bool> _onWillPop() async {
-    final isFirstRouteInCurrentTab =
-    !await _navigatorKeys[_selectedIndex].currentState!.maybePop();
-    if (isFirstRouteInCurrentTab) {
-      return true;
-    } else {
-      return false;
-    }
+    return !await _navigatorKeys[_selectedIndex].currentState!.maybePop();
   }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: _onWillPop,
-      child: Scaffold(
-        body: IndexedStack(
-          index: _selectedIndex,
-          children: [
-            Navigator(
-              key: _navigatorKeys[0],
-              onGenerateRoute: (routeSettings) {
-                return MaterialPageRoute(
-                    builder: (context) => const AttendanceScreen());
-              },
-            ),
-            Navigator(
-              key: _navigatorKeys[1],
-              onGenerateRoute: (routeSettings) {
-                return MaterialPageRoute(builder: (context) => const HomeCalendar());
-              },
-            ),
-            Navigator(
-              key: _navigatorKeys[2],
-              onGenerateRoute: (routeSettings) {
-                return MaterialPageRoute(builder: (context) => const Dashboard());
-              },
-            ),
-            // Navigator(
-            //   key: _navigatorKeys[3],
-            //   onGenerateRoute: (routeSettings) {
-            //     return MaterialPageRoute(builder: (context) => const HistoryPage());
-            //   },
-            // ),
-          ],
+      child: OfflineBuilder(
+        connectivityBuilder: (context, connectivity, child) {
+          final bool connected = connectivity != ConnectivityResult.none;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              child,
+              if (!connected)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    color: Colors.red,
+                    padding: const EdgeInsets.all(8.0),
+                    child: const Text(
+                      'No Internet Connection',
+                      style: TextStyle(color: Colors.white),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+        child: Scaffold(
+          body: IndexedStack(
+            index: _selectedIndex,
+            children: [
+              Navigator(
+                key: _navigatorKeys[0],
+                onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => const AttendanceScreen()),
+              ),
+              Navigator(
+                key: _navigatorKeys[1],
+                onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => const HomeCalendar()),
+              ),
+              Navigator(
+                key: _navigatorKeys[2],
+                onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => const Dashboard()),
+              ),
+            ],
+          ),
+          bottomNavigationBar: CustomBottomNavBar(
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+          ),
         ),
-        bottomNavigationBar: CustomBottomNavBar(
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       ),
     );
   }
 }
-
-

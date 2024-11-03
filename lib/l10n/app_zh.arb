@@ -362,5 +362,14 @@
   "offlineMode": "离线模式",
   "checkInSavedOffline": "您的签到已保存，并将在您恢复网络连接时同步。",
   "checkOutSavedOffline": "您的签出已保存，并将在您恢复网络连接时同步。",
-  "loginErrorMessage": "ການເຂົ້າລະບົບລົ້ມເຫລວ. ກະລຸນາກວດສອບຂໍ້ມູນຂອງທ່ານແລະລອງໃໝ່."
+  "loginErrorMessage": "ການເຂົ້າລະບົບລົ້ມເຫລວ. ກະລຸນາກວດສອບຂໍ້ມູນຂອງທ່ານແລະລອງໃໝ່.",
+  "maybe": "可能",
+  "joined": "已加入",
+  "noEventsForThisDay": "今天没有事件",
+  "noTitle": "无标题",
+  "addEvent": "添加事件",
+  "searchEvents": "搜索事件",
+  "previousMonth": "上个月",
+  "nextMonth": "下个月",
+  "calendar": "日历"
 }
