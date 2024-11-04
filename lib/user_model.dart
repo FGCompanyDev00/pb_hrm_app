@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pb_hrsystem/core/utils/user_preferences.dart';
+import 'package:pb_hrsystem/services/services_locator.dart';
 
 // User Model
 class User {
@@ -33,10 +34,9 @@ class UserProvider extends ChangeNotifier {
 
   // Public method to load user login status and token from shared preferences
   Future<void> loadUser() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    _isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-    _token = prefs.getString('token') ?? '';
-    _loginTime = DateTime.tryParse(prefs.getString('loginTime') ?? '');
+    _isLoggedIn = sl<UserPreferences>().getLoggedIn() ?? false;
+    _token = sl<UserPreferences>().getToken() ?? '';
+    _loginTime = DateTime.tryParse(sl<UserPreferences>().getLoginSession() ?? '');
     notifyListeners();
   }
 
@@ -47,8 +47,7 @@ class UserProvider extends ChangeNotifier {
 
   Future<void> setLoginTime() async {
     _loginTime = DateTime.now();
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('loginTime', _loginTime.toString());
+    sl<UserPreferences>().setLoginSession(_loginTime.toString());
     notifyListeners();
   }
 
@@ -60,11 +59,10 @@ class UserProvider extends ChangeNotifier {
 
   // Fetch user data from API and update current user
   Future<void> fetchAndUpdateUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('token');
+    final String? token = sl<UserPreferences>().getToken();
 
     if (token == null) {
-      print('No token found');
+      debugPrint('No token found');
       return;
     }
 
@@ -101,9 +99,8 @@ class UserProvider extends ChangeNotifier {
   Future<void> login(String token) async {
     _isLoggedIn = true;
     _token = token;
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', true);
-    await prefs.setString('token', token);
+    sl<UserPreferences>().setLoggedIn(true);
+    sl<UserPreferences>().setToken(token);
     await setLoginTime(); // Save login time immediately after login
     notifyListeners();
   }
@@ -114,10 +111,10 @@ class UserProvider extends ChangeNotifier {
     _token = '';
     _loginTime = null;
 
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove('isLoggedIn');
-    await prefs.remove('token');
-    await prefs.remove('loginTime');
+    await sl<UserPreferences>().setLoggedOff();
+    await sl<UserPreferences>().removeToken();
+    await sl<UserPreferences>().removeLoginSession();
 
     notifyListeners(); // Notify listeners to refresh UI based on the new state
-  }}
+  }
+}

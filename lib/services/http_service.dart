@@ -1,22 +1,16 @@
 import 'package:http/http.dart' as http;
+import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
-import 'package:pb_hrsystem/services/navigation_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pb_hrsystem/services/services_locator.dart';
 
 // Base URL for API endpoints
 const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
-/// Retrieves the authentication token from SharedPreferences
-Future<String?> getToken() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('token');
-}
-
 /// Helper method to handle HTTP GET requests with error handling
 Future<http.Response?> getRequest(String endpoint) async {
-  final token = await getToken();
+  final token = sl<UserPreferences>().getToken();
   if (token == null) {
-    if (NavigationService.ctx!.mounted) showSnackBar('Authentication Error: Token is null. Please log in again.');
+    showSnackBar('Authentication Error: Token is null. Please log in again.');
     return null;
   }
 

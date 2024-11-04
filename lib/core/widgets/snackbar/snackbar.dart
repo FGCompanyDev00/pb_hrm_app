@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/services/navigation_service.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 
 /// Displays a SnackBar with the provided message
 void showSnackBar(String message) {
-  ScaffoldMessenger.of(NavigationService.ctx!).showSnackBar(
+  ScaffoldMessenger.of(navigatorKey.currentState!.context).showSnackBar(
     SnackBar(
       content: Text(message),
       backgroundColor: Colors.redAccent,
@@ -13,7 +13,7 @@ void showSnackBar(String message) {
 
 /// Displays a SnackBar with a custom message and color.
 void showSnackBarEvent(String message, Color color) {
-  ScaffoldMessenger.of(NavigationService.ctx!).showSnackBar(
+  ScaffoldMessenger.of(navigatorKey.currentState!.context).showSnackBar(
     SnackBar(
       content: Text(message),
       backgroundColor: color,

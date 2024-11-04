@@ -73,6 +73,9 @@ class TimetablePageState extends State<TimetablePage> {
   Future<void> fetchData() async {
     setState(() {
       _isLoading = true;
+      events.clear();
+      currentEvents.clear();
+      _eventTime.value.clear();
     });
     try {
       await Future.wait([
@@ -193,8 +196,7 @@ class TimetablePageState extends State<TimetablePage> {
   }
 
   Future<void> fetchLeaveRequests() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = sl<UserPreferences>().getToken();
 
     if (token == null) {
       _showErrorDialog('Authentication Error', 'Token is null. Please log in again.');

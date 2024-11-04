@@ -23,7 +23,6 @@ import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_offline/flutter_offline.dart';
-import 'package:flutter_background/flutter_background.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -33,7 +32,6 @@ class HomeCalendar extends StatefulWidget {
 }
 
 class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin {
-
   late Box eventsBox;
 
   // ValueNotifier to hold events mapped by date
@@ -518,7 +516,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         Event? event;
 
         if (mounted) {
-          Event(
+          event = Event(
             title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
             startDateTime: startDateTime,
             endDateTime: endDateTime,
@@ -760,9 +758,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         final bool isConnected = connectivity != ConnectivityResult.none;
 
         if (isConnected != _wasConnected) {
-          final message = isConnected
-              ? "You're online!"
-              : "Lost internet connection, you're offline now...";
+          final message = isConnected ? "You're online!" : "Lost internet connection, you're offline now...";
           final backgroundColor = isConnected ? Colors.green : Colors.red;
 
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -815,18 +811,18 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                     _buildSectionSeparator(),
                     _eventsForDay.isEmpty
                         ? Text(
-                      AppLocalizations.of(context)!.noEventsForThisDay,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    )
+                            AppLocalizations.of(context)!.noEventsForThisDay,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          )
                         : CalendarDayWidget(
-                      selectedDay: _selectedDay,
-                      eventsCalendar: _eventsForDay,
-                    ),
+                            selectedDay: _selectedDay,
+                            eventsCalendar: _eventsForDay,
+                          ),
                   ],
                 ),
               ),

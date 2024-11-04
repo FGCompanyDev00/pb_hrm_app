@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 final Map<String, Color> categoryColors = {
   'Add Meeting': Colors.blue,
   'Leave': Colors.red,

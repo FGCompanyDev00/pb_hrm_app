@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
@@ -82,8 +83,6 @@ void main() async {
   );
 }
 
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
@@ -108,12 +107,12 @@ class _MyAppState extends State<MyApp> {
 
   void _initializeConnectivityMonitoring() async {
     _connectivitySubscription = Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
-      if (result == ConnectivityResult.none) {
-        if (kDebugMode) print("No Internet Connection");
-      } else {
-        if (kDebugMode) print("Connected to the Internet");
-      }
-    } as void Function(List<ConnectivityResult> event)?) as StreamSubscription<ConnectivityResult>;
+          if (result == ConnectivityResult.none) {
+            if (kDebugMode) print("No Internet Connection");
+          } else {
+            if (kDebugMode) print("Connected to the Internet");
+          }
+        } as void Function(List<ConnectivityResult> event)?) as StreamSubscription<ConnectivityResult>;
 
     var initialResult = await Connectivity().checkConnectivity();
     if (initialResult == ConnectivityResult.none) {
@@ -146,9 +145,9 @@ class _MyAppState extends State<MyApp> {
             scaffoldBackgroundColor: Colors.black,
             textTheme: GoogleFonts.oxaniumTextTheme(
               Theme.of(context).textTheme.apply(
-                bodyColor: Colors.white,
-                displayColor: Colors.white,
-              ),
+                    bodyColor: Colors.white,
+                    displayColor: Colors.white,
+                  ),
             ),
           ),
           themeMode: themeNotifier.currentTheme,
