@@ -1,4 +1,4 @@
-// details_page.dart
+// history_details_page.dart
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -31,7 +31,7 @@ class _DetailsPageState extends State<DetailsPage> {
   String? imageUrl;
   String? lineManagerImageUrl;
   String? hrImageUrl;
-  String? _errorMessage; // <-- Declared _errorMessage
+  String? _errorMessage; // Declared _errorMessage
 
   @override
   void initState() {
@@ -83,7 +83,8 @@ class _DetailsPageState extends State<DetailsPage> {
           throw Exception('Failed to fetch leave types');
         }
       } else {
-        throw Exception('Failed to fetch leave types: ${response.statusCode}');
+        throw Exception(
+            'Failed to fetch leave types: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
@@ -95,7 +96,7 @@ class _DetailsPageState extends State<DetailsPage> {
     }
   }
 
-  /// Fetch detailed data using POST API
+  /// Fetch detailed data using appropriate API based on type
   Future<void> _fetchData() async {
     setState(() {
       isLoading = true;
@@ -128,8 +129,16 @@ class _DetailsPageState extends State<DetailsPage> {
     }
 
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    // Correct API endpoint by appending the actual ID
-    final String postApiUrl = '$baseUrl/api/app/users/history/pending/$id';
+    // Initialize API URL based on type
+    String apiUrl;
+
+    if (type == 'leave') {
+      // For leave type, use GET request to /api/leave_request/all/{take_leave_request_id}
+      apiUrl = '$baseUrl/api/leave_request/all/$id';
+    } else {
+      // For other types, use existing POST request
+      apiUrl = '$baseUrl/api/app/users/history/pending/$id';
+    }
 
     try {
       final String? tokenValue = await _getToken();
@@ -142,24 +151,42 @@ class _DetailsPageState extends State<DetailsPage> {
         return;
       }
 
-      // Prepare the request body with 'types' and 'status'
-      Map<String, dynamic> requestBody = {
-        'types': widget.types,
-        'status': status,
-      };
+      http.Response response;
 
-      if (kDebugMode) {
-        print('Sending POST request to $postApiUrl with body: $requestBody');
+      if (type == 'leave') {
+        // Send GET request for leave type
+        if (kDebugMode) {
+          print('Sending GET request to $apiUrl');
+        }
+        response = await http.get(
+          Uri.parse(apiUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $tokenValue',
+          },
+        );
+      } else {
+        // Send POST request for other types
+        // Prepare the request body with 'types' and 'status'
+        Map<String, dynamic> requestBody = {
+          'types': widget.types,
+          'status': status,
+        };
+
+        if (kDebugMode) {
+          print(
+              'Sending POST request to $apiUrl with body: $requestBody');
+        }
+
+        response = await http.post(
+          Uri.parse(apiUrl),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $tokenValue',
+          },
+          body: jsonEncode(requestBody),
+        );
       }
-
-      final response = await http.post(
-        Uri.parse(postApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $tokenValue',
-        },
-        body: jsonEncode(requestBody),
-      );
 
       if (kDebugMode) {
         print('Received response with status code: ${response.statusCode}');
@@ -185,8 +212,8 @@ class _DetailsPageState extends State<DetailsPage> {
             return;
           }
 
-          // Handle 'results' as a list for 'leave' type
           if (type == 'leave') {
+            // For leave, the API returns a GET response with a list containing leave details
             if (responseData['results'] is List) {
               final List<dynamic> resultsList = responseData['results'];
               if (resultsList.isNotEmpty) {
@@ -196,19 +223,18 @@ class _DetailsPageState extends State<DetailsPage> {
                 });
 
                 if (data != null) {
-                  // Directly use 'img_name' from the response for the image URL
-                  setState(() {
-                    imageUrl = data?['img_name'] ?? _defaultAvatarUrl();
-                    // Optional: Handle workflow images if available
-                    lineManagerImageUrl =
-                        data?['line_manager_img'] ?? _defaultAvatarUrl();
-                    hrImageUrl = data?['hr_img'] ?? _defaultAvatarUrl();
-                  });
+                  // Determine the ID to fetch profile image
+                  String profileId = data?['requestor_id'] ?? '';
+                  if (profileId.isNotEmpty) {
+                    _fetchProfileImage(profileId);
+                  } else {
+                    setState(() {
+                      imageUrl = _defaultAvatarUrl();
+                    });
+                  }
                 } else {
                   setState(() {
                     imageUrl = _defaultAvatarUrl();
-                    lineManagerImageUrl = _defaultAvatarUrl();
-                    hrImageUrl = _defaultAvatarUrl();
                   });
                 }
               } else {
@@ -227,41 +253,36 @@ class _DetailsPageState extends State<DetailsPage> {
               _showErrorDialog('Error', 'Unexpected data format.');
             }
           } else {
-            // For meeting, check if 'results' is a list or a map
-            if (type == 'meeting') {
-              if (responseData['results'] is List &&
-                  responseData['results'].isNotEmpty) {
-                setState(() {
-                  data = responseData['results'][0] as Map<String, dynamic>;
-                  isLoading = false;
-                });
-              } else if (responseData['results'] is Map<String, dynamic>) {
-                setState(() {
-                  data = responseData['results'] as Map<String, dynamic>;
-                  isLoading = false;
-                });
-              } else {
-                // Unexpected structure
-                setState(() {
-                  data = null;
-                  isLoading = false;
-                });
-                _showErrorDialog('Error', 'Unexpected data format.');
-              }
+            // For meeting and car, handle existing POST response
+            // Handle 'results' as a list for 'meeting' and 'car' types
+            if (responseData['results'] is List && responseData['results'].isNotEmpty) {
+              setState(() {
+                data = responseData['results'][0] as Map<String, dynamic>;
+                isLoading = false;
+              });
+            } else if (responseData['results'] is Map<String, dynamic>) {
+              setState(() {
+                data = responseData['results'] as Map<String, dynamic>;
+                isLoading = false;
+              });
             } else {
-              // For other types like car, leave
-              if (responseData['results'] is Map<String, dynamic>) {
-                setState(() {
-                  data = responseData['results'] as Map<String, dynamic>;
-                  isLoading = false;
-                });
+              // Unexpected structure
+              setState(() {
+                data = null;
+                isLoading = false;
+              });
+              _showErrorDialog('Error', 'Unexpected data format.');
+            }
+
+            if (type != 'leave' && data != null) {
+              // Determine the ID to fetch profile image
+              String profileId = data?['employee_id'] ?? '';
+              if (profileId.isNotEmpty) {
+                _fetchProfileImage(profileId);
               } else {
-                // Unexpected structure for other types
                 setState(() {
-                  data = null;
-                  isLoading = false;
+                  imageUrl = _defaultAvatarUrl();
                 });
-                _showErrorDialog('Error', 'Unexpected data format.');
               }
             }
           }
@@ -289,6 +310,84 @@ class _DetailsPageState extends State<DetailsPage> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  /// Fetch Profile Image using the profile API
+  Future<void> _fetchProfileImage(String id) async {
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    String profileApiUrl = '$baseUrl/api/profile/$id';
+
+    try {
+      final String? tokenValue = await _getToken();
+      if (tokenValue == null) {
+        _showErrorDialog('Authentication Error',
+            'Token not found. Please log in again.');
+        setState(() {
+          imageUrl = _defaultAvatarUrl();
+        });
+        return;
+      }
+
+      if (kDebugMode) {
+        print('Fetching profile image from: $profileApiUrl');
+      }
+
+      final response = await http.get(
+        Uri.parse(profileApiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $tokenValue',
+        },
+      );
+
+      if (kDebugMode) {
+        print('Profile API Response Status Code: ${response.statusCode}');
+        print('Profile API Response Body: ${response.body}');
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> profileData = jsonDecode(response.body);
+
+        if (profileData.containsKey('statusCode') &&
+            (profileData['statusCode'] == 200 ||
+                profileData['statusCode'] == 201 ||
+                profileData['statusCode'] == 202)) {
+          if (profileData.containsKey('results') &&
+              profileData['results'] is Map<String, dynamic>) {
+            String fetchedImageUrl =
+                profileData['results']['images'] ?? _defaultAvatarUrl();
+            setState(() {
+              imageUrl = fetchedImageUrl;
+            });
+          } else {
+            setState(() {
+              imageUrl = _defaultAvatarUrl();
+            });
+            _showErrorDialog('Error', 'Invalid profile API response.');
+          }
+        } else {
+          String errorMessage =
+              profileData['message'] ?? 'Unknown error fetching profile.';
+          _showErrorDialog('Error', errorMessage);
+          setState(() {
+            imageUrl = _defaultAvatarUrl();
+          });
+        }
+      } else {
+        setState(() {
+          imageUrl = _defaultAvatarUrl();
+        });
+        _showErrorDialog('Error',
+            'Failed to fetch profile image: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching profile image: $e');
+      setState(() {
+        imageUrl = _defaultAvatarUrl();
+      });
+      _showErrorDialog(
+          'Error', 'An unexpected error occurred while fetching profile image.');
     }
   }
 
@@ -372,9 +471,8 @@ class _DetailsPageState extends State<DetailsPage> {
         data?['requestor_name'] ?? data?['employee_name'] ?? 'No Name';
     String submittedOn = '';
 
-    // Fetch image URL for requestor from 'img_path' or 'img_ref'
-    String requestorImageUrl =
-        data?['img_path'] ?? data?['img_ref'] ?? _defaultAvatarUrl();
+    // Fetch image URL for requestor from 'imageUrl'
+    String requestorImageUrl = imageUrl ?? _defaultAvatarUrl();
 
     switch (widget.types.toLowerCase()) {
       case 'leave':
@@ -417,7 +515,7 @@ class _DetailsPageState extends State<DetailsPage> {
                 onBackgroundImageError: (_, __) {
                   // Handle image load error by setting default avatar
                   setState(() {
-                    requestorImageUrl = _defaultAvatarUrl();
+                    imageUrl = _defaultAvatarUrl();
                   });
                 },
               ),
@@ -462,7 +560,7 @@ class _DetailsPageState extends State<DetailsPage> {
         ),
         const SizedBox(width: 8),
         Text(
-          status,
+          status[0].toUpperCase() + status.substring(1),
           style: TextStyle(
             color: statusColor, // Text color matching the border
             fontWeight: FontWeight.bold,
@@ -611,15 +709,18 @@ class _DetailsPageState extends State<DetailsPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildUserAvatar(imageUrl ?? _defaultAvatarUrl(), label: 'Requestor'),
+          _buildUserAvatar(imageUrl ?? _defaultAvatarUrl(),
+              label: 'Requestor'),
           const SizedBox(width: 12),
           const Icon(Icons.arrow_forward, color: Colors.green),
           const SizedBox(width: 12),
-          _buildUserAvatar(lineManagerImageUrl ?? _defaultAvatarUrl(), label: 'Line Manager'),
+          _buildUserAvatar(lineManagerImageUrl ?? _defaultAvatarUrl(),
+              label: 'Line Manager'),
           const SizedBox(width: 12),
           const Icon(Icons.arrow_forward, color: Colors.green),
           const SizedBox(width: 12),
-          _buildUserAvatar(hrImageUrl ?? _defaultAvatarUrl(), label: 'HR'),
+          _buildUserAvatar(hrImageUrl ?? _defaultAvatarUrl(),
+              label: 'HR'),
         ],
       ),
     );
@@ -681,28 +782,6 @@ class _DetailsPageState extends State<DetailsPage> {
     }
   }
 
-  Widget _buildStatusBox(String status) {
-    final Color statusColor = _getStatusColor(status);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.2), // Light background
-        border: Border.all(color: statusColor, width: 2), // Border color
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: statusColor, // Text color matching the border
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-        ),
-      ),
-    );
-  }
-
-  /// Build Info Row
   Widget _buildInfoRow(
       IconData icon, String title, String content, Color color) {
     return Row(
@@ -866,7 +945,8 @@ class _DetailsPageState extends State<DetailsPage> {
             },
           );
           if (response.statusCode == 200 || response.statusCode == 201) {
-            _showSuccessDialog('Success', 'Leave request deleted successfully.');
+            _showSuccessDialog(
+                'Success', 'Leave request deleted successfully.');
           } else {
             _showErrorDialog('Error',
                 'Failed to delete leave request: ${response.reasonPhrase}\nResponse Body: ${response.body}');
@@ -875,14 +955,16 @@ class _DetailsPageState extends State<DetailsPage> {
 
         case 'car':
           response = await http.delete(
-            Uri.parse('$baseUrl/api/office-administration/car_permit/$id'),
+            Uri.parse(
+                '$baseUrl/api/office-administration/car_permit/${data?['uid'] ?? id}'),
             headers: {
               'Authorization': 'Bearer $tokenValue',
               'Content-Type': 'application/json',
             },
           );
-          if (response.statusCode == 200 || response.statusCode == 204) {
-            _showSuccessDialog('Success', 'Car permit deleted successfully.');
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            _showSuccessDialog(
+                'Success', 'Car permit deleted successfully.');
           } else {
             _showErrorDialog('Error',
                 'Failed to delete car permit: ${response.reasonPhrase}\nResponse Body: ${response.body}');
@@ -891,7 +973,8 @@ class _DetailsPageState extends State<DetailsPage> {
 
         case 'meeting':
           response = await http.delete(
-            Uri.parse('$baseUrl/api/office-administration/book_meeting_room/${data?['uid'] ?? id}'),
+            Uri.parse(
+                '$baseUrl/api/office-administration/book_meeting_room/${data?['uid'] ?? id}'),
             headers: {
               'Authorization': 'Bearer $tokenValue',
               'Content-Type': 'application/json',
@@ -904,7 +987,9 @@ class _DetailsPageState extends State<DetailsPage> {
                 'Failed to delete meeting: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
 
-          print('Full response body: ${response.body}');
+          if (kDebugMode) {
+            print('Full response body: ${response.body}');
+          }
 
           break;
 
@@ -973,7 +1058,8 @@ class _DetailsPageState extends State<DetailsPage> {
             ? const Center(
           child: Text(
             'No Data Available',
-            style: TextStyle(fontSize: 16, color: Colors.red),
+            style:
+            TextStyle(fontSize: 16, color: Colors.red),
           ),
         )
             : SingleChildScrollView(

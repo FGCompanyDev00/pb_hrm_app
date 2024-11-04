@@ -32,12 +32,16 @@ class _OfficeBookingEventEditPageState
   // Employee ID
   String? _employeeId;
 
-  // Selected Members for Meeting
+  // Selected Members for Meeting or Car
   List<Map<String, dynamic>> _selectedMembers = [];
 
   // Leave Types
   List<Map<String, dynamic>> _leaveTypes = [];
   String? _selectedLeaveTypeId;
+
+  // Rooms for Meeting
+  List<Map<String, dynamic>> _rooms = [];
+  String? _selectedRoomId;
 
   // Controllers for Leave
   final TextEditingController _leaveFromController = TextEditingController();
@@ -49,7 +53,7 @@ class _OfficeBookingEventEditPageState
   final TextEditingController _meetingTitleController = TextEditingController();
   final TextEditingController _meetingFromController = TextEditingController();
   final TextEditingController _meetingToController = TextEditingController();
-  final TextEditingController _meetingRoomController = TextEditingController();
+  // Removed _meetingRoomController as room is selected via dropdown
   final TextEditingController _meetingTelController = TextEditingController();
   final TextEditingController _meetingRemarkController =
   TextEditingController();
@@ -66,6 +70,9 @@ class _OfficeBookingEventEditPageState
     _fetchEmployeeId();
     _fetchLeaveTypes();
     _fetchEventDetails();
+    if (widget.type.toLowerCase() == 'meeting') {
+      _fetchRooms();
+    }
   }
 
   @override
@@ -80,7 +87,7 @@ class _OfficeBookingEventEditPageState
     _meetingTitleController.dispose();
     _meetingFromController.dispose();
     _meetingToController.dispose();
-    _meetingRoomController.dispose();
+    // _meetingRoomController.dispose(); // Removed
     _meetingTelController.dispose();
     _meetingRemarkController.dispose();
 
@@ -139,6 +146,48 @@ class _OfficeBookingEventEditPageState
       });
       if (kDebugMode) {
         print('Error fetching leave types: $e');
+      }
+    }
+  }
+
+  /// Fetches rooms from the API for meeting booking
+  Future<void> _fetchRooms() async {
+    try {
+      String token = await _fetchToken();
+      String url = 'https://demo-application-api.flexiflows.co/api/office-administration/rooms';
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (kDebugMode) {
+        print('Fetching Rooms from URL: $url');
+        print('Response Status Code: ${response.statusCode}');
+        print('Response Body: ${response.body}');
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        if (data['statusCode'] == 200 && data['results'] is List) {
+          setState(() {
+            _rooms = List<Map<String, dynamic>>.from(data['results']);
+          });
+        } else {
+          throw Exception('Failed to fetch rooms');
+        }
+      } else {
+        throw Exception('Failed to fetch rooms: ${response.statusCode}');
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error fetching rooms: $e';
+      });
+      if (kDebugMode) {
+        print('Error fetching rooms: $e');
       }
     }
   }
@@ -267,7 +316,8 @@ class _OfficeBookingEventEditPageState
           ? DateFormat('yyyy-MM-dd')
           .format(DateTime.parse(data['to_date_time']))
           : '';
-      _meetingRoomController.text = data['room_name'] ?? '';
+      // _meetingRoomController.text = data['room_name'] ?? ''; // Removed
+      _selectedRoomId = data['room_id']?.toString();
       _meetingTelController.text = data['employee_tel'] ?? '';
       _meetingRemarkController.text = data['remark'] ?? '';
 
@@ -288,6 +338,16 @@ class _OfficeBookingEventEditPageState
       _carPlaceController.text = data['place'] ?? '';
       _carDateInController.text = data['date_in'] ?? '';
       _carDateOutController.text = data['date_out'] ?? '';
+      _employeeId = data['employee_id']?.toString() ?? _employeeId;
+
+      // Assuming 'members' are part of car booking as per API
+      _selectedMembers = List<Map<String, dynamic>>.from(
+          data['members']?.map((member) => {
+            'employee_id': member['employee_id'],
+            'employee_name': member['employee_name'],
+            'img_name': member['img_name'],
+          }) ??
+              []);
     });
   }
 
@@ -317,6 +377,10 @@ class _OfficeBookingEventEditPageState
         if (_meetingFromController.text.isEmpty ||
             _meetingToController.text.isEmpty) {
           _showErrorMessage('Please select both From and To dates.');
+          return false;
+        }
+        if (_selectedRoomId == null) {
+          _showErrorMessage('Please select a room.');
           return false;
         }
         if (_meetingTelController.text.isEmpty) {
@@ -525,6 +589,31 @@ class _OfficeBookingEventEditPageState
           ),
         ),
         const SizedBox(height: 16.0),
+        // Room Dropdown
+        DropdownButtonFormField<String>(
+          decoration: InputDecoration(
+            labelText: 'Room*',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+          ),
+          value: _selectedRoomId,
+          items: _rooms
+              .map((room) => DropdownMenuItem<String>(
+            value: room['room_id'].toString(),
+            child: Text(room['room_name'] ?? 'Unknown Room'),
+          ))
+              .toList(),
+          onChanged: (String? newValue) {
+            setState(() {
+              _selectedRoomId = newValue;
+              if (kDebugMode) {
+                print('Selected Room ID: $_selectedRoomId');
+              }
+            });
+          },
+          validator: (value) =>
+          value == null ? 'Please select a room' : null,
+        ),
+        const SizedBox(height: 16.0),
         // Employee Telephone
         TextFormField(
           controller: _meetingTelController,
@@ -718,10 +807,10 @@ class _OfficeBookingEventEditPageState
           url =
           'https://demo-application-api.flexiflows.co/api/office-administration/book_meeting_room/${widget.id}';
           body = {
+            "room_id": _selectedRoomId,
             "title": _meetingTitleController.text,
             "from_date_time": _meetingFromController.text,
             "to_date_time": _meetingToController.text,
-            "room_id": _meetingRoomController.text, // Ensure room_id is correctly formatted
             "employee_tel": _meetingTelController.text,
             "remark": _meetingRemarkController.text,
             "members": _selectedMembers.isNotEmpty
@@ -735,6 +824,7 @@ class _OfficeBookingEventEditPageState
           url =
           'https://demo-application-api.flexiflows.co/api/office-administration/car_permit/${widget.id}';
           body = {
+            "employee_id": _employeeId,
             "purpose": _carPurposeController.text.isNotEmpty
                 ? _carPurposeController.text
                 : null,
@@ -747,6 +837,11 @@ class _OfficeBookingEventEditPageState
             "date_out": _carDateOutController.text.isNotEmpty
                 ? _carDateOutController.text
                 : null,
+            "members": _selectedMembers.isNotEmpty
+                ? _selectedMembers
+                .map((member) => {"employee_id": member['employee_id']})
+                .toList()
+                : [],
           };
           break;
         default:
@@ -840,8 +935,8 @@ class _OfficeBookingEventEditPageState
                 ? Center(
               child: Text(
                 _errorMessage!,
-                style: const TextStyle(
-                    color: Colors.red, fontSize: 16.0),
+                style:
+                const TextStyle(color: Colors.red, fontSize: 16.0),
               ),
             )
                 : SingleChildScrollView(
