@@ -729,7 +729,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       margin: const EdgeInsets.symmetric(vertical: 4),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
-        title: Text(record['date']!, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Center(
+          child: Text(
+            record['date']!,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+        ),
         subtitle: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [

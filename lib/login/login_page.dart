@@ -270,7 +270,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
 
   Future<void> _authenticate({bool useBiometric = true}) async {
     if (!_biometricEnabled) {
-      _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled, AppLocalizations.of(context)!.enableBiometric);
+      _showCustomDialog(
+          context,
+          AppLocalizations.of(context)!.biometricDisabled,
+          AppLocalizations.of(context)!.enableBiometric);
       return;
     }
 
@@ -290,33 +293,18 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     }
 
     if (authenticated) {
-      // Attempt to retrieve stored credentials
       String? username = await _storage.read(key: 'username');
       String? password = await _storage.read(key: 'password');
-
       if (username != null && password != null) {
-        // Use locally stored credentials for login
         _usernameController.text = username;
         _passwordController.text = password;
-
-        final prefs = await SharedPreferences.getInstance();
-        final token = prefs.getString('token');
-
-        // Proceed with direct login if token exists
-        if (token != null) {
-          Provider.of<UserProvider>(context, listen: false).login(token);
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeCalendar()),
-          );
-        } else {
-          _showCustomDialog(context, AppLocalizations.of(context)!.loginFailed, AppLocalizations.of(context)!.incorrectCredentials);
-        }
-      } else {
-        _showCustomDialog(context, AppLocalizations.of(context)!.loginFailed, AppLocalizations.of(context)!.incorrectCredentials);
+        _login();
       }
     } else {
-      _showCustomDialog(context, AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue);
+      _showCustomDialog(
+          context,
+          AppLocalizations.of(context)!.authenticationFailed,
+          AppLocalizations.of(context)!.authenticateToContinue);
     }
   }
 

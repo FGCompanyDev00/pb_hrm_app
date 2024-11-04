@@ -231,7 +231,7 @@ class _SettingsPageState extends State<SettingsPage> {
             AppLocalizations.of(context)!.settings,
             style: const TextStyle(
               color: Colors.black,
-              fontSize: 22,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -241,7 +241,7 @@ class _SettingsPageState extends State<SettingsPage> {
               Navigator.pop(context);
             },
           ),
-          toolbarHeight: 80,
+          toolbarHeight: 100,
           elevation: 0,
           backgroundColor: Colors.transparent,
         ),
