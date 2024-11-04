@@ -233,7 +233,7 @@ class _DashboardState extends State<Dashboard> {
       onWillPop: () async => false, // Disable back button
       child: Scaffold(
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(140.0),
+          preferredSize: const Size.fromHeight(150.0),
           child: FutureBuilder<UserProfile>(
             future: futureUserProfile,
             builder: (context, snapshot) {
@@ -302,7 +302,7 @@ class _DashboardState extends State<Dashboard> {
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 30.0),
+              padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 40.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -314,7 +314,7 @@ class _DashboardState extends State<Dashboard> {
                         MaterialPageRoute(builder: (context) => const SettingsPage()),
                       );
                     },
-                    child: const Icon(Icons.settings, color: Colors.black, size: 40),
+                    child: const Icon(Icons.settings, color: Colors.black, size: 38),
                   ),
 
                   // User Profile and Greeting
@@ -329,19 +329,19 @@ class _DashboardState extends State<Dashboard> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         CircleAvatar(
-                          radius: 24,
+                          radius: 28,
                           backgroundImage: userProfile.imgName != 'default_avatar.jpg'
                               ? NetworkImage(userProfile.imgName)
                               : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
                           backgroundColor: Colors.white,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 8),
                         Text(
                           AppLocalizations.of(context)!.greeting(userProfile.name),
                           style: const TextStyle(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,
-                            fontSize: 17,
+                            fontSize: 18,
                           ),
                         ),
                       ],
@@ -353,7 +353,7 @@ class _DashboardState extends State<Dashboard> {
                     onTap: () {
                       _showLogoutDialog(context);
                     },
-                    child: const Icon(Icons.power_settings_new, color: Colors.black, size: 40),
+                    child: const Icon(Icons.power_settings_new, color: Colors.black, size: 38),
                   ),
                 ],
               ),

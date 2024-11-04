@@ -12,7 +12,7 @@ keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 android {
     namespace = "com.phongsavanh.pb_hrsystem"
 
-    ndkVersion = "21.4.7075529"
+    ndkVersion = "25.1.8937393"
     compileSdkVersion 34
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -27,8 +27,8 @@ android {
         applicationId = "com.phongsavanh.pb_hrsystem"
         minSdk = 24
         targetSdk = 34
-        versionCode = 21
-        versionName = "1.0.21"
+        versionCode = 22
+        versionName = "1.0.22"
     }
 
     signingConfigs {
@@ -45,6 +45,7 @@ android {
             signingConfig signingConfigs.release
             minifyEnabled true
             shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
