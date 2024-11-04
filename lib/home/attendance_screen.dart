@@ -16,7 +16,6 @@ import 'package:flutter_background/flutter_background.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'monthly_attendance_record.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:hive/hive.dart';
 import '../models/attendance_record.dart';
 import '../services/offline_service.dart';
 import 'package:provider/provider.dart';
@@ -52,7 +51,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   static const String offsiteApiUrl = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offsite';
 
   static const double _officeRange = 500;
-  static const LatLng _officeLocation = LatLng(2.891589, 101.524822);
+  static LatLng _officeLocation = LatLng(2.891589, 101.524822);
 
   @override
   void initState() {
@@ -192,7 +191,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       // Save to local storage for later synchronization
       OfflineService offlineService = Provider.of<OfflineService>(context, listen: false);
       await offlineService.addPendingAttendance(record);
-      _showCustomDialog(context, AppLocalizations.of(context)!.offlineMode, AppLocalizations.of(context)!.checkInSavedOffline);
+      _showCustomDialog(context, AppLocalizations.of(context)!.offlineMode, AppLocalizations.of(context)!.checkInSavedOffline, isSuccess: false);
     }
   }
 
@@ -241,7 +240,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       // Save to local storage for later synchronization
       OfflineService offlineService = Provider.of<OfflineService>(context, listen: false);
       await offlineService.addPendingAttendance(record);
-      _showCustomDialog(context, AppLocalizations.of(context)!.offlineMode, AppLocalizations.of(context)!.checkOutSavedOffline);
+      _showCustomDialog(context, AppLocalizations.of(context)!.offlineMode, AppLocalizations.of(context)!.checkOutSavedOffline, isSuccess: false);
     }
   }
 
@@ -272,7 +271,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     String? token = prefs.getString('token');
 
     if (token == null) {
-      _showCustomDialog(context, AppLocalizations.of(context)!.error, AppLocalizations.of(context)!.noTokenFound);
+      _showCustomDialog(context, AppLocalizations.of(context)!.error, AppLocalizations.of(context)!.noTokenFound, isSuccess: false);
       return;
     }
 
@@ -288,7 +287,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
       if (response.statusCode == 201 || response.statusCode == 202) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
-        _showCustomDialog(context, AppLocalizations.of(context)!.success, responseData['message'] ?? AppLocalizations.of(context)!.checkInOutSuccessful);
+        _showCustomDialog(context, AppLocalizations.of(context)!.success, responseData['message'] ?? AppLocalizations.of(context)!.checkInOutSuccessful, isSuccess: true);
       } else {
         throw Exception('Failed with status code ${response.statusCode}');
       }
@@ -296,7 +295,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       // If sending fails, save to local storage
       OfflineService offlineService = Provider.of<OfflineService>(context, listen: false);
       await offlineService.addPendingAttendance(record);
-      _showCustomDialog(context, AppLocalizations.of(context)!.error, '${AppLocalizations.of(context)!.failedToCheckInOut}: $error');
+      _showCustomDialog(context, AppLocalizations.of(context)!.error, '${AppLocalizations.of(context)!.failedToCheckInOut}: $error', isSuccess: false);
     }
   }
 
@@ -456,14 +455,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
     if (!_biometricEnabled) {
-      _showCustomDialog(context, AppLocalizations.of(context)!.biometricNotEnabled, AppLocalizations.of(context)!.enableBiometricFirst);
+      _showCustomDialog(context, AppLocalizations.of(context)!.biometricNotEnabled, AppLocalizations.of(context)!.enableBiometricFirst, isSuccess: false);
       return;
     }
 
     bool didAuthenticate = await _authenticateWithBiometrics();
 
     if (!didAuthenticate) {
-      _showCustomDialog(context, AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue);
+      _showCustomDialog(context, AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
       return;
     }
 
@@ -510,15 +509,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
+        return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           elevation: 10, // Adds depth (shadow) to the modal
-          contentPadding: EdgeInsets.zero,
-          content: Column(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Container(
                 padding: const EdgeInsets.all(16.0),
@@ -526,19 +523,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   color: primaryColor,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                child: Row(
                   children: [
                     Icon(
                       isHome ? Icons.home : Icons.apartment,
                       color: Colors.white,
-                      size: 60,
+                      size: 40,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(width: 16),
                     Text(
                       AppLocalizations.of(context)!.locationDetected,
                       style: const TextStyle(
-                        fontSize: 24,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -552,8 +548,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   AppLocalizations.of(context)!.youAreCurrentlyAt(isHome ? AppLocalizations.of(context)!.home : AppLocalizations.of(context)!.office),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                     color: Colors.black87,
                   ),
                 ),
@@ -566,17 +562,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 12.0),
+                    padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
                     shadowColor: Colors.black.withOpacity(0.25),
-                    elevation: 8,
+                    elevation: 5,
                   ),
                   child: Text(
                     AppLocalizations.of(context)!.ok,
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -591,16 +587,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildPageContent(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: _buildSectionContainer(),
-        ),
-        Expanded(
-          child: _buildTabContent(context),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              _buildSectionContainer(),
+              const SizedBox(height: 16),
+              _buildHeaderContent(context),
+              const SizedBox(height: 16),
+              _buildWeeklyRecordsList(),
+              const SizedBox(height: 80), // To provide space for the floating button
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -608,42 +610,55 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
+        return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 16),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isSuccess ? Icons.check_circle_outline : Icons.error_outline,
+                  color: isSuccess ? Colors.green : Colors.red,
+                  size: 50,
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                message,
-                style: const TextStyle(fontSize: 18),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isSuccess ? const Color(0xFFDAA520) : Colors.red, // gold or red color
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
+                const SizedBox(height: 16),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                child: Text(
-                  AppLocalizations.of(context)!.close,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                const SizedBox(height: 16),
+                Text(
+                  message,
+                  style: const TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isSuccess ? const Color(0xFFDAA520) : Colors.red,
+                    padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                  ),
+                  child: Text(
+                    AppLocalizations.of(context)!.close,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -654,42 +669,51 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
+        return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.access_time, color: Colors.blue, size: 50),
-              const SizedBox(height: 16),
-              Text(
-                AppLocalizations.of(context)!.workSummary,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                AppLocalizations.of(context)!.youWorkedForHoursToday(_workingHours.toString().split('.').first.padLeft(8, '0')),
-                style: const TextStyle(fontSize: 18),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDAA520), // gold color
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.access_time, color: Colors.blue, size: 50),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.workSummary,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                child: Text(
-                  AppLocalizations.of(context)!.close,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                const SizedBox(height: 16),
+                Text(
+                  AppLocalizations.of(context)!.youWorkedForHoursToday(_workingHours.toString().split('.').first.padLeft(8, '0')),
+                  style: const TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDAA520), // gold color
+                    padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                  ),
+                  child: Text(
+                    AppLocalizations.of(context)!.close,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -725,13 +749,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           time,
           style: TextStyle(
             color: color,
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
         ),
         Text(
           title,
-          style: const TextStyle(color: Colors.black),
+          style: const TextStyle(color: Colors.black87, fontSize: 12),
         ),
       ],
     );
@@ -741,8 +765,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final fingerprintBackgroundColor = _currentSection == 'Office'
         ? Colors.green
         : _currentSection == 'Home'
-            ? Colors.orange
-            : Colors.red;
+        ? Colors.orange
+        : Colors.red;
 
     final now = DateTime.now();
     final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 8, 0);
@@ -754,30 +778,29 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       onTap: () async {
         if (!_isCheckInActive) {
           if (now.isBefore(checkInTimeAllowed) || now.isAfter(checkInDisabledTime)) {
-            _showCustomDialog(context, AppLocalizations.of(context)!.checkInNotAllowed, AppLocalizations.of(context)!.checkInLateNotAllowed);
+            _showCustomDialog(context, AppLocalizations.of(context)!.checkInNotAllowed, AppLocalizations.of(context)!.checkInLateNotAllowed, isSuccess: false);
           } else if (isCheckInEnabled) {
             bool isAuthenticated = await _authenticateWithBiometrics();
             if (isAuthenticated) {
               _performCheckIn(DateTime.now());
-              _showCustomDialog(context, AppLocalizations.of(context)!.checkInSuccess, AppLocalizations.of(context)!.checkInSuccessMessage);
+              _showCustomDialog(context, AppLocalizations.of(context)!.checkInSuccess, AppLocalizations.of(context)!.checkInSuccessMessage, isSuccess: true);
             } else {
-              _showCustomDialog(context, AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue);
+              _showCustomDialog(context, AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
             }
           }
         } else if (_isCheckInActive && isCheckOutEnabled) {
           bool isAuthenticated = await _authenticateWithBiometrics();
           if (isAuthenticated) {
             _performCheckOut(DateTime.now());
-            _showCustomDialog(context, AppLocalizations.of(context)!.checkOutSuccess, AppLocalizations.of(context)!.checkOutSuccessMessage);
+            _showCustomDialog(context, AppLocalizations.of(context)!.checkOutSuccess, AppLocalizations.of(context)!.checkOutSuccessMessage, isSuccess: true);
           } else {
-            _showCustomDialog(context, AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue);
+            _showCustomDialog(context, AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
           }
         } else if (_isCheckInActive) {
-          _showCustomDialog(context, AppLocalizations.of(context)!.alreadyCheckedIn, AppLocalizations.of(context)!.alreadyCheckedInMessage);
+          _showCustomDialog(context, AppLocalizations.of(context)!.alreadyCheckedIn, AppLocalizations.of(context)!.alreadyCheckedInMessage, isSuccess: false);
         }
       },
       child: Container(
-        margin: const EdgeInsets.only(top: 16.0),
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -785,7 +808,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           boxShadow: const [
             BoxShadow(
               color: Colors.black12,
-              blurRadius: 10,
+              blurRadius: 8,
               offset: Offset(0, 4),
             ),
           ],
@@ -794,29 +817,34 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           children: [
             // Date and Time
             Text(
-              DateFormat('EEEE MMMM dd - yyyy, HH:mm:ss').format(DateTime.now()),
+              DateFormat('EEEE, MMMM dd, yyyy').format(DateTime.now()),
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              DateFormat('HH:mm:ss').format(DateTime.now()),
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
             const SizedBox(height: 16),
 
             // Fingerprint button with dynamic background color
             Container(
-              width: 100,
-              height: 100,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: fingerprintBackgroundColor,
                 boxShadow: const [
                   BoxShadow(
                     color: Colors.black26,
-                    blurRadius: 10,
-                    offset: Offset(0, 5),
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
                   ),
                 ],
               ),
               child: const Icon(
                 Icons.fingerprint,
-                size: 60,
+                size: 40,
                 color: Colors.white,
               ),
             ),
@@ -827,25 +855,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               _isCheckInActive ? AppLocalizations.of(context)!.checkOut : AppLocalizations.of(context)!.checkIn,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
-            const Divider(
-              height: 20,
-              thickness: 1,
-              indent: 1,
-              endIndent: 0,
-              color: Colors.grey,
-            ),
+            const SizedBox(height: 8),
+
             // Register presence text
             Text(
               AppLocalizations.of(context)!.registerPresenceStartWork,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-            ),
-            const Divider(
-              height: 20,
-              thickness: 1,
-              indent: 1,
-              endIndent: 0,
-              color: Colors.grey,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 16),
 
@@ -874,72 +889,31 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildSummaryItem(String title, String time, IconData icon, Color color) {
     return Column(
       children: [
-        Icon(icon, color: color, size: 36),
-        const SizedBox(height: 8),
+        Icon(icon, color: color, size: 24),
+        const SizedBox(height: 4),
         Text(
           time,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         ),
         Text(
           title,
-          style: const TextStyle(color: Colors.black),
+          style: const TextStyle(color: Colors.black87, fontSize: 12),
         ),
       ],
     );
   }
 
   Widget _buildTabContent(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            gradient: _selectedIndex == 1
-                ? LinearGradient(
-                    colors: [
-                      Colors.red.shade50,
-                      Colors.red.shade100,
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  )
-                : LinearGradient(
-                    colors: [
-                      Colors.orange.shade50,
-                      Colors.green.shade50,
-                    ],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    stops: const [0.5, 0.5],
-                  ),
-          ),
-        ),
-        Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeaderContent(context),
-                    const SizedBox(height: 16),
-                    _buildWeeklyRecordsList(),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
+    return Container(); // Placeholder since all content is now on a single page
   }
 
   Widget _buildWeeklyRecordsList() {
     if (_weeklyRecords.isEmpty) {
-      return Center(
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
         child: Text(
           AppLocalizations.of(context)!.noWeeklyRecordsFound,
-          style: const TextStyle(color: Colors.black),
+          style: const TextStyle(color: Colors.black54, fontSize: 16),
         ),
       );
     }
@@ -948,20 +922,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       children: [
         Container(
           margin: const EdgeInsets.symmetric(vertical: 8),
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
           decoration: BoxDecoration(
             color: const Color(0xFFDAA520), // Gold color
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(12),
             boxShadow: const [
               BoxShadow(
                 color: Colors.black26,
                 blurRadius: 4,
-                offset: Offset(0, 4),
+                offset: Offset(0, 2),
               ),
             ],
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               Expanded(
                 child: Center(
@@ -990,8 +963,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ],
           ),
         ),
-        Column(
-          children: _weeklyRecords.map((record) => _buildAttendanceRow(record)).toList(),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _weeklyRecords.length,
+          itemBuilder: (context, index) {
+            return _buildAttendanceRow(_weeklyRecords[index]);
+          },
         ),
       ],
     );
@@ -1135,6 +1113,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Fetch screen size for responsiveness
+    final mediaQuery = MediaQuery.of(context);
+    final screenWidth = mediaQuery.size.width;
+    final screenHeight = mediaQuery.size.height;
+
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: PreferredSize(
@@ -1180,9 +1163,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: MediaQuery.of(context).padding.bottom + 40,
+            bottom: mediaQuery.padding.bottom + 20,
             child: Center(
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -1190,16 +1173,17 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  backgroundColor: Colors.green.withOpacity(0.5),
-                  elevation: 0,
+                  backgroundColor: Colors.green,
+                  elevation: 5,
                 ),
-                child: Text(
+                icon: const Icon(Icons.report, color: Colors.white),
+                label: Text(
                   AppLocalizations.of(context)!.viewAll,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
             ),
@@ -1210,9 +1194,12 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildLoadingIndicator() {
-    return const Center(
-      child: CircularProgressIndicator(
-        valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+    return Container(
+      color: Colors.black.withOpacity(0.3),
+      child: const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+        ),
       ),
     );
   }

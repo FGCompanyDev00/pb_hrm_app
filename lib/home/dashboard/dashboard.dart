@@ -8,6 +8,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_main_page.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
+import 'package:pb_hrsystem/home/monthly_attendance_record.dart';
 import 'package:pb_hrsystem/home/qr_profile_page.dart';
 import 'package:pb_hrsystem/notifications/notification_page.dart';
 import 'package:pb_hrsystem/roles.dart';
@@ -33,20 +34,57 @@ class _DashboardState extends State<Dashboard> {
   late Future<List<String>> futureBanners;
   late PageController _pageController;
   int _currentPage = 0;
+  Timer? _carouselTimer;
+  bool _isLoading = false; // Defined _isLoading to manage loading state
+
+  // Hive boxes
+  late Box<String> userProfileBox;
+  late Box<List<String>> bannersBox;
 
   @override
   void initState() {
     super.initState();
+    // Initialize Hive boxes
+    _initializeHiveBoxes();
+
+    // Fetch user data and banners
     Provider.of<UserProvider>(context, listen: false).fetchAndUpdateUser();
     futureUserProfile = fetchUserProfile();
     futureBanners = fetchBanners();
+
+    // Initialize PageController
     _pageController = PageController(initialPage: _currentPage);
 
-    // Auto-swiping the carousel every 5 seconds
-    Timer.periodic(const Duration(seconds: 5), (Timer timer) {
+    // Start auto-swiping the carousel every 5 seconds
+    _startCarouselTimer();
+  }
+
+  // Initialize Hive boxes
+  Future<void> _initializeHiveBoxes() async {
+    // Open 'userProfileBox' if not already open
+    if (!Hive.isBoxOpen('userProfileBox')) {
+      await Hive.openBox<String>('userProfileBox');
+    }
+    userProfileBox = Hive.box<String>('userProfileBox');
+
+    // Open 'bannersBox' if not already open
+    if (!Hive.isBoxOpen('bannersBox')) {
+      await Hive.openBox<List<String>>('bannersBox');
+    }
+    bannersBox = Hive.box<List<String>>('bannersBox');
+  }
+
+  // Start the carousel auto-swipe timer
+  void _startCarouselTimer() {
+    _carouselTimer = Timer.periodic(const Duration(seconds: 5), (Timer timer) {
       if (_pageController.hasClients) {
         int nextPage = _currentPage + 1;
-        if (nextPage >= (_pageController.position.maxScrollExtent / _pageController.position.viewportDimension).ceil()) {
+        // Calculate the total number of pages
+        double maxScrollExtent = _pageController.position.maxScrollExtent;
+        double viewportDimension = _pageController.position.viewportDimension;
+        int totalPages = (maxScrollExtent / viewportDimension).ceil();
+
+        if (nextPage >= totalPages) {
           nextPage = 0;
         }
         _pageController.animateToPage(
@@ -54,14 +92,21 @@ class _DashboardState extends State<Dashboard> {
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeIn,
         );
+        setState(() {
+          _currentPage = nextPage;
+        });
       }
     });
   }
 
+  // Fetch user profile from API or Hive
   Future<UserProfile> fetchUserProfile() async {
+    setState(() {
+      _isLoading = true; // Start loading
+    });
+
     final prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
-    final userProfileBox = Hive.box<String>('userProfileBox'); // Access the already opened box as a String box
 
     try {
       // Fetch profile data online
@@ -83,32 +128,50 @@ class _DashboardState extends State<Dashboard> {
           // Save the profile as a JSON string to Hive
           await userProfileBox.put('userProfile', jsonEncode(userProfile.toJson()));
 
-          print("Fetched and saved user profile to Hive successfully.");
+          if (kDebugMode) {
+            print("Fetched and saved user profile to Hive successfully.");
+          }
           return userProfile;
         } else {
-          print("Error: No data available in the response.");
+          if (kDebugMode) {
+            print("Error: No data available in the response.");
+          }
           throw Exception(AppLocalizations.of(context)!.noDataAvailable);
         }
       } else {
-        print("Error: Failed to fetch data. Status Code: ${response.statusCode}");
+        if (kDebugMode) {
+          print("Error: Failed to fetch data. Status Code: ${response.statusCode}");
+        }
+        // Removed the exception related to 'failedToLoadBanners'
         throw Exception(AppLocalizations.of(context)!.errorWithDetails('Status Code: ${response.statusCode}'));
       }
     } catch (e) {
-      print("Network error: $e. Attempting to retrieve profile from Hive.");
+      if (kDebugMode) {
+        print("Network error: $e. Attempting to retrieve profile from Hive.");
+      }
 
       // Retrieve profile from Hive if network request fails
       final cachedProfileJson = userProfileBox.get('userProfile');
       if (cachedProfileJson != null) {
         final userProfile = UserProfile.fromJson(jsonDecode(cachedProfileJson));
-        print("Retrieved user profile from Hive successfully.");
+        if (kDebugMode) {
+          print("Retrieved user profile from Hive successfully.");
+        }
         return userProfile;
       } else {
-        print("Error: No cached profile data available in Hive.");
+        if (kDebugMode) {
+          print("Error: No cached profile data available in Hive.");
+        }
         throw Exception(AppLocalizations.of(context)!.noDataAvailable);
       }
+    } finally {
+      setState(() {
+        _isLoading = false; // End loading
+      });
     }
   }
 
+  // Fetch banners from API or Hive
   Future<List<String>> fetchBanners() async {
     final prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
@@ -126,20 +189,28 @@ class _DashboardState extends State<Dashboard> {
         final results = jsonDecode(response.body)['results'];
         final banners = results.map<String>((file) => file['files'] as String).toList();
 
-        final bannersBox = await Hive.openBox<List<String>>('bannersBox');
-        await bannersBox.put('banners', banners); // Save to Hive
+        // Save banners to Hive
+        await bannersBox.put('banners', banners);
 
         return banners;
       } else {
-        throw Exception("Failed to load banners");
+        if (kDebugMode) {
+          print("Error: Failed to load banners. Status Code: ${response.statusCode}");
+        }
+        // Instead of throwing an exception, return cached banners or an empty list
+        return bannersBox.get('banners') ?? [];
       }
     } catch (e) {
+      if (kDebugMode) {
+        print("Error fetching banners: $e. Attempting to retrieve from Hive.");
+      }
+
       // Retrieve from Hive if network request fails
-      final bannersBox = await Hive.openBox<List<String>>('bannersBox');
       return bannersBox.get('banners') ?? [];
     }
   }
 
+  // Refresh user profile manually
   Future<void> _refreshUserProfile() async {
     setState(() {
       futureUserProfile = fetchUserProfile();
@@ -149,10 +220,9 @@ class _DashboardState extends State<Dashboard> {
   @override
   void dispose() {
     _pageController.dispose();
+    _carouselTimer?.cancel(); // Cancel the carousel timer to prevent memory leaks
     super.dispose();
   }
-
-  // Removed the _hasManagementRole method as it's no longer needed
 
   @override
   Widget build(BuildContext context) {
@@ -160,7 +230,7 @@ class _DashboardState extends State<Dashboard> {
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     return WillPopScope(
-      onWillPop: () async => false,
+      onWillPop: () async => false, // Disable back button
       child: Scaffold(
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(140.0),
@@ -168,96 +238,14 @@ class _DashboardState extends State<Dashboard> {
             future: futureUserProfile,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return AppBar();
+                return _buildAppBarPlaceholder();
               } else if (snapshot.hasError) {
-                return AppBar(
-                  title: Text(
-                    AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString()),
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                );
+                return _buildErrorAppBar(snapshot.error.toString());
               } else if (snapshot.hasData) {
                 final userProfile = snapshot.data!;
-                return AppBar(
-                  automaticallyImplyLeading: false,
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  flexibleSpace: ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
-                    ),
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        image: DecorationImage(
-                          image: AssetImage('assets/background.png'),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      child: SafeArea(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 40.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => const SettingsPage()),
-                                  );
-                                },
-                                child: const Icon(Icons.settings, color: Colors.black, size: 40),
-                              ),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                                    );
-                                  },
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 25,
-                                        backgroundImage: userProfile.imgName != 'default_avatar.jpg'
-                                            ? NetworkImage(userProfile.imgName)
-                                            : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
-                                        backgroundColor: Colors.white,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        AppLocalizations.of(context)!.greeting(userProfile.name),
-                                        style: const TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  _showLogoutDialog(context);
-                                },
-                                child: const Icon(Icons.power_settings_new, color: Colors.black, size: 40),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
+                return _buildAppBar(userProfile, isDarkMode);
               } else {
-                return AppBar(
-                  title: Text(AppLocalizations.of(context)!.noDataAvailable),
-                );
+                return _buildErrorAppBar(AppLocalizations.of(context)!.noDataAvailable);
               }
             },
           ),
@@ -265,208 +253,331 @@ class _DashboardState extends State<Dashboard> {
         body: Stack(
           children: [
             if (isDarkMode)
-              Container(
-                decoration: const BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage('assets/darkbg.png'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          height: 130.0,
-                          child: FutureBuilder<List<String>>(
-                            future: futureBanners,
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return const Center(child: CircularProgressIndicator());
-                              } else if (snapshot.hasError) {
-                                return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
-                              } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                                return PageView.builder(
-                                  controller: _pageController,
-                                  itemCount: snapshot.data!.length,
-                                  onPageChanged: (int index) {
-                                    setState(() {
-                                      _currentPage = index;
-                                    });
-                                  },
-                                  itemBuilder: (context, index) {
-                                    return Container(
-                                      margin: const EdgeInsets.symmetric(horizontal: 5.0),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        image: DecorationImage(
-                                          image: NetworkImage(snapshot.data![index]),
-                                          fit: BoxFit.cover,
-                                        ),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: Colors.orange,
-                                            blurRadius: 10,
-                                            offset: Offset(0, 4),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                );
-                              } else {
-                                return Center(child: Text(AppLocalizations.of(context)!.noBannersAvailable));
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          height: 60,
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 24,
-                                color: Colors.green,
-                                margin: const EdgeInsets.only(right: 8),
-                              ),
-                              Text(
-                                AppLocalizations.of(context)!.actionMenu,
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDarkMode ? Colors.white : Colors.black,
-                                ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                AppLocalizations.of(context)!.notification,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: isDarkMode ? Colors.white : Colors.black,
-                                ),
-                              ),
-                              const SizedBox(width: 1),
-                              Stack(
-                                children: [
-                                  IconButton(
-                                    icon: Image.asset(
-                                      'assets/notification-status.png',
-                                      width: 24,
-                                      height: 24,
-                                      color: isDarkMode ? Colors.white : Colors.black,
-                                    ),
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => const NotificationPage()),
-                                      ).then((_) {
-                                        setState(() {
-                                          _hasUnreadNotifications = false;
-                                        });
-                                      });
-                                    },
-                                  ),
-                                  if (_hasUnreadNotifications)
-                                    Positioned(
-                                      right: 11,
-                                      top: 11,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.green,
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        constraints: const BoxConstraints(
-                                          minWidth: 12,
-                                          minHeight: 12,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 0),
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            return Transform.translate(
-                                offset: const Offset(0, 12),
-                                child: GridView.count(
-                                  crossAxisCount: 3,
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  childAspectRatio: 0.7,
-                                  mainAxisSpacing: 10,
-                                  crossAxisSpacing: 10,
-                                  children: [
-                                    _buildActionCard(
-                                      context,
-                                      'assets/data-2.png',
-                                      AppLocalizations.of(context)!.history,
-                                      isDarkMode,
-                                          () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(builder: (context) => const HistoryPage()),
-                                        );
-                                      },
-                                    ),
-                                    _buildActionCard(
-                                      context,
-                                      'assets/people.png',
-                                      AppLocalizations.of(context)!.approvals,
-                                      isDarkMode,
-                                          () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
-                                        );
-                                      },
-                                    ),
-                                    _buildActionCard(
-                                      context,
-                                      'assets/status-up.png',
-                                      AppLocalizations.of(context)!.workTracking,
-                                      isDarkMode,
-                                          () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ));
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              _buildDarkBackground(),
+            _buildMainContent(context, isDarkMode),
+            if (_isLoading) _buildLoadingIndicator(),
           ],
         ),
       ),
     );
   }
 
+  // AppBar Placeholder while loading
+  PreferredSizeWidget _buildAppBarPlaceholder() {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+    );
+  }
+
+  // AppBar with error message
+  PreferredSizeWidget _buildErrorAppBar(String errorMessage) {
+    return AppBar(
+      title: Text(
+        AppLocalizations.of(context)!.errorWithDetails(errorMessage),
+        style: const TextStyle(color: Colors.red),
+      ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+    );
+  }
+
+  // AppBar with user information
+  PreferredSizeWidget _buildAppBar(UserProfile userProfile, bool isDarkMode) {
+    return AppBar(
+      automaticallyImplyLeading: false,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      flexibleSpace: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
+        child: Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/background.png'),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22.0, vertical: 30.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Settings Icon
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SettingsPage()),
+                      );
+                    },
+                    child: const Icon(Icons.settings, color: Colors.black, size: 40),
+                  ),
+
+                  // User Profile and Greeting
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                      );
+                    },
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundImage: userProfile.imgName != 'default_avatar.jpg'
+                              ? NetworkImage(userProfile.imgName)
+                              : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                          backgroundColor: Colors.white,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          AppLocalizations.of(context)!.greeting(userProfile.name),
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 17,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Logout Icon
+                  GestureDetector(
+                    onTap: () {
+                      _showLogoutDialog(context);
+                    },
+                    child: const Icon(Icons.power_settings_new, color: Colors.black, size: 40),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Dark mode background
+  Widget _buildDarkBackground() {
+    return Container(
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/darkbg.png'),
+          fit: BoxFit.cover,
+        ),
+      ),
+    );
+  }
+
+  // Main content of the dashboard
+  Widget _buildMainContent(BuildContext context, bool isDarkMode) {
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildBannerCarousel(),
+                const SizedBox(height: 16),
+                _buildActionMenuHeader(),
+                const SizedBox(height: 16),
+                _buildActionGrid(isDarkMode),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Banner Carousel
+  Widget _buildBannerCarousel() {
+    return SizedBox(
+      height: 130.0,
+      child: FutureBuilder<List<String>>(
+        future: futureBanners,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
+          } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+            return PageView.builder(
+              controller: _pageController,
+              itemCount: snapshot.data!.length,
+              onPageChanged: (int index) {
+                setState(() {
+                  _currentPage = index;
+                });
+              },
+              itemBuilder: (context, index) {
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 5.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    image: DecorationImage(
+                      image: NetworkImage(snapshot.data![index]),
+                      fit: BoxFit.cover,
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.orange,
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          } else {
+            return Center(child: Text(AppLocalizations.of(context)!.noBannersAvailable));
+          }
+        },
+      ),
+    );
+  }
+
+  // Action Menu Header
+  Widget _buildActionMenuHeader() {
+    return SizedBox(
+      height: 60,
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 24,
+            color: Colors.green,
+            margin: const EdgeInsets.only(right: 8),
+          ),
+          Text(
+            AppLocalizations.of(context)!.actionMenu,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            AppLocalizations.of(context)!.notification,
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Stack(
+            children: [
+              IconButton(
+                icon: Image.asset(
+                  'assets/notification-status.png',
+                  width: 24,
+                  height: 24,
+                  color: Colors.black,
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const NotificationPage()),
+                  ).then((_) {
+                    setState(() {
+                      _hasUnreadNotifications = false;
+                    });
+                  });
+                },
+              ),
+              if (_hasUnreadNotifications)
+                Positioned(
+                  right: 11,
+                  top: 11,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 12,
+                      minHeight: 12,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Action Grid
+  Widget _buildActionGrid(bool isDarkMode) {
+    return GridView.count(
+      crossAxisCount: 3,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      childAspectRatio: 0.8,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      children: [
+        _buildActionCard(
+          context,
+          'assets/data-2.png',
+          AppLocalizations.of(context)!.history,
+          isDarkMode,
+              () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const HistoryPage()),
+            );
+          },
+        ),
+        _buildActionCard(
+          context,
+          'assets/people.png',
+          AppLocalizations.of(context)!.approvals,
+          isDarkMode,
+              () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
+            );
+          },
+        ),
+        _buildActionCard(
+          context,
+          'assets/status-up.png',
+          AppLocalizations.of(context)!.workTracking,
+          isDarkMode,
+              () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // Individual Action Card
   Widget _buildActionCard(BuildContext context, String imagePath, String title, bool isDarkMode, VoidCallback onTap) {
     return LayoutBuilder(
       builder: (context, constraints) {
-
+        // Calculate icon and font sizes based on available width
         double iconSize = constraints.maxWidth * 0.5;
         double fontSize = constraints.maxWidth * 0.1;
 
-        fontSize = fontSize.clamp(12.0, 18.0); // Minimum 12, maximum 18
+        fontSize = fontSize.clamp(12.0, 18.0); // Ensure font size is within a reasonable range
 
         return Card(
           elevation: 6,
@@ -476,6 +587,7 @@ class _DashboardState extends State<Dashboard> {
           ),
           child: InkWell(
             onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: Column(
@@ -503,6 +615,7 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
+  // Logout Confirmation Dialog
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -581,8 +694,21 @@ class _DashboardState extends State<Dashboard> {
       },
     );
   }
+
+  // Loading Indicator Overlay
+  Widget _buildLoadingIndicator() {
+    return Container(
+      color: Colors.black.withOpacity(0.3),
+      child: const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+        ),
+      ),
+    );
+  }
 }
 
+// UserProfile Model
 class UserProfile {
   final String id;
   final String name;
@@ -629,4 +755,3 @@ class UserProfile {
     };
   }
 }
-

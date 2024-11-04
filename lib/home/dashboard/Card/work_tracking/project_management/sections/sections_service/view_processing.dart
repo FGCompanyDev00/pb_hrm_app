@@ -14,11 +14,11 @@ class ViewProcessingPage extends StatefulWidget {
   final String baseUrl;
 
   const ViewProcessingPage({
-    Key? key,
+    super.key,
     required this.meetingId,
     required this.projectId,
     required this.baseUrl,
-  }) : super(key: key);
+  });
 
   @override
   _ViewProcessingPageState createState() => _ViewProcessingPageState();
@@ -28,8 +28,8 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
   bool _isLoading = true;
   bool _hasError = false;
   Map<String, dynamic>? _meeting;
-  List<dynamic>? _files;
-  List<dynamic>? _members;
+  List<Map<String, dynamic>>? _files;
+  List<Map<String, dynamic>>? _members;
 
   @override
   void initState() {
@@ -73,16 +73,16 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
         // Handle 'result' as either a Map or List
         if (data['result'] is List) {
           setState(() {
-            _meeting = data['result'].isNotEmpty ? data['result'][0] : null;
-            _files = data['files'] ?? [];
-            _members = data['members'] ?? [];
+            _meeting = data['result'].isNotEmpty ? data['result'][0] as Map<String, dynamic> : null;
+            _files = _parseFiles(data['files']);
+            _members = _parseMembers(data['members']);
             _isLoading = false;
           });
         } else if (data['result'] is Map) {
           setState(() {
-            _meeting = data['result'];
-            _files = data['files'] ?? [];
-            _members = data['members'] ?? [];
+            _meeting = data['result'] as Map<String, dynamic>;
+            _files = _parseFiles(data['files']);
+            _members = _parseMembers(data['members']);
             _isLoading = false;
           });
         } else {
@@ -117,9 +117,79 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
     }
   }
 
+  List<Map<String, dynamic>> _parseFiles(dynamic filesData) {
+    if (filesData == null) return [];
+
+    // Debugging: Print the type and content of filesData
+    print('filesData type: ${filesData.runtimeType}');
+    print('filesData content: $filesData');
+
+    List<Map<String, dynamic>> files = [];
+
+    if (filesData is String) {
+      // Assuming 'filesData' is a comma-separated string of file names
+      List<String> fileNames = filesData.split(',').map((e) => e.trim()).toList();
+      for (String fileName in fileNames) {
+        if (fileName.isNotEmpty) {
+          String fileUrl = '${widget.baseUrl}/path/to/files/$fileName'; // Adjust the path accordingly
+          files.add({
+            'file_name': fileName,
+            'file_url': fileUrl,
+          });
+        }
+      }
+    } else if (filesData is List) {
+      // Assuming 'filesData' is a list of file names or URLs
+      for (var file in filesData) {
+        if (file is String) {
+          String fileName = file.trim();
+          if (fileName.isNotEmpty) {
+            String fileUrl = '${widget.baseUrl}/path/to/files/$fileName'; // Adjust the path accordingly
+            files.add({
+              'file_name': fileName,
+              'file_url': fileUrl,
+            });
+          }
+        } else if (file is Map<String, dynamic>) {
+          // If each file is a Map with 'file_name' and 'file_url'
+          String fileName = file['file_name']?.toString().trim() ?? 'unknown_file';
+          String fileUrl = file['file_url']?.toString().trim() ?? '${widget.baseUrl}/path/to/files/$fileName';
+          files.add({
+            'file_name': fileName,
+            'file_url': fileUrl,
+          });
+        } else {
+          print('Unsupported file format: ${file.runtimeType}');
+        }
+      }
+    } else {
+      print('Unsupported filesData type: ${filesData.runtimeType}');
+    }
+
+    return files;
+  }
+
+  List<Map<String, dynamic>> _parseMembers(dynamic membersData) {
+    if (membersData == null) return [];
+
+    if (membersData is List) {
+      return membersData.map<Map<String, dynamic>>((member) {
+        if (member is Map<String, dynamic>) {
+          return member;
+        } else {
+          print('Error: Member is not a Map<String, dynamic>');
+          return {};
+        }
+      }).toList();
+    } else {
+      print('Error: membersData is not a List.');
+      return [];
+    }
+  }
+
   Future<void> _fetchMembersImages(String token) async {
     List<Future<void>> imageFetchFutures = _members!.map((member) async {
-      String employeeId = member['employee_id'];
+      String employeeId = member['employee_id'].toString(); // Ensure it's a string
       String? imageUrl = await _fetchMemberImage(employeeId, token);
       setState(() {
         member['image_url'] = imageUrl;
@@ -141,7 +211,7 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['results'] != null && data['results']['images'] != null) {
-          return data['results']['images'];
+          return data['results']['images'].toString(); // Ensure it's a string
         }
       } else {
         print('Failed to fetch image for $employeeId: ${response.statusCode}');
@@ -153,15 +223,15 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
   }
 
   Color _getStatusColor(String status) {
-    switch (status) {
-      case 'Pending':
+    switch (status.toLowerCase()) {
+      case 'pending':
         return Colors.orange;
-      case 'Processing':
+      case 'processing':
         return Colors.blue;
-      case 'Finished':
+      case 'finished':
         return Colors.green;
       default:
-        return Colors.black;
+        return Colors.grey;
     }
   }
 
@@ -194,8 +264,8 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
     bool allSuccess = true;
 
     for (var file in _files!) {
-      String fileUrl = file['file_url'] ?? '';
-      String fileName = file['file_name'] ?? 'unknown_file';
+      String fileUrl = file['file_url']?.toString() ?? '';
+      String fileName = file['file_name']?.toString() ?? 'unknown_file';
 
       if (fileUrl.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -283,6 +353,8 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Utilize MediaQuery for responsiveness
+
     if (_isLoading) {
       return Scaffold(
         appBar: _buildAppBar(),
@@ -298,25 +370,25 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
     }
 
     // Extracting meeting details with null safety
-    final status = _meeting!['s_name'] ?? 'Unknown';
+    final status = _meeting!['s_name']?.toString() ?? 'Unknown';
     final statusColor = _getStatusColor(status);
-    final title = _meeting!['title'] ?? 'No Title';
+    final title = _meeting!['title']?.toString() ?? 'No Title';
     final fromDate = _meeting!['from_date'] != null
-        ? DateTime.tryParse(_meeting!['from_date']) ?? DateTime.now()
+        ? DateTime.tryParse(_meeting!['from_date'].toString()) ?? DateTime.now()
         : DateTime.now();
     final toDate = _meeting!['to_date'] != null
-        ? DateTime.tryParse(_meeting!['to_date']) ?? DateTime.now()
+        ? DateTime.tryParse(_meeting!['to_date'].toString()) ?? DateTime.now()
         : DateTime.now();
-    final startTime = _meeting!['start_time'] ?? '';
-    final endTime = _meeting!['end_time'] ?? '';
-    final description = _meeting!['description'] ?? '';
+    final startTime = _meeting!['start_time']?.toString() ?? '';
+    final endTime = _meeting!['end_time']?.toString() ?? '';
+    final description = _meeting!['description']?.toString() ?? '';
     final daysRemaining = toDate.difference(DateTime.now()).inDays;
     final isNearDue = daysRemaining <= 5;
 
     return Scaffold(
       appBar: _buildAppBar(),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(30.0),
+        padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 40.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -327,12 +399,13 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
                 Expanded(
                   child: Row(
                     children: [
-                      Image.asset('assets/title.png', width: 24, height: 24),
+                      Image.asset('assets/title.png', width: 24, height: 24, color: statusColor),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Title: $title',
                           style: const TextStyle(
+                            color: Colors.blue,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
@@ -345,14 +418,14 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
                 Row(
                   children: [
                     Container(
-                      width: 12, // Increased size for better visibility
-                      height: 12,
+                      width: 14,
+                      height: 14,
                       decoration: BoxDecoration(
                         color: statusColor,
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 6), // Increased spacing
+                    const SizedBox(width: 6),
                     Text(
                       'Status: $status',
                       style: TextStyle(
@@ -365,7 +438,7 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 24), // Increased spacing between sections
+            const SizedBox(height: 20),
 
             // From Date and Start Time
             _buildDateTimeRow(
@@ -385,7 +458,7 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
               timeLabel: 'End: ',
               timeValue: endTime,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // Days Remaining
             Row(
@@ -410,7 +483,7 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // Members
             const Text(
@@ -423,24 +496,24 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
             const SizedBox(height: 12),
             _members != null && _members!.isNotEmpty
                 ? Wrap(
-              spacing: 12.0, // Increased spacing between avatars
+              spacing: 12.0,
               runSpacing: 12.0,
               children: _members!.map<Widget>((member) {
-                String imageUrl = member['image_url'] ??
+                String imageUrl = member['image_url']?.toString() ??
                     'https://via.placeholder.com/150'; // Default image
-                String memberName = member['name'] ?? 'Member';
+                String memberName = member['name']?.toString() ?? 'Member';
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     CircleAvatar(
                       backgroundImage: NetworkImage(imageUrl),
-                      radius: 30, // Increased size for better visibility
+                      radius: 20,
                       onBackgroundImageError: (_, __) {},
                       backgroundColor: Colors.grey[200],
                     ),
                     const SizedBox(height: 6),
                     SizedBox(
-                      width: 70, // Fixed width for consistency
+                      width: 70,
                       child: Text(
                         memberName,
                         style: const TextStyle(fontSize: 12),
@@ -453,40 +526,39 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
               }).toList(),
             )
                 : const Text('No members assigned'),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // Description and Download Button
-            Row(
+            const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Description:',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: _downloadAll,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                  ),
-                  icon: const Icon(Icons.download, color: Colors.black, size: 18),
-                  label: const Text(
-                    'Download',
-                    style: TextStyle(
-                      color: Colors.black,
-
-                    ),
-                  ),
-                ),
+                // ElevatedButton.icon(
+                //   onPressed: _downloadAll,
+                //   style: ElevatedButton.styleFrom(
+                //     backgroundColor: Colors.green,
+                //     padding: const EdgeInsets.symmetric(
+                //       horizontal: 16,
+                //       vertical: 8,
+                //     ),
+                //     shape: RoundedRectangleBorder(
+                //       borderRadius: BorderRadius.circular(8.0),
+                //     ),
+                //   ),
+                //   icon: const Icon(Icons.download, color: Colors.white, size: 18),
+                //   label: const Text(
+                //     'Download',
+                //     style: TextStyle(
+                //       color: Colors.white,
+                //     ),
+                //   ),
+                // ),
               ],
             ),
             const SizedBox(height: 12),
@@ -508,7 +580,7 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
                 textAlign: TextAlign.justify,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // Files Section (Optional)
             _files != null && _files!.isNotEmpty
@@ -530,7 +602,8 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
                   separatorBuilder: (context, index) => const Divider(),
                   itemBuilder: (context, index) {
                     var file = _files![index];
-                    String fileName = file['file_name'] ?? 'Unnamed File';
+                    String fileName = file['file_name']?.toString() ?? 'Unnamed File';
+                    String fileUrl = file['file_url']?.toString() ?? '';
                     return ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 0.0),
                       leading: const Icon(Icons.insert_drive_file, color: Colors.blue),
@@ -541,7 +614,6 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
                       trailing: IconButton(
                         icon: const Icon(Icons.download, color: Colors.green),
                         onPressed: () async {
-                          String fileUrl = file['file_url'] ?? '';
                           if (fileUrl.isNotEmpty) {
                             try {
                               final response = await http.get(Uri.parse(fileUrl));
@@ -594,7 +666,7 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Image.asset(iconPath, width: 20, height: 20),
-        const SizedBox(width: 12), // Increased spacing
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

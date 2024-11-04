@@ -21,6 +21,7 @@ import 'package:flutter/services.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_offline/flutter_offline.dart';
 
 import '../home/home_calendar.dart';
 
@@ -232,7 +233,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text("Okay, let's go", style: TextStyle(fontSize: 16)),
+                      child: const Text("Okay", style: TextStyle(fontSize: 16)),
                     ),
                   ],
                 ),
@@ -250,7 +251,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     final storedPassword = box.get('password');
     final token = box.get('token');
 
-    if (storedUsername == _usernameController.text.trim() && storedPassword == _passwordController.text.trim() && token != null) {
+    if (storedUsername == _usernameController.text.trim() &&
+        storedPassword == _passwordController.text.trim() &&
+        token != null) {
       Provider.of<UserProvider>(context, listen: false).login(token);
       Navigator.pushReplacement(
         context,
@@ -329,7 +332,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     setState(() {
       _usernameController.text = box.get('username', defaultValue: '') as String;
       _passwordController.text = box.get('password', defaultValue: '') as String;
-      _rememberMe = true;
+      _rememberMe = box.containsKey('username') && box.containsKey('password');
     });
   }
 
@@ -408,50 +411,77 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/background.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
-                ),
-                child: IntrinsicHeight(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.05,
-                      vertical: screenHeight * 0.02,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(height: screenHeight * 0.045),
-                        _buildLanguageDropdown(languageNotifier, isDarkMode, screenWidth),
-                        SizedBox(height: screenHeight * 0.005),
-                        _buildLogoAndText(screenWidth, screenHeight),
-                        SizedBox(height: screenHeight * 0.06),
-                        _buildTextFields(screenWidth),
-                        SizedBox(height: screenHeight * 0.02),
-                        _buildRememberMeCheckbox(screenWidth),
-                        SizedBox(height: screenHeight * 0.02),
-                        _buildLoginAndBiometricButton(screenWidth),
-                        SizedBox(height: screenHeight * 0.01),
-                        const Spacer(),
-                      ],
+      body: OfflineBuilder(
+        connectivityBuilder: (context, connectivity, child) {
+          final bool connected = connectivity != ConnectivityResult.none;
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              child,
+              if (!connected)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    color: Colors.red,
+                    padding: const EdgeInsets.all(8.0),
+                    child: const Center(
+                      child: Text(
+                        'No Internet Connection',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          },
+            ],
+          );
+        },
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage('assets/background.png'),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight,
+                  ),
+                  child: IntrinsicHeight(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.05,
+                        vertical: screenHeight * 0.02,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(height: screenHeight * 0.045),
+                          _buildLanguageDropdown(languageNotifier, isDarkMode, screenWidth),
+                          SizedBox(height: screenHeight * 0.005),
+                          _buildLogoAndText(screenWidth, screenHeight),
+                          SizedBox(height: screenHeight * 0.06),
+                          _buildTextFields(screenWidth),
+                          SizedBox(height: screenHeight * 0.02),
+                          _buildRememberMeCheckbox(screenWidth),
+                          SizedBox(height: screenHeight * 0.02),
+                          _buildLoginAndBiometricButton(screenWidth),
+                          SizedBox(height: screenHeight * 0.01),
+                          const Spacer(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -780,8 +810,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             onTap: _biometricEnabled
                 ? () => _authenticate(useBiometric: true)
                 : () {
-                    _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled, AppLocalizations.of(context)!.enableBiometric);
-                  },
+              _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled, AppLocalizations.of(context)!.enableBiometric);
+            },
             child: Container(
               width: screenWidth * 0.35,
               height: screenWidth * 0.125,

@@ -332,5 +332,11 @@
   "searchEvents": "Search Events",
   "previousMonth": "Previous Month",
   "nextMonth": "Next Month",
-  "calendar": "Calendar"
+  "calendar": "Calendar",
+  "locationServicesDisabled": "Location services are disabled.",
+  "pleaseEnableLocationServices": "Please enable location services.",
+  "locationPermissionDenied": "Location permission denied.",
+  "pleaseGrantLocationPermission": "Please grant location permission.",
+  "locationPermissionDeniedForever": "Location permission denied permanently.",
+  "pleaseEnableLocationPermissionFromSettings": "Please enable location permission from settings."
 }

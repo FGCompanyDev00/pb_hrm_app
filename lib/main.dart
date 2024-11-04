@@ -1,6 +1,5 @@
 // lib/main.dart
 
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -23,29 +22,6 @@ import 'home/attendance_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'models/attendance_record.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:workmanager/workmanager.dart';
-
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    try {
-      if (kDebugMode) print("Background Task Started: Checking connectivity");
-
-      await Hive.initFlutter();
-
-      var connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult == ConnectivityResult.none) {
-        if (kDebugMode) print("No internet connection detected");
-      } else {
-        if (kDebugMode) print("Connected to the internet");
-      }
-    } catch (e) {
-      if (kDebugMode) print("Error in callbackDispatcher: $e");
-    }
-
-    if (kDebugMode) print("Background Task Completed");
-    return Future.value(true);
-  });
-}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,15 +37,6 @@ void main() async {
 
   await setupServiceLocator();
 
-  Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
-
-  Workmanager().registerPeriodicTask(
-    "1",
-    "backgroundConnectivityCheck",
-    frequency: const Duration(minutes: 15),
-    constraints: Constraints(networkType: NetworkType.connected),
-  );
-
   runApp(
     MultiProvider(
       providers: [
@@ -83,42 +50,8 @@ void main() async {
   );
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  late StreamSubscription<ConnectivityResult> _connectivitySubscription;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeConnectivityMonitoring();
-  }
-
-  @override
-  void dispose() {
-    _connectivitySubscription.cancel();
-    super.dispose();
-  }
-
-  void _initializeConnectivityMonitoring() async {
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
-          if (result == ConnectivityResult.none) {
-            if (kDebugMode) print("No Internet Connection");
-          } else {
-            if (kDebugMode) print("Connected to the Internet");
-          }
-        } as void Function(List<ConnectivityResult> event)?) as StreamSubscription<ConnectivityResult>;
-
-    var initialResult = await Connectivity().checkConnectivity();
-    if (initialResult == ConnectivityResult.none) {
-      if (kDebugMode) print("No Internet Connection");
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,9 +78,9 @@ class _MyAppState extends State<MyApp> {
             scaffoldBackgroundColor: Colors.black,
             textTheme: GoogleFonts.oxaniumTextTheme(
               Theme.of(context).textTheme.apply(
-                    bodyColor: Colors.white,
-                    displayColor: Colors.white,
-                  ),
+                bodyColor: Colors.white,
+                displayColor: Colors.white,
+              ),
             ),
           ),
           themeMode: themeNotifier.currentTheme,
@@ -181,8 +114,10 @@ class LanguageNotifier with ChangeNotifier {
 
   Future<void> _loadLocale() async {
     Locale? locale = sl<UserPreferences>().getLocalizeSupport();
-    _currentLocale = locale;
-    notifyListeners();
+    if (locale != null) {
+      _currentLocale = locale;
+      notifyListeners();
+    }
   }
 
   void changeLanguage(String languageCode) async {
