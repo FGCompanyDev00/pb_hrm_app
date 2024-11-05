@@ -1147,7 +1147,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       children: [
         GradientAnimationLine(),
         SizedBox(
-          height: 18,
+          height: 5,
         ),
       ],
     );
