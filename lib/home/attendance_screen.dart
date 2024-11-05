@@ -513,73 +513,85 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          elevation: 10, // Adds depth (shadow) to the modal
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16.0),
-                decoration: BoxDecoration(
-                  color: primaryColor,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: Row(
+          elevation: 10,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Container(
+                width: constraints.maxWidth < 400 ? constraints.maxWidth * 0.9 : 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      isHome ? Icons.home : Icons.apartment,
-                      color: Colors.white,
-                      size: 40,
+                    Container(
+                      padding: const EdgeInsets.all(16.0),
+                      decoration: BoxDecoration(
+                        color: primaryColor,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isHome ? Icons.home : Icons.apartment,
+                            color: Colors.white,
+                            size: constraints.maxWidth < 400 ? 30 : 40, // Responsive icon size
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              AppLocalizations.of(context)!.locationDetected,
+                              style: TextStyle(
+                                fontSize: constraints.maxWidth < 400 ? 18 : 20, // Responsive font size
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(width: 16),
-                    Text(
-                      AppLocalizations.of(context)!.locationDetected,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        AppLocalizations.of(context)!.youAreCurrentlyAt(
+                          isHome ? AppLocalizations.of(context)!.home : AppLocalizations.of(context)!.office,
+                        ),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: constraints.maxWidth < 400 ? 14 : 16, // Responsive font size
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          shadowColor: Colors.black.withOpacity(0.25),
+                          elevation: 5,
+                        ),
+                        child: Text(
+                          AppLocalizations.of(context)!.ok,
+                          style: TextStyle(
+                            fontSize: constraints.maxWidth < 400 ? 14 : 16, // Responsive font size
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  AppLocalizations.of(context)!.youAreCurrentlyAt(isHome ? AppLocalizations.of(context)!.home : AppLocalizations.of(context)!.office),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    shadowColor: Colors.black.withOpacity(0.25),
-                    elevation: 5,
-                  ),
-                  child: Text(
-                    AppLocalizations.of(context)!.ok,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+              );
+            },
           ),
         );
       },
@@ -612,53 +624,62 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isSuccess ? Icons.check_circle_outline : Icons.error_outline,
-                  color: isSuccess ? Colors.green : Colors.red,
-                  size: 50,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Container(
+                  width: constraints.maxWidth < 400 ? constraints.maxWidth * 0.9 : 400,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isSuccess ? Icons.check_circle_outline : Icons.error_outline,
+                        color: isSuccess ? Colors.green : Colors.red,
+                        size: constraints.maxWidth < 400 ? 40 : 50, // Responsive icon size
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: constraints.maxWidth < 400 ? 18 : 20, // Responsive font size
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        message,
+                        style: TextStyle(
+                          fontSize: constraints.maxWidth < 400 ? 14 : 16, // Responsive font size
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isSuccess ? const Color(0xFFDAA520) : Colors.red,
+                          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                        ),
+                        child: Text(
+                          AppLocalizations.of(context)!.close,
+                          style: TextStyle(
+                            fontSize: constraints.maxWidth < 400 ? 14 : 16, // Responsive font size
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  message,
-                  style: const TextStyle(fontSize: 16),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isSuccess ? const Color(0xFFDAA520) : Colors.red,
-                    padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                  ),
-                  child: Text(
-                    AppLocalizations.of(context)!.close,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           ),
         );
       },
@@ -721,30 +742,73 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildAttendanceRow(Map<String, String> record) {
-    final isHome = _currentSection == 'Home';
-    final isOffice = _currentSection == 'Office';
+    final DateTime date = DateFormat('yyyy-MM-dd').parse(record['date']!);
+    final String day = DateFormat('EEEE').format(date); // Day part
+    final String datePart = DateFormat('yyyy-MM-dd').format(date); // Date part
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        title: Center(
-          child: Text(
-            record['date']!,
-            style: const TextStyle(fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        subtitle: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        child: Column(
           children: [
-            _buildAttendanceItem(AppLocalizations.of(context)!.checkIn, record['checkIn']!, isHome ? Colors.orange : Colors.green),
-            _buildAttendanceItem(AppLocalizations.of(context)!.checkOut, record['checkOut']!, isOffice ? Colors.green : Colors.red),
-            _buildAttendanceItem(AppLocalizations.of(context)!.workingHours, record['workingHours']!, Colors.blue),
+            // Centered Date Display
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                RichText(
+                  textAlign: TextAlign.center,
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: day, // Weekday
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF003366), // Dark blue color
+                        ),
+                      ),
+                      const TextSpan(text: ', '), // Comma separator
+                      TextSpan(
+                        text: datePart, // Date part
+                        style: const TextStyle(
+                          fontSize: 15,
+                          color: Colors.black, // Black color
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Optional Status Icon for Check-Out
+                _buildAttendanceStatusIcon(record['checkOut']!),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Divider(color: Colors.grey.shade300),
+            const SizedBox(height: 8),
+            // Attendance Items Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildAttendanceItem(AppLocalizations.of(context)!.checkIn, record['checkIn']!, Colors.orange),
+                _buildAttendanceItem(AppLocalizations.of(context)!.checkOut, record['checkOut']!, Colors.green),
+                _buildAttendanceItem(AppLocalizations.of(context)!.workingHours, record['workingHours']!, Colors.blue),
+              ],
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAttendanceStatusIcon(String checkOutTime) {
+    return Icon(
+      checkOutTime != '--:--:--' ? Icons.check_circle : Icons.hourglass_empty,
+      color: checkOutTime != '--:--:--' ? Colors.green : Colors.orange,
+      size: 20,
     );
   }
 
@@ -926,21 +990,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
     return Column(
       children: [
+        // Header Row
         Container(
-          margin: const EdgeInsets.symmetric(vertical: 8),
+          margin: const EdgeInsets.only(top: 16, bottom: 8),
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFFDAA520), // Gold color
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: const [
+            color: const Color(0xFFD5AD32),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
               BoxShadow(
-                color: Colors.black26,
+                color: Colors.black.withOpacity(0.15),
                 blurRadius: 4,
-                offset: Offset(0, 2),
+                offset: const Offset(0, 3),
               ),
             ],
           ),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               Expanded(
                 child: Center(
@@ -969,6 +1035,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ],
           ),
         ),
+        // Weekly Records List
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),

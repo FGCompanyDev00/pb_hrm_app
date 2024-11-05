@@ -33,8 +33,8 @@ class DashedLine extends StatelessWidget {
 
   const DashedLine({
     super.key,
-    this.dashWidth = 10.0,
-    this.dashHeight = 4.0,
+    required this.dashWidth,
+    required this.dashHeight,
     this.color = Colors.yellow,
   });
 
@@ -66,51 +66,53 @@ class TicketShapeClipper extends CustomClipper<Path> {
   Path getClip(Size size) {
     final Path path = Path();
 
-    path.moveTo(0, 20);
+    final double cornerRadius = size.height * 0.05;
+    final double notchRadius = size.height * 0.03;
+
+    path.moveTo(0, cornerRadius);
 
     path.arcToPoint(
-      const Offset(20, 0),
-      radius: const Radius.circular(20),
+      Offset(cornerRadius, 0),
+      radius: Radius.circular(cornerRadius),
       clockwise: false,
     );
 
-    path.lineTo(size.width - 20, 0);
+    path.lineTo(size.width - cornerRadius, 0);
     path.arcToPoint(
-      Offset(size.width, 20),
-      radius: const Radius.circular(20),
+      Offset(size.width, cornerRadius),
+      radius: Radius.circular(cornerRadius),
       clockwise: false,
     );
 
-    path.lineTo(size.width, size.height * 0.4);
+    path.lineTo(size.width, size.height * 0.4 - notchRadius);
     path.arcToPoint(
-      Offset(size.width, size.height * 0.6),
-      radius: const Radius.circular(15),
+      Offset(size.width, size.height * 0.6 + notchRadius),
+      radius: Radius.circular(notchRadius),
       clockwise: false,
     );
 
-    // Bottom-right curve
-    path.lineTo(size.width, size.height - 20);
+    path.lineTo(size.width, size.height - cornerRadius);
     path.arcToPoint(
-      Offset(size.width - 20, size.height),
-      radius: const Radius.circular(20),
+      Offset(size.width - cornerRadius, size.height),
+      radius: Radius.circular(cornerRadius),
       clockwise: false,
     );
 
-    path.lineTo(20, size.height);
+    path.lineTo(cornerRadius, size.height);
     path.arcToPoint(
-      Offset(0, size.height - 20),
-      radius: const Radius.circular(20),
+      Offset(0, size.height - cornerRadius),
+      radius: Radius.circular(cornerRadius),
       clockwise: false,
     );
 
-    path.lineTo(0, size.height * 0.6);
+    path.lineTo(0, size.height * 0.6 + notchRadius);
     path.arcToPoint(
-      Offset(0, size.height * 0.4),
-      radius: const Radius.circular(15),
+      Offset(0, size.height * 0.4 - notchRadius),
+      radius: Radius.circular(notchRadius),
       clockwise: false,
     );
 
-    path.lineTo(0, 20);
+    path.lineTo(0, cornerRadius);
 
     return path;
   }
@@ -212,8 +214,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _shareQRCode() async {
     try {
-      final RenderRepaintBoundary boundary =
-      qrKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final RenderRepaintBoundary? boundary =
+      qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+
+      if (boundary == null) {
+        Fluttertoast.showToast(
+          msg: AppLocalizations.of(context)!.qrCodeNotRendered,
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+        );
+        return;
+      }
+
       final image = await boundary.toImage(pixelRatio: 4.0);
       final byteData = await image.toByteData(format: ImageByteFormat.png);
       final uint8List = byteData!.buffer.asUint8List();
@@ -222,7 +234,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final file = await File('${tempDir.path}/qr_code.png').create();
       await file.writeAsBytes(uint8List);
 
-      await Share.shareXFiles([XFile(file.path)], text: AppLocalizations.of(context)!.shareQRCodeText);
+      await Share.shareXFiles([XFile(file.path)],
+          text: AppLocalizations.of(context)!.shareQRCodeText);
     } catch (e) {
       debugPrint('Error sharing QR code: $e');
       Fluttertoast.showToast(
@@ -235,7 +248,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _downloadQRCode() async {
     try {
-      // Access the embedded QR code RepaintBoundary using qrKey
       final RenderRepaintBoundary? boundary =
       qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
 
@@ -289,7 +301,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _saveQRCodeToGallery() async {
     try {
       final RenderRepaintBoundary? boundary =
-      qrFullScreenKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      qrFullScreenKey.currentContext?.findRenderObject()
+      as RenderRepaintBoundary?;
 
       if (boundary == null) {
         Fluttertoast.showToast(
@@ -357,9 +370,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         centerTitle: true,
         title: Text(
           AppLocalizations.of(context)!.qrMyProfile,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.black,
-            fontSize: 24,
+            fontSize: size.width * 0.06,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -390,7 +403,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
-              return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
+              return Center(
+                  child: Text(AppLocalizations.of(context)!
+                      .errorWithDetails(snapshot.error.toString())));
             } else if (snapshot.hasData) {
               final data = snapshot.data!;
 
@@ -401,7 +416,7 @@ N:${data['employee_surname'] ?? ''};${data['employee_name'] ?? ''};;;
 FN:${data['employee_name'] ?? ''} ${data['employee_surname'] ?? ''}
 EMAIL:${data['employee_email'] ?? ''}
 TEL:${data['employee_tel'] ?? ''}
-PHOTO;TYPE=JPEG;VALUE=URI:${data['images'] ?? ''}
+${data['images'] != null && data['images'].isNotEmpty ? 'PHOTO;TYPE=JPEG;VALUE=URI:${data['images']}' : ''}
 END:VCARD
 ''';
 
@@ -419,17 +434,19 @@ END:VCARD
                       final shouldSave = await showDialog<bool>(
                         context: context,
                         builder: (context) => AlertDialog(
-                          title: Text(AppLocalizations.of(context)!.saveImageTitle),
-                          content: Text(AppLocalizations.of(context)!.saveImageConfirmation),
+                          title: Text(AppLocalizations.of(context)!
+                              .saveImageTitle),
+                          content: Text(AppLocalizations.of(context)!
+                              .saveImageConfirmation),
                           actions: [
                             TextButton(
                               onPressed: () =>
                                   Navigator.of(context).pop(false),
-                              child: Text(AppLocalizations.of(context)!.cancel),
+                              child:
+                              Text(AppLocalizations.of(context)!.cancel),
                             ),
                             TextButton(
-                              onPressed: () =>
-                                  Navigator.of(context).pop(true),
+                              onPressed: () => Navigator.of(context).pop(true),
                               child: Text(AppLocalizations.of(context)!.save),
                             ),
                           ],
@@ -492,6 +509,7 @@ END:VCARD
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Stack(
+                                alignment: Alignment.center,
                                 children: [
                                   Center(
                                     child: CircleAvatar(
@@ -499,8 +517,12 @@ END:VCARD
                                       backgroundColor: Colors.grey[200],
                                       child: CircleAvatar(
                                         radius: size.width * 0.09,
-                                        backgroundImage:
-                                        NetworkImage(data['images']),
+                                        backgroundImage: data['images'] != null &&
+                                            data['images'].isNotEmpty
+                                            ? NetworkImage(data['images'])
+                                            : const AssetImage(
+                                            'assets/default_avatar.png')
+                                        as ImageProvider,
                                       ),
                                     ),
                                   ),
@@ -522,8 +544,8 @@ END:VCARD
                                         children: [
                                           Text(
                                             AppLocalizations.of(context)!.more,
-                                            style: const TextStyle(
-                                              fontSize: 16,
+                                            style: TextStyle(
+                                              fontSize: size.width * 0.04,
                                               fontWeight: FontWeight.w500,
                                               color: Colors.black,
                                             ),
@@ -539,21 +561,21 @@ END:VCARD
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 10),
+                              SizedBox(height: size.height * 0.02),
                               Text(
-                                AppLocalizations.of(context)!.greeting(data['employee_name']),
-                                style: const TextStyle(
-                                  fontSize: 18,
+                                AppLocalizations.of(context)!
+                                    .greeting(data['employee_name']),
+                                style: TextStyle(
+                                  fontSize: size.width * 0.045,
                                   fontWeight: FontWeight.w600,
-                                  color:
-                                  Colors.black54, // Subtle text color
+                                  color: Colors.black54,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: size.height * 0.02),
                               ClipPath(
                                 clipper: TicketShapeClipper(),
                                 child: Container(
-                                  padding: const EdgeInsets.all(16),
+                                  padding: EdgeInsets.all(size.width * 0.04),
                                   decoration: BoxDecoration(
                                     color: Colors.lightGreenAccent[100],
                                     boxShadow: const [
@@ -567,20 +589,21 @@ END:VCARD
                                   child: Column(
                                     children: [
                                       Text(
-                                        AppLocalizations.of(context)!.scanToSaveContact,
-                                        style: const TextStyle(
-                                          fontSize: 15,
+                                        AppLocalizations.of(context)!
+                                            .scanToSaveContact,
+                                        style: TextStyle(
+                                          fontSize: size.width * 0.04,
                                           fontWeight: FontWeight.bold,
                                           color: Colors.black,
                                         ),
                                       ),
-                                      const SizedBox(height: 15),
-                                      const DashedLine(
-                                        dashWidth: 12,
-                                        dashHeight: 8,
+                                      SizedBox(height: size.height * 0.015),
+                                      DashedLine(
+                                        dashWidth: size.width * 0.03,
+                                        dashHeight: size.height * 0.005,
                                         color: Colors.yellow,
                                       ),
-                                      const SizedBox(height: 18),
+                                      SizedBox(height: size.height * 0.018),
                                       Container(
                                         decoration: BoxDecoration(
                                           boxShadow: [
@@ -599,7 +622,8 @@ END:VCARD
                                             });
                                           },
                                           child: RepaintBoundary(
-                                            key: qrKey, // Assign to embedded QR code
+                                            key:
+                                            qrKey, // Assign to embedded QR code
                                             child: QrImageView(
                                               data: vCardData,
                                               version: QrVersions.auto,
@@ -626,12 +650,12 @@ END:VCARD
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(height: 20),
+                                      SizedBox(height: size.height * 0.02),
                                     ],
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: size.height * 0.02),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -644,11 +668,15 @@ END:VCARD
                                         color: Colors.white,
                                         size: 20,
                                       ),
-                                      label: Text(AppLocalizations.of(context)!.share),
+                                      label: Text(
+                                        AppLocalizations.of(context)!.share,
+                                        style: TextStyle(
+                                            fontSize: size.width * 0.04),
+                                      ),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.grey[700],
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 14),
+                                        padding: EdgeInsets.symmetric(
+                                            vertical: size.height * 0.02),
                                         shape: RoundedRectangleBorder(
                                           borderRadius:
                                           BorderRadius.circular(12),
@@ -657,7 +685,7 @@ END:VCARD
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 20),
+                                  SizedBox(width: size.width * 0.05),
                                   // Download Button
                                   Expanded(
                                     child: ElevatedButton.icon(
@@ -667,11 +695,15 @@ END:VCARD
                                         color: Colors.white,
                                         size: 20,
                                       ),
-                                      label: Text(AppLocalizations.of(context)!.download),
+                                      label: Text(
+                                        AppLocalizations.of(context)!.download,
+                                        style: TextStyle(
+                                            fontSize: size.width * 0.04),
+                                      ),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.amber[700],
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 14),
+                                        padding: EdgeInsets.symmetric(
+                                            vertical: size.height * 0.02),
                                         shape: RoundedRectangleBorder(
                                           borderRadius:
                                           BorderRadius.circular(12),
@@ -753,11 +785,12 @@ class ProfileInfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(
+          vertical: MediaQuery.of(context).size.height * 0.01),
       child: Row(
         children: [
           Icon(icon, color: Colors.green),
-          const SizedBox(width: 16),
+          SizedBox(width: MediaQuery.of(context).size.width * 0.04),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -766,7 +799,8 @@ class ProfileInfoRow extends StatelessWidget {
                   label,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.005),
                 Text(value),
               ],
             ),

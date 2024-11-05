@@ -1,3 +1,5 @@
+// approvals_main_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_details_page.dart';
@@ -482,12 +484,23 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
       String requestorName =
       (item['requestor_name']?.toString() ?? 'N/A').trim();
 
+      // Treat specific status values for "car" type
+      if (type == 'car') {
+        if (status.toLowerCase() == 'branch waiting') {
+          status = 'Waiting';
+        } else if (status.toLowerCase() == 'branch approved') {
+          status = 'Approved';
+        }
+      }
+
       // Correct ID usage based on type
       String id = '';
       if (type == 'leave') {
         id = (item['take_leave_request_id']?.toString() ?? '').trim();
-      } else {
-        id = (item['uid']?.toString() ?? '').trim(); // Use 'uid' for meeting and car
+      } else if (type == 'car') {
+        id = (item['uid']?.toString() ?? '').trim(); // Use 'id' for car
+      } else if (type == 'meeting') {
+        id = (item['uid']?.toString() ?? '').trim(); // Use 'uid' for meeting
       }
 
       if (id.isEmpty) {
