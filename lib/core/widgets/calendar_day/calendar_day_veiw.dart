@@ -18,15 +18,18 @@ class CalendarDayWidget extends HookWidget {
     super.key,
     required this.eventsCalendar,
     this.selectedDay,
+    this.selectedSlotTime,
   });
 
   final List<Event> eventsCalendar;
   final DateTime? selectedDay;
+  final int? selectedSlotTime;
 
   @override
   Widget build(BuildContext context) {
     final currentHour = useState(7);
     final untilEnd = useState(11);
+    final selectedSlot = useState(11);
     final displayTime = useState('7AM-10AM');
     final ValueNotifier<List<AdvancedDayEvent<String>>> currentEvents = useState([]);
     final ValueNotifier<List<OverflowEventsRow<String>>> currentOverflowEventsRow = useState([]);
@@ -164,26 +167,26 @@ class CalendarDayWidget extends HookWidget {
       );
     }
 
-    // switchSlot(int selected) {
-    //   selectedSlot.value = selected;
-    //   switch (selected) {
-    //     case 1:
-    //       currentHour.value = 7;
-    //       untilEnd.value = 11;
-    //       displayTime.value = '7AM-10AM';
-    //     case 2:
-    //       currentHour.value = 10;
-    //       untilEnd.value = 15;
-    //       displayTime.value = '10AM-2PM';
-    //     case 3:
-    //       currentHour.value = 14;
-    //       untilEnd.value = 19;
-    //       displayTime.value = '2PM-6PM';
-    //     default:
-    //       currentHour.value = 7;
-    //       untilEnd.value = 10;
-    //   }
-    // }
+    switchSlot() {
+      selectedSlot.value = selectedSlotTime ?? 0;
+      switch (selectedSlotTime) {
+        case 1:
+          currentHour.value = 7;
+          untilEnd.value = 11;
+          displayTime.value = '7AM-10AM';
+        case 2:
+          currentHour.value = 10;
+          untilEnd.value = 15;
+          displayTime.value = '10AM-2PM';
+        case 3:
+          currentHour.value = 14;
+          untilEnd.value = 19;
+          displayTime.value = '2PM-6PM';
+        default:
+          currentHour.value = 7;
+          untilEnd.value = 10;
+      }
+    }
 
     detectLiveTime() {
       int hours = selectedDay?.hour ?? 7;
@@ -217,7 +220,7 @@ class CalendarDayWidget extends HookWidget {
             events: UnmodifiableListView(currentEvents.value),
             dividerColor: Colors.black,
             currentDate: selectedDay ?? DateTime.now(),
-            heightPerMin: 1,
+            heightPerMin: 2,
             startOfDay: TimeOfDay(hour: currentHour.value, minute: 0),
             endOfDay: TimeOfDay(hour: untilEnd.value, minute: 0),
             renderRowAsListView: true,

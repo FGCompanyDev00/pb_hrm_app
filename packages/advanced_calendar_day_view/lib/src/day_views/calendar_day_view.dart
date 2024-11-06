@@ -170,99 +170,91 @@ class _OverFlowCalendarDayViewState<T extends Object> extends State<OverFlowCale
           controller: widget.controller,
           physics: widget.physics ?? const ClampingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 10),
-          child: GestureDetector(
-            onHorizontalDragDown: (details) {
-              debugPrint('start down');
-            },
-            onVerticalDragEnd: (details) {
-              debugPrint('start end');
-            },
-            child: SizedBox(
-              height: totalHeight,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ListView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: timesInDay.length,
-                    itemBuilder: (context, index) {
-                      final time = timesInDay.elementAt(index);
-                      return GestureDetector(
-                        key: ValueKey(time.toString()),
-                        behavior: HitTestBehavior.opaque,
-                        onTap: widget.onTimeTap == null ? null : () => widget.onTimeTap!(time),
-                        child: SizedBox(
-                          height: rowHeight,
-                          width: viewWidth,
-                          child: Stack(
-                            children: [
-                              Divider(
-                                color: widget.dividerColor ?? Colors.amber,
-                                height: 0,
-                                thickness: time.minute == 0 ? 1 : .5,
-                                indent: widget.timeTitleColumnWidth + 3,
-                              ),
-                              Transform(
-                                transform: Matrix4.translationValues(0, -20, 0),
-                                child: SizedBox(
-                                  height: 40,
-                                  width: widget.timeTitleColumnWidth,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          widget.time12 ? time.hourDisplayZero12 : time.hourDisplay24,
-                                          style: widget.timeTextStyle ?? TextStyle(color: widget.timeTextColor),
+          child: SizedBox(
+            height: totalHeight,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                ListView.builder(
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: timesInDay.length,
+                  itemBuilder: (context, index) {
+                    final time = timesInDay.elementAt(index);
+                    return GestureDetector(
+                      key: ValueKey(time.toString()),
+                      behavior: HitTestBehavior.opaque,
+                      onTap: widget.onTimeTap == null ? null : () => widget.onTimeTap!(time),
+                      child: SizedBox(
+                        height: rowHeight,
+                        width: viewWidth,
+                        child: Stack(
+                          children: [
+                            Divider(
+                              color: widget.dividerColor ?? Colors.amber,
+                              height: 0,
+                              thickness: time.minute == 0 ? 1 : .5,
+                              indent: widget.timeTitleColumnWidth + 3,
+                            ),
+                            Transform(
+                              transform: Matrix4.translationValues(0, -20, 0),
+                              child: SizedBox(
+                                height: 40,
+                                width: widget.timeTitleColumnWidth,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        widget.time12 ? time.hourDisplayZero12 : time.hourDisplay24,
+                                        style: widget.timeTextStyle ?? TextStyle(color: widget.timeTextColor),
+                                        maxLines: 1,
+                                      ),
+                                      Visibility(
+                                        visible: widget.time12,
+                                        child: Text(
+                                          time.displayAMPM,
+                                          style: widget.timeTextStyle ?? TextStyle(color: widget.timeTextColor, fontSize: 10),
                                           maxLines: 1,
                                         ),
-                                        Visibility(
-                                          visible: widget.time12,
-                                          child: Text(
-                                            time.displayAMPM,
-                                            style: widget.timeTextStyle ?? TextStyle(color: widget.timeTextColor, fontSize: 10),
-                                            maxLines: 1,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                ValueListenableBuilder(
+                    valueListenable: selectedDateNotifier,
+                    builder: (context, dynamic, child) {
+                      child = BackgroundIgnorePointer(
+                        ignored: widget.onTimeTap != null,
+                        child: Stack(
+                          // fit: StackFit.expand,
+                          clipBehavior: Clip.none,
+                          children: widget.renderRowAsListView
+                              ? renderAsListView(
+                                  heightUnit,
+                                  eventColumnWith,
+                                  totalHeight,
+                                )
+                              : renderWithFixedWidth(heightUnit, eventColumnWith),
                         ),
                       );
-                    },
-                  ),
-                  ValueListenableBuilder(
-                      valueListenable: selectedDateNotifier,
-                      builder: (context, dynamic, child) {
-                        child = BackgroundIgnorePointer(
-                          ignored: widget.onTimeTap != null,
-                          child: Stack(
-                            // fit: StackFit.expand,
-                            clipBehavior: Clip.none,
-                            children: widget.renderRowAsListView
-                                ? renderAsListView(
-                                    heightUnit,
-                                    eventColumnWith,
-                                    totalHeight,
-                                  )
-                                : renderWithFixedWidth(heightUnit, eventColumnWith),
-                          ),
-                        );
 
-                        return child;
-                      }),
-                  if (widget.showCurrentTimeLine && _currentTime.isAfter(timeStart) && _currentTime.isBefore(timeEnd))
-                    CurrentTimeLineWidget(
-                      top: _currentTime.minuteFrom(timeStart).toDouble() * heightUnit,
-                      width: constraints.maxWidth,
-                      color: widget.currentTimeLineColor,
-                    ),
-                ],
-              ),
+                      return child;
+                    }),
+                if (widget.showCurrentTimeLine && _currentTime.isAfter(timeStart) && _currentTime.isBefore(timeEnd))
+                  CurrentTimeLineWidget(
+                    top: _currentTime.minuteFrom(timeStart).toDouble() * heightUnit,
+                    width: constraints.maxWidth,
+                    color: widget.currentTimeLineColor,
+                  ),
+              ],
             ),
           ),
         ),

@@ -48,3 +48,5 @@ Color parseColor(String colorString) {
     return Colors.blueAccent;
   }
 }
+
+Size sizeScreen(BuildContext context) => MediaQuery.of(context).size;

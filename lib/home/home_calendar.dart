@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/standard/extension.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw.dart';
+import 'package:pb_hrsystem/core/widgets/scroll_controller/fetch_more_indicator.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
@@ -36,6 +38,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   // ValueNotifier to hold events mapped by date
   late final ValueNotifier<Map<DateTime, List<Event>>> _events;
+  final selectedSlot = ValueNotifier(1);
 
   // Calendar properties
   CalendarFormat _calendarFormat = CalendarFormat.month;
@@ -711,6 +714,80 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     }
   }
 
+  Future<void> pullMoreShow() async {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        width: double.maxFinite,
+        height: MediaQuery.sizeOf(context).height * 0.5,
+        padding: const EdgeInsets.all(20),
+        child: ListView(
+          children: [
+            ElevatedButton(
+              onPressed: () {
+                selectedSlot.value = 1;
+                Navigator.of(context).pop();
+              },
+              style: ButtonStyle(
+                backgroundColor: WidgetStateProperty.all<Color>(selectedSlot.value == 1 ? ColorStandardization().colorDarkGold : Colors.green.shade300),
+              ),
+              child: const Padding(
+                padding: EdgeInsets.all(10.0),
+                child: Text(
+                  '7AM - 10AM',
+                  style: TextStyle(fontSize: 20),
+                ),
+              ),
+            ),
+            const SizedBox(
+              height: 15,
+            ),
+            ElevatedButton(
+              onPressed: () {
+                selectedSlot.value = 2;
+                Navigator.of(context).pop();
+              },
+              style: ButtonStyle(
+                backgroundColor: WidgetStateProperty.all<Color>(selectedSlot.value == 2 ? ColorStandardization().colorDarkGold : Colors.green.shade300),
+              ),
+              child: const Padding(
+                padding: EdgeInsets.all(10.0),
+                child: Text(
+                  '10AM - 2PM',
+                  style: TextStyle(fontSize: 20),
+                ),
+              ),
+            ),
+            const SizedBox(
+              height: 15,
+            ),
+            ElevatedButton(
+              onPressed: () {
+                {
+                  selectedSlot.value = 3;
+                  Navigator.of(context).pop();
+                }
+              },
+              style: ButtonStyle(
+                backgroundColor: WidgetStateProperty.all<Color>(selectedSlot.value == 3 ? ColorStandardization().colorDarkGold : Colors.green.shade300),
+              ),
+              child: const Padding(
+                padding: EdgeInsets.all(10.0),
+                child: Text(
+                  '2PM - 6PM',
+                  style: TextStyle(fontSize: 20),
+                ),
+              ),
+            ),
+            const SizedBox(
+              height: 15,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Adds a new event to the calendar
   void _addEvent({
     required String title,
@@ -797,33 +874,42 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       child: Scaffold(
         body: Stack(
           children: [
-            RefreshIndicator(
-              onRefresh: _onRefresh,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _buildCalendarHeader(isDarkMode),
-                    if (_showFiltersAndSearchBar) _buildFilters(),
-                    if (_showFiltersAndSearchBar) _buildSearchBar(),
-                    _buildCalendar(context, isDarkMode),
-                    _buildSectionSeparator(),
-                    _eventsForDay.isEmpty
-                        ? Text(
-                            AppLocalizations.of(context)!.noEventsForThisDay,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                              fontWeight: FontWeight.w500,
+            FetchMoreIndicator(
+              onAction: pullMoreShow,
+              child: RefreshIndicator(
+                onRefresh: _onRefresh,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      _buildCalendarHeader(isDarkMode),
+                      if (_showFiltersAndSearchBar) _buildFilters(),
+                      if (_showFiltersAndSearchBar) _buildSearchBar(),
+                      _buildCalendar(context, isDarkMode),
+                      _buildSectionSeparator(),
+                      _eventsForDay.isEmpty
+                          ? SizedBox(
+                              height: sizeScreen(context).height * 0.4,
+                              child: Center(
+                                child: Text(
+                                  AppLocalizations.of(context)!.noEventsForThisDay,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            )
+                          : CalendarDayWidget(
+                              selectedDay: _selectedDay,
+                              eventsCalendar: _eventsForDay,
+                              selectedSlotTime: selectedSlot.value,
                             ),
-                            textAlign: TextAlign.center,
-                          )
-                        : CalendarDayWidget(
-                            selectedDay: _selectedDay,
-                            eventsCalendar: _eventsForDay,
-                          ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
