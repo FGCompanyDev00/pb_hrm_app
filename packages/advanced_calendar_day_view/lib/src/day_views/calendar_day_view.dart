@@ -149,6 +149,15 @@ class _OverFlowCalendarDayViewState<T extends Object> extends State<OverFlowCale
     super.dispose();
   }
 
+  /// Handles pull-to-refresh action
+  Future<void> _onEarlier() async {
+    debugPrint('earler');
+    // await _fetchData();
+    // setState(() {
+    //   _showFiltersAndSearchBar = !_showFiltersAndSearchBar;
+    // });
+  }
+
   @override
   Widget build(BuildContext context) {
     final heightUnit = widget.heightPerMin * _rowScale;
@@ -168,7 +177,7 @@ class _OverFlowCalendarDayViewState<T extends Object> extends State<OverFlowCale
         child: SingleChildScrollView(
           primary: widget.primary,
           controller: widget.controller,
-          physics: widget.physics ?? const ClampingScrollPhysics(),
+          physics: widget.physics ?? const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 10),
           child: SizedBox(
             height: totalHeight,

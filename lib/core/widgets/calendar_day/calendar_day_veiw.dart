@@ -8,6 +8,8 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/events_utils.dart';
+import 'package:pb_hrsystem/core/widgets/scroll_controller/check_mark_indicator.dart';
+import 'package:pb_hrsystem/core/widgets/scroll_controller/fetch_more_indicator.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/home_calendar.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
@@ -31,6 +33,7 @@ class CalendarDayWidget extends HookWidget {
     final untilEnd = useState(11);
     final selectedSlot = useState(11);
     final displayTime = useState('7AM-10AM');
+    final switchTime = useState(1);
     final ValueNotifier<List<AdvancedDayEvent<String>>> currentEvents = useState([]);
     final ValueNotifier<List<OverflowEventsRow<String>>> currentOverflowEventsRow = useState([]);
 
@@ -168,8 +171,7 @@ class CalendarDayWidget extends HookWidget {
     }
 
     switchSlot() {
-      selectedSlot.value = selectedSlotTime ?? 0;
-      switch (selectedSlotTime) {
+      switch (switchTime.value) {
         case 1:
           currentHour.value = 7;
           untilEnd.value = 11;
@@ -188,289 +190,305 @@ class CalendarDayWidget extends HookWidget {
       }
     }
 
-    detectLiveTime() {
-      int hours = selectedDay?.hour ?? 7;
-      if (hours >= 7 && hours <= 10) {
-        currentHour.value = 7;
-        untilEnd.value = 11;
-        displayTime.value = '7AM-10AM';
-      } else if (hours >= 10 && hours <= 14) {
-        currentHour.value = 10;
-        untilEnd.value = 15;
-        displayTime.value = '10AM-2PM';
-      } else if (hours >= 14 && hours <= 18) {
-        currentHour.value = 14;
-        untilEnd.value = 19;
-        displayTime.value = '2PM-6PM';
-      } else {
-        currentHour.value = 7;
-        untilEnd.value = 11;
-        displayTime.value = '7AM-10AM';
-      }
-    }
+    // detectLiveTime() {
+    //   int hours = 8;
+    //   // int hours = selectedDay?.hour ?? 7;
+    //   if (hours >= 7 && hours <= 10) {
+    //     currentHour.value = 7;
+    //     untilEnd.value = 11;
+    //     displayTime.value = '7AM-10AM';
+    //   } else if (hours >= 10 && hours <= 14) {
+    //     currentHour.value = 10;
+    //     untilEnd.value = 15;
+    //     displayTime.value = '10AM-2PM';
+    //   } else if (hours >= 14 && hours <= 18) {
+    //     currentHour.value = 14;
+    //     untilEnd.value = 19;
+    //     displayTime.value = '2PM-6PM';
+    //   } else {
+    //     currentHour.value = 7;
+    //     untilEnd.value = 11;
+    //     displayTime.value = '7AM-10AM';
+    //   }
+    // }
 
-    useEffect(() => detectLiveTime, autoEventsSlot());
+    useEffect(() => autoEventsSlot());
 
     return ValueListenableBuilder(
         valueListenable: currentOverflowEventsRow,
         builder: (context, flowEvent, child) {
-          return OverFlowCalendarDayView(
-            onTimeTap: (s) {},
-            overflowEvents: flowEvent,
-            events: UnmodifiableListView(currentEvents.value),
-            dividerColor: Colors.black,
-            currentDate: selectedDay ?? DateTime.now(),
-            heightPerMin: 2,
-            startOfDay: TimeOfDay(hour: currentHour.value, minute: 0),
-            endOfDay: TimeOfDay(hour: untilEnd.value, minute: 0),
-            renderRowAsListView: true,
-            cropBottomEvents: true,
-            showMoreOnRowButton: true,
-            timeTitleColumnWidth: 40,
-            time12: true,
-            overflowItemBuilder: (context, constraints, itemIndex, event) {
-              Color statusColor = categoryColors[event.category] ?? Colors.grey;
-              IconData? iconCategory = categoryIcon[event.category];
-              Widget child;
+          return FetchMoreIndicator(
+            onAction: () async {
+              if (switchTime.value < 4) switchTime.value += 1;
+              return switchSlot();
+            },
+            child: CheckMarkIndicator(
+              onRefresh: () async {
+                if (switchTime.value > 1) switchTime.value -= 1;
+                return switchSlot();
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(top: 20),
+                child: OverFlowCalendarDayView(
+                  onTimeTap: (s) {},
+                  overflowEvents: flowEvent,
+                  events: UnmodifiableListView(currentEvents.value),
+                  dividerColor: Colors.black,
+                  currentDate: selectedDay ?? DateTime.now(),
+                  heightPerMin: 1,
+                  startOfDay: TimeOfDay(hour: currentHour.value, minute: 0),
+                  endOfDay: TimeOfDay(hour: untilEnd.value, minute: 0),
+                  renderRowAsListView: true,
+                  cropBottomEvents: true,
+                  showMoreOnRowButton: true,
+                  timeTitleColumnWidth: 40,
+                  time12: true,
+                  overflowItemBuilder: (context, constraints, itemIndex, event) {
+                    Color statusColor = categoryColors[event.category] ?? Colors.grey;
+                    IconData? iconCategory = categoryIcon[event.category];
+                    Widget child;
 
-              String eventCategory = '';
+                    String eventCategory = '';
 
-              switch (event.category) {
-                case 'Add Meeting':
-                  eventCategory = AppLocalizations.of(context)!.meetingTitle;
-                case 'Leave':
-                  eventCategory = AppLocalizations.of(context)!.leave;
-                case 'Meeting Room Bookings':
-                  eventCategory = AppLocalizations.of(context)!.meetingRoomBookings;
-                case 'Booking Car':
-                  eventCategory = AppLocalizations.of(context)!.bookingCar;
-                case 'Minutes Of Meeting':
-                  eventCategory = AppLocalizations.of(context)!.minutesOfMeeting;
-                default:
-                  eventCategory = AppLocalizations.of(context)!.other;
-              }
+                    switch (event.category) {
+                      case 'Add Meeting':
+                        eventCategory = AppLocalizations.of(context)!.meetingTitle;
+                      case 'Leave':
+                        eventCategory = AppLocalizations.of(context)!.leave;
+                      case 'Meeting Room Bookings':
+                        eventCategory = AppLocalizations.of(context)!.meetingRoomBookings;
+                      case 'Booking Car':
+                        eventCategory = AppLocalizations.of(context)!.bookingCar;
+                      case 'Minutes Of Meeting':
+                        eventCategory = AppLocalizations.of(context)!.minutesOfMeeting;
+                      default:
+                        eventCategory = AppLocalizations.of(context)!.other;
+                    }
 
-              event.category == "Minutes Of Meeting"
-                  ? child = GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      key: ValueKey(event.hashCode),
-                      onDoubleTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => TimetablePage(date: selectedDay!),
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EventDetailView(
-                              event: {
-                                'title': event.title,
-                                'description': eventsCalendar[itemIndex].description,
-                                'startDateTime': eventsCalendar[itemIndex].startDateTime.toString(),
-                                'endDateTime': eventsCalendar[itemIndex].endDateTime.toString(),
-                                'isMeeting': eventsCalendar[itemIndex].isMeeting,
-                                'createdBy': eventsCalendar[itemIndex].createdBy ?? '',
-                                'location': eventsCalendar[itemIndex].location ?? '',
-                                'status': event.status,
-                                'img_name': eventsCalendar[itemIndex].imgName ?? '',
-                                'created_at': eventsCalendar[itemIndex].createdAt ?? '',
-                                'is_repeat': eventsCalendar[itemIndex].isRepeat ?? '',
-                                'video_conference': eventsCalendar[itemIndex].videoConference ?? '',
-                                'uid': eventsCalendar[itemIndex].uid,
-                                'members': event.members ?? [],
-                                'category': event.category,
-                                'leave_type': eventsCalendar[itemIndex].leaveType ?? '',
-                              },
-                            ),
-                          ),
-                        );
-                      },
-                      child: event.status == 'Cancelled'
-                          ? const SizedBox.shrink()
-                          : Container(
-                              margin: const EdgeInsets.only(right: 3, left: 3),
-                              padding: const EdgeInsets.all(8.0),
-                              height: constraints.maxHeight,
-                              width: 100,
-                              decoration: BoxDecoration(
-                                color: ColorStandardization().colorDarkGold,
-                                borderRadius: const BorderRadius.all(Radius.circular(10)),
+                    event.category == "Minutes Of Meeting"
+                        ? child = GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            key: ValueKey(event.hashCode),
+                            onDoubleTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => TimetablePage(date: selectedDay!),
                               ),
-                              child: Text(eventCategory),
                             ),
-                    )
-                  : child = GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      key: ValueKey(event.hashCode),
-                      onDoubleTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => TimetablePage(date: selectedDay!),
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EventDetailView(
-                              event: {
-                                'title': event.title,
-                                'description': eventsCalendar[itemIndex].description,
-                                'startDateTime': eventsCalendar[itemIndex].startDateTime.toString(),
-                                'endDateTime': eventsCalendar[itemIndex].endDateTime.toString(),
-                                'isMeeting': eventsCalendar[itemIndex].isMeeting,
-                                'createdBy': eventsCalendar[itemIndex].createdBy ?? '',
-                                'location': eventsCalendar[itemIndex].location ?? '',
-                                'status': event.status,
-                                'img_name': eventsCalendar[itemIndex].imgName ?? '',
-                                'created_at': eventsCalendar[itemIndex].createdAt ?? '',
-                                'is_repeat': eventsCalendar[itemIndex].isRepeat ?? '',
-                                'video_conference': eventsCalendar[itemIndex].videoConference ?? '',
-                                'uid': eventsCalendar[itemIndex].uid,
-                                'members': event.members ?? [],
-                                'category': event.category,
-                                'leave_type': eventsCalendar[itemIndex].leaveType,
-                              },
-                            ),
-                          ),
-                        );
-                      },
-                      child: event.status == 'Cancelled'
-                          ? const SizedBox.shrink()
-                          : event.status == 'Approved'
-                              ? Container(
-                                  margin: const EdgeInsets.only(right: 3, left: 3),
-                                  padding: const EdgeInsets.all(8.0),
-                                  height: constraints.maxHeight,
-                                  decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.2),
-                                    border: Border(
-                                      left: BorderSide(color: statusColor, width: 4),
-                                      right: BorderSide(color: statusColor),
-                                      top: BorderSide(color: statusColor),
-                                      bottom: BorderSide(color: statusColor),
-                                    ),
-                                    borderRadius: const BorderRadius.all(Radius.circular(10)),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              const Icon(Icons.window_rounded, size: 15),
-                                              const SizedBox(width: 5),
-                                              Text(eventCategory),
-                                            ],
-                                          ),
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Row(children: _buildMembersAvatars(event, context)),
-                                              const SizedBox(height: 20),
-                                              Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                children: [
-                                                  Row(
-                                                    children: [
-                                                      iconCategory != null ? Icon(iconCategory, size: 15) : const SizedBox.shrink(),
-                                                      const SizedBox(width: 5),
-                                                      Text(event.desc, style: const TextStyle(fontSize: 10)),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(width: 20),
-                                                  Row(
-                                                    children: [
-                                                      const Icon(Icons.access_time, size: 15),
-                                                      const SizedBox(width: 5),
-                                                      Text(
-                                                        '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
-                                                        style: const TextStyle(fontSize: 10),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              )
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : Container(
-                                  margin: const EdgeInsets.only(right: 3, left: 3),
-                                  height: constraints.maxHeight,
-                                  decoration: BoxDecoration(
-                                    color: statusColor.withOpacity(0.2),
-                                    borderRadius: const BorderRadius.all(Radius.circular(10)),
-                                  ),
-                                  child: DottedBorder(
-                                    color: statusColor,
-                                    strokeWidth: 3,
-                                    dashPattern: const <double>[5, 5],
-                                    borderType: BorderType.RRect,
-                                    radius: const Radius.circular(12),
-                                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Row(
-                                        children: [
-                                          Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  const Icon(Icons.window_rounded, size: 15),
-                                                  const SizedBox(width: 5),
-                                                  Text(eventCategory),
-                                                ],
-                                              ),
-                                              Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Row(children: _buildMembersAvatars(event, context)),
-                                                  const SizedBox(height: 20),
-                                                  Row(
-                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                    children: [
-                                                      Row(
-                                                        children: [
-                                                          iconCategory != null ? Icon(iconCategory, size: 15) : const SizedBox.shrink(),
-                                                          const SizedBox(width: 5),
-                                                          Text(event.desc, style: const TextStyle(fontSize: 10)),
-                                                        ],
-                                                      ),
-                                                      const SizedBox(width: 20),
-                                                      Row(
-                                                        children: [
-                                                          const Icon(Icons.access_time, size: 15),
-                                                          const SizedBox(width: 5),
-                                                          Text(
-                                                            '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
-                                                            style: const TextStyle(fontSize: 10),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ],
-                                                  )
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EventDetailView(
+                                    event: {
+                                      'title': event.title,
+                                      'description': eventsCalendar[itemIndex].description,
+                                      'startDateTime': eventsCalendar[itemIndex].startDateTime.toString(),
+                                      'endDateTime': eventsCalendar[itemIndex].endDateTime.toString(),
+                                      'isMeeting': eventsCalendar[itemIndex].isMeeting,
+                                      'createdBy': eventsCalendar[itemIndex].createdBy ?? '',
+                                      'location': eventsCalendar[itemIndex].location ?? '',
+                                      'status': event.status,
+                                      'img_name': eventsCalendar[itemIndex].imgName ?? '',
+                                      'created_at': eventsCalendar[itemIndex].createdAt ?? '',
+                                      'is_repeat': eventsCalendar[itemIndex].isRepeat ?? '',
+                                      'video_conference': eventsCalendar[itemIndex].videoConference ?? '',
+                                      'uid': eventsCalendar[itemIndex].uid,
+                                      'members': event.members ?? [],
+                                      'category': event.category,
+                                      'leave_type': eventsCalendar[itemIndex].leaveType ?? '',
+                                    },
                                   ),
                                 ),
-                    );
-              return child;
-            },
+                              );
+                            },
+                            child: event.status == 'Cancelled'
+                                ? const SizedBox.shrink()
+                                : Container(
+                                    margin: const EdgeInsets.only(right: 3, left: 3),
+                                    padding: const EdgeInsets.all(8.0),
+                                    height: constraints.maxHeight,
+                                    width: 100,
+                                    decoration: BoxDecoration(
+                                      color: ColorStandardization().colorDarkGold,
+                                      borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                    ),
+                                    child: Text(eventCategory),
+                                  ),
+                          )
+                        : child = GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            key: ValueKey(event.hashCode),
+                            onDoubleTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => TimetablePage(date: selectedDay!),
+                              ),
+                            ),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EventDetailView(
+                                    event: {
+                                      'title': event.title,
+                                      'description': eventsCalendar[itemIndex].description,
+                                      'startDateTime': eventsCalendar[itemIndex].startDateTime.toString(),
+                                      'endDateTime': eventsCalendar[itemIndex].endDateTime.toString(),
+                                      'isMeeting': eventsCalendar[itemIndex].isMeeting,
+                                      'createdBy': eventsCalendar[itemIndex].createdBy ?? '',
+                                      'location': eventsCalendar[itemIndex].location ?? '',
+                                      'status': event.status,
+                                      'img_name': eventsCalendar[itemIndex].imgName ?? '',
+                                      'created_at': eventsCalendar[itemIndex].createdAt ?? '',
+                                      'is_repeat': eventsCalendar[itemIndex].isRepeat ?? '',
+                                      'video_conference': eventsCalendar[itemIndex].videoConference ?? '',
+                                      'uid': eventsCalendar[itemIndex].uid,
+                                      'members': event.members ?? [],
+                                      'category': event.category,
+                                      'leave_type': eventsCalendar[itemIndex].leaveType,
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                            child: event.status == 'Cancelled'
+                                ? const SizedBox.shrink()
+                                : event.status == 'Approved'
+                                    ? Container(
+                                        margin: const EdgeInsets.only(right: 3, left: 3),
+                                        padding: const EdgeInsets.all(8.0),
+                                        height: constraints.maxHeight,
+                                        decoration: BoxDecoration(
+                                          color: statusColor.withOpacity(0.2),
+                                          border: Border(
+                                            left: BorderSide(color: statusColor, width: 4),
+                                            right: BorderSide(color: statusColor),
+                                            top: BorderSide(color: statusColor),
+                                            bottom: BorderSide(color: statusColor),
+                                          ),
+                                          borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    const Icon(Icons.window_rounded, size: 15),
+                                                    const SizedBox(width: 5),
+                                                    Text(eventCategory),
+                                                  ],
+                                                ),
+                                                Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(children: _buildMembersAvatars(event, context)),
+                                                    const SizedBox(height: 20),
+                                                    Row(
+                                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                      children: [
+                                                        Row(
+                                                          children: [
+                                                            iconCategory != null ? Icon(iconCategory, size: 15) : const SizedBox.shrink(),
+                                                            const SizedBox(width: 5),
+                                                            Text(event.desc, style: const TextStyle(fontSize: 10)),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(width: 20),
+                                                        Row(
+                                                          children: [
+                                                            const Icon(Icons.access_time, size: 15),
+                                                            const SizedBox(width: 5),
+                                                            Text(
+                                                              '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                              style: const TextStyle(fontSize: 10),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ],
+                                                    )
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    : Container(
+                                        margin: const EdgeInsets.only(right: 3, left: 3),
+                                        height: constraints.maxHeight,
+                                        decoration: BoxDecoration(
+                                          color: statusColor.withOpacity(0.2),
+                                          borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                        ),
+                                        child: DottedBorder(
+                                          color: statusColor,
+                                          strokeWidth: 3,
+                                          dashPattern: const <double>[5, 5],
+                                          borderType: BorderType.RRect,
+                                          radius: const Radius.circular(12),
+                                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(8.0),
+                                            child: Row(
+                                              children: [
+                                                Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        const Icon(Icons.window_rounded, size: 15),
+                                                        const SizedBox(width: 5),
+                                                        Text(eventCategory),
+                                                      ],
+                                                    ),
+                                                    Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Row(children: _buildMembersAvatars(event, context)),
+                                                        const SizedBox(height: 20),
+                                                        Row(
+                                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                          children: [
+                                                            Row(
+                                                              children: [
+                                                                iconCategory != null ? Icon(iconCategory, size: 15) : const SizedBox.shrink(),
+                                                                const SizedBox(width: 5),
+                                                                Text(event.desc, style: const TextStyle(fontSize: 10)),
+                                                              ],
+                                                            ),
+                                                            const SizedBox(width: 20),
+                                                            Row(
+                                                              children: [
+                                                                const Icon(Icons.access_time, size: 15),
+                                                                const SizedBox(width: 5),
+                                                                Text(
+                                                                  '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                                  style: const TextStyle(fontSize: 10),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ],
+                                                        )
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                          );
+                    return child;
+                  },
+                ),
+              ),
+            ),
           );
         });
   }

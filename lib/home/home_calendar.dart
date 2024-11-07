@@ -874,42 +874,39 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       child: Scaffold(
         body: Stack(
           children: [
-            FetchMoreIndicator(
-              onAction: pullMoreShow,
-              child: RefreshIndicator(
-                onRefresh: _onRefresh,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      _buildCalendarHeader(isDarkMode),
-                      if (_showFiltersAndSearchBar) _buildFilters(),
-                      if (_showFiltersAndSearchBar) _buildSearchBar(),
-                      _buildCalendar(context, isDarkMode),
-                      _buildSectionSeparator(),
-                      _eventsForDay.isEmpty
-                          ? SizedBox(
-                              height: sizeScreen(context).height * 0.4,
-                              child: Center(
-                                child: Text(
-                                  AppLocalizations.of(context)!.noEventsForThisDay,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  textAlign: TextAlign.center,
+            RefreshIndicator(
+              onRefresh: _onRefresh,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildCalendarHeader(isDarkMode),
+                    if (_showFiltersAndSearchBar) _buildFilters(),
+                    if (_showFiltersAndSearchBar) _buildSearchBar(),
+                    _buildCalendar(context, isDarkMode),
+                    _buildSectionSeparator(),
+                    _eventsForDay.isEmpty
+                        ? SizedBox(
+                            height: sizeScreen(context).height * 0.4,
+                            child: Center(
+                              child: Text(
+                                AppLocalizations.of(context)!.noEventsForThisDay,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w500,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
-                            )
-                          : CalendarDayWidget(
-                              selectedDay: _selectedDay,
-                              eventsCalendar: _eventsForDay,
-                              selectedSlotTime: selectedSlot.value,
                             ),
-                    ],
-                  ),
+                          )
+                        : CalendarDayWidget(
+                            selectedDay: _selectedDay,
+                            eventsCalendar: _eventsForDay,
+                            selectedSlotTime: selectedSlot.value,
+                          ),
+                  ],
                 ),
               ),
             ),
