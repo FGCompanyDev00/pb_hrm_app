@@ -338,5 +338,6 @@
   "locationPermissionDenied": "Location permission denied.",
   "pleaseGrantLocationPermission": "Please grant location permission.",
   "locationPermissionDeniedForever": "Location permission denied permanently.",
-  "pleaseEnableLocationPermissionFromSettings": "Please enable location permission from settings."
+  "pleaseEnableLocationPermissionFromSettings": "Please enable location permission from settings.",
+  "carReturn": "Car Return"
 }

@@ -377,5 +377,6 @@
   "locationPermissionDenied": "位置权限被拒绝。",
   "pleaseGrantLocationPermission": "请授予定位权限。",
   "locationPermissionDeniedForever": "位置权限被永久拒绝。",
-  "pleaseEnableLocationPermissionFromSettings": "请在设置中启用位置权限。"
+  "pleaseEnableLocationPermissionFromSettings": "请在设置中启用位置权限。",
+  "carReturn": "还车"
 }

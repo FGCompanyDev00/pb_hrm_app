@@ -344,5 +344,6 @@
   "locationPermissionDenied": "ການອະນຸຍາດຕຳແໜ່ງຖືກປະຕິເສດ.",
   "pleaseGrantLocationPermission": "ກະລຸນາອະນຸຍາດການໃຊ້ຕຳແໜ່ງ.",
   "locationPermissionDeniedForever": "ການອະນຸຍາດຕຳແໜ່ງຖືກປະຕິເສດຢ່າງຖາວອນ.",
-  "pleaseEnableLocationPermissionFromSettings": "ກະລຸນາເປີດໃຊ້ການອະນຸຍາດຕຳແໜ່ງຈາກການຕັ້ງຄ່າ."
+  "pleaseEnableLocationPermissionFromSettings": "ກະລຸນາເປີດໃຊ້ການອະນຸຍາດຕຳແໜ່ງຈາກການຕັ້ງຄ່າ.",
+  "carReturn": "ການສົ່ງລົດຄືນ"
 }

@@ -948,7 +948,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               children: [
                 const SizedBox(height: 70),
                 Text(
-                  AppLocalizations.of(context)!.calender,
+                  AppLocalizations.of(context)!.calendar,
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black,
                     fontSize: 30,
