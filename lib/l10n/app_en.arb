@@ -339,5 +339,22 @@
   "pleaseGrantLocationPermission": "Please grant location permission.",
   "locationPermissionDeniedForever": "Location permission denied permanently.",
   "pleaseEnableLocationPermissionFromSettings": "Please enable location permission from settings.",
-  "carReturn": "Car Return"
+  "carReturn": "Car Return",
+   "loginFailed": "Login Failed",
+    "emptyFieldsMessage": "Please enter both username and password.",
+    "apiErrorTitle": "API Error",
+    "apiErrorMessage": "The API is currently unavailable.",
+    "serverIssueMessage": "There is an issue with the server.",
+    "noInternetTitle": "No Internet",
+    "noInternetMessage": "You are currently offline.",
+    "authenticationFailed": "Authentication Failed",
+    "authenticateToContinue": "Please authenticate to continue.",
+    "biometricDisabled": "Biometric Authentication Disabled",
+    "enableBiometric": "Please enable biometric authentication in settings.",
+    "loginSuccess": "Login Successful",
+    "welcomeBack": "Welcome back!",
+    "noInternetConnection": "No Internet Connection",
+    "cancel": "Cancel",
+    "okay": "Okay",
+    "credentialsNotFound": "CREDENTIAL NOT FOUND"
 }

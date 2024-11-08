@@ -290,6 +290,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       if (kDebugMode) {
         print('Biometric authentication error: $e');
       }
+      _showCustomDialog(
+          context,
+          AppLocalizations.of(context)!.authenticationFailed,
+          AppLocalizations.of(context)!.authenticateToContinue);
+      return;
     }
 
     if (authenticated) {
@@ -298,7 +303,13 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       if (username != null && password != null) {
         _usernameController.text = username;
         _passwordController.text = password;
-        _login();
+        // Await the login to ensure proper flow and error handling
+        await _login();
+      } else {
+        _showCustomDialog(
+            context,
+            AppLocalizations.of(context)!.authenticationFailed,
+            AppLocalizations.of(context)!.credentialsNotFound);
       }
     } else {
       _showCustomDialog(

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_main_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/returnCar/car_return_page.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/monthly_attendance_record.dart';
@@ -562,6 +563,18 @@ class _DashboardState extends State<Dashboard> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
+            );
+          },
+        ),
+        _buildActionCard(
+          context,
+          'assets/car.png',
+          AppLocalizations.of(context)!.carReturn,
+          isDarkMode,
+              () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const returnCarPage()),
             );
           },
         ),

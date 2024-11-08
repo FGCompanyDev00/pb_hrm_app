@@ -599,22 +599,22 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildPageContent(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              _buildSectionContainer(),
-              const SizedBox(height: 16),
-              _buildHeaderContent(context),
-              const SizedBox(height: 16),
-              _buildWeeklyRecordsList(),
-              const SizedBox(height: 80), // To provide space for the floating button
-            ],
-          ),
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: _fetchWeeklyRecords,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          children: [
+            _buildSectionContainer(),
+            const SizedBox(height: 16),
+            _buildHeaderContent(context),
+            const SizedBox(height: 16),
+            _buildWeeklyRecordsList(),
+            const SizedBox(height: 80),
+          ],
+        ),
+      ),
     );
   }
 

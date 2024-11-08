@@ -345,5 +345,22 @@
   "pleaseGrantLocationPermission": "ກະລຸນາອະນຸຍາດການໃຊ້ຕຳແໜ່ງ.",
   "locationPermissionDeniedForever": "ການອະນຸຍາດຕຳແໜ່ງຖືກປະຕິເສດຢ່າງຖາວອນ.",
   "pleaseEnableLocationPermissionFromSettings": "ກະລຸນາເປີດໃຊ້ການອະນຸຍາດຕຳແໜ່ງຈາກການຕັ້ງຄ່າ.",
-  "carReturn": "ການສົ່ງລົດຄືນ"
+  "carReturn": "ການສົ່ງລົດຄືນ",
+  "loginFailed": "ການເຂົ້າສູ່ລະບົບລົ້ມເຫຼວ",
+    "emptyFieldsMessage": "ກະລຸນາໃສ່ຊື່ເຂົ້າສູ່ລະບົບແລະລະຫັດຜ່ານທັງຫມົດ.",
+    "apiErrorTitle": "ຄວາມຜິດພາດ API",
+    "apiErrorMessage": "API ຂອງທ່ານບັນທຶກການໃຊ້ງານຂອງທ່ານ.",
+    "serverIssueMessage": "ມີປັນຫາກັບເຄື່ອງເຄື່ອງບໍລິການ.",
+    "noInternetTitle": "ບໍ່ມີອິນເຕີເນັດ",
+    "noInternetMessage": "ທ່ານຂອງທ່ານຍັງບໍ່ມີອິນເຕີເນັດ.",
+    "authenticationFailed": "ການຕິດຕັ້ງຜິດພາດ",
+    "authenticateToContinue": "ກະລຸນາການຕິດຕັ້ງເພື່ອດຳເນີນຕໍ່.",
+    "biometricDisabled": "ການຕິດຕັ້ງຂອງບິໂມຕິກຈະຖືກປິດ",
+    "enableBiometric": "ກະລຸນາເປີດການຕິດຕັ້ງບິໂມຕິກໃນການຕັ້ງຄ່າ.",
+    "loginSuccess": "ເຂົ້າສູ່ລະບົບສໍາເລັດ",
+    "welcomeBack": "ຍິນດີຕ້ອນຮັບກັບຄືນ!",
+    "noInternetConnection": "ບໍ່ມີການເຊື່ອມຕໍ່ອິນເຕີເນັດ",
+    "cancel": "ຍົກເລີກ",
+    "okay": "ຕົກລົງ",
+    "credentialsNotFound": "ບໍ່ພົບຂໍ້ມູນຂໍ້ມູນຂອງທ່ານ"
 }
