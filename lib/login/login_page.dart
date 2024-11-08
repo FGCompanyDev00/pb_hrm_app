@@ -270,31 +270,24 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
 
   Future<void> _authenticate({bool useBiometric = true}) async {
     if (!_biometricEnabled) {
-      _showCustomDialog(
-          context,
-          AppLocalizations.of(context)!.biometricDisabled,
-          AppLocalizations.of(context)!.enableBiometric);
+      _showCustomDialog(context, 'Biometric Disabled',
+          'Please enable biometric authentication.');
       return;
     }
 
     bool authenticated = false;
     try {
       authenticated = await auth.authenticate(
-        localizedReason: AppLocalizations.of(context)!.authenticateToLogin,
-        options: const AuthenticationOptions(
-          biometricOnly: true,
+        localizedReason: 'Authenticate to login',
+        options: AuthenticationOptions(
+          biometricOnly: useBiometric,
           stickyAuth: true,
         ),
       );
     } catch (e) {
       if (kDebugMode) {
-        print('Biometric authentication error: $e');
+        print('Authentication error: $e');
       }
-      _showCustomDialog(
-          context,
-          AppLocalizations.of(context)!.authenticationFailed,
-          AppLocalizations.of(context)!.authenticateToContinue);
-      return;
     }
 
     if (authenticated) {
@@ -303,19 +296,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       if (username != null && password != null) {
         _usernameController.text = username;
         _passwordController.text = password;
-        // Await the login to ensure proper flow and error handling
-        await _login();
-      } else {
-        _showCustomDialog(
-            context,
-            AppLocalizations.of(context)!.authenticationFailed,
-            AppLocalizations.of(context)!.credentialsNotFound);
+        _login();
       }
     } else {
-      _showCustomDialog(
-          context,
-          AppLocalizations.of(context)!.authenticationFailed,
-          AppLocalizations.of(context)!.authenticateToContinue);
+      _showCustomDialog(context, 'Authentication Failed', 'Please try again.');
     }
   }
 
