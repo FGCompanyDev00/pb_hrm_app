@@ -1,13 +1,12 @@
 import 'dart:convert';
 import 'dart:async';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/standard/extension.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
-import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw.dart';
-import 'package:pb_hrsystem/core/widgets/scroll_controller/fetch_more_indicator.dart';
+import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw_card.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
@@ -104,7 +103,13 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     final detectDate = normalizeDate(date);
     if (_events.value.containsKey(detectDate)) {
       // If the date already has events, add to the list
-      _events.value[detectDate]!.add(event);
+      if (_events.value[detectDate]!.where((desc) => desc.description == event.description).isEmpty) {
+        _events.value[detectDate]!.add(event);
+      } else {
+        event.members?.forEach(
+          (e) => _events.value[detectDate]!.where((desc) => desc.description == event.description).first.members?.add(e),
+        );
+      }
     } else {
       // Otherwise, create a new list with this event
       _events.value[detectDate] = [event];
@@ -553,6 +558,20 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     });
   }
 
+  int liveHour() {
+    int hour = _selectedDay?.hour ?? 7;
+
+    if (hour < 11) {
+      return 0;
+    } else if (hour < 15) {
+      return 1;
+    } else if (hour < 19) {
+      return 2;
+    } else {
+      return 1;
+    }
+  }
+
   /// Retrieves events for a specific day
   List<Event> _getEventsForDay(DateTime day) {
     final normalizedDay = normalizeDate(day);
@@ -590,11 +609,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         builder: (context) => TimetablePage(date: selectedDay),
       ),
     );
-  }
-
-  /// Retrieves the color associated with an event category
-  Color getEventColor(Event event) {
-    return categoryColors[event.category] ?? Colors.grey;
   }
 
   /// Displays a popup to choose between adding personal or office events
@@ -714,80 +728,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     }
   }
 
-  Future<void> pullMoreShow() async {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        width: double.maxFinite,
-        height: MediaQuery.sizeOf(context).height * 0.5,
-        padding: const EdgeInsets.all(20),
-        child: ListView(
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                selectedSlot.value = 1;
-                Navigator.of(context).pop();
-              },
-              style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all<Color>(selectedSlot.value == 1 ? ColorStandardization().colorDarkGold : Colors.green.shade300),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.all(10.0),
-                child: Text(
-                  '7AM - 10AM',
-                  style: TextStyle(fontSize: 20),
-                ),
-              ),
-            ),
-            const SizedBox(
-              height: 15,
-            ),
-            ElevatedButton(
-              onPressed: () {
-                selectedSlot.value = 2;
-                Navigator.of(context).pop();
-              },
-              style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all<Color>(selectedSlot.value == 2 ? ColorStandardization().colorDarkGold : Colors.green.shade300),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.all(10.0),
-                child: Text(
-                  '10AM - 2PM',
-                  style: TextStyle(fontSize: 20),
-                ),
-              ),
-            ),
-            const SizedBox(
-              height: 15,
-            ),
-            ElevatedButton(
-              onPressed: () {
-                {
-                  selectedSlot.value = 3;
-                  Navigator.of(context).pop();
-                }
-              },
-              style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all<Color>(selectedSlot.value == 3 ? ColorStandardization().colorDarkGold : Colors.green.shade300),
-              ),
-              child: const Padding(
-                padding: EdgeInsets.all(10.0),
-                child: Text(
-                  '2PM - 6PM',
-                  style: TextStyle(fontSize: 20),
-                ),
-              ),
-            ),
-            const SizedBox(
-              height: 15,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// Adds a new event to the calendar
   void _addEvent({
     required String title,
@@ -830,9 +770,28 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
     bool isConnected = true;
 
+    final cards = [
+      CalendarDayWidgetCard(
+        selectedDay: _selectedDay,
+        eventsCalendar: _eventsForDay,
+        selectedSlotTime: 1,
+        heightTime: 1.4,
+      ),
+      CalendarDayWidgetCard(
+        selectedDay: _selectedDay,
+        eventsCalendar: _eventsForDay,
+        selectedSlotTime: 2,
+      ),
+      CalendarDayWidgetCard(
+        selectedDay: _selectedDay,
+        eventsCalendar: _eventsForDay,
+        selectedSlotTime: 3,
+      ),
+    ];
+
     return OfflineBuilder(
       connectivityBuilder: (context, connectivity, child) {
-        final bool isConnected = connectivity != ConnectivityResult.none;
+        final bool isConnected = connectivity.contains(ConnectivityResult.none) == false;
 
         if (isConnected != _wasConnected) {
           final message = isConnected ? "You're online!" : "Lost internet connection, you're offline now...";
@@ -874,40 +833,41 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       child: Scaffold(
         body: Stack(
           children: [
-            RefreshIndicator(
-              onRefresh: _onRefresh,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    _buildCalendarHeader(isDarkMode),
-                    if (_showFiltersAndSearchBar) _buildFilters(),
-                    if (_showFiltersAndSearchBar) _buildSearchBar(),
-                    _buildCalendar(context, isDarkMode),
-                    _buildSectionSeparator(),
-                    _eventsForDay.isEmpty
-                        ? SizedBox(
-                            height: sizeScreen(context).height * 0.4,
-                            child: Center(
-                              child: Text(
-                                AppLocalizations.of(context)!.noEventsForThisDay,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
+            SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildCalendarHeader(isDarkMode),
+                  if (_showFiltersAndSearchBar) _buildFilters(),
+                  if (_showFiltersAndSearchBar) _buildSearchBar(),
+                  _buildCalendar(context, isDarkMode),
+                  _buildSectionSeparator(),
+                  _eventsForDay.isEmpty
+                      ? SizedBox(
+                          height: sizeScreen(context).height * 0.45,
+                          child: Center(
+                            child: Text(
+                              AppLocalizations.of(context)!.noEventsForThisDay,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w500,
                               ),
+                              textAlign: TextAlign.center,
                             ),
-                          )
-                        : CalendarDayWidget(
-                            selectedDay: _selectedDay,
-                            eventsCalendar: _eventsForDay,
-                            selectedSlotTime: selectedSlot.value,
+                          ))
+                      : CarouselSlider(
+                          options: CarouselOptions(
+                            autoPlay: false,
+                            viewportFraction: 1,
+                            initialPage: liveHour(),
+                            height: 400,
+                            scrollDirection: Axis.vertical,
                           ),
-                  ],
-                ),
+                          items: cards,
+                        ),
+                ],
               ),
             ),
             if (_isLoading)

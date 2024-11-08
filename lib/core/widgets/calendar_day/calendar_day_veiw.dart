@@ -31,7 +31,6 @@ class CalendarDayWidget extends HookWidget {
   Widget build(BuildContext context) {
     final currentHour = useState(7);
     final untilEnd = useState(11);
-    final selectedSlot = useState(11);
     final displayTime = useState('7AM-10AM');
     final switchTime = useState(1);
     final ValueNotifier<List<AdvancedDayEvent<String>>> currentEvents = useState([]);
@@ -186,7 +185,8 @@ class CalendarDayWidget extends HookWidget {
           displayTime.value = '2PM-6PM';
         default:
           currentHour.value = 7;
-          untilEnd.value = 10;
+          untilEnd.value = 11;
+          switchTime.value = 1;
       }
     }
 
@@ -558,8 +558,10 @@ class CalendarDayWidget extends HookWidget {
             context: context,
             builder: (context) => AlertDialog(
                   title: Text(AppLocalizations.of(context)!.attendant),
-                  content: Column(
-                    children: avatarList,
+                  content: SingleChildScrollView(
+                    child: Column(
+                      children: avatarList,
+                    ),
                   ),
                 )),
         child: CircleAvatar(

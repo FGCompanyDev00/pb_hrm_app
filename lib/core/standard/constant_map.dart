@@ -1,6 +1,7 @@
 // Category colors mapping
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
+import 'package:pb_hrsystem/home/home_calendar.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -20,6 +21,11 @@ final Map<String, IconData> categoryIcon = {
   'Booking Car': Icons.car_rental,
   'Minutes Of Meeting': Icons.car_rental,
 };
+
+/// Retrieves the color associated with an event category
+Color getEventColor(Event event) {
+  return categoryColors[event.category] ?? Colors.grey;
+}
 
 /// Maps API meeting status to human-readable status
 String mapEventStatus(String apiStatus) {

@@ -408,7 +408,11 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: membersList),
+          SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: membersList,
+              )),
           const SizedBox(height: 15),
           Row(
             children: [
