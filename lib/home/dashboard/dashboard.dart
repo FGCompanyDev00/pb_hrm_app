@@ -9,10 +9,8 @@ import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_main_pa
 import 'package:pb_hrsystem/home/dashboard/Card/returnCar/car_return_page.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
-import 'package:pb_hrsystem/home/monthly_attendance_record.dart';
 import 'package:pb_hrsystem/home/qr_profile_page.dart';
 import 'package:pb_hrsystem/notifications/notification_page.dart';
-import 'package:pb_hrsystem/roles.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
@@ -212,11 +210,6 @@ class _DashboardState extends State<Dashboard> {
   }
 
   // Refresh user profile manually
-  Future<void> _refreshUserProfile() async {
-    setState(() {
-      futureUserProfile = fetchUserProfile();
-    });
-  }
 
   @override
   void dispose() {
@@ -568,14 +561,38 @@ class _DashboardState extends State<Dashboard> {
         ),
         _buildActionCard(
           context,
-          'assets/car.png',
+          'assets/car_return.png',
           AppLocalizations.of(context)!.carReturn,
           isDarkMode,
               () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const returnCarPage()),
+              MaterialPageRoute(builder: (context) => const ReturnCarPage()),
             );
+          },
+        ),
+        _buildActionCard(
+          context,
+          'assets/KPI.png',
+          AppLocalizations.of(context)!.kpi,
+          isDarkMode,
+              () {
+            // Navigator.push(
+            //   context,
+            //   MaterialPageRoute(builder: (context) => const ReturnCarPage()),
+            // );
+          },
+        ),
+        _buildActionCard(
+          context,
+          'assets/inventory.png',
+          AppLocalizations.of(context)!.inventory,
+          isDarkMode,
+              () {
+            // Navigator.push(
+            //   context,
+            //   MaterialPageRoute(builder: (context) => const ReturnCarPage()),
+            // );
           },
         ),
       ],
@@ -590,13 +607,13 @@ class _DashboardState extends State<Dashboard> {
         double iconSize = constraints.maxWidth * 0.5;
         double fontSize = constraints.maxWidth * 0.1;
 
-        fontSize = fontSize.clamp(12.0, 18.0); // Ensure font size is within a reasonable range
+        fontSize = fontSize.clamp(12.0, 18.0);
 
         return Card(
           elevation: 6,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Colors.yellow, width: 1.5),
+            side: const BorderSide(color: Color(0xFFDBB342), width: 1.5),
           ),
           child: InkWell(
             onTap: onTap,
@@ -628,7 +645,6 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  // Logout Confirmation Dialog
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -639,30 +655,36 @@ class _DashboardState extends State<Dashboard> {
           ),
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(24.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.lock, size: 60, color: Colors.orange),
-                  const SizedBox(height: 16),
+                  Image.asset(
+                    'assets/lock-circle.png',
+                    height: 60,
+                  ),
+                  const SizedBox(height: 20),
                   Text(
                     AppLocalizations.of(context)!.logoutTitle,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.orange,
+                      color: Color(0xFF9C640C),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Text(
                     AppLocalizations.of(context)!.logoutConfirmation,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 16),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.black87,
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   Wrap(
-                    spacing: 8,
+                    spacing: 12,
                     alignment: WrapAlignment.center,
                     children: [
                       ElevatedButton(
@@ -670,29 +692,37 @@ class _DashboardState extends State<Dashboard> {
                           Navigator.of(context).pop();
                         },
                         style: ElevatedButton.styleFrom(
-                          foregroundColor: Colors.black,
-                          backgroundColor: Colors.grey.shade200,
+                          backgroundColor: const Color(0xFFF5F1E0),
+                          foregroundColor: const Color(0xFFDBB342),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 24,
                           ),
                         ),
                         child: Text(AppLocalizations.of(context)!.cancel),
                       ),
                       ElevatedButton(
                         onPressed: () {
-                          // Call logout method in UserProvider to clear session data
                           Provider.of<UserProvider>(context, listen: false).logout();
-
-                          // Redirect to LoginPage and remove all other pages from the stack
                           Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (context) => const LoginPage()),
+                            MaterialPageRoute(
+                              builder: (context) => const LoginPage(),
+                            ),
                                 (Route<dynamic> route) => false,
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
+                          backgroundColor: const Color(0xFFDBB342),
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 24,
                           ),
                         ),
                         child: Text(AppLocalizations.of(context)!.yesLogout),

@@ -395,5 +395,7 @@
   "noInternetConnection": "无网络连接",
   "cancel": "取消",
   "okay": "确定",
-  "credentialNotFound": "凭据未找到"
+  "credentialsNotFound": "凭据未找到",
+  "kpi": "关键绩效指标",
+  "inventory": "ສິນຄ້າຄົງເຫຼືອ"
 }

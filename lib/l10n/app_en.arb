@@ -356,5 +356,7 @@
     "noInternetConnection": "No Internet Connection",
     "cancel": "Cancel",
     "okay": "Okay",
-    "credentialsNotFound": "CREDENTIAL NOT FOUND"
+    "credentialsNotFound": "CREDENTIAL NOT FOUND",
+    "kpi": "KPI",
+    "inventory": "Inventory"
 }

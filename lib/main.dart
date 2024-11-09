@@ -1,6 +1,7 @@
 // lib/main.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_background/flutter_background.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
@@ -110,6 +111,12 @@ class LanguageNotifier with ChangeNotifier {
 
   LanguageNotifier() {
     _loadLocale();
+  }
+
+  Future<void> _initializeBackgroundService() async {
+    final bool initialized = await FlutterBackground.initialize();
+    if (!initialized) return;
+    await FlutterBackground.enableBackgroundExecution();
   }
 
   Future<void> _loadLocale() async {

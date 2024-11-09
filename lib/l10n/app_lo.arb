@@ -362,5 +362,7 @@
     "noInternetConnection": "ບໍ່ມີການເຊື່ອມຕໍ່ອິນເຕີເນັດ",
     "cancel": "ຍົກເລີກ",
     "okay": "ຕົກລົງ",
-    "credentialsNotFound": "ບໍ່ພົບຂໍ້ມູນຂໍ້ມູນຂອງທ່ານ"
+    "credentialsNotFound": "ບໍ່ພົບຂໍ້ມູນຂໍ້ມູນຂອງທ່ານ",
+    "kpi": "ຄີພີໄອ",
+    "inventory": "ສິນຄ້າຄົງເຫຼືອ"
 }

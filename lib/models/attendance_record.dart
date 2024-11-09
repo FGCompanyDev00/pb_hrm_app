@@ -1,4 +1,4 @@
-// models/attendance_record.dart
+// lib/models/attendance_record.dart
 
 import 'package:hive/hive.dart';
 
@@ -16,10 +16,10 @@ class AttendanceRecord extends HiveObject {
   String longitude;
 
   @HiveField(3)
-  String section; // 'Home', 'Office', 'Offsite'
+  String section;
 
   @HiveField(4)
-  String type; // 'checkIn' or 'checkOut'
+  String type; // 'checkIn', 'checkOut', 'autoCheckOut'
 
   @HiveField(5)
   DateTime timestamp;
@@ -33,11 +33,23 @@ class AttendanceRecord extends HiveObject {
     required this.timestamp,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
-      'device_id': deviceId,
-      'latitude': latitude,
-      'longitude': longitude,
-    };
+  Map<String, dynamic> toJson() => {
+    'deviceId': deviceId,
+    'latitude': latitude,
+    'longitude': longitude,
+    'section': section,
+    'type': type,
+    'timestamp': timestamp.toIso8601String(),
+  };
+
+  factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
+    return AttendanceRecord(
+      deviceId: json['deviceId'],
+      latitude: json['latitude'],
+      longitude: json['longitude'],
+      section: json['section'],
+      type: json['type'],
+      timestamp: DateTime.parse(json['timestamp']),
+    );
   }
 }

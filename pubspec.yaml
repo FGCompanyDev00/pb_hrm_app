@@ -2,7 +2,7 @@ name: pb_hrsystem
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.22+22
+version: 1.0.23+23
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -147,3 +147,7 @@ flutter:
     - assets/ios_device.png
     - assets/notification-status.png
     - assets/meeting_room.png
+    - assets/car_return.png
+    - assets/KPI.png
+    - assets/inventory.png
+    - assets/lock-circle.png
