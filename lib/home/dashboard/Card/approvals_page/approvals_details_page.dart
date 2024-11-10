@@ -44,27 +44,22 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     try {
       final String? token = await _getToken();
       if (token == null) {
-        _showErrorDialog('Authentication Error',
-            'Token not found. Please log in again.');
+        _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
         return;
       }
-
-      http.Response response;
 
       // Determine the API URL based on the type
       if (widget.type == 'leave') {
         apiUrl = '$baseUrl/api/leave_request/all/${widget.id}';
       } else if (widget.type == 'car') {
-        apiUrl =
-        '$baseUrl/api/office-administration/car_permit/${widget.id}';
+        apiUrl = '$baseUrl/api/office-administration/car_permit/${widget.id}';
       } else if (widget.type == 'meeting') {
-        apiUrl =
-        '$baseUrl/api/office-administration/book_meeting_room/${widget.id}';
+        apiUrl = '$baseUrl/api/office-administration/book_meeting_room/${widget.id}';
       } else {
         throw Exception('Unknown type: ${widget.type}');
       }
 
-      response = await http.get(
+      final response = await http.get(
         Uri.parse(apiUrl),
         headers: {
           'Authorization': 'Bearer $token',
@@ -76,60 +71,51 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if ((data['statusCode'] == 200 || data['statusCode'] == 201) &&
-            data['results'] != null) {
+        if ((data['statusCode'] == 200 || data['statusCode'] == 201) && data['results'] != null) {
           setState(() {
             approvalData = widget.type == 'leave'
                 ? Map<String, dynamic>.from(data['results'][0])
                 : Map<String, dynamic>.from(data['results']);
 
-            // Updated profile image handling for leave type
             if (widget.type == 'leave') {
-              String? imgPath = approvalData!['img_path']?.toString().trim();
-              if (imgPath != null && imgPath.isNotEmpty) {
-                requestorImage = imgPath;
+              String employeeId = approvalData?['employee_id'] ?? approvalData?['requestor_id'] ?? '';
+              if (employeeId.isNotEmpty) {
+                // Fetch the profile image using the employee_id
+                _fetchProfileImage(employeeId).then((imageUrl) {
+                  setState(() {
+                    requestorImage = imageUrl;
+                    isLoading = false;
+                  });
+                });
               } else {
-                requestorImage =
-                'https://via.placeholder.com/150'; // Default image
+                requestorImage = 'https://via.placeholder.com/150';
+                isLoading = false;
               }
-            } else {
-              // Existing logic for car and meeting types
-              String? imgName =
-              approvalData!['img_name']?.toString().trim();
-              String? imgPath =
-              approvalData!['img_path']?.toString().trim();
-
-              if (imgPath != null &&
-                  imgPath.isNotEmpty &&
-                  imgPath.startsWith('http')) {
-                requestorImage = imgPath;
-              } else if (imgPath != null && imgPath.isNotEmpty) {
-                requestorImage = '$_imageBaseUrl$imgPath';
-              } else if (imgName != null &&
-                  imgName.isNotEmpty &&
-                  imgName.startsWith('http')) {
-                requestorImage = imgName;
-              } else if (imgName != null && imgName.isNotEmpty) {
-                requestorImage = '$_imageBaseUrl$imgName';
+            } else if (widget.type == 'car' || widget.type == 'meeting') {
+              String? imgName = approvalData?['img_name']?.toString().trim();
+              if (imgName != null && imgName.isNotEmpty) {
+                // Determine if imgName is a full URL or just an image name
+                if (imgName.startsWith('http')) {
+                  requestorImage = imgName;
+                } else {
+                  requestorImage = '$_imageBaseUrl$imgName';
+                }
               } else {
                 requestorImage = 'https://via.placeholder.com/150';
               }
+              isLoading = false;
             }
-
-            isLoading = false;
           });
           print('Approval details loaded successfully.');
         } else {
-          throw Exception(
-              data['message'] ?? 'Failed to load approval details.');
+          throw Exception(data['message'] ?? 'Failed to load approval details.');
         }
       } else if (response.statusCode == 403) {
         throw Exception('Access forbidden: ${response.statusCode}');
       } else if (response.statusCode == 404) {
         throw Exception('Approval details not found: ${response.statusCode}');
       } else {
-        throw Exception(
-            'Failed to load approval details: ${response.statusCode}');
+        throw Exception('Failed to load approval details: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
       print('Error fetching approval details: $e');
@@ -138,6 +124,41 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<String> _fetchProfileImage(String id) async {
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    final String apiUrl = '$baseUrl/api/profile/$id';
+
+    try {
+      final String? token = await _getToken();
+      if (token == null) {
+        throw Exception('Authentication Error: Token not found.');
+      }
+
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['statusCode'] == 200 && data['results'] != null) {
+          return data['results']['images'] ?? 'https://via.placeholder.com/150';
+        } else {
+          throw Exception(data['message'] ?? 'Failed to load profile image.');
+        }
+      } else {
+        throw Exception('Failed to load profile image: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Log the error or handle it as per your requirement
+      print('Error fetching profile image: $e');
+      return 'https://via.placeholder.com/150'; // Fallback image
     }
   }
 
@@ -271,12 +292,12 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         approvalData?['requestor_name'] ??
         'No Name';
 
-    // Adjusted to use 'created_date' for car types if 'created_at' is null
+    // Adjusted to use 'created_date' for car and meeting types if 'created_at' is null
     String submittedOn = 'N/A';
     if (approvalData?['created_at'] != null &&
         approvalData!['created_at'].toString().isNotEmpty) {
       submittedOn = formatDate(approvalData!['created_at']);
-    } else if (widget.type == 'car' &&
+    } else if ((widget.type == 'car' || widget.type == 'meeting') &&
         approvalData?['created_date'] != null &&
         approvalData!['created_date'].toString().isNotEmpty) {
       submittedOn = formatDate(approvalData!['created_date']);
@@ -290,7 +311,9 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       children: [
         const Text('Requestor',
             style: TextStyle(
-                color: Colors.black, fontWeight: FontWeight.bold, fontSize: 20)),
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 20)),
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -300,7 +323,10 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
               radius: 35,
               backgroundColor: Colors.grey[300],
               onBackgroundImageError: (error, stackTrace) {
-                print('Error loading requestor image: $error');
+                // Handle image load error
+                setState(() {
+                  requestorImage = 'https://via.placeholder.com/150';
+                });
               },
             ),
             const SizedBox(width: 15),
@@ -308,7 +334,8 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(requestorName,
-                    style: const TextStyle(color: Colors.black, fontSize: 18)),
+                    style: const TextStyle(
+                        color: Colors.black, fontSize: 18)),
                 const SizedBox(height: 6),
                 Text('Submitted on $submittedOn',
                     style:
@@ -594,6 +621,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     String endpoint = '';
     Map<String, dynamic> body = {};
     String method = 'POST'; // default method
+
     // Adjust endpoint, body and method based on type and action
     if (widget.type == 'leave') {
       method = 'PUT';
@@ -604,7 +632,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       }
       body = {};
       if (comment.isNotEmpty) {
-        body['details'] = comment;
+        body['comments'] = comment;
       }
     } else if (widget.type == 'meeting') {
       method = 'PUT';
@@ -617,7 +645,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       }
       body = {};
       if (comment.isNotEmpty) {
-        body['details'] = comment;
+        body['comments'] = comment;
       }
     } else if (widget.type == 'car') {
       // Existing code for car

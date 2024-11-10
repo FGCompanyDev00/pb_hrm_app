@@ -11,10 +11,10 @@ class NotificationDetailPage extends StatefulWidget {
   final String type;
 
   const NotificationDetailPage({
-    Key? key,
+    super.key,
     required this.id,
     required this.type,
-  }) : super(key: key);
+  });
 
   @override
   _NotificationDetailPageState createState() => _NotificationDetailPageState();
@@ -74,51 +74,81 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
                 : Map<String, dynamic>.from(data['results']);
 
             if (widget.type == 'leave') {
-              String? imgPath =
-              approvalData!['img_path']?.toString().trim();
-              if (imgPath != null && imgPath.isNotEmpty) {
-                requestorImage = imgPath;
+              String employeeId = approvalData?['employee_id'] ?? approvalData?['requestor_id'] ?? '';
+              if (employeeId.isNotEmpty) {
+                // Fetch the profile image using the employee_id
+                _fetchProfileImage(employeeId).then((imageUrl) {
+                  setState(() {
+                    requestorImage = imageUrl;
+                    isLoading = false;
+                  });
+                });
+              } else {
+                requestorImage = 'https://via.placeholder.com/150';
+                isLoading = false;
+              }
+            } else if (widget.type == 'car') {
+              String? imgName = approvalData?['img_name']?.toString().trim();
+              if (imgName != null && imgName.isNotEmpty) {
+                // Determine if imgName is a full URL or just an image name
+                if (imgName.startsWith('http')) {
+                  requestorImage = imgName;
+                } else {
+                  requestorImage = '$_imageBaseUrl$imgName';
+                }
               } else {
                 requestorImage = 'https://via.placeholder.com/150';
               }
-            } else {
-              String? imgName =
-              approvalData!['img_name']?.toString().trim();
-              String? imgPath =
-              approvalData!['img_path']?.toString().trim();
-
-              if (imgPath != null &&
-                  imgPath.isNotEmpty &&
-                  imgPath.startsWith('http')) {
-                requestorImage = imgPath;
-              } else if (imgPath != null && imgPath.isNotEmpty) {
-                requestorImage = '$_imageBaseUrl$imgPath';
-              } else if (imgName != null &&
-                  imgName.isNotEmpty &&
-                  imgName.startsWith('http')) {
-                requestorImage = imgName;
-              } else if (imgName != null && imgName.isNotEmpty) {
-                requestorImage = '$_imageBaseUrl$imgName';
-              } else {
-                requestorImage = 'https://via.placeholder.com/150';
-              }
+              isLoading = false;
             }
-
-            isLoading = false;
           });
         } else {
-          throw Exception(
-              data['message'] ?? 'Failed to load approval details.');
+          throw Exception(data['message'] ?? 'Failed to load approval details.');
         }
       } else {
-        throw Exception(
-            'Failed to load approval details: ${response.statusCode}');
+        throw Exception('Failed to load approval details: ${response.statusCode}');
       }
     } catch (e) {
       _showErrorDialog('Error', e.toString());
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<String> _fetchProfileImage(String id) async {
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    final String apiUrl = '$baseUrl/api/profile/$id';
+
+    try {
+      final String? token = await _getToken();
+      if (token == null) {
+        throw Exception('Authentication Error: Token not found.');
+      }
+
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['statusCode'] == 200 && data['results'] != null) {
+          return data['results']['images'] ??
+              'https://via.placeholder.com/150';
+        } else {
+          throw Exception(data['message'] ?? 'Failed to load profile image.');
+        }
+      } else {
+        throw Exception('Failed to load profile image: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Log the error or handle it as per your requirement
+      print('Error fetching profile image: $e');
+      return 'https://via.placeholder.com/150'; // Fallback image
     }
   }
 
@@ -273,7 +303,12 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
               backgroundImage: NetworkImage(profileImage),
               radius: 35,
               backgroundColor: Colors.grey[300],
-              onBackgroundImageError: (error, stackTrace) {},
+              onBackgroundImageError: (_, __) {
+                // Handle image load error
+                setState(() {
+                  requestorImage = 'https://via.placeholder.com/150';
+                });
+              },
             ),
             const SizedBox(width: 15),
             Column(
@@ -519,7 +554,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
       isFinalized = true;
     });
 
-    final String baseUrl = 'https://demo-application-api.flexiflows.co';
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String? token = await _getToken();
     if (token == null) {
       _showErrorDialog('Authentication Error',
@@ -541,13 +576,16 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
       } else if (action == 'reject') {
         endpoint = '$baseUrl/api/leave_reject/${widget.id}';
       }
-      body = {};
+      body = {
+        'comments': _descriptionController.text.trim(),
+      };
     } else if (widget.type == 'car') {
       method = 'POST';
       endpoint = '$baseUrl/api/app/tasks/approvals/pending/${widget.id}';
       body = {
         "status": action == 'approve' ? 'Approved' : 'Rejected',
         "types": widget.type,
+        "comments": _descriptionController.text.trim(),
       };
     } else {
       _showErrorDialog('Error', 'Invalid request type.');

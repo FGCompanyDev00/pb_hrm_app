@@ -826,7 +826,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                     onRefresh: _onRefresh,
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.only(top: 155), // Adjust for the header height
+                      padding: const EdgeInsets.only(top: 155),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [

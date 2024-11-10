@@ -1,5 +1,6 @@
 // notification_page.dart
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
@@ -29,15 +30,23 @@ class _NotificationPageState extends State<NotificationPage> {
   final String _imageBaseUrl =
       'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
+  // State variables for expansion
+  bool _isMeetingExpanded = false;
+  bool _isApprovalExpanded = false;
+
   @override
   void initState() {
     super.initState();
     _fetchInitialData();
   }
 
+  /// Initializes data fetching for leave types, pending items, meeting invites, and history items
   Future<void> _fetchInitialData() async {
     setState(() {
       _isLoading = true;
+      // Reset expansion states when refreshing data
+      _isMeetingExpanded = false;
+      _isApprovalExpanded = false;
     });
 
     try {
@@ -45,8 +54,18 @@ class _NotificationPageState extends State<NotificationPage> {
       await Future.wait([
         _fetchPendingItems(),
         _fetchMeetingInvites(),
+        _fetchHistoryItems(),
       ]);
-    } catch (e) {
+      if (kDebugMode) {
+        print('Initial data fetched successfully.');
+      }
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error during initial data fetch: $e');
+      }
+      if (kDebugMode) {
+        print(stackTrace);
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching data: $e')),
       );
@@ -57,133 +76,265 @@ class _NotificationPageState extends State<NotificationPage> {
     }
   }
 
+  /// Fetches leave types from the API and populates the _leaveTypesMap
   Future<void> _fetchLeaveTypes() async {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
     const String leaveTypesApiUrl = '$baseUrl/api/leave-types';
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
 
-    if (token == null) {
-      throw Exception('User not authenticated');
-    }
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
 
-    final leaveTypesResponse = await http.get(
-      Uri.parse(leaveTypesApiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
+      final leaveTypesResponse = await http.get(
+        Uri.parse(leaveTypesApiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
 
-    if (leaveTypesResponse.statusCode == 200) {
-      final responseBody = jsonDecode(leaveTypesResponse.body);
-      if (responseBody['statusCode'] == 200 &&
-          responseBody['results'] != null) {
-        final List<dynamic> leaveTypesData = responseBody['results'];
-        setState(() {
-          _leaveTypesMap = {
-            for (var item in leaveTypesData)
-              item['leave_type_id'] as int: item['name'].toString()
-          };
-        });
+      if (kDebugMode) {
+        print(
+          'Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
+      }
+
+      if (leaveTypesResponse.statusCode == 200) {
+        final responseBody = jsonDecode(leaveTypesResponse.body);
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
+          final List<dynamic> leaveTypesData = responseBody['results'];
+          setState(() {
+            _leaveTypesMap = {
+              for (var item in leaveTypesData)
+                item['leave_type_id'] as int: item['name'].toString()
+            };
+          });
+          if (kDebugMode) {
+            print('Leave types loaded: $_leaveTypesMap');
+          }
+        } else {
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load leave types');
+        }
       } else {
         throw Exception(
-            responseBody['message'] ?? 'Failed to load leave types');
+            'Failed to load leave types: ${leaveTypesResponse.statusCode}');
       }
-    } else {
-      throw Exception(
-          'Failed to load leave types: ${leaveTypesResponse.statusCode}');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error fetching leave types: $e');
+      }
+      if (kDebugMode) {
+        print(stackTrace);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching leave types: $e')),
+      );
+      rethrow; // So that _fetchInitialData catches and handles
     }
   }
 
+  /// Fetches all pending approval items without pagination
   Future<void> _fetchPendingItems() async {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
     const String pendingApiUrl = '$baseUrl/api/app/tasks/approvals/pending';
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
 
-    if (token == null) {
-      throw Exception('User not authenticated');
-    }
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
 
-    final pendingResponse = await http.get(
-      Uri.parse(pendingApiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
+      final pendingResponse = await http.get(
+        Uri.parse(pendingApiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
 
-    if (pendingResponse.statusCode == 200) {
-      final responseBody = jsonDecode(pendingResponse.body);
-      if (responseBody['statusCode'] == 200 &&
-          responseBody['results'] != null) {
-        final List<dynamic> pendingData = responseBody['results'];
-        final List<Map<String, dynamic>> filteredData = pendingData
-            .where((item) => item != null)
-            .map((item) => Map<String, dynamic>.from(item))
-            .where((item) =>
-        item['types'] != null &&
-            _knownTypes.contains(item['types'].toString().toLowerCase()))
-            .toList();
+      if (kDebugMode) {
+        print(
+          'Fetching pending items: Status Code ${pendingResponse.statusCode}');
+      }
 
-        setState(() {
-          _pendingItems = filteredData;
-        });
+      if (pendingResponse.statusCode == 200) {
+        final responseBody = jsonDecode(pendingResponse.body);
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
+          final List<dynamic> pendingData = responseBody['results'];
+
+          // Filter out null items and unknown types
+          final List<Map<String, dynamic>> filteredData = pendingData
+              .where((item) => item != null)
+              .map((item) => Map<String, dynamic>.from(item))
+              .where((item) =>
+          item['types'] != null &&
+              _knownTypes.contains(item['types'].toString().toLowerCase()))
+              .toList();
+
+          setState(() {
+            _pendingItems = filteredData;
+          });
+          if (kDebugMode) {
+            print('Pending items loaded: ${_pendingItems.length} items.');
+          }
+        } else {
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load pending data');
+        }
       } else {
         throw Exception(
-            responseBody['message'] ?? 'Failed to load pending data');
+            'Failed to load pending data: ${pendingResponse.statusCode}');
       }
-    } else {
-      throw Exception(
-          'Failed to load pending data: ${pendingResponse.statusCode}');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error fetching pending data: $e');
+      }
+      if (kDebugMode) {
+        print(stackTrace);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching pending data: $e')),
+      );
+      rethrow;
     }
   }
 
-  Future<void> _fetchMeetingInvites() async {
+  /// Fetches all history approval items without pagination
+  Future<void> _fetchHistoryItems() async {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    final String meetingInvitesApiUrl =
-        '$baseUrl/api/office-administration/book_meeting_room/invites-meeting';
+    const String historyApiUrl = '$baseUrl/api/app/tasks/approvals/history';
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
 
-    if (token == null) {
-      throw Exception('User not authenticated');
-    }
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
 
-    final response = await http.get(
-      Uri.parse(meetingInvitesApiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
+      final historyResponse = await http.get(
+        Uri.parse(historyApiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final responseBody = jsonDecode(response.body);
-      if (responseBody['statusCode'] == 200 &&
-          responseBody['results'] != null) {
-        final List<dynamic> meetingData = responseBody['results'];
-        final List<Map<String, dynamic>> formattedMeetingData =
-        meetingData.map((item) {
-          final Map<String, dynamic> meetingItem =
-          Map<String, dynamic>.from(item);
-          meetingItem['types'] = 'meeting';
-          return meetingItem;
-        }).toList();
+      if (kDebugMode) {
+        print(
+          'Fetching history items: Status Code ${historyResponse.statusCode}');
+      }
 
-        setState(() {
-          _meetingInvites = formattedMeetingData;
-        });
+      if (historyResponse.statusCode == 200) {
+        final responseBody = jsonDecode(historyResponse.body);
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
+          final List<dynamic> historyData = responseBody['results'];
+
+          // Filter out null items and unknown types
+          final List<Map<String, dynamic>> filteredData = historyData
+              .where((item) => item != null)
+              .map((item) => Map<String, dynamic>.from(item))
+              .where((item) =>
+          item['types'] != null &&
+              _knownTypes.contains(item['types'].toString().toLowerCase()))
+              .toList();
+
+          setState(() {
+            _historyItems = filteredData;
+          });
+          if (kDebugMode) {
+            print('History items loaded: ${_historyItems.length} items.');
+          }
+        } else {
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load history data');
+        }
       } else {
         throw Exception(
-            responseBody['message'] ?? 'Failed to load meeting invites');
+            'Failed to load history data: ${historyResponse.statusCode}');
       }
-    } else {
-      throw Exception('Failed to load meeting invites: ${response.statusCode}');
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error fetching history data: $e');
+      }
+      if (kDebugMode) {
+        print(stackTrace);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching history data: $e')),
+      );
+      rethrow;
+    }
+  }
+
+  /// Fetches all meeting invites without pagination
+  Future<void> _fetchMeetingInvites() async {
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    const String meetingInvitesApiUrl =
+        '$baseUrl/api/office-administration/book_meeting_room/invites-meeting';
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final response = await http.get(
+        Uri.parse(meetingInvitesApiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (kDebugMode) {
+        print(
+          'Fetching meeting invites: Status Code ${response.statusCode}');
+      }
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
+          final List<dynamic> meetingData = responseBody['results'];
+          final List<Map<String, dynamic>> formattedMeetingData =
+          meetingData.map((item) {
+            final Map<String, dynamic> meetingItem =
+            Map<String, dynamic>.from(item);
+            meetingItem['types'] = 'meeting';
+            return meetingItem;
+          }).toList();
+
+          setState(() {
+            _meetingInvites = formattedMeetingData;
+          });
+          print('Meeting invites loaded: ${_meetingInvites.length} items.');
+        } else {
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load meeting invites');
+        }
+      } else {
+        throw Exception(
+            'Failed to load meeting invites: ${response.statusCode}');
+      }
+    } catch (e, stackTrace) {
+      print('Error fetching meeting invites: $e');
+      print(stackTrace);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching meeting invites: $e')),
+      );
+      rethrow;
     }
   }
 
@@ -191,66 +342,44 @@ class _NotificationPageState extends State<NotificationPage> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
+    final Size screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
       backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
       body: Column(
         children: [
-          _buildHeader(isDarkMode),
-          const SizedBox(height: 10),
-          _buildTabBar(),
-          const SizedBox(height: 8),
+          _buildHeader(isDarkMode, screenSize),
+          SizedBox(height: screenSize.height * 0.01),
+          _buildTabBar(screenSize),
+          SizedBox(height: screenSize.height * 0.008),
           _isLoading
               ? const Expanded(
             child: Center(child: CircularProgressIndicator()),
           )
               : Expanded(
             child: RefreshIndicator(
-              onRefresh: _fetchInitialData,
+              onRefresh: _fetchInitialData, // Refreshes all data
               child: _isMeetingSelected
                   ? _meetingInvites.isEmpty
-                  ? const Center(
+                  ? Center(
                 child: Text(
                   'No Meeting Invites',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(
+                    fontSize: screenSize.width * 0.045,
+                  ),
                 ),
               )
-                  : ListView.builder(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: _meetingInvites.length,
-                itemBuilder: (context, index) {
-                  final item = _meetingInvites[index];
-                  return _buildItemCard(
-                    context,
-                    item,
-                    isHistory: false,
-                  );
-                },
-              )
-                  : _pendingItems.isEmpty && _historyItems.isEmpty
-                  ? const Center(
+                  : _buildMeetingList(screenSize)
+                  : (_pendingItems.isEmpty && _historyItems.isEmpty)
+                  ? Center(
                 child: Text(
                   'No Approval Items',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(
+                    fontSize: screenSize.width * 0.045,
+                  ),
                 ),
               )
-                  : ListView(
-                padding: const EdgeInsets.all(16.0),
-                children: [
-                  ..._pendingItems.map((item) =>
-                      _buildItemCard(
-                        context,
-                        item,
-                        isHistory: false,
-                      )),
-                  ..._historyItems.map((item) =>
-                      _buildItemCard(
-                        context,
-                        item,
-                        isHistory: true,
-                      )),
-                ],
-              ),
+                  : _buildApprovalList(screenSize),
             ),
           ),
         ],
@@ -258,9 +387,98 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
-  Widget _buildHeader(bool isDarkMode) {
+  /// Builds the Meeting list with View More functionality
+  Widget _buildMeetingList(Size screenSize) {
+    int itemCount = _isMeetingExpanded
+        ? _meetingInvites.length
+        : (_meetingInvites.length > 30 ? 30 : _meetingInvites.length);
+
+    bool showViewMore = _meetingInvites.length > 30 && !_isMeetingExpanded;
+
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(
+        horizontal: screenSize.width * 0.04,
+        vertical: screenSize.height * 0.008,
+      ),
+      itemCount: showViewMore ? itemCount + 1 : itemCount,
+      itemBuilder: (context, index) {
+        if (showViewMore && index == itemCount) {
+          return Center(
+            child: ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _isMeetingExpanded = true;
+                });
+              },
+              child: const Text('View More'),
+            ),
+          );
+        }
+
+        final item = _meetingInvites[index];
+        return _buildItemCard(
+          context,
+          item,
+          isHistory: false,
+          screenSize: screenSize,
+        );
+      },
+    );
+  }
+
+  /// Builds the Approval list with View More functionality
+  Widget _buildApprovalList(Size screenSize) {
+    List<Map<String, dynamic>> combinedApprovalItems = [
+      ..._pendingItems,
+      ..._historyItems
+    ];
+
+    int itemCount = _isApprovalExpanded
+        ? combinedApprovalItems.length
+        : (combinedApprovalItems.length > 30
+        ? 30
+        : combinedApprovalItems.length);
+
+    bool showViewMore =
+        combinedApprovalItems.length > 30 && !_isApprovalExpanded;
+
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(
+        horizontal: screenSize.width * 0.04,
+        vertical: screenSize.height * 0.008,
+      ),
+      itemCount: showViewMore ? itemCount + 1 : itemCount,
+      itemBuilder: (context, index) {
+        if (showViewMore && index == itemCount) {
+          return Center(
+            child: ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _isApprovalExpanded = true;
+                });
+              },
+              child: const Text('View More'),
+            ),
+          );
+        }
+
+        final item = combinedApprovalItems[index];
+        bool isHistory = index >= _pendingItems.length;
+        return _buildItemCard(
+          context,
+          item,
+          isHistory: isHistory,
+          screenSize: screenSize,
+        );
+      },
+    );
+  }
+
+  /// Builds the header section with background image and title.
+  Widget _buildHeader(bool isDarkMode, Size screenSize) {
     return Container(
-      height: 150,
+      height: screenSize.height * 0.18,
+      width: double.infinity,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(
@@ -273,40 +491,52 @@ class _NotificationPageState extends State<NotificationPage> {
           bottomRight: Radius.circular(30),
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 60.0, left: 16.0, right: 16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              icon: Icon(Icons.arrow_back,
-                  color: isDarkMode ? Colors.white : Colors.black),
-              onPressed: () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const Dashboard()),
-                      (Route<dynamic> route) => false,
-                );
-              },
-            ),
-            Text(
-              'Notification',
-              style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: screenSize.width * 0.04,
+            vertical: screenSize.height * 0.015,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  size: screenSize.width * 0.07,
+                ),
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const Dashboard()),
+                        (Route<dynamic> route) => false,
+                  );
+                },
               ),
-            ),
-            const SizedBox(width: 48),
-          ],
+              Text(
+                'Notification',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  fontSize: screenSize.width * 0.06,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(width: screenSize.width * 0.12),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildTabBar() {
+  /// Builds the tab bar for toggling between Meeting and Approval sections.
+  Widget _buildTabBar(Size screenSize) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
+      padding: EdgeInsets.symmetric(
+        horizontal: screenSize.width * 0.04,
+        vertical: screenSize.height * 0.003,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -319,9 +549,12 @@ class _NotificationPageState extends State<NotificationPage> {
                 }
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                padding: EdgeInsets.symmetric(
+                  vertical: screenSize.height * 0.012,
+                ),
                 decoration: BoxDecoration(
-                  color: _isMeetingSelected ? Colors.amber : Colors.grey.shade300,
+                  color:
+                  _isMeetingSelected ? Colors.amber : Colors.grey.shade300,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -330,12 +563,14 @@ class _NotificationPageState extends State<NotificationPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.meeting_room,
-                        size: 24,
-                        color: _isMeetingSelected
-                            ? Colors.white
-                            : Colors.grey.shade600),
-                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.meeting_room,
+                      size: screenSize.width * 0.07,
+                      color: _isMeetingSelected
+                          ? Colors.white
+                          : Colors.grey.shade600,
+                    ),
+                    SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Meeting',
                       style: TextStyle(
@@ -343,7 +578,7 @@ class _NotificationPageState extends State<NotificationPage> {
                             ? Colors.white
                             : Colors.grey.shade600,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: screenSize.width * 0.045,
                       ),
                     ),
                   ],
@@ -351,7 +586,7 @@ class _NotificationPageState extends State<NotificationPage> {
               ),
             ),
           ),
-          const SizedBox(width: 1),
+          SizedBox(width: screenSize.width * 0.002),
           Expanded(
             child: GestureDetector(
               onTap: () {
@@ -362,7 +597,9 @@ class _NotificationPageState extends State<NotificationPage> {
                 }
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                padding: EdgeInsets.symmetric(
+                  vertical: screenSize.height * 0.012,
+                ),
                 decoration: BoxDecoration(
                   color: !_isMeetingSelected
                       ? Colors.amber
@@ -375,12 +612,14 @@ class _NotificationPageState extends State<NotificationPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.history_rounded,
-                        size: 24,
-                        color: !_isMeetingSelected
-                            ? Colors.white
-                            : Colors.grey.shade600),
-                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.history_rounded,
+                      size: screenSize.width * 0.07,
+                      color: !_isMeetingSelected
+                          ? Colors.white
+                          : Colors.grey.shade600,
+                    ),
+                    SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Approval',
                       style: TextStyle(
@@ -388,7 +627,7 @@ class _NotificationPageState extends State<NotificationPage> {
                             ? Colors.white
                             : Colors.grey.shade600,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: screenSize.width * 0.045,
                       ),
                     ),
                   ],
@@ -401,8 +640,9 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
+  /// Builds each item card for Meeting or Approval.
   Widget _buildItemCard(BuildContext context, Map<String, dynamic> item,
-      {required bool isHistory}) {
+      {required bool isHistory, required Size screenSize}) {
     final themeNotifier =
     Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
@@ -411,29 +651,45 @@ class _NotificationPageState extends State<NotificationPage> {
       String type =
       (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
       if (!_knownTypes.contains(type)) {
+        // Unknown type, do not display
+        print('Unknown type encountered: $type');
         return const SizedBox.shrink();
       }
 
       String status = (item['status']?.toString() ?? 'Pending').trim();
       String employeeName =
       (item['employee_name']?.toString() ?? 'N/A').trim();
+      String requestorName =
+      (item['requestor_name']?.toString() ?? 'N/A').trim();
+
+      // **Status Mapping Starts Here**
+      if (status.toLowerCase() == 'branch approved') {
+        status = 'Approved';
+      } else if (status.toLowerCase() == 'branch waiting') {
+        status = 'Waiting';
+      }
+      // **Status Mapping Ends Here**
 
       String id = '';
       if (type == 'leave') {
         id = (item['take_leave_request_id']?.toString() ?? '').trim();
       } else if (type == 'meeting') {
         id = (item['uid']?.toString() ?? '').trim();
-      } else {
+      } else if (type == 'car') {
         id = (item['uid']?.toString() ?? '').trim();
       }
 
       if (id.isEmpty) {
+        if (kDebugMode) {
+          print('Item with type $type has empty id.');
+        }
         return const SizedBox.shrink();
       }
 
       String imgName = (item['img_name']?.toString() ?? '').trim();
       String imgPath = (item['img_path']?.toString() ?? '').trim();
 
+      // Determine employee image URL
       String employeeImage;
       if (imgPath.isNotEmpty && imgPath.startsWith('http')) {
         employeeImage = imgPath;
@@ -444,13 +700,17 @@ class _NotificationPageState extends State<NotificationPage> {
       } else if (imgName.isNotEmpty) {
         employeeImage = '$_imageBaseUrl$imgName';
       } else {
-        employeeImage = 'https://via.placeholder.com/150';
+        // Use default placeholder image
+        employeeImage =
+        'https://via.placeholder.com/150'; // Ensure this URL is accessible
       }
 
+      // Determine colors and icons based on type
       Color typeColor = _getTypeColor(type);
       Color statusColor = _getStatusColor(status);
       IconData typeIcon = _getIconForType(type);
 
+      // Determine title and dates based on type
       String title = '';
       String startDate = '';
       String endDate = '';
@@ -476,8 +736,9 @@ class _NotificationPageState extends State<NotificationPage> {
         endDate = item['date_in']?.toString() ?? '';
         detailLabel = 'Requestor Name';
         detailValue =
-            _removeDuplicateNames(item['requestor_name']?.toString() ?? 'N/A');
+            _removeDuplicateNames(requestorName);
       } else {
+        print('Unhandled type: $type');
         return const SizedBox.shrink();
       }
 
@@ -521,16 +782,20 @@ class _NotificationPageState extends State<NotificationPage> {
         },
         child: Card(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15.0),
-            side: BorderSide(color: typeColor, width: 2),
+            borderRadius: BorderRadius.circular(screenSize.width * 0.06),
+            side:
+            BorderSide(color: typeColor, width: screenSize.width * 0.0025),
           ),
-          elevation: 4,
-          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          elevation: 2.5,
+          margin: EdgeInsets.symmetric(
+            vertical: screenSize.height * 0.008,
+          ),
           child: Row(
             children: [
+              // Colored side bar
               Container(
-                width: 5,
-                height: 100,
+                width: screenSize.width * 0.010, // 1% of screen width
+                height: screenSize.height * 0.10, // 10% of screen height
                 decoration: BoxDecoration(
                   color: typeColor,
                   borderRadius: const BorderRadius.only(
@@ -539,78 +804,100 @@ class _NotificationPageState extends State<NotificationPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: screenSize.width * 0.02),
+              // Content
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 12.0, horizontal: 8.0),
+                  padding: EdgeInsets.symmetric(
+                    vertical: screenSize.height * 0.014,
+                    horizontal: screenSize.width * 0.02,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Type and Icon
                       Row(
                         children: [
-                          Icon(typeIcon, color: typeColor, size: 24),
-                          const SizedBox(width: 8),
+                          Icon(
+                            typeIcon,
+                            color: typeColor,
+                            size: screenSize.width * 0.07,
+                          ),
+                          SizedBox(width: screenSize.width * 0.02),
                           Text(
                             type[0].toUpperCase() + type.substring(1),
                             style: TextStyle(
                               color: typeColor,
-                              fontSize: 16,
+                              fontSize: screenSize.width * 0.05,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: screenSize.height * 0.006),
+                      // Title
                       Text(
                         title,
                         style: TextStyle(
                           color: isDarkMode ? Colors.white : Colors.black,
-                          fontSize: 18,
+                          fontSize: screenSize.width * 0.05,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: screenSize.height * 0.003),
+                      // Dates
                       Text(
                         'From: ${_formatDate(startDate)}',
-                        style:
-                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: screenSize.width * 0.035,
+                        ),
                       ),
                       Text(
                         'To: ${_formatDate(endDate)}',
-                        style:
-                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: screenSize.width * 0.035,
+                        ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: screenSize.height * 0.003),
+                      // Detail
                       Text(
                         '$detailLabel: $detailValue',
-                        style:
-                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: screenSize.width * 0.035,
+                        ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: screenSize.height * 0.005),
+                      // Status
                       Row(
                         children: [
                           Text(
                             'Status: ',
                             style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
+                              color:
+                              isDarkMode ? Colors.white : Colors.black,
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              fontSize: screenSize.width * 0.035,
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0, vertical: 4.0),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenSize.width * 0.02,
+                              vertical: screenSize.height * 0.005,
+                            ),
                             decoration: BoxDecoration(
                               color: statusColor,
-                              borderRadius: BorderRadius.circular(12.0),
+                              borderRadius:
+                              BorderRadius.circular(screenSize.width * 0.03),
                             ),
                             child: Text(
-                              status,
-                              style: const TextStyle(
+                              status[0].toUpperCase() + status.substring(1),
+                              style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                                fontSize: screenSize.width * 0.035,
                               ),
                             ),
                           ),
@@ -620,21 +907,33 @@ class _NotificationPageState extends State<NotificationPage> {
                   ),
                 ),
               ),
+              // Employee Image with Error Handling
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: _buildEmployeeAvatar(employeeImage),
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenSize.width * 0.02,
+                ),
+                child: _buildEmployeeAvatar(employeeImage, screenSize),
               ),
             ],
           ),
         ),
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('Error building item card: $e');
+      }
+      if (kDebugMode) {
+        print(stackTrace);
+      }
       return const SizedBox.shrink();
     }
   }
 
+  /// Removes duplicate parts from the requestor name
   String _removeDuplicateNames(String name) {
     if (name.isEmpty) return 'N/A';
+    // Example: "UserHQ1UserHQ1" -> "UserHQ1"
+    // This can be adjusted based on the duplication pattern
     RegExp regExp = RegExp(r'^(.*?)\1+$');
     Match? match = regExp.firstMatch(name);
     if (match != null && match.groupCount >= 1) {
@@ -643,21 +942,25 @@ class _NotificationPageState extends State<NotificationPage> {
     return name;
   }
 
-  Widget _buildEmployeeAvatar(String imageUrl) {
+  /// Builds the employee avatar with error handling
+  Widget _buildEmployeeAvatar(String imageUrl, Size screenSize) {
     return CircleAvatar(
-      radius: 24,
+      radius: screenSize.width * 0.07, // Responsive radius
       backgroundColor: Colors.grey.shade300,
       child: ClipOval(
         child: Image.network(
           imageUrl,
-          width: 48,
-          height: 48,
+          width: screenSize.width * 0.14, // 14% of screen width
+          height: screenSize.width * 0.14, // 14% of screen width
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            return const Icon(
+            if (kDebugMode) {
+              print('Error loading employee image from $imageUrl: $error');
+            }
+            return Icon(
               Icons.person,
-              color: Colors.grey,
-              size: 24,
+              color: Colors.grey.shade600,
+              size: screenSize.width * 0.07,
             );
           },
         ),
@@ -665,6 +968,7 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
+  /// Formats the date string to 'dd-MM-yyyy'. Handles various date formats.
   String _formatDate(String? dateStr) {
     try {
       if (dateStr == null || dateStr.isEmpty) {
@@ -673,6 +977,7 @@ class _NotificationPageState extends State<NotificationPage> {
 
       DateTime parsedDate;
 
+      // Handle the case where the date is in 'YYYY-MM-DD' or 'YYYY-M-D' format
       if (RegExp(r"^\d{4}-\d{1,2}-\d{1,2}$").hasMatch(dateStr)) {
         List<String> dateParts = dateStr.split('-');
         int year = int.parse(dateParts[0]);
@@ -680,44 +985,53 @@ class _NotificationPageState extends State<NotificationPage> {
         int day = int.parse(dateParts[2]);
 
         parsedDate = DateTime(year, month, day);
-      } else if (dateStr.contains('T')) {
+      }
+      // Handle ISO 8601 formatted dates like '2024-04-25T00:00:00.000Z'
+      else if (dateStr.contains('T')) {
         parsedDate = DateTime.parse(dateStr);
-      } else {
+      }
+      // Default fallback for unsupported formats
+      else {
         parsedDate = DateTime.parse(dateStr);
       }
 
+      // Format the date to 'dd-MM-yyyy' or modify as needed
       return DateFormat('dd-MM-yyyy').format(parsedDate);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('Date parsing error for "$dateStr": $e');
+      if (kDebugMode) {
+        print(stackTrace);
+      }
       return 'Invalid Date';
     }
   }
 
+  /// Returns appropriate color based on the status
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'approved':
-      case 'yes':
         return Colors.green;
       case 'reject':
       case 'rejected':
         return Colors.red;
       case 'waiting':
       case 'pending':
-      case 'no':
+      case 'branch waiting':
         return Colors.amber;
       case 'processing':
       case 'branch processing':
         return Colors.blue;
-      case 'branch waiting':
+      case 'completed':
         return Colors.orange;
       case 'deleted':
+      case 'disapproved':
         return Colors.red;
-      case 'completed':
-        return Colors.grey;
       default:
         return Colors.grey;
     }
   }
 
+  /// Returns color based on type
   Color _getTypeColor(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
@@ -731,6 +1045,7 @@ class _NotificationPageState extends State<NotificationPage> {
     }
   }
 
+  /// Returns icon based on type
   IconData _getIconForType(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':

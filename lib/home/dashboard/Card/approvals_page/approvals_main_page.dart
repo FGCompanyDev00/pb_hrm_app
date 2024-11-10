@@ -848,16 +848,16 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         return Colors.red;
       case 'waiting':
       case 'pending':
+      case 'branch waiting':
         return Colors.amber;
       case 'processing':
       case 'branch processing':
         return Colors.blue;
-      case 'branch waiting':
+      case 'completed':
         return Colors.orange;
       case 'deleted':
+      case 'disapproved':
         return Colors.red;
-      case 'completed':
-        return Colors.grey;
       default:
         return Colors.grey;
     }
