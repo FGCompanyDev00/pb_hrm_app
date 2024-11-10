@@ -26,7 +26,6 @@ class _SettingsPageState extends State<SettingsPage> {
   final LocalAuthentication auth = LocalAuthentication();
   final _storage = const FlutterSecureStorage();
   bool _biometricEnabled = false;
-  bool _notificationEnabled = false;
   late Future<UserProfile> futureUserProfile;
   String _appVersion = 'PSBV Next Demo v1.0.23'; // Updated version
 
@@ -70,16 +69,10 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadNotificationSetting() async {
-    bool? isEnabled =
-        await _storage.read(key: 'notificationEnabled') == 'true';
     setState(() {
-      _notificationEnabled = isEnabled;
     });
   }
 
-  Future<void> _saveNotificationSetting(bool enabled) async {
-    await _storage.write(key: 'notificationEnabled', value: enabled.toString());
-  }
 
   Future<void> _saveBiometricSetting(bool enabled) async {
     await _storage.write(key: 'biometricEnabled', value: enabled.toString());
@@ -88,6 +81,83 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<bool> _onWillPop() async {
     Navigator.pop(context);
     return false;
+  }
+
+  Future<void> _showBiometricModal() async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  'assets/fingerprint.png',
+                  height: 60,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Setup biometric login',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: Color(0xFF9C640C),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Do you want to use Fingerprint as a preferred login method for the next time?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF5F1E0),
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _enableBiometrics(true); // Call the function to enable biometrics
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFDBB342),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _enableBiometrics(bool enable) async {
@@ -103,8 +173,7 @@ class _SettingsPageState extends State<SettingsPage> {
       }
       try {
         bool authenticated = await auth.authenticate(
-          localizedReason:
-          AppLocalizations.of(context)!.authenticateToEnableBiometrics,
+          localizedReason: AppLocalizations.of(context)!.authenticateToEnableBiometrics,
           options: const AuthenticationOptions(
             stickyAuth: true,
             useErrorDialogs: true,
@@ -114,7 +183,7 @@ class _SettingsPageState extends State<SettingsPage> {
           setState(() {
             _biometricEnabled = true;
           });
-          await _saveBiometricSetting(true); // Save the setting after successful authentication
+          await _saveBiometricSetting(true);
         }
       } catch (e) {
         if (kDebugMode) {
@@ -130,57 +199,12 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _biometricEnabled = false;
       });
-      await _storage.deleteAll(); // Clear stored biometric credentials
-      await _saveBiometricSetting(false); // Save the setting
+      await _storage.deleteAll();
+      await _saveBiometricSetting(false);
     }
   }
 
-  Future<void> _toggleNotification(bool enable) async {
-    if (enable) {
-      setState(() {
-        _notificationEnabled = true;
-      });
-      _saveNotificationSetting(true);
-      _showNotification();
-    } else {
-      setState(() {
-        _notificationEnabled = false;
-      });
-      _saveNotificationSetting(false);
-    }
-  }
 
-  Future<void> _showNotification() async {
-    try {
-      const AndroidNotificationDetails androidPlatformChannelSpecifics =
-      AndroidNotificationDetails(
-        'psbv_next_channel', // Updated channel ID for app
-        'PSBV Next Notifications', // Updated channel name
-        channelDescription:
-        'Notifications about assignments, project updates, and member changes in PSBV Next app.',
-        importance: Importance.max,
-        priority: Priority.high,
-        showWhen: true,
-        icon: '@mipmap/playstore',
-      );
-      const NotificationDetails platformChannelSpecifics =
-      NotificationDetails(android: androidPlatformChannelSpecifics);
-      await flutterLocalNotificationsPlugin.show(
-        0,
-        AppLocalizations.of(context)!.exampleNotificationTitle,
-        AppLocalizations.of(context)!.exampleNotificationBody,
-        platformChannelSpecifics,
-        payload: 'item x',
-      );
-      if (kDebugMode) {
-        print('Notification shown');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error showing notification: $e');
-      }
-    }
-  }
 
   Future<UserProfile> fetchUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
@@ -206,7 +230,6 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
 
     return WillPopScope(
       onWillPop: _onWillPop,
@@ -305,9 +328,13 @@ class _SettingsPageState extends State<SettingsPage> {
                       trailing: Switch(
                         value: _biometricEnabled,
                         onChanged: (bool value) {
-                          _enableBiometrics(value);
+                          if (value) {
+                            _showBiometricModal();
+                          } else {
+                            _enableBiometrics(false); // Disable biometrics
+                          }
                         },
-                        activeColor: Colors.green,
+                        activeColor: const Color(0xFFDBB342),
                       ),
                     ),
                     // Enable Dark Mode Switch
@@ -319,7 +346,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       //   onChanged: (bool value) {
                       //     themeNotifier.toggleTheme();
                       //   },
-                      //   activeColor: Colors.green,
+                      //   activeColor: const Color(0xFFDBB342),
                       // ),
                     ),
                     // Notification Tile
@@ -331,7 +358,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => NotificationSettingsPage()),
+                              builder: (context) => const NotificationSettingsPage()),
                         );
                       },
                     ),

@@ -260,15 +260,16 @@ class _HistoryPageState extends State<HistoryPage> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
+    final Size screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
       backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
       body: Column(
         children: [
-          _buildHeader(isDarkMode),
-          const SizedBox(height: 10),
-          _buildTabBar(),
-          const SizedBox(height: 8),
+          _buildHeader(isDarkMode, screenSize),
+          SizedBox(height: screenSize.height * 0.005),
+          _buildTabBar(screenSize),
+          SizedBox(height: screenSize.height * 0.005),
           _isLoading
               ? const Expanded(
             child: Center(child: CircularProgressIndicator()),
@@ -278,14 +279,19 @@ class _HistoryPageState extends State<HistoryPage> {
               onRefresh: _fetchHistoryData, // This function will refresh data
               child: _isPendingSelected
                   ? _pendingItems.isEmpty
-                  ? const Center(
+                  ? Center(
                 child: Text(
                   'No Pending Items',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(
+                    fontSize: screenSize.width * 0.04,
+                  ),
                 ),
               )
                   : ListView.builder(
-                padding: const EdgeInsets.all(16.0),
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenSize.width * 0.04,
+                  vertical: screenSize.height * 0.008,
+                ),
                 itemCount: _pendingItems.length,
                 itemBuilder: (context, index) {
                   final item = _pendingItems[index];
@@ -293,18 +299,24 @@ class _HistoryPageState extends State<HistoryPage> {
                     context,
                     item,
                     isHistory: false,
+                    screenSize: screenSize,
                   );
                 },
               )
                   : _historyItems.isEmpty
-                  ? const Center(
+                  ? Center(
                 child: Text(
                   'No History Items',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(
+                    fontSize: screenSize.width * 0.04,
+                  ),
                 ),
               )
                   : ListView.builder(
-                padding: const EdgeInsets.all(16.0),
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenSize.width * 0.04,
+                  vertical: screenSize.height * 0.008,
+                ),
                 itemCount: _historyItems.length,
                 itemBuilder: (context, index) {
                   final item = _historyItems[index];
@@ -312,6 +324,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     context,
                     item,
                     isHistory: true,
+                    screenSize: screenSize,
                   );
                 },
               ),
@@ -320,12 +333,13 @@ class _HistoryPageState extends State<HistoryPage> {
         ],
       ),
     );
-}
+  }
 
   /// Builds the header section with background image and title
-  Widget _buildHeader(bool isDarkMode) {
+  Widget _buildHeader(bool isDarkMode, Size screenSize) {
     return Container(
-      height: 150,
+      height: screenSize.height * 0.2, // 20% of screen height
+      width: double.infinity,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(
@@ -338,43 +352,52 @@ class _HistoryPageState extends State<HistoryPage> {
           bottomRight: Radius.circular(30),
         ),
       ),
-      child: Padding(
-        padding:
-        const EdgeInsets.only(top: 60.0, left: 16.0, right: 16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              icon: Icon(Icons.arrow_back,
-                  color: isDarkMode ? Colors.white : Colors.black),
-              onPressed: () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const Dashboard()),
-                      (Route<dynamic> route) => false,
-                );
-              },
-            ),
-            Text(
-              'My History',
-              style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: screenSize.width * 0.04,
+            vertical: screenSize.height * 0.015,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  size: screenSize.width * 0.07,
+                ),
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const Dashboard()),
+                        (Route<dynamic> route) => false,
+                  );
+                },
               ),
-            ),
-            const SizedBox(width: 48), // Placeholder for alignment
-          ],
+              Text(
+                'My History',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  fontSize: screenSize.width * 0.06,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(width: screenSize.width * 0.12), // Placeholder for alignment
+            ],
+          ),
         ),
       ),
     );
   }
 
   /// Builds the tab bar for toggling between Pending and History
-  Widget _buildTabBar() {
+  Widget _buildTabBar(Size screenSize) {
     return Padding(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
+      padding: EdgeInsets.symmetric(
+        horizontal: screenSize.width * 0.04,
+        vertical: screenSize.height * 0.003,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -385,7 +408,9 @@ class _HistoryPageState extends State<HistoryPage> {
                 });
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                padding: EdgeInsets.symmetric(
+                  vertical: screenSize.height * 0.012,
+                ),
                 decoration: BoxDecoration(
                   color: _isPendingSelected
                       ? Colors.amber
@@ -398,12 +423,14 @@ class _HistoryPageState extends State<HistoryPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.hourglass_empty_rounded,
-                        size: 24,
-                        color: _isPendingSelected
-                            ? Colors.white
-                            : Colors.grey[600]),
-                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.hourglass_empty_rounded,
+                      size: screenSize.width * 0.07,
+                      color: _isPendingSelected
+                          ? Colors.white
+                          : Colors.grey[600],
+                    ),
+                    SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Pending',
                       style: TextStyle(
@@ -411,7 +438,7 @@ class _HistoryPageState extends State<HistoryPage> {
                             ? Colors.white
                             : Colors.grey[600],
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: screenSize.width * 0.045,
                       ),
                     ),
                   ],
@@ -419,7 +446,7 @@ class _HistoryPageState extends State<HistoryPage> {
               ),
             ),
           ),
-          const SizedBox(width: 1),
+          SizedBox(width: screenSize.width * 0.002),
           Expanded(
             child: GestureDetector(
               onTap: () {
@@ -428,7 +455,9 @@ class _HistoryPageState extends State<HistoryPage> {
                 });
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                padding: EdgeInsets.symmetric(
+                  vertical: screenSize.height * 0.012,
+                ),
                 decoration: BoxDecoration(
                   color: !_isPendingSelected
                       ? Colors.amber
@@ -441,12 +470,14 @@ class _HistoryPageState extends State<HistoryPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.history_rounded,
-                        size: 24,
-                        color: !_isPendingSelected
-                            ? Colors.white
-                            : Colors.grey[600]),
-                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.history_rounded,
+                      size: screenSize.width * 0.07,
+                      color: !_isPendingSelected
+                          ? Colors.white
+                          : Colors.grey[600],
+                    ),
+                    SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'History',
                       style: TextStyle(
@@ -454,7 +485,7 @@ class _HistoryPageState extends State<HistoryPage> {
                             ? Colors.white
                             : Colors.grey[600],
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: screenSize.width * 0.045,
                       ),
                     ),
                   ],
@@ -470,7 +501,7 @@ class _HistoryPageState extends State<HistoryPage> {
   /// Builds each history/pending card
   Widget _buildHistoryCard(
       BuildContext context, Map<String, dynamic> item,
-      {required bool isHistory}) {
+      {required bool isHistory, required Size screenSize}) {
     final themeNotifier =
     Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
@@ -559,17 +590,19 @@ class _HistoryPageState extends State<HistoryPage> {
       },
       child: Card(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15.0),
-          side: BorderSide(color: typeColor, width: 2),
+          borderRadius: BorderRadius.circular(screenSize.width * 0.08),
+          side: BorderSide(color: typeColor, width: screenSize.width * 0.003),
         ),
-        elevation: 4,
-        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        elevation: 1.5,
+        margin: EdgeInsets.symmetric(
+          vertical: screenSize.height * 0.008,
+        ),
         child: Row(
           children: [
             // Colored side bar indicating type
             Container(
-              width: 5,
-              height: 100,
+              width: screenSize.width * 0.008, // 1.2% of screen width
+              height: screenSize.height * 0.10, // 12% of screen height
               decoration: BoxDecoration(
                 color: typeColor,
                 borderRadius: const BorderRadius.only(
@@ -578,12 +611,14 @@ class _HistoryPageState extends State<HistoryPage> {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: screenSize.width * 0.03),
             // Main content of the card
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    vertical: 12.0, horizontal: 8.0),
+                padding: EdgeInsets.symmetric(
+                  vertical: screenSize.height * 0.012,
+                  horizontal: screenSize.width * 0.02,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -593,82 +628,84 @@ class _HistoryPageState extends State<HistoryPage> {
                         Icon(
                           item['icon'],
                           color: typeColor,
-                          size: 24,
+                          size: screenSize.width * 0.07,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: screenSize.width * 0.02),
                         Text(
                           type[0].toUpperCase() + type.substring(1),
                           style: TextStyle(
                             color: typeColor,
-                            fontSize: 16,
+                            fontSize: screenSize.width * 0.05,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: screenSize.height * 0.005),
                     // Title
                     Text(
                       title,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
-                        fontSize: 18,
+                        fontSize: screenSize.width * 0.05,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: screenSize.height * 0.003),
                     // From and To Dates
                     Text(
                       'From: ${formatDate(startDate)}',
                       style: TextStyle(
                         color: Colors.grey[700],
-                        fontSize: 14,
+                        fontSize: screenSize.width * 0.035,
                       ),
                     ),
                     Text(
                       'To: ${formatDate(endDate)}',
                       style: TextStyle(
                         color: Colors.grey[700],
-                        fontSize: 14,
+                        fontSize: screenSize.width * 0.035,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: screenSize.height * 0.003),
                     // Detail Label and Value
                     Text(
                       '$detailLabel: $detailValue',
                       style: TextStyle(
                         color: Colors.grey[700],
-                        fontSize: 14,
+                        fontSize: screenSize.width * 0.035,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: screenSize.height * 0.005),
                     // Status Indicator
                     Row(
                       children: [
                         Text(
                           'Status: ',
                           style: TextStyle(
-                            color:
-                            isDarkMode ? Colors.white : Colors.black,
+                            color: isDarkMode ? Colors.white : Colors.black,
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: screenSize.width * 0.035,
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8.0, vertical: 4.0),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenSize.width * 0.02,
+                            vertical: screenSize.height * 0.005,
+                          ),
                           decoration: BoxDecoration(
                             color: statusColor,
                             borderRadius:
-                            BorderRadius.circular(12.0),
+                            BorderRadius.circular(screenSize.width * 0.03),
                           ),
                           child: Text(
                             status[0].toUpperCase() +
                                 status.substring(1),
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: screenSize.width * 0.035,
+                            ),
                           ),
                         ),
                       ],
@@ -679,15 +716,14 @@ class _HistoryPageState extends State<HistoryPage> {
             ),
             // Employee Avatar
             Padding(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 8.0),
+              padding: EdgeInsets.symmetric(
+                horizontal: screenSize.width * 0.02,
+              ),
               child: CircleAvatar(
                 backgroundImage: NetworkImage(employeeImage),
-                radius: 24,
-                onBackgroundImageError: (_, __) {
-                  // Handle image load error by setting default avatar
-                  // Consider using a default image directly
-                },
+                radius: screenSize.width * 0.07, // Responsive radius
+                onBackgroundImageError: (_, __) {},
+                backgroundColor: Colors.grey[300],
               ),
             ),
           ],

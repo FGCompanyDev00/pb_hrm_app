@@ -250,15 +250,16 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
+    final Size screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
       backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
       body: Column(
         children: [
-          _buildHeader(isDarkMode),
-          const SizedBox(height: 10),
-          _buildTabBar(),
-          const SizedBox(height: 8),
+          _buildHeader(isDarkMode, screenSize),
+          SizedBox(height: screenSize.height * 0.005),
+          _buildTabBar(screenSize),
+          SizedBox(height: screenSize.height * 0.005),
           _isLoading
               ? const Expanded(
             child: Center(child: CircularProgressIndicator()),
@@ -268,14 +269,19 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
               onRefresh: _fetchInitialData, // Refreshes all data
               child: _isPendingSelected
                   ? _pendingItems.isEmpty
-                  ? const Center(
+                  ? Center(
                 child: Text(
                   'No Pending Items',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(
+                    fontSize: screenSize.width * 0.04,
+                  ),
                 ),
               )
                   : ListView.builder(
-                padding: const EdgeInsets.all(16.0),
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenSize.width * 0.04,
+                  vertical: screenSize.height * 0.008,
+                ),
                 itemCount: _pendingItems.length,
                 itemBuilder: (context, index) {
                   final item = _pendingItems[index];
@@ -283,18 +289,24 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                     context,
                     item,
                     isHistory: false,
+                    screenSize: screenSize,
                   );
                 },
               )
                   : _historyItems.isEmpty
-                  ? const Center(
+                  ? Center(
                 child: Text(
                   'No History Items',
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(
+                    fontSize: screenSize.width * 0.04,
+                  ),
                 ),
               )
                   : ListView.builder(
-                padding: const EdgeInsets.all(16.0),
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenSize.width * 0.04,
+                  vertical: screenSize.height * 0.008,
+                ),
                 itemCount: _historyItems.length,
                 itemBuilder: (context, index) {
                   final item = _historyItems[index];
@@ -302,6 +314,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                     context,
                     item,
                     isHistory: true,
+                    screenSize: screenSize,
                   );
                 },
               ),
@@ -313,9 +326,10 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
   }
 
   /// Builds the header section with background image and title.
-  Widget _buildHeader(bool isDarkMode) {
+  Widget _buildHeader(bool isDarkMode, Size screenSize) {
     return Container(
-      height: 150,
+      height: screenSize.height * 0.2, // 20% of screen height
+      width: double.infinity,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(
@@ -328,41 +342,52 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           bottomRight: Radius.circular(30),
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 60.0, left: 16.0, right: 16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              icon: Icon(Icons.arrow_back,
-                  color: isDarkMode ? Colors.white : Colors.black),
-              onPressed: () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const Dashboard()),
-                      (Route<dynamic> route) => false,
-                );
-              },
-            ),
-            Text(
-              'Approvals',
-              style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: screenSize.width * 0.04,
+            vertical: screenSize.height * 0.015,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  size: screenSize.width * 0.07,
+                ),
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const Dashboard()),
+                        (Route<dynamic> route) => false,
+                  );
+                },
               ),
-            ),
-            const SizedBox(width: 48), // Placeholder for alignment
-          ],
+              Text(
+                'Approvals',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  fontSize: screenSize.width * 0.06,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(width: screenSize.width * 0.12), // Placeholder for alignment
+            ],
+          ),
         ),
       ),
     );
   }
 
   /// Builds the tab bar for toggling between Approvals and History.
-  Widget _buildTabBar() {
+  Widget _buildTabBar(Size screenSize) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
+      padding: EdgeInsets.symmetric(
+        horizontal: screenSize.width * 0.04,
+        vertical: screenSize.height * 0.003,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -375,10 +400,13 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                 }
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                padding: EdgeInsets.symmetric(
+                  vertical: screenSize.height * 0.012,
+                ),
                 decoration: BoxDecoration(
-                  color:
-                  _isPendingSelected ? Colors.amber : Colors.grey.shade300,
+                  color: _isPendingSelected
+                      ? Colors.amber
+                      : Colors.grey.shade300,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -387,12 +415,14 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.hourglass_empty_rounded,
-                        size: 24,
-                        color: _isPendingSelected
-                            ? Colors.white
-                            : Colors.grey.shade600),
-                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.hourglass_empty_rounded,
+                      size: screenSize.width * 0.07,
+                      color: _isPendingSelected
+                          ? Colors.white
+                          : Colors.grey.shade600,
+                    ),
+                    SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Approvals',
                       style: TextStyle(
@@ -400,7 +430,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                             ? Colors.white
                             : Colors.grey.shade600,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: screenSize.width * 0.045,
                       ),
                     ),
                   ],
@@ -408,7 +438,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
               ),
             ),
           ),
-          const SizedBox(width: 1),
+          SizedBox(width: screenSize.width * 0.002),
           Expanded(
             child: GestureDetector(
               onTap: () {
@@ -419,7 +449,9 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                 }
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
+                padding: EdgeInsets.symmetric(
+                  vertical: screenSize.height * 0.012,
+                ),
                 decoration: BoxDecoration(
                   color: !_isPendingSelected
                       ? Colors.amber
@@ -432,12 +464,14 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.history_rounded,
-                        size: 24,
-                        color: !_isPendingSelected
-                            ? Colors.white
-                            : Colors.grey.shade600),
-                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.history_rounded,
+                      size: screenSize.width * 0.07,
+                      color: !_isPendingSelected
+                          ? Colors.white
+                          : Colors.grey.shade600,
+                    ),
+                    SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'History',
                       style: TextStyle(
@@ -445,7 +479,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                             ? Colors.white
                             : Colors.grey.shade600,
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: screenSize.width * 0.045,
                       ),
                     ),
                   ],
@@ -460,7 +494,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
   /// Builds each item card for Approvals or History.
   Widget _buildItemCard(BuildContext context, Map<String, dynamic> item,
-      {required bool isHistory}) {
+      {required bool isHistory, required Size screenSize}) {
     final themeNotifier =
     Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
@@ -589,17 +623,20 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         },
         child: Card(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15.0),
-            side: BorderSide(color: typeColor, width: 2),
+            borderRadius: BorderRadius.circular(screenSize.width * 0.06),
+            side:
+            BorderSide(color: typeColor, width: screenSize.width * 0.004),
           ),
-          elevation: 4,
-          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          elevation: 1.5,
+          margin: EdgeInsets.symmetric(
+            vertical: screenSize.height * 0.008,
+          ),
           child: Row(
             children: [
               // Colored side bar
               Container(
-                width: 5,
-                height: 100,
+                width: screenSize.width * 0.010, // 1.2% of screen width
+                height: screenSize.height * 0.10, // 12% of screen height
                 decoration: BoxDecoration(
                   color: typeColor,
                   borderRadius: const BorderRadius.only(
@@ -608,60 +645,72 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: screenSize.width * 0.02),
               // Content
               Expanded(
                 child: Padding(
-                  padding:
-                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+                  padding: EdgeInsets.symmetric(
+                    vertical: screenSize.height * 0.014,
+                    horizontal: screenSize.width * 0.02,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Type and Icon
                       Row(
                         children: [
-                          Icon(typeIcon, color: typeColor, size: 24),
-                          const SizedBox(width: 8),
+                          Icon(
+                            typeIcon,
+                            color: typeColor,
+                            size: screenSize.width * 0.07,
+                          ),
+                          SizedBox(width: screenSize.width * 0.02),
                           Text(
                             type[0].toUpperCase() + type.substring(1),
                             style: TextStyle(
                               color: typeColor,
-                              fontSize: 16,
+                              fontSize: screenSize.width * 0.05,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: screenSize.height * 0.006),
                       // Title
                       Text(
                         title,
                         style: TextStyle(
                           color: isDarkMode ? Colors.white : Colors.black,
-                          fontSize: 18,
+                          fontSize: screenSize.width * 0.05,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: screenSize.height * 0.003),
                       // Dates
                       Text(
                         'From: ${_formatDate(startDate)}',
-                        style:
-                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: screenSize.width * 0.035,
+                        ),
                       ),
                       Text(
                         'To: ${_formatDate(endDate)}',
-                        style:
-                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: screenSize.width * 0.035,
+                        ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: screenSize.height * 0.003),
                       // Detail
                       Text(
                         '$detailLabel: $detailValue',
-                        style:
-                        TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: screenSize.width * 0.035,
+                        ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: screenSize.height * 0.005),
                       // Status
                       Row(
                         children: [
@@ -670,22 +719,25 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                             style: TextStyle(
                               color: isDarkMode ? Colors.white : Colors.black,
                               fontWeight: FontWeight.bold,
-                              fontSize: 14,
+                              fontSize: screenSize.width * 0.035,
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0, vertical: 4.0),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenSize.width * 0.02,
+                              vertical: screenSize.height * 0.005,
+                            ),
                             decoration: BoxDecoration(
                               color: statusColor,
-                              borderRadius: BorderRadius.circular(12.0),
+                              borderRadius:
+                              BorderRadius.circular(screenSize.width * 0.03),
                             ),
                             child: Text(
-                              status,
-                              style: const TextStyle(
+                              status[0].toUpperCase() + status.substring(1),
+                              style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                                fontSize: screenSize.width * 0.035,
                               ),
                             ),
                           ),
@@ -697,8 +749,10 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
               ),
               // Employee Image with Error Handling
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                child: _buildEmployeeAvatar(employeeImage),
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenSize.width * 0.02,
+                ),
+                child: _buildEmployeeAvatar(employeeImage, screenSize),
               ),
             ],
           ),
@@ -725,22 +779,22 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
   }
 
   /// Builds the employee avatar with error handling
-  Widget _buildEmployeeAvatar(String imageUrl) {
+  Widget _buildEmployeeAvatar(String imageUrl, Size screenSize) {
     return CircleAvatar(
-      radius: 24,
+      radius: screenSize.width * 0.07, // Responsive radius
       backgroundColor: Colors.grey.shade300,
       child: ClipOval(
         child: Image.network(
           imageUrl,
-          width: 48,
-          height: 48,
+          width: screenSize.width * 0.14, // 14% of screen width
+          height: screenSize.width * 0.14, // 14% of screen width
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             print('Error loading employee image from $imageUrl: $error');
-            return const Icon(
+            return Icon(
               Icons.person,
-              color: Colors.grey,
-              size: 24,
+              color: Colors.grey.shade600,
+              size: screenSize.width * 0.07,
             );
           },
         ),

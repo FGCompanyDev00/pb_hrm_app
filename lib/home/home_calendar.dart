@@ -809,23 +809,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       connectivityBuilder: (context, connectivity, child) {
         final bool isConnected = connectivity.contains(ConnectivityResult.none) == false;
 
-        if (isConnected != _wasConnected) {
-          final message = isConnected ? "You're online!" : "Lost internet connection, you're offline now...";
-          final backgroundColor = isConnected ? Colors.green : Colors.red;
-
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(message),
-                backgroundColor: backgroundColor,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          });
-
-          _wasConnected = isConnected;
-        }
-
         return Stack(
           children: [
             Positioned(
@@ -878,7 +861,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                             autoPlay: false,
                             viewportFraction: 1,
                             initialPage: liveHour(),
-                            height: 400,
+                            height: 410,
                             scrollDirection: Axis.vertical,
                           ),
                           items: cards,
