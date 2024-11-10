@@ -625,7 +625,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(screenSize.width * 0.06),
             side:
-            BorderSide(color: typeColor, width: screenSize.width * 0.004),
+            BorderSide(color: typeColor, width: screenSize.width * 0.0025),
           ),
           elevation: 1.5,
           margin: EdgeInsets.symmetric(
