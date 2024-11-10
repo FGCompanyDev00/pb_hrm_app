@@ -338,7 +338,7 @@ class _HistoryPageState extends State<HistoryPage> {
   /// Builds the header section with background image and title
   Widget _buildHeader(bool isDarkMode, Size screenSize) {
     return Container(
-      height: screenSize.height * 0.2, // 20% of screen height
+      height: screenSize.height * 0.18,
       width: double.infinity,
       decoration: BoxDecoration(
         image: DecorationImage(
