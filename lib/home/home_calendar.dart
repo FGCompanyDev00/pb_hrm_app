@@ -784,30 +784,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    bool isConnected = true;
-
-    final cards = [
-      CalendarDayWidgetCard(
-        selectedDay: _selectedDay,
-        eventsCalendar: _eventsForDay,
-        selectedSlotTime: 1,
-        heightTime: 1.4,
-      ),
-      CalendarDayWidgetCard(
-        selectedDay: _selectedDay,
-        eventsCalendar: _eventsForDay,
-        selectedSlotTime: 2,
-      ),
-      CalendarDayWidgetCard(
-        selectedDay: _selectedDay,
-        eventsCalendar: _eventsForDay,
-        selectedSlotTime: 3,
-      ),
-    ];
-
     return OfflineBuilder(
       connectivityBuilder: (context, connectivity, child) {
-        final bool isConnected = connectivity.contains(ConnectivityResult.none) == false;
+        final bool isConnected = connectivity != ConnectivityResult.none;
 
         return Stack(
           children: [
@@ -825,62 +804,91 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 ),
               ),
             ),
-            child,
-          ],
-        );
-      },
-      child: Scaffold(
-        body: Stack(
-          children: [
-            SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+            Scaffold(
+              body: Stack(
                 children: [
-                  _buildCalendarHeader(isDarkMode),
-                  if (_showFiltersAndSearchBar) _buildFilters(),
-                  if (_showFiltersAndSearchBar) _buildSearchBar(),
-                  _buildCalendar(context, isDarkMode),
-                  _buildSectionSeparator(),
-                  _eventsForDay.isEmpty
-                      ? SizedBox(
-                          height: sizeScreen(context).height * 0.45,
-                          child: Center(
-                            child: Text(
-                              AppLocalizations.of(context)!.noEventsForThisDay,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey,
-                                fontWeight: FontWeight.w500,
+                  // Fixed Calendar Header
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: _buildCalendarHeader(isDarkMode),
+                  ),
+                  // Scrollable content with pull-to-refresh
+                  RefreshIndicator(
+                    onRefresh: _onRefresh,
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.only(top: 155), // Adjust for the header height
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          if (_showFiltersAndSearchBar) _buildFilters(),
+                          if (_showFiltersAndSearchBar) _buildSearchBar(),
+                          _buildCalendar(context, isDarkMode),
+                          _buildSectionSeparator(),
+                          _eventsForDay.isEmpty
+                              ? SizedBox(
+                            height: sizeScreen(context).height * 0.45,
+                            child: Center(
+                              child: Text(
+                                AppLocalizations.of(context)!.noEventsForThisDay,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
-                              textAlign: TextAlign.center,
                             ),
-                          ))
-                      : CarouselSlider(
-                          options: CarouselOptions(
-                            autoPlay: false,
-                            viewportFraction: 1,
-                            initialPage: liveHour(),
-                            height: 410,
-                            scrollDirection: Axis.vertical,
+                          )
+                              : CarouselSlider(
+                            options: CarouselOptions(
+                              autoPlay: false,
+                              viewportFraction: 1,
+                              initialPage: liveHour(),
+                              height: 410,
+                              scrollDirection: Axis.vertical,
+                            ),
+                            items: [
+                              CalendarDayWidgetCard(
+                                selectedDay: _selectedDay,
+                                eventsCalendar: _eventsForDay,
+                                selectedSlotTime: 1,
+                                heightTime: 1.4,
+                              ),
+                              CalendarDayWidgetCard(
+                                selectedDay: _selectedDay,
+                                eventsCalendar: _eventsForDay,
+                                selectedSlotTime: 2,
+                              ),
+                              CalendarDayWidgetCard(
+                                selectedDay: _selectedDay,
+                                eventsCalendar: _eventsForDay,
+                                selectedSlotTime: 3,
+                              ),
+                            ],
                           ),
-                          items: cards,
-                        ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_isLoading)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: LinearProgressIndicator(
+                        backgroundColor: isConnected ? Colors.blue : Colors.orange,
+                      ),
+                    ),
                 ],
               ),
             ),
-            if (_isLoading)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: LinearProgressIndicator(
-                  backgroundColor: isConnected ? Colors.blue : Colors.orange,
-                ),
-              ),
           ],
-        ),
-      ),
+        );
+      },
+      child: Container(),
     );
   }
 
