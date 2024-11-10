@@ -60,20 +60,20 @@ class CalendarDayWidgetCard extends HookWidget {
       currentEvents.value.clear();
       currentOverflowEventsRow.value.clear();
       for (var e in eventsCalendar) {
-        DateTime slotStartTime = DateTime.utc(
-          selectedDay!.year,
-          selectedDay!.month,
-          selectedDay!.day,
-          currentHour.value,
-          0,
-        );
-        DateTime slotEndTime = DateTime.utc(
-          selectedDay!.year,
-          selectedDay!.month,
-          selectedDay!.day,
-          untilEnd.value - 1,
-          0,
-        );
+        // DateTime slotStartTime = DateTime.utc(
+        //   selectedDay!.year,
+        //   selectedDay!.month,
+        //   selectedDay!.day,
+        //   currentHour.value,
+        //   0,
+        // );
+        // DateTime slotEndTime = DateTime.utc(
+        //   selectedDay!.year,
+        //   selectedDay!.month,
+        //   selectedDay!.day,
+        //   untilEnd.value - 1,
+        //   0,
+        // );
         DateTime startTime = DateTime.utc(
           selectedDay!.year,
           selectedDay!.month,
@@ -89,82 +89,82 @@ class CalendarDayWidgetCard extends HookWidget {
           e.endDateTime.minute,
         );
 
-        if (slotEndTime.isBefore(startTime)) {
-        } else if (endTime.isBefore(slotStartTime)) {
-        } else if (startTime.isAfter(endTime)) {
-        } else if (startTime.isBefore(slotStartTime)) {
-          statusList.value.add(Container(
-            width: 5,
-            height: 5,
-            margin: const EdgeInsets.symmetric(horizontal: 1),
-            decoration: BoxDecoration(
-              color: getEventColor(e),
-              shape: BoxShape.circle,
-            ),
-          ));
-          startTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            currentHour.value,
-            0,
-          );
-          endTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            untilEnd.value - 1,
-            0,
-          );
+        // if (slotEndTime.isBefore(startTime)) {
+        // } else if (endTime.isBefore(slotStartTime)) {
+        // } else if (startTime.isAfter(endTime)) {
+        // } else if (startTime.isBefore(slotStartTime)) {
+        // statusList.value.add(Container(
+        //   width: 5,
+        //   height: 5,
+        //   margin: const EdgeInsets.symmetric(horizontal: 1),
+        //   decoration: BoxDecoration(
+        //     color: getEventColor(e),
+        //     shape: BoxShape.circle,
+        //   ),
+        // ));
+        startTime = DateTime.utc(
+          selectedDay!.year,
+          selectedDay!.month,
+          selectedDay!.day,
+          currentHour.value,
+          0,
+        );
+        endTime = DateTime.utc(
+          selectedDay!.year,
+          selectedDay!.month,
+          selectedDay!.day,
+          untilEnd.value - 1,
+          0,
+        );
 
-          // }
+        // }
 
-          currentEvents.value.add(AdvancedDayEvent(
-            value: e.uid,
-            title: e.title,
-            desc: e.description,
-            start: startTime,
-            end: endTime,
-            category: e.category,
-            members: e.members,
-            status: e.status,
-          ));
-        } else {
-          statusList.value.add(Container(
-            width: 5,
-            height: 5,
-            margin: const EdgeInsets.symmetric(horizontal: 1),
-            decoration: BoxDecoration(
-              color: getEventColor(e),
-              shape: BoxShape.circle,
-            ),
-          ));
-          startTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            currentHour.value,
-            0,
-          );
-          endTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            untilEnd.value - 1,
-            0,
-          );
+        currentEvents.value.add(AdvancedDayEvent(
+          value: e.uid,
+          title: e.title,
+          desc: e.description,
+          start: startTime,
+          end: endTime,
+          category: e.category,
+          members: e.members,
+          status: e.status,
+        ));
+        // } else {
+        //   statusList.value.add(Container(
+        //     width: 5,
+        //     height: 5,
+        //     margin: const EdgeInsets.symmetric(horizontal: 1),
+        //     decoration: BoxDecoration(
+        //       color: getEventColor(e),
+        //       shape: BoxShape.circle,
+        //     ),
+        //   ));
+        //   startTime = DateTime.utc(
+        //     selectedDay!.year,
+        //     selectedDay!.month,
+        //     selectedDay!.day,
+        //     currentHour.value,
+        //     0,
+        //   );
+        //   endTime = DateTime.utc(
+        //     selectedDay!.year,
+        //     selectedDay!.month,
+        //     selectedDay!.day,
+        //     untilEnd.value - 1,
+        //     0,
+        //   );
 
-          currentEvents.value.add(AdvancedDayEvent(
-            value: e.uid,
-            title: e.title,
-            desc: e.description,
-            start: startTime,
-            end: endTime,
-            category: e.category,
-            members: e.members,
-            status: e.status,
-          ));
-        }
+        //   currentEvents.value.add(AdvancedDayEvent(
+        //     value: e.uid,
+        //     title: e.title,
+        //     desc: e.description,
+        //     start: startTime,
+        //     end: endTime,
+        //     category: e.category,
+        //     members: e.members,
+        //     status: e.status,
+        //   ));
+        // }
       }
 
       currentOverflowEventsRow.value = processOverflowEvents(

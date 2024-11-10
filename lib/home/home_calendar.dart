@@ -578,6 +578,22 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     return _events.value[normalizedDay] ?? [];
   }
 
+  /// Retrieves events for a specific day
+  List<Event> _getDubplicateEventsForDay(DateTime day) {
+    final normalizedDay = normalizeDate(day);
+    final listEvent = _events.value[normalizedDay] ?? [];
+    List<Event> updateEvents = listEvent;
+    for (var i in listEvent) {
+      if (updateEvents.isEmpty) {
+        listEvent.add(i);
+      } else if (listEvent.any((u) => u.category != i.category)) {
+        listEvent.add(i);
+      } else {}
+    }
+
+    return listEvent;
+  }
+
   /// Filters and searches events based on selected category and search query
   void _filterAndSearchEvents() {
     if (_selectedDay == null) return;
@@ -1051,6 +1067,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                   });
                 },
                 eventLoader: _getEventsForDay,
+                // eventLoader: _getDubplicateEventsForDay,
                 calendarStyle: CalendarStyle(
                   todayDecoration: BoxDecoration(
                     color: Colors.orangeAccent.withOpacity(0.5),
