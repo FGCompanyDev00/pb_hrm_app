@@ -584,16 +584,21 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   List<Event> _getDubplicateEventsForDay(DateTime day) {
     final normalizedDay = normalizeDate(day);
     final listEvent = _events.value[normalizedDay] ?? [];
-    List<Event> updateEvents = listEvent;
-    for (var i in listEvent) {
-      if (updateEvents.isEmpty) {
-        listEvent.add(i);
-      } else if (listEvent.any((u) => u.category != i.category)) {
-        listEvent.add(i);
-      } else {}
+    List<Event> updateEvents = [];
+    if (listEvent.length > 4) {
+      for (var i in listEvent) {
+        if (updateEvents.isEmpty) {
+          updateEvents.add(i);
+        } else if (updateEvents.any((u) => u.category.contains(i.category))) {
+        } else {
+          updateEvents.add(i);
+        }
+      }
+    } else {
+      updateEvents = listEvent;
     }
 
-    return listEvent;
+    return updateEvents;
   }
 
   /// Filters and searches events based on selected category and search query
@@ -1059,7 +1064,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                     dateProvider.updateSelectedDate(focusedDay);
                   });
                 },
-                eventLoader: _getEventsForDay,
+                eventLoader: _getDubplicateEventsForDay,
                 // eventLoader: _getDubplicateEventsForDay,
                 calendarStyle: CalendarStyle(
                   todayDecoration: BoxDecoration(
