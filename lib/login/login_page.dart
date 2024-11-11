@@ -2,7 +2,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
@@ -22,8 +21,6 @@ import 'package:pb_hrsystem/user_model.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_offline/flutter_offline.dart';
-
-import '../home/home_calendar.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -104,7 +101,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     final String password = _passwordController.text.trim();
 
     if (username.isEmpty || password.isEmpty) {
-      _showCustomDialog(context, AppLocalizations.of(context)!.loginFailed, AppLocalizations.of(context)!.emptyFieldsMessage);
+      if (mounted) _showCustomDialog(AppLocalizations.of(context)!.loginFailed, AppLocalizations.of(context)!.emptyFieldsMessage);
       return;
     }
 
@@ -143,21 +140,26 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             await _storage.write(key: 'biometricEnabled', value: 'true');
           }
 
-          Provider.of<UserProvider>(context, listen: false).login(token);
+          if (mounted) Provider.of<UserProvider>(context, listen: false).login(token);
 
           bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
 
           if (isFirstLogin) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const NotificationPermissionPage()),
-            );
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const NotificationPermissionPage()),
+              );
+            }
+
             await prefs.setBool('isFirstLogin', false);
           } else {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
-            );
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const MainScreen()),
+              );
+            }
           }
         } else {
           _showOfflineOptionModal('API Error', 'The API is currently unavailable.');
@@ -251,27 +253,27 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     final storedPassword = box.get('password');
     final token = box.get('token');
 
-    if (storedUsername == _usernameController.text.trim() &&
-        storedPassword == _passwordController.text.trim() &&
-        token != null) {
-      Provider.of<UserProvider>(context, listen: false).login(token);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainScreen()),
-      );
+    if (storedUsername == _usernameController.text.trim() && storedPassword == _passwordController.text.trim() && token != null) {
+      if (mounted) {
+        Provider.of<UserProvider>(context, listen: false).login(token);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainScreen()),
+        );
+      }
     } else {
-      _showCustomDialog(
-        context,
-        AppLocalizations.of(context)!.loginFailed,
-        AppLocalizations.of(context)!.incorrectCredentials,
-      );
+      if (mounted) {
+        _showCustomDialog(
+          AppLocalizations.of(context)!.loginFailed,
+          AppLocalizations.of(context)!.incorrectCredentials,
+        );
+      }
     }
   }
 
   Future<void> _authenticate({bool useBiometric = true}) async {
     if (!_biometricEnabled) {
-      _showCustomDialog(context, 'Biometric Disabled',
-          'Please enable biometric authentication.');
+      _showCustomDialog('Biometric Disabled', 'Please enable biometric authentication.');
       return;
     }
 
@@ -284,22 +286,19 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           stickyAuth: true,
         ),
       );
+      if (authenticated) {
+        String? username = await _storage.read(key: 'username');
+        String? password = await _storage.read(key: 'password');
+        if (username != null && password != null) {
+          _usernameController.text = username;
+          _passwordController.text = password;
+          _login();
+        }
+      } else {
+        _showCustomDialog('Authentication Failed', 'Please try again.');
+      }
     } catch (e) {
-      if (kDebugMode) {
-        print('Authentication error: $e');
-      }
-    }
-
-    if (authenticated) {
-      String? username = await _storage.read(key: 'username');
-      String? password = await _storage.read(key: 'password');
-      if (username != null && password != null) {
-        _usernameController.text = username;
-        _passwordController.text = password;
-        _login();
-      }
-    } else {
-      _showCustomDialog(context, 'Authentication Failed', 'Please try again.');
+      debugPrint('Authentication error: $e');
     }
   }
 
@@ -335,11 +334,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     );
 
     if (pickedDate != null) {
-      Provider.of<DateProvider>(context, listen: false).updateSelectedDate(pickedDate);
+      if (context.mounted) Provider.of<DateProvider>(context, listen: false).updateSelectedDate(pickedDate);
     }
   }
 
-  void _showCustomDialog(BuildContext context, String title, String message) {
+  void _showCustomDialog(String title, String message) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -793,8 +792,11 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             onTap: _biometricEnabled
                 ? () => _authenticate(useBiometric: true)
                 : () {
-              _showCustomDialog(context, AppLocalizations.of(context)!.biometricDisabled, AppLocalizations.of(context)!.enableBiometric);
-            },
+                    _showCustomDialog(
+                      AppLocalizations.of(context)!.biometricDisabled,
+                      AppLocalizations.of(context)!.enableBiometric,
+                    );
+                  },
             child: Container(
               width: screenWidth * 0.35,
               height: screenWidth * 0.125,
