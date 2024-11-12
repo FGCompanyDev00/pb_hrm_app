@@ -1010,9 +1010,11 @@ class _NotificationPageState extends State<NotificationPage> {
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'approved':
+      case 'yes':
         return Colors.green;
       case 'reject':
       case 'rejected':
+      case 'no':
         return Colors.red;
       case 'waiting':
       case 'pending':
