@@ -1,8 +1,8 @@
 // location_information_page.dart
 
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/login/camera_page.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class LocationInformationPage extends StatelessWidget {
@@ -31,10 +31,10 @@ class LocationInformationPage extends StatelessWidget {
       _showPermissionDeniedDialog(context, true);
     } else if (newStatus.isRestricted) {
       // iOS-specific restricted status
-      _showErrorDialog(context, AppLocalizations.of(context)!.permissionRestricted);
+      _showErrorDialog(context, localizations!.permissionRestricted);
     } else {
       // Other statuses like error or failed
-      _showErrorDialog(context, '${AppLocalizations.of(context)!.permissionStatus}: $newStatus');
+      _showErrorDialog(context, '${localizations!.permissionStatus}: $newStatus');
     }
   }
 
@@ -43,10 +43,8 @@ class LocationInformationPage extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.permissionDenied),
-          content: Text(isPermanentlyDenied
-              ? AppLocalizations.of(context)!.locationAccessPermanentlyDenied
-              : AppLocalizations.of(context)!.locationPermissionRequired),
+          title: Text(localizations!.permissionDenied),
+          content: Text(isPermanentlyDenied ? localizations!.locationAccessPermanentlyDenied : localizations!.locationPermissionRequired),
           actions: [
             TextButton(
               onPressed: () {
@@ -55,7 +53,7 @@ class LocationInformationPage extends StatelessWidget {
                 }
                 Navigator.of(context).pop();
               },
-              child: Text(AppLocalizations.of(context)!.ok),
+              child: Text(localizations!.ok),
             ),
           ],
         );
@@ -68,14 +66,14 @@ class LocationInformationPage extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.error), // Ensure 'error' key exists
+          title: Text(localizations!.error), // Ensure 'error' key exists
           content: Text(message),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();  // Close dialog
+                Navigator.of(context).pop(); // Close dialog
               },
-              child: Text(AppLocalizations.of(context)!.ok),
+              child: Text(localizations!.ok),
             ),
           ],
         );
@@ -110,7 +108,7 @@ class LocationInformationPage extends StatelessWidget {
               const SizedBox(height: 20),
               Center(
                 child: Text(
-                  AppLocalizations.of(context)!.locationInformation,
+                  localizations!.locationInformation,
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -121,7 +119,7 @@ class LocationInformationPage extends StatelessWidget {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                  AppLocalizations.of(context)!.weCollectInformation,
+                  localizations!.weCollectInformation,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 16,
@@ -140,7 +138,7 @@ class LocationInformationPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                   ),
-                  child: Text(AppLocalizations.of(context)!.next, style: const TextStyle(fontSize: 18)),
+                  child: Text(localizations!.next, style: const TextStyle(fontSize: 18)),
                 ),
               ),
               const SizedBox(height: 10),
@@ -157,7 +155,7 @@ class LocationInformationPage extends StatelessWidget {
               const SizedBox(height: 10),
               Center(
                 child: Text(
-                  AppLocalizations.of(context)!.pageIndicator2of3, // Ensure this key exists
+                  localizations!.pageIndicator2of3, // Ensure this key exists
                   style: const TextStyle(fontSize: 16, color: Colors.black),
                 ),
               ),

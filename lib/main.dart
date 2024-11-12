@@ -14,7 +14,6 @@ import 'package:pb_hrsystem/splash/splashscreen.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_offline/flutter_offline.dart';
 import 'theme/theme.dart';
@@ -22,7 +21,6 @@ import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'models/attendance_record.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -79,9 +77,9 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: Colors.black,
             textTheme: GoogleFonts.oxaniumTextTheme(
               Theme.of(context).textTheme.apply(
-                bodyColor: Colors.white,
-                displayColor: Colors.white,
-              ),
+                    bodyColor: Colors.white,
+                    displayColor: Colors.white,
+                  ),
             ),
           ),
           themeMode: themeNotifier.currentTheme,

@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class MyProfilePage extends StatefulWidget {
   const MyProfilePage({super.key});
@@ -28,7 +28,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
     final String? token = prefs.getString('token');
 
     if (token == null) {
-      throw Exception(AppLocalizations.of(context)!.noTokenFound);
+      throw Exception(localizations!.noTokenFound);
     }
 
     // Fetch user profile details (without roles)
@@ -43,7 +43,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
     if (response.statusCode == 200) {
       final responseBody = jsonDecode(response.body);
       if (responseBody['results'] == null || responseBody['results'].isEmpty) {
-        throw Exception(AppLocalizations.of(context)!.noUserProfileData);
+        throw Exception(localizations!.noUserProfileData);
       }
       final userProfile = UserProfile.fromJson(responseBody['results'][0]);
 
@@ -62,12 +62,12 @@ class _MyProfilePageState extends State<MyProfilePage> {
           userProfile.roles = rolesBody['results'][0]['roles']; // Set the roles from the second API
         }
       } else {
-        throw Exception(AppLocalizations.of(context)!.failedToLoadRoles);
+        throw Exception(localizations!.failedToLoadRoles);
       }
 
       return userProfile;
     } else {
-      throw Exception(AppLocalizations.of(context)!.failedToLoadUserProfile(response.reasonPhrase as Object));
+      throw Exception(localizations!.failedToLoadUserProfile(response.reasonPhrase as Object));
     }
   }
 
@@ -78,7 +78,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
 
   Widget buildRolesSection(String roles) {
     if (roles.trim().isEmpty) {
-      roles = AppLocalizations.of(context)!.noRolesAvailable;
+      roles = localizations!.noRolesAvailable;
     }
 
     List<String> roleList = roles.split(',');
@@ -89,7 +89,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            AppLocalizations.of(context)!.rolesLabel,
+            localizations!.rolesLabel,
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 4),
@@ -125,7 +125,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
           ),
         ),
         title: Text(
-          AppLocalizations.of(context)!.myProfile,
+          localizations!.myProfile,
           style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
@@ -151,7 +151,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
+            return Center(child: Text(localizations!.errorWithDetails(snapshot.error.toString())));
           } else if (snapshot.hasData) {
             return SingleChildScrollView(
               child: Padding(
@@ -171,50 +171,50 @@ class _MyProfilePageState extends State<MyProfilePage> {
                           children: [
                             ProfileInfoRow(
                               icon: Icons.person,
-                              label: AppLocalizations.of(context)!.gender,
-                              value: snapshot.data!.gender.isNotEmpty ? snapshot.data!.gender : AppLocalizations.of(context)!.notAvailable,
+                              label: localizations!.gender,
+                              value: snapshot.data!.gender.isNotEmpty ? snapshot.data!.gender : localizations!.notAvailable,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.badge,
-                              label: AppLocalizations.of(context)!.nameAndSurname,
+                              label: localizations!.nameAndSurname,
                               value: '${snapshot.data!.name} ${snapshot.data!.surname}',
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.date_range,
-                              label: AppLocalizations.of(context)!.dateStartWork,
+                              label: localizations!.dateStartWork,
                               value: formatDate(snapshot.data!.createAt),
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.date_range,
-                              label: AppLocalizations.of(context)!.probationEndDate,
+                              label: localizations!.probationEndDate,
                               value: formatDate(snapshot.data!.updateAt),
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.account_balance,
-                              label: AppLocalizations.of(context)!.department,
-                              value: snapshot.data!.departmentName.isNotEmpty ? snapshot.data!.departmentName : AppLocalizations.of(context)!.notAvailable,
+                              label: localizations!.department,
+                              value: snapshot.data!.departmentName.isNotEmpty ? snapshot.data!.departmentName : localizations!.notAvailable,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.location_on,
-                              label: AppLocalizations.of(context)!.branch,
-                              value: snapshot.data!.branchName.isNotEmpty ? snapshot.data!.branchName : AppLocalizations.of(context)!.notAvailable,
+                              label: localizations!.branch,
+                              value: snapshot.data!.branchName.isNotEmpty ? snapshot.data!.branchName : localizations!.notAvailable,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.phone,
-                              label: AppLocalizations.of(context)!.telephone,
-                              value: snapshot.data!.tel.isNotEmpty ? snapshot.data!.tel : AppLocalizations.of(context)!.notAvailable,
+                              label: localizations!.telephone,
+                              value: snapshot.data!.tel.isNotEmpty ? snapshot.data!.tel : localizations!.notAvailable,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.email,
-                              label: AppLocalizations.of(context)!.emails,
-                              value: snapshot.data!.email.isNotEmpty ? snapshot.data!.email : AppLocalizations.of(context)!.notAvailable,
+                              label: localizations!.emails,
+                              value: snapshot.data!.email.isNotEmpty ? snapshot.data!.email : localizations!.notAvailable,
                             ),
                           ],
                         ),
@@ -236,7 +236,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
               ),
             );
           } else {
-            return Center(child: Text(AppLocalizations.of(context)!.noDataAvailable));
+            return Center(child: Text(localizations!.noDataAvailable));
           }
         },
       ),

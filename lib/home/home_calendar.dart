@@ -1,5 +1,3 @@
-//home_calendar.dart
-
 import 'dart:convert';
 import 'dart:async';
 import 'package:carousel_slider/carousel_slider.dart';
@@ -24,7 +22,6 @@ import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_offline/flutter_offline.dart';
 
 class HomeCalendar extends StatefulWidget {
@@ -436,7 +433,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         Event? event;
         if (mounted) {
           event = Event(
-            title: item['title'] ?? AppLocalizations.of(context)!.meetingRoomBookings,
+            title: item['title'] ?? localizations!.meetingRoomBookings,
             startDateTime: startDateTime,
             endDateTime: endDateTime,
             description: item['remark'] ?? 'Booking Pending',
@@ -527,7 +524,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (mounted) {
           event = Event(
-            title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
+            title: item['purpose'] ?? localizations!.noTitle,
             startDateTime: startDateTime,
             endDateTime: endDateTime,
             description: item['place'] ?? 'Car Booking Pending',
@@ -666,7 +663,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                     children: [
                       _buildPopupOption(
                         icon: Icons.person,
-                        label: '1. ${AppLocalizations.of(context)!.personal}',
+                        label: '1. ${localizations!.personal}',
                         onTap: () {
                           Navigator.pop(context);
                           _navigateToAddEvent('Personal');
@@ -675,7 +672,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                       const Divider(height: 1),
                       _buildPopupOption(
                         icon: Icons.work,
-                        label: '2. ${AppLocalizations.of(context)!.office}',
+                        label: '2. ${localizations!.office}',
                         onTap: () {
                           Navigator.pop(context);
                           _navigateToAddEvent('Office');
@@ -836,46 +833,46 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                           _buildSectionSeparator(),
                           _eventsForDay.isEmpty
                               ? SizedBox(
-                            height: sizeScreen(context).height * 0.45,
-                            child: Center(
-                              child: Text(
-                                AppLocalizations.of(context)!.noEventsForThisDay,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          )
+                                  height: sizeScreen(context).height * 0.45,
+                                  child: Center(
+                                    child: Text(
+                                      localizations!.noEventsForThisDay,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                )
                               : CarouselSlider(
-                            options: CarouselOptions(
-                              autoPlay: false,
-                              viewportFraction: 1,
-                              initialPage: liveHour(),
-                              height: 410,
-                              scrollDirection: Axis.vertical,
-                            ),
-                            items: [
-                              CalendarDayWidgetCard(
-                                selectedDay: _selectedDay,
-                                eventsCalendar: _eventsForDay,
-                                selectedSlotTime: 1,
-                                heightTime: 1.4,
-                              ),
-                              CalendarDayWidgetCard(
-                                selectedDay: _selectedDay,
-                                eventsCalendar: _eventsForDay,
-                                selectedSlotTime: 2,
-                              ),
-                              CalendarDayWidgetCard(
-                                selectedDay: _selectedDay,
-                                eventsCalendar: _eventsForDay,
-                                selectedSlotTime: 3,
-                              ),
-                            ],
-                          ),
+                                  options: CarouselOptions(
+                                    autoPlay: false,
+                                    viewportFraction: 1,
+                                    initialPage: liveHour(),
+                                    height: 410,
+                                    scrollDirection: Axis.vertical,
+                                  ),
+                                  items: [
+                                    CalendarDayWidgetCard(
+                                      selectedDay: _selectedDay,
+                                      eventsCalendar: _eventsForDay,
+                                      selectedSlotTime: 1,
+                                      heightTime: 1.4,
+                                    ),
+                                    CalendarDayWidgetCard(
+                                      selectedDay: _selectedDay,
+                                      eventsCalendar: _eventsForDay,
+                                      selectedSlotTime: 2,
+                                    ),
+                                    CalendarDayWidgetCard(
+                                      selectedDay: _selectedDay,
+                                      eventsCalendar: _eventsForDay,
+                                      selectedSlotTime: 3,
+                                    ),
+                                  ],
+                                ),
                         ],
                       ),
                     ),
@@ -922,7 +919,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               children: [
                 const SizedBox(height: 70),
                 Text(
-                  AppLocalizations.of(context)!.calendar,
+                  localizations!.calendar,
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black,
                     fontSize: 30,
@@ -940,7 +937,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 Icons.add_circle,
                 size: 55,
                 color: Colors.green,
-                semanticLabel: AppLocalizations.of(context)!.addEvent,
+                semanticLabel: localizations!.addEvent,
               ),
               onPressed: _showAddEventOptionsPopup,
             ),
@@ -994,7 +991,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: TextField(
         decoration: InputDecoration(
-          labelText: AppLocalizations.of(context)!.searchEvents,
+          labelText: localizations!.searchEvents,
           prefixIcon: const Icon(Icons.search),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
         ),
@@ -1152,7 +1149,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 Icons.chevron_left,
                 size: 20,
                 color: isDarkMode ? Colors.white : Colors.black,
-                semanticLabel: AppLocalizations.of(context)!.previousMonth,
+                semanticLabel: localizations!.previousMonth,
               ),
             ),
           ),
@@ -1190,7 +1187,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 Icons.chevron_right,
                 size: 20,
                 color: isDarkMode ? Colors.white : Colors.black,
-                semanticLabel: AppLocalizations.of(context)!.nextMonth,
+                semanticLabel: localizations!.nextMonth,
               ),
             ),
           ),

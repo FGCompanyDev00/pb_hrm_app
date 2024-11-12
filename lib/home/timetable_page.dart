@@ -9,12 +9,9 @@ import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/core/widgets/timetable_day/timetable_day_veiw.dart';
 import 'package:pb_hrsystem/services/http_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import 'package:table_calendar/table_calendar.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class TimetablePage extends StatefulWidget {
   final DateTime date;
@@ -482,7 +479,7 @@ class TimetablePageState extends State<TimetablePage> {
 
         if (mounted) {
           event = TimetableItem(
-            title: item['project_name'] ?? AppLocalizations.of(context)!.minutesOfMeeting,
+            title: item['project_name'] ?? localizations!.minutesOfMeeting,
             start: startDateTime,
             end: endDateTime,
             desc: item['descriptions'] ?? 'Minutes Of Meeting Pending',
@@ -560,7 +557,7 @@ class TimetablePageState extends State<TimetablePage> {
         // 'Detail Calendar Event'
         centerTitle: true,
         title: Text(
-          AppLocalizations.of(context)!.detailCalendarEvent,
+          localizations!.detailCalendarEvent,
           style: const TextStyle(
             color: Colors.black,
             fontSize: 24,

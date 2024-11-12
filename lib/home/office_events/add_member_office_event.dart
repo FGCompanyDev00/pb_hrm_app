@@ -2,9 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class AddMemberPage extends StatefulWidget {
   const AddMemberPage({super.key});
@@ -42,8 +42,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
       String? currentUserEmployeeId = prefs.getString('employee_id');
 
       final response = await http.get(
-        Uri.parse(
-            'https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
+        Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -55,20 +54,20 @@ class _AddMemberPageState extends State<AddMemberPage> {
           _members = data
               .where((item) => item['employee_id'] != currentUserEmployeeId)
               .map((item) => {
-            'id': item['id'],
-            'name': item['name'],
-            'surname': item['surname'],
-            'email': item['email'],
-            'employee_id': item['employee_id'],
-          })
+                    'id': item['id'],
+                    'name': item['name'],
+                    'surname': item['surname'],
+                    'email': item['email'],
+                    'employee_id': item['employee_id'],
+                  })
               .toList();
           _filteredMembers = _members;
         });
       } else {
-        throw Exception(AppLocalizations.of(context)!.failedToLoadMembers);
+        throw Exception(localizations!.failedToLoadMembers);
       }
     } catch (e) {
-      _showErrorMessage(AppLocalizations.of(context)!.errorFetchingMembers(e.toString()));
+      _showErrorMessage(localizations!.errorFetchingMembers(e.toString()));
     }
   }
 
@@ -77,8 +76,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
     try {
       String token = await _fetchToken();
       final response = await http.get(
-        Uri.parse(
-            'https://demo-application-api.flexiflows.co/api/work-tracking/group/usergroups'),
+        Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/group/usergroups'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -87,18 +85,20 @@ class _AddMemberPageState extends State<AddMemberPage> {
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body)['results'];
         setState(() {
-          _groups = data.map((item) => {
-            'id': item['id'],
-            'groupId': item['groupId'],
-            'group_name': item['group_name'],
-            'employees': item['employees'],
-          }).toList();
+          _groups = data
+              .map((item) => {
+                    'id': item['id'],
+                    'groupId': item['groupId'],
+                    'group_name': item['group_name'],
+                    'employees': item['employees'],
+                  })
+              .toList();
         });
       } else {
-        throw Exception(AppLocalizations.of(context)!.failedToLoadGroups);
+        throw Exception(localizations!.failedToLoadGroups);
       }
     } catch (e) {
-      _showErrorMessage(AppLocalizations.of(context)!.errorFetchingGroups(e.toString()));
+      _showErrorMessage(localizations!.errorFetchingGroups(e.toString()));
     }
   }
 
@@ -107,8 +107,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
     try {
       String token = await _fetchToken();
       final response = await http.get(
-        Uri.parse(
-            'https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
+        Uri.parse('https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -130,8 +129,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
       if (selected == true) {
         _selectedMembers.add(member);
       } else {
-        _selectedMembers
-            .removeWhere((m) => m['employee_id'] == member['employee_id']);
+        _selectedMembers.removeWhere((m) => m['employee_id'] == member['employee_id']);
       }
     });
   }
@@ -143,11 +141,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
 
   /// Filters the members based on the search query
   void _filterMembers(String query) {
-    List<Map<String, dynamic>> filteredList = _members
-        .where((member) =>
-    member['name'].toLowerCase().contains(query.toLowerCase()) ||
-        member['surname'].toLowerCase().contains(query.toLowerCase()))
-        .toList();
+    List<Map<String, dynamic>> filteredList = _members.where((member) => member['name'].toLowerCase().contains(query.toLowerCase()) || member['surname'].toLowerCase().contains(query.toLowerCase())).toList();
     setState(() {
       _filteredMembers = filteredList;
     });
@@ -155,20 +149,16 @@ class _AddMemberPageState extends State<AddMemberPage> {
 
   /// Selects a group and adds its members
   void _selectGroup(String groupId) {
-    final group = _groups.firstWhere((element) => element['groupId'] == groupId,
-        orElse: () => {});
+    final group = _groups.firstWhere((element) => element['groupId'] == groupId, orElse: () => {});
     if (group.isNotEmpty) {
       List<dynamic> employees = group['employees'];
       setState(() {
         for (var emp in employees) {
-          if (!_selectedMembers.any(
-                  (m) => m['employee_id'] == emp['employee_id'])) {
+          if (!_selectedMembers.any((m) => m['employee_id'] == emp['employee_id'])) {
             _selectedMembers.add({
               'employee_id': emp['employee_id'],
               'name': emp['employee_name'].split(' ')[0],
-              'surname': emp['employee_name'].split(' ').length > 1
-                  ? emp['employee_name'].split(' ')[1]
-                  : '',
+              'surname': emp['employee_name'].split(' ').length > 1 ? emp['employee_name'].split(' ')[1] : '',
               'email': '', // Email not provided in group employees
             });
           }
@@ -181,8 +171,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
   void _showErrorMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content:
-        Text(message, style: const TextStyle(color: Colors.white)),
+        content: Text(message, style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.red,
       ),
     );
@@ -192,7 +181,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
   Widget _buildGroupDropdown() {
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
-        labelText: AppLocalizations.of(context)!.selectGroup,
+        labelText: localizations!.selectGroup,
         prefixIcon: const Icon(Icons.group),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(30.0),
@@ -201,9 +190,9 @@ class _AddMemberPageState extends State<AddMemberPage> {
       value: _selectedGroupId,
       items: _groups
           .map((group) => DropdownMenuItem<String>(
-        value: group['groupId'],
-        child: Text(group['group_name']),
-      ))
+                value: group['groupId'],
+                child: Text(group['group_name']),
+              ))
           .toList(),
       onChanged: (String? newValue) {
         if (newValue != null) {
@@ -217,7 +206,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.officeEventAddMembers),
+        title: Text(localizations!.officeEventAddMembers),
         backgroundColor: Colors.transparent,
         elevation: 0,
         toolbarHeight: 90,
@@ -246,24 +235,17 @@ class _AddMemberPageState extends State<AddMemberPage> {
                   Expanded(
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      itemCount:
-                      _selectedMembers.length > 3 ? 3 : _selectedMembers.length,
+                      itemCount: _selectedMembers.length > 3 ? 3 : _selectedMembers.length,
                       itemBuilder: (context, index) {
                         final member = _selectedMembers[index];
                         return FutureBuilder<String?>(
                           future: _fetchProfileImage(member['employee_id']),
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.done &&
-                                snapshot.hasData) {
+                            if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
                               return Padding(
-                                padding:
-                                const EdgeInsets.symmetric(horizontal: 4.0),
+                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
                                 child: CircleAvatar(
-                                  backgroundImage: snapshot.data != null
-                                      ? NetworkImage(snapshot.data!)
-                                      : const AssetImage(
-                                      'assets/default_avatar.jpg')
-                                  as ImageProvider,
+                                  backgroundImage: snapshot.data != null ? NetworkImage(snapshot.data!) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
                                   radius: 25,
                                 ),
                               );
@@ -285,9 +267,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                       child: CircleAvatar(
                         radius: 25,
                         backgroundColor: Colors.grey[300],
-                        child: Text(
-                            '+${_selectedMembers.length - 3}',
-                            style: const TextStyle(color: Colors.black)),
+                        child: Text('+${_selectedMembers.length - 3}', style: const TextStyle(color: Colors.black)),
                       ),
                     ),
                   Padding(
@@ -296,14 +276,13 @@ class _AddMemberPageState extends State<AddMemberPage> {
                       onPressed: _onAddButtonPressed,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.yellow[700],
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 40.0, vertical: 15.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 15.0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20.0),
                         ),
                       ),
                       child: Text(
-                        AppLocalizations.of(context)!.addButton,
+                        localizations!.addButton,
                         style: const TextStyle(color: Colors.black, fontSize: 18),
                       ),
                     ),
@@ -319,7 +298,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                 _filterMembers(value);
               },
               decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.search,
+                labelText: localizations!.search,
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30.0),
@@ -343,10 +322,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                   leading: FutureBuilder<String?>(
                     future: _fetchProfileImage(member['employee_id']),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.done &&
-                          snapshot.hasData &&
-                          snapshot.data!.isNotEmpty) {
+                      if (snapshot.connectionState == ConnectionState.done && snapshot.hasData && snapshot.data!.isNotEmpty) {
                         return CircleAvatar(
                           backgroundImage: NetworkImage(snapshot.data!),
                           radius: 25,
@@ -363,8 +339,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                   title: Text('${member['name']} ${member['surname']}'),
                   subtitle: Text(member['email']),
                   trailing: Checkbox(
-                    value: _selectedMembers.any(
-                            (m) => m['employee_id'] == member['employee_id']),
+                    value: _selectedMembers.any((m) => m['employee_id'] == member['employee_id']),
                     activeColor: Colors.green,
                     onChanged: (bool? selected) {
                       _onMemberSelected(selected, member);
