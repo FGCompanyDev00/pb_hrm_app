@@ -3,10 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 /// Entry point for the Event Detail View.
 class EventDetailView extends StatefulWidget {
@@ -59,17 +59,17 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     eventStatus = widget.event['status'];
     switch (_eventType) {
       case 'Add Meeting':
-        autoLanguageType = AppLocalizations.of(context)!.meetingTitle;
+        autoLanguageType = localizations!.meetingTitle;
       case 'Leave':
-        autoLanguageType = AppLocalizations.of(context)!.leave;
+        autoLanguageType = localizations!.leave;
       case 'Meeting Room Bookings':
-        autoLanguageType = AppLocalizations.of(context)!.meetingRoomBookings;
+        autoLanguageType = localizations!.meetingRoomBookings;
       case 'Booking Car':
-        autoLanguageType = AppLocalizations.of(context)!.bookingCar;
+        autoLanguageType = localizations!.bookingCar;
       case 'Minutes Of Meeting':
-        autoLanguageType = AppLocalizations.of(context)!.minutesOfMeeting;
+        autoLanguageType = localizations!.minutesOfMeeting;
       default:
-        autoLanguageType = AppLocalizations.of(context)!.other;
+        autoLanguageType = localizations!.other;
     }
   }
 
@@ -330,7 +330,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
               actions: [
                 TextButton(
                   child: Text(
-                    AppLocalizations.of(context)!.cancel,
+                    localizations!.cancel,
                     style: const TextStyle(color: Colors.grey),
                   ),
                   onPressed: () => Navigator.of(context).pop(false),
@@ -417,7 +417,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           Row(
             children: [
               Text(
-                AppLocalizations.of(context)!.description,
+                localizations!.description,
                 textAlign: TextAlign.left,
                 style: const TextStyle(
                   fontSize: 16,
@@ -428,7 +428,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
                 child: ElevatedButton(
                   style: const ButtonStyle(backgroundColor: WidgetStatePropertyAll<Color>(Colors.green)),
                   onPressed: () {},
-                  child: Text(AppLocalizations.of(context)!.download),
+                  child: Text(localizations!.download),
                 ),
               )
             ],
@@ -478,7 +478,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
         // Reject Button
         Expanded(
           child: _buildResponsiveButton(
-            label: AppLocalizations.of(context)!.reject,
+            label: localizations!.reject,
             color: _hasResponded ? Colors.grey : Colors.grey,
             onPressed: _hasResponded ? null : () => _respondToMeeting('no'),
             icon: Icons.clear,
@@ -491,7 +491,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           visible: _eventType == 'Meeting Room Bookings',
           child: Expanded(
             child: _buildResponsiveButton(
-              label: AppLocalizations.of(context)!.maybe,
+              label: localizations!.maybe,
               color: _hasResponded ? Colors.grey : Colors.orange,
               onPressed: _hasResponded ? null : () => _respondToMeeting('maybe'),
               icon: Icons.question_mark,
@@ -503,7 +503,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
         // Join Button
         Expanded(
           child: _buildResponsiveButton(
-            label: AppLocalizations.of(context)!.join,
+            label: localizations!.join,
             color: _hasResponded ? Colors.grey : ColorStandardization().colorDarkGold,
             onPressed: _hasResponded ? null : () => _respondToMeeting('yes'),
             icon: Icons.check_circle_outline,
@@ -519,7 +519,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
             color: Colors.blue,
             borderRadius: BorderRadius.circular(50),
           ),
-          child: Text(AppLocalizations.of(context)!.joined,
+          child: Text(localizations!.joined,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
@@ -533,7 +533,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
             color: Colors.red,
             borderRadius: BorderRadius.circular(50),
           ),
-          child: Text(AppLocalizations.of(context)!.rejected,
+          child: Text(localizations!.rejected,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
@@ -547,7 +547,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
             color: Colors.green,
             borderRadius: BorderRadius.circular(50),
           ),
-          child: Text(AppLocalizations.of(context)!.maybe,
+          child: Text(localizations!.maybe,
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
@@ -606,7 +606,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Text(
-            AppLocalizations.of(context)!.requestor,
+            localizations!.requestor,
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w900,
@@ -639,7 +639,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
                 ),
                 if (details['formattedCreatedAt']!.isNotEmpty)
                   Text(
-                    '${AppLocalizations.of(context)!.submittedOn} ${details['formattedCreatedAt']}',
+                    '${localizations!.submittedOn} ${details['formattedCreatedAt']}',
                     style: const TextStyle(
                       fontSize: 13,
                       color: Colors.grey,
@@ -745,24 +745,24 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       children: [
         if (title != null)
           titleCustom(
-            '${AppLocalizations.of(context)!.title} : ${widget.event['title']}',
+            '${localizations!.title} : ${widget.event['title']}',
             Icons.bookmark_add_outlined,
           ),
         if (details['formattedStartDate']!.isNotEmpty)
           titleCustom(
-            '${AppLocalizations.of(context)!.date} : ${startDate.year}-${startDate.month}-${startDate.day} - ${endDate.year}-${endDate.month}-${endDate.day}',
+            '${localizations!.date} : ${startDate.year}-${startDate.month}-${startDate.day} - ${endDate.year}-${endDate.month}-${endDate.day}',
             Icons.free_cancellation_outlined,
           ),
         if (details['formattedEndDate']!.isNotEmpty)
           titleCustom(
-            '${AppLocalizations.of(context)!.time} : $startDisplay12 - $endDisplay12',
+            '${localizations!.time} : $startDisplay12 - $endDisplay12',
             Icons.punch_clock_outlined,
           ),
         if (location != "" && location != null)
           ListTile(
             leading: const SizedBox.shrink(),
             title: Text(
-              '${AppLocalizations.of(context)!.location} : $location',
+              '${localizations!.location} : $location',
               style: const TextStyle(
                 fontSize: 18,
                 color: Colors.orange,
@@ -773,7 +773,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           ListTile(
             leading: const SizedBox.shrink(),
             title: Text(
-              '${AppLocalizations.of(context)!.typeOfLeave} : $leaveType',
+              '${localizations!.typeOfLeave} : $leaveType',
               style: const TextStyle(
                 fontSize: 18,
                 color: Colors.orange,

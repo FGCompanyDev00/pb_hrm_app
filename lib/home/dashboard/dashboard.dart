@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_main_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/returnCar/car_return_page.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_page.dart';
@@ -18,7 +19,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -135,14 +135,14 @@ class _DashboardState extends State<Dashboard> {
           if (kDebugMode) {
             print("Error: No data available in the response.");
           }
-          throw Exception(AppLocalizations.of(context)!.noDataAvailable);
+          throw Exception(localizations!.noDataAvailable);
         }
       } else {
         if (kDebugMode) {
           print("Error: Failed to fetch data. Status Code: ${response.statusCode}");
         }
         // Removed the exception related to 'failedToLoadBanners'
-        throw Exception(AppLocalizations.of(context)!.errorWithDetails('Status Code: ${response.statusCode}'));
+        throw Exception(localizations!.errorWithDetails('Status Code: ${response.statusCode}'));
       }
     } catch (e) {
       if (kDebugMode) {
@@ -161,7 +161,7 @@ class _DashboardState extends State<Dashboard> {
         if (kDebugMode) {
           print("Error: No cached profile data available in Hive.");
         }
-        throw Exception(AppLocalizations.of(context)!.noDataAvailable);
+        throw Exception(localizations!.noDataAvailable);
       }
     } finally {
       setState(() {
@@ -239,15 +239,14 @@ class _DashboardState extends State<Dashboard> {
                 final userProfile = snapshot.data!;
                 return _buildAppBar(userProfile, isDarkMode);
               } else {
-                return _buildErrorAppBar(AppLocalizations.of(context)!.noDataAvailable);
+                return _buildErrorAppBar(localizations!.noDataAvailable);
               }
             },
           ),
         ),
         body: Stack(
           children: [
-            if (isDarkMode)
-              _buildDarkBackground(),
+            if (isDarkMode) _buildDarkBackground(),
             _buildMainContent(context, isDarkMode),
             if (_isLoading) _buildLoadingIndicator(),
           ],
@@ -268,7 +267,7 @@ class _DashboardState extends State<Dashboard> {
   PreferredSizeWidget _buildErrorAppBar(String errorMessage) {
     return AppBar(
       title: Text(
-        AppLocalizations.of(context)!.errorWithDetails(errorMessage),
+        localizations!.errorWithDetails(errorMessage),
         style: const TextStyle(color: Colors.red),
       ),
       backgroundColor: Colors.transparent,
@@ -324,14 +323,12 @@ class _DashboardState extends State<Dashboard> {
                       children: [
                         CircleAvatar(
                           radius: 28,
-                          backgroundImage: userProfile.imgName != 'default_avatar.jpg'
-                              ? NetworkImage(userProfile.imgName)
-                              : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                          backgroundImage: userProfile.imgName != 'default_avatar.jpg' ? NetworkImage(userProfile.imgName) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
                           backgroundColor: Colors.white,
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          AppLocalizations.of(context)!.greeting(userProfile.name),
+                          localizations!.greeting(userProfile.name),
                           style: const TextStyle(
                             color: Colors.black,
                             fontWeight: FontWeight.bold,
@@ -403,7 +400,7 @@ class _DashboardState extends State<Dashboard> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
+            return Center(child: Text(localizations!.errorWithDetails(snapshot.error.toString())));
           } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
             return PageView.builder(
               controller: _pageController,
@@ -434,7 +431,7 @@ class _DashboardState extends State<Dashboard> {
               },
             );
           } else {
-            return Center(child: Text(AppLocalizations.of(context)!.noBannersAvailable));
+            return Center(child: Text(localizations!.noBannersAvailable));
           }
         },
       ),
@@ -454,7 +451,7 @@ class _DashboardState extends State<Dashboard> {
             margin: const EdgeInsets.only(right: 8),
           ),
           Text(
-            AppLocalizations.of(context)!.actionMenu,
+            localizations!.actionMenu,
             style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -463,7 +460,7 @@ class _DashboardState extends State<Dashboard> {
           ),
           const Spacer(),
           Text(
-            AppLocalizations.of(context)!.notification,
+            localizations!.notification,
             style: const TextStyle(
               fontSize: 16,
               color: Colors.black,
@@ -526,9 +523,9 @@ class _DashboardState extends State<Dashboard> {
         _buildActionCard(
           context,
           'assets/data-2.png',
-          AppLocalizations.of(context)!.history,
+          localizations!.history,
           isDarkMode,
-              () {
+          () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const HistoryPage()),
@@ -538,9 +535,9 @@ class _DashboardState extends State<Dashboard> {
         _buildActionCard(
           context,
           'assets/people.png',
-          AppLocalizations.of(context)!.approvals,
+          localizations!.approvals,
           isDarkMode,
-              () {
+          () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
@@ -550,9 +547,9 @@ class _DashboardState extends State<Dashboard> {
         _buildActionCard(
           context,
           'assets/status-up.png',
-          AppLocalizations.of(context)!.workTracking,
+          localizations!.workTracking,
           isDarkMode,
-              () {
+          () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
@@ -562,9 +559,9 @@ class _DashboardState extends State<Dashboard> {
         _buildActionCard(
           context,
           'assets/car_return.png',
-          AppLocalizations.of(context)!.carReturn,
+          localizations!.carReturn,
           isDarkMode,
-              () {
+          () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ReturnCarPage()),
@@ -574,9 +571,9 @@ class _DashboardState extends State<Dashboard> {
         _buildActionCard(
           context,
           'assets/KPI.png',
-          AppLocalizations.of(context)!.kpi,
+          localizations!.kpi,
           isDarkMode,
-              () {
+          () {
             // Navigator.push(
             //   context,
             //   MaterialPageRoute(builder: (context) => const ReturnCarPage()),
@@ -586,9 +583,9 @@ class _DashboardState extends State<Dashboard> {
         _buildActionCard(
           context,
           'assets/inventory.png',
-          AppLocalizations.of(context)!.inventory,
+          localizations!.inventory,
           isDarkMode,
-              () {
+          () {
             // Navigator.push(
             //   context,
             //   MaterialPageRoute(builder: (context) => const ReturnCarPage()),
@@ -665,7 +662,7 @@ class _DashboardState extends State<Dashboard> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    AppLocalizations.of(context)!.logoutTitle,
+                    localizations!.logoutTitle,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 18,
@@ -675,7 +672,7 @@ class _DashboardState extends State<Dashboard> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    AppLocalizations.of(context)!.logoutConfirmation,
+                    localizations!.logoutConfirmation,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 14,
@@ -702,7 +699,7 @@ class _DashboardState extends State<Dashboard> {
                             horizontal: 24,
                           ),
                         ),
-                        child: Text(AppLocalizations.of(context)!.cancel),
+                        child: Text(localizations!.cancel),
                       ),
                       ElevatedButton(
                         onPressed: () {
@@ -711,7 +708,7 @@ class _DashboardState extends State<Dashboard> {
                             MaterialPageRoute(
                               builder: (context) => const LoginPage(),
                             ),
-                                (Route<dynamic> route) => false,
+                            (Route<dynamic> route) => false,
                           );
                         },
                         style: ElevatedButton.styleFrom(
@@ -725,7 +722,7 @@ class _DashboardState extends State<Dashboard> {
                             horizontal: 24,
                           ),
                         ),
-                        child: Text(AppLocalizations.of(context)!.yesLogout),
+                        child: Text(localizations!.yesLogout),
                       ),
                     ],
                   ),

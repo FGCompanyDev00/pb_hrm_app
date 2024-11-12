@@ -1,8 +1,8 @@
 // ready_page.dart
 
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/main.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class ReadyPage extends StatefulWidget {
   const ReadyPage({super.key});
@@ -141,7 +141,7 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
                     const SizedBox(height: 20),
                     // "Ready to Go" text with a fade-in animation
                     FadeInText(
-                      text: AppLocalizations.of(context)!.readyToGo,
+                      text: localizations!.readyToGo,
                       style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -223,7 +223,7 @@ class SlidingButton extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(right: 80.0),
               child: Text(
-                AppLocalizations.of(context)!.getStarted,
+                localizations!.getStarted,
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,

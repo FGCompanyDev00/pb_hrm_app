@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:share_plus/share_plus.dart';
@@ -17,7 +18,6 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/home/myprofile_page.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -143,7 +143,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final String? token = prefs.getString('token');
 
       if (token == null || token.isEmpty) {
-        throw Exception(AppLocalizations.of(context)!.noTokenFound);
+        throw Exception(localizations!.noTokenFound);
       }
 
       final response = await http.get(
@@ -156,21 +156,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
-        if (responseBody.containsKey('results') &&
-            responseBody['results'] is Map<String, dynamic>) {
+        if (responseBody.containsKey('results') && responseBody['results'] is Map<String, dynamic>) {
           return responseBody['results'];
         } else {
-          throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
+          throw Exception(localizations!.invalidResponseStructure);
         }
       } else {
-        debugPrint(
-            'Failed to load profile data - Status Code: ${response.statusCode}');
+        debugPrint('Failed to load profile data - Status Code: ${response.statusCode}');
         debugPrint('Response Body: ${response.body}');
-        throw Exception(AppLocalizations.of(context)!.failedToLoadProfileData);
+        throw Exception(localizations!.failedToLoadProfileData);
       }
     } catch (e) {
       debugPrint('Error in _fetchProfileData: $e');
-      throw Exception(AppLocalizations.of(context)!.failedToLoadProfileData);
+      throw Exception(localizations!.failedToLoadProfileData);
     }
   }
 
@@ -180,7 +178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final String? token = prefs.getString('token');
 
       if (token == null || token.isEmpty) {
-        throw Exception(AppLocalizations.of(context)!.noTokenFound);
+        throw Exception(localizations!.noTokenFound);
       }
 
       final response = await http.get(
@@ -193,33 +191,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
-        if (responseBody.containsKey('results') &&
-            responseBody['results'] is List<dynamic> &&
-            responseBody['results'].isNotEmpty) {
+        if (responseBody.containsKey('results') && responseBody['results'] is List<dynamic> && responseBody['results'].isNotEmpty) {
           return responseBody['results'][0];
         } else {
-          throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
+          throw Exception(localizations!.invalidResponseStructure);
         }
       } else {
-        debugPrint(
-            'Failed to load display data - Status Code: ${response.statusCode}');
+        debugPrint('Failed to load display data - Status Code: ${response.statusCode}');
         debugPrint('Response Body: ${response.body}');
-        throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
+        throw Exception(localizations!.failedToLoadDisplayData);
       }
     } catch (e) {
       debugPrint('Error in _fetchDisplayData: $e');
-      throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
+      throw Exception(localizations!.failedToLoadDisplayData);
     }
   }
 
   Future<void> _shareQRCode() async {
     try {
-      final RenderRepaintBoundary? boundary =
-      qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      final RenderRepaintBoundary? boundary = qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
 
       if (boundary == null) {
         Fluttertoast.showToast(
-          msg: AppLocalizations.of(context)!.qrCodeNotRendered,
+          msg: localizations!.qrCodeNotRendered,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
@@ -234,12 +228,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final file = await File('${tempDir.path}/qr_code.png').create();
       await file.writeAsBytes(uint8List);
 
-      await Share.shareXFiles([XFile(file.path)],
-          text: AppLocalizations.of(context)!.shareQRCodeText);
+      await Share.shareXFiles([XFile(file.path)], text: localizations!.shareQRCodeText);
     } catch (e) {
       debugPrint('Error sharing QR code: $e');
       Fluttertoast.showToast(
-        msg: AppLocalizations.of(context)!.errorSharingQRCode,
+        msg: localizations!.errorSharingQRCode,
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.BOTTOM,
       );
@@ -248,12 +241,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _downloadQRCode() async {
     try {
-      final RenderRepaintBoundary? boundary =
-      qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      final RenderRepaintBoundary? boundary = qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
 
       if (boundary == null) {
         Fluttertoast.showToast(
-          msg: AppLocalizations.of(context)!.qrCodeNotRendered,
+          msg: localizations!.qrCodeNotRendered,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
@@ -277,20 +269,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (result.isSuccess) {
         Fluttertoast.showToast(
-          msg: AppLocalizations.of(context)!.qrCodeDownloadedSuccess,
+          msg: localizations!.qrCodeDownloadedSuccess,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
       } else {
         Fluttertoast.showToast(
-          msg: AppLocalizations.of(context)!.errorDownloadingQRCodeGeneral,
+          msg: localizations!.errorDownloadingQRCodeGeneral,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
       }
     } catch (e) {
       Fluttertoast.showToast(
-        msg: AppLocalizations.of(context)!.errorDownloadingQRCode(e.toString()),
+        msg: localizations!.errorDownloadingQRCode(e.toString()),
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.BOTTOM,
       );
@@ -300,13 +292,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _saveQRCodeToGallery() async {
     try {
-      final RenderRepaintBoundary? boundary =
-      qrFullScreenKey.currentContext?.findRenderObject()
-      as RenderRepaintBoundary?;
+      final RenderRepaintBoundary? boundary = qrFullScreenKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
 
       if (boundary == null) {
         Fluttertoast.showToast(
-          msg: AppLocalizations.of(context)!.qrCodeNotRendered,
+          msg: localizations!.qrCodeNotRendered,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
@@ -326,20 +316,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (result.isSuccess) {
         Fluttertoast.showToast(
-          msg: AppLocalizations.of(context)!.qrCodeSavedToGallery,
+          msg: localizations!.qrCodeSavedToGallery,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
       } else {
         Fluttertoast.showToast(
-          msg: AppLocalizations.of(context)!.errorSavingQRCodeGeneral,
+          msg: localizations!.errorSavingQRCodeGeneral,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
       }
     } catch (e) {
       Fluttertoast.showToast(
-        msg: AppLocalizations.of(context)!.errorSavingQRCode(e.toString()),
+        msg: localizations!.errorSavingQRCode(e.toString()),
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.BOTTOM,
       );
@@ -369,7 +359,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         centerTitle: true,
         title: Text(
-          AppLocalizations.of(context)!.qrMyProfile,
+          localizations!.qrMyProfile,
           style: TextStyle(
             color: Colors.black,
             fontSize: size.width * 0.06,
@@ -386,7 +376,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(builder: (context) => const Dashboard()),
-                  (Route<dynamic> route) => false,
+              (Route<dynamic> route) => false,
             );
           },
         ),
@@ -397,15 +387,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: Padding(
         padding: const EdgeInsets.only(top: kToolbarHeight + 50.0),
         child: FutureBuilder<Map<String, dynamic>>(
-          future: Future.wait([_profileData, _displayData])
-              .then((results) => {...results[0], ...results[1]}),
+          future: Future.wait([_profileData, _displayData]).then((results) => {...results[0], ...results[1]}),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
-              return Center(
-                  child: Text(AppLocalizations.of(context)!
-                      .errorWithDetails(snapshot.error.toString())));
+              return Center(child: Text(localizations!.errorWithDetails(snapshot.error.toString())));
             } else if (snapshot.hasData) {
               final data = snapshot.data!;
 
@@ -434,20 +421,16 @@ END:VCARD
                       final shouldSave = await showDialog<bool>(
                         context: context,
                         builder: (context) => AlertDialog(
-                          title: Text(AppLocalizations.of(context)!
-                              .saveImageTitle),
-                          content: Text(AppLocalizations.of(context)!
-                              .saveImageConfirmation),
+                          title: Text(localizations!.saveImageTitle),
+                          content: Text(localizations!.saveImageConfirmation),
                           actions: [
                             TextButton(
-                              onPressed: () =>
-                                  Navigator.of(context).pop(false),
-                              child:
-                              Text(AppLocalizations.of(context)!.cancel),
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: Text(localizations!.cancel),
                             ),
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(true),
-                              child: Text(AppLocalizations.of(context)!.save),
+                              child: Text(localizations!.save),
                             ),
                           ],
                         ),
@@ -476,8 +459,7 @@ END:VCARD
                               version: QrVersions.auto,
                               size: size.width * 0.8,
                               gapless: false,
-                              embeddedImage:
-                              const AssetImage('assets/playstore.png'),
+                              embeddedImage: const AssetImage('assets/playstore.png'),
                               embeddedImageStyle: const QrEmbeddedImageStyle(
                                 size: Size(40, 40),
                               ),
@@ -502,8 +484,7 @@ END:VCARD
                       padding: const EdgeInsets.symmetric(horizontal: 24.0),
                       child: SingleChildScrollView(
                         child: ConstrainedBox(
-                          constraints:
-                          BoxConstraints(maxHeight: size.height * 0.8),
+                          constraints: BoxConstraints(maxHeight: size.height * 0.8),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -517,12 +498,7 @@ END:VCARD
                                       backgroundColor: Colors.grey[200],
                                       child: CircleAvatar(
                                         radius: size.width * 0.09,
-                                        backgroundImage: data['images'] != null &&
-                                            data['images'].isNotEmpty
-                                            ? NetworkImage(data['images'])
-                                            : const AssetImage(
-                                            'assets/default_avatar.png')
-                                        as ImageProvider,
+                                        backgroundImage: data['images'] != null && data['images'].isNotEmpty ? NetworkImage(data['images']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
                                       ),
                                     ),
                                   ),
@@ -535,15 +511,14 @@ END:VCARD
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) =>
-                                            const MyProfilePage(),
+                                            builder: (context) => const MyProfilePage(),
                                           ),
                                         );
                                       },
                                       child: Row(
                                         children: [
                                           Text(
-                                            AppLocalizations.of(context)!.more,
+                                            localizations!.more,
                                             style: TextStyle(
                                               fontSize: size.width * 0.04,
                                               fontWeight: FontWeight.w500,
@@ -563,8 +538,7 @@ END:VCARD
                               ),
                               SizedBox(height: size.height * 0.02),
                               Text(
-                                AppLocalizations.of(context)!
-                                    .greeting(data['employee_name']),
+                                localizations!.greeting(data['employee_name']),
                                 style: TextStyle(
                                   fontSize: size.width * 0.045,
                                   fontWeight: FontWeight.w600,
@@ -589,8 +563,7 @@ END:VCARD
                                   child: Column(
                                     children: [
                                       Text(
-                                        AppLocalizations.of(context)!
-                                            .scanToSaveContact,
+                                        localizations!.scanToSaveContact,
                                         style: TextStyle(
                                           fontSize: size.width * 0.04,
                                           fontWeight: FontWeight.bold,
@@ -608,8 +581,7 @@ END:VCARD
                                         decoration: BoxDecoration(
                                           boxShadow: [
                                             BoxShadow(
-                                              color:
-                                              Colors.black.withOpacity(0.3),
+                                              color: Colors.black.withOpacity(0.3),
                                               blurRadius: 10,
                                               offset: const Offset(0, 5),
                                             ),
@@ -622,17 +594,14 @@ END:VCARD
                                             });
                                           },
                                           child: RepaintBoundary(
-                                            key:
-                                            qrKey, // Assign to embedded QR code
+                                            key: qrKey, // Assign to embedded QR code
                                             child: QrImageView(
                                               data: vCardData,
                                               version: QrVersions.auto,
                                               size: size.width * 0.45,
                                               gapless: false,
-                                              embeddedImage: const AssetImage(
-                                                  'assets/playstore.png'),
-                                              embeddedImageStyle:
-                                              const QrEmbeddedImageStyle(
+                                              embeddedImage: const AssetImage('assets/playstore.png'),
+                                              embeddedImageStyle: const QrEmbeddedImageStyle(
                                                 size: Size(40, 40),
                                               ),
                                               backgroundColor: Colors.white,
@@ -640,10 +609,8 @@ END:VCARD
                                                 eyeShape: QrEyeShape.circle,
                                                 color: Colors.black,
                                               ),
-                                              dataModuleStyle:
-                                              const QrDataModuleStyle(
-                                                dataModuleShape:
-                                                QrDataModuleShape.square,
+                                              dataModuleStyle: const QrDataModuleStyle(
+                                                dataModuleShape: QrDataModuleShape.square,
                                                 color: Colors.black,
                                               ),
                                             ),
@@ -669,17 +636,14 @@ END:VCARD
                                         size: 20,
                                       ),
                                       label: Text(
-                                        AppLocalizations.of(context)!.share,
-                                        style: TextStyle(
-                                            fontSize: size.width * 0.04),
+                                        localizations!.share,
+                                        style: TextStyle(fontSize: size.width * 0.04),
                                       ),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.grey[700],
-                                        padding: EdgeInsets.symmetric(
-                                            vertical: size.height * 0.02),
+                                        padding: EdgeInsets.symmetric(vertical: size.height * 0.02),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                          BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(12),
                                         ),
                                         elevation: 4,
                                       ),
@@ -696,17 +660,14 @@ END:VCARD
                                         size: 20,
                                       ),
                                       label: Text(
-                                        AppLocalizations.of(context)!.download,
-                                        style: TextStyle(
-                                            fontSize: size.width * 0.04),
+                                        localizations!.download,
+                                        style: TextStyle(fontSize: size.width * 0.04),
                                       ),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.amber[700],
-                                        padding: EdgeInsets.symmetric(
-                                            vertical: size.height * 0.02),
+                                        padding: EdgeInsets.symmetric(vertical: size.height * 0.02),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                          BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(12),
                                         ),
                                         elevation: 4,
                                       ),
@@ -722,8 +683,7 @@ END:VCARD
                   )
               ]);
             } else {
-              return Center(
-                  child: Text(AppLocalizations.of(context)!.noDataAvailable));
+              return Center(child: Text(localizations!.noDataAvailable));
             }
           },
         ),
@@ -785,8 +745,7 @@ class ProfileInfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(
-          vertical: MediaQuery.of(context).size.height * 0.01),
+      padding: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.height * 0.01),
       child: Row(
         children: [
           Icon(icon, color: Colors.green),
@@ -799,8 +758,7 @@ class ProfileInfoRow extends StatelessWidget {
                   label,
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.005),
+                SizedBox(height: MediaQuery.of(context).size.height * 0.005),
                 Text(value),
               ],
             ),

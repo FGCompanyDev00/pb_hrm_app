@@ -252,17 +252,17 @@ class CalendarDayWidget extends HookWidget {
 
                     switch (event.category) {
                       case 'Add Meeting':
-                        eventCategory = AppLocalizations.of(context)!.meetingTitle;
+                        eventCategory = localizations!.meetingTitle;
                       case 'Leave':
-                        eventCategory = AppLocalizations.of(context)!.leave;
+                        eventCategory = localizations!.leave;
                       case 'Meeting Room Bookings':
-                        eventCategory = AppLocalizations.of(context)!.meetingRoomBookings;
+                        eventCategory = localizations!.meetingRoomBookings;
                       case 'Booking Car':
-                        eventCategory = AppLocalizations.of(context)!.bookingCar;
+                        eventCategory = localizations!.bookingCar;
                       case 'Minutes Of Meeting':
-                        eventCategory = AppLocalizations.of(context)!.minutesOfMeeting;
+                        eventCategory = localizations!.minutesOfMeeting;
                       default:
-                        eventCategory = AppLocalizations.of(context)!.other;
+                        eventCategory = localizations!.other;
                     }
 
                     event.category == "Minutes Of Meeting"
@@ -557,7 +557,7 @@ class CalendarDayWidget extends HookWidget {
         onTap: () => showDialog(
             context: context,
             builder: (context) => AlertDialog(
-                  title: Text(AppLocalizations.of(context)!.attendant),
+                  title: Text(localizations!.attendant),
                   content: SingleChildScrollView(
                     child: Column(
                       children: avatarList,

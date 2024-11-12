@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/home/notification_settings_page.dart';
 import 'package:pb_hrsystem/settings/change_password.dart';
 import 'package:pb_hrsystem/settings/edit_profile.dart';
@@ -13,7 +14,6 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -29,8 +29,7 @@ class _SettingsPageState extends State<SettingsPage> {
   late Future<UserProfile> futureUserProfile;
   String _appVersion = 'PSBV Next Demo v1.0.23'; // Updated version
 
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-  FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
   @override
   void initState() {
@@ -43,10 +42,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _initializeNotifications() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/playstore');
-    const InitializationSettings initializationSettings =
-    InitializationSettings(android: initializationSettingsAndroid);
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
+    const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
 
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
     if (kDebugMode) {
@@ -69,10 +66,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadNotificationSetting() async {
-    setState(() {
-    });
+    setState(() {});
   }
-
 
   Future<void> _saveBiometricSetting(bool enabled) async {
     await _storage.write(key: 'biometricEnabled', value: enabled.toString());
@@ -166,14 +161,14 @@ class _SettingsPageState extends State<SettingsPage> {
       if (!canCheckBiometrics) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context)!.biometricNotAvailable),
+            content: Text(localizations!.biometricNotAvailable),
           ),
         );
         return;
       }
       try {
         bool authenticated = await auth.authenticate(
-          localizedReason: AppLocalizations.of(context)!.authenticateToEnableBiometrics,
+          localizedReason: localizations!.authenticateToEnableBiometrics,
           options: const AuthenticationOptions(
             stickyAuth: true,
             useErrorDialogs: true,
@@ -191,7 +186,7 @@ class _SettingsPageState extends State<SettingsPage> {
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context)!.errorEnablingBiometrics(e.toString())),
+            content: Text(localizations!.errorEnablingBiometrics(e.toString())),
           ),
         );
       }
@@ -203,8 +198,6 @@ class _SettingsPageState extends State<SettingsPage> {
       await _saveBiometricSetting(false);
     }
   }
-
-
 
   Future<UserProfile> fetchUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
@@ -223,7 +216,7 @@ class _SettingsPageState extends State<SettingsPage> {
       final userProfile = UserProfile.fromJson(results[0]);
       return userProfile;
     } else {
-      throw Exception(AppLocalizations.of(context)!.failedToLoadUserProfile);
+      throw Exception(localizations!.failedToLoadUserProfile);
     }
   }
 
@@ -251,7 +244,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           centerTitle: true,
           title: Text(
-            AppLocalizations.of(context)!.settings,
+            localizations!.settings,
             style: const TextStyle(
               color: Colors.black,
               fontSize: 24,
@@ -285,7 +278,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          AppLocalizations.of(context)!.accountSettings,
+                          localizations!.accountSettings,
                           style: themeNotifier.textStyle.copyWith(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -298,33 +291,31 @@ class _SettingsPageState extends State<SettingsPage> {
                     // Change Password Tile
                     _buildSettingsTile(
                       context,
-                      title: AppLocalizations.of(context)!.changePassword,
+                      title: localizations!.changePassword,
                       icon: Icons.arrow_forward_ios,
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                              builder: (context) => const ChangePasswordPage()),
+                          MaterialPageRoute(builder: (context) => const ChangePasswordPage()),
                         );
                       },
                     ),
                     // Edit Profile Tile
                     _buildSettingsTile(
                       context,
-                      title: AppLocalizations.of(context)!.editProfile,
+                      title: localizations!.editProfile,
                       icon: Icons.arrow_forward_ios,
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                              builder: (context) => const EditProfilePage()),
+                          MaterialPageRoute(builder: (context) => const EditProfilePage()),
                         );
                       },
                     ),
                     // Enable Biometric Authentication Switch
                     _buildSettingsTile(
                       context,
-                      title: AppLocalizations.of(context)!.enableBiometricAuth,
+                      title: localizations!.enableBiometricAuth,
                       trailing: Switch(
                         value: _biometricEnabled,
                         onChanged: (bool value) {
@@ -352,13 +343,12 @@ class _SettingsPageState extends State<SettingsPage> {
                     // Notification Tile
                     _buildSettingsTile(
                       context,
-                      title: AppLocalizations.of(context)!.notification,
+                      title: localizations!.notification,
                       icon: Icons.arrow_forward_ios,
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                              builder: (context) => const NotificationSettingsPage()),
+                          MaterialPageRoute(builder: (context) => const NotificationSettingsPage()),
                         );
                       },
                     ),
@@ -367,8 +357,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     Center(
                       child: Text(
                         _appVersion,
-                        style: themeNotifier.textStyle
-                            .copyWith(fontSize: 14, color: Colors.grey),
+                        style: themeNotifier.textStyle.copyWith(fontSize: 14, color: Colors.grey),
                       ),
                     ),
                   ],
@@ -381,19 +370,14 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildSettingsTile(BuildContext context,
-      {required String title,
-        Widget? trailing,
-        IconData? icon,
-        void Function()? onTap}) {
+  Widget _buildSettingsTile(BuildContext context, {required String title, Widget? trailing, IconData? icon, void Function()? onTap}) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5.0),
       child: ListTile(
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
         tileColor: isDarkMode ? Colors.black45 : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15.0),
@@ -405,8 +389,7 @@ class _SettingsPageState extends State<SettingsPage> {
             fontSize: 16,
           ),
         ),
-        trailing:
-        trailing ?? Icon(icon, color: isDarkMode ? Colors.white70 : Colors.grey),
+        trailing: trailing ?? Icon(icon, color: isDarkMode ? Colors.white70 : Colors.grey),
         onTap: onTap,
       ),
     );
