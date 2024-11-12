@@ -8,7 +8,7 @@ class ReturnCarPageDetails extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60.0),
+        preferredSize: const Size.fromHeight(80.0),
         child: ClipRRect(
           borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(30),
@@ -25,16 +25,22 @@ class ReturnCarPageDetails extends StatelessWidget {
             ),
             backgroundColor: Colors.transparent,
             elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
-              onPressed: () => Navigator.pop(context),
+            leading: Padding(
+              padding: const EdgeInsets.only(top: 24.0),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
+              ),
             ),
-            title: const Text(
-              'Return',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
+            title: const Padding(
+              padding: EdgeInsets.only(top: 30.0),
+              child: Text(
+                'Return',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                ),
               ),
             ),
             centerTitle: true,
@@ -52,11 +58,7 @@ class ReturnCarPageDetails extends StatelessWidget {
                 children: [
                   const Text(
                     'March 18, 2024',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black54,
-                    ),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black54),
                   ),
                   IconButton(
                     icon: const Icon(Icons.add_circle, color: Colors.green),
@@ -64,13 +66,13 @@ class ReturnCarPageDetails extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 2),
               Container(
                 decoration: BoxDecoration(
                   color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -84,10 +86,7 @@ class ReturnCarPageDetails extends StatelessWidget {
                     const SizedBox(height: 12),
                     const Text(
                       'File',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -109,40 +108,21 @@ class ReturnCarPageDetails extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Center(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFDBB342),
                     padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
                   onPressed: () {},
                   child: const Text(
                     'Save',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
               ),
-              // const SizedBox(height: 12),
-              // const Center(
-              //   child: Row(
-              //     mainAxisAlignment: MainAxisAlignment.center,
-              //     children: [
-              //       Icon(Icons.circle, size: 8, color: Colors.grey),
-              //       SizedBox(width: 8),
-              //       Icon(Icons.circle, size: 8, color: Colors.black),
-              //       SizedBox(width: 8),
-              //       Icon(Icons.circle, size: 8, color: Colors.grey),
-              //     ],
-              //   ),
-              // ),
             ],
           ),
         ),
@@ -154,13 +134,7 @@ class ReturnCarPageDetails extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         TextField(
           decoration: InputDecoration(
@@ -176,16 +150,12 @@ class ReturnCarPageDetails extends StatelessWidget {
   }
 
   Widget buildDateField(BuildContext context, String label, String dateValue) {
+    TextEditingController dateController = TextEditingController(text: dateValue);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         GestureDetector(
           onTap: () async {
@@ -196,10 +166,12 @@ class ReturnCarPageDetails extends StatelessWidget {
               lastDate: DateTime(2101),
             );
             if (pickedDate != null) {
-              // Handle the picked date
+              String formattedDate = '${pickedDate.month}/${pickedDate.day}/${pickedDate.year}';
+              dateController.text = formattedDate;
             }
           },
           child: TextField(
+            controller: dateController,
             decoration: InputDecoration(
               hintText: dateValue,
               suffixIcon: const Icon(Icons.calendar_today, color: Colors.grey),

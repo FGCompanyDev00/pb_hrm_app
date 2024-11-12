@@ -341,13 +341,13 @@ class _SettingsPageState extends State<SettingsPage> {
                     _buildSettingsTile(
                       context,
                       title: 'Dark Mode',
-                      // trailing: Switch(
-                      //   value: themeNotifier.isDarkMode,
-                      //   onChanged: (bool value) {
-                      //     themeNotifier.toggleTheme();
-                      //   },
-                      //   activeColor: const Color(0xFFDBB342),
-                      // ),
+                      trailing: Switch(
+                        value: themeNotifier.isDarkMode,
+                        onChanged: (bool value) {
+                          themeNotifier.toggleTheme();
+                        },
+                        activeColor: const Color(0xFFDBB342),
+                      ),
                     ),
                     // Notification Tile
                     _buildSettingsTile(
