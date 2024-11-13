@@ -100,9 +100,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     _fetchEmployeeId();
     _fetchRooms();
     _fetchProjects();
-    // Removed _fetchProfile() as it's no longer needed for Type 3
-    // No need to fetch branches as permit_branch is now defaulted to '0'
-    // No need to fetch statuses as they are hard-coded
   }
 
   @override
@@ -218,10 +215,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           // Note: MultipartRequest automatically sets the Content-Type
 
           // Adding text fields
-          request.fields['project_id'] = _projectId ?? '';
           request.fields['title'] = _titleController.text;
           request.fields['description'] = _descriptionController.text;
-          request.fields['status_id'] = _statusId ?? '';
           request.fields['fromdate'] = _startDateTime != null ? DateFormat('yyyy-MM-dd').format(_startDateTime!) : '';
           request.fields['todate'] = _endDateTime != null ? DateFormat('yyyy-MM-dd').format(_endDateTime!) : '';
           request.fields['start_time'] = _startDateTime != null ? DateFormat('HH:mm:ss').format(_startDateTime!) : '';
@@ -295,7 +290,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               "end_time": _endDateTime != null ? DateFormat('HH:mm:ss').format(_endDateTime!) : '',
               "employee_tel": _employeeTelController.text,
               "remark": _remarkController.text,
-              "meeting_type": _location ?? "",
               "notification": _notification ?? 5,
               "members": _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList(),
             };
@@ -307,7 +301,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             url = 'https://demo-application-api.flexiflows.co/api/office-administration/car_permit';
             body = {
               "employee_id": _employeeId,
-              "purpose": _purposeController.text,
               "place": _placeController.text,
               "date_in": _startDateTime != null ? DateFormat('yyyy-MM-dd').format(_startDateTime!) : "",
               "date_out": _endDateTime != null ? DateFormat('yyyy-MM-dd').format(_endDateTime!) : "",
@@ -887,67 +880,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 16.0),
-            // Project Dropdown
-            const Text(
-              'Project*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
-            ),
             const SizedBox(height: 8.0),
-            DropdownButtonFormField<Project>(
-              decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
-              ),
-              hint: const Text('Select Project'),
-              value: _selectedProject,
-              items: _projects
-                  .map((project) => DropdownMenuItem<Project>(
-                        value: project,
-                        child: Text(project.pName),
-                      ))
-                  .toList(),
-              onChanged: (Project? newValue) {
-                setState(() {
-                  _selectedProject = newValue;
-                  _projectId = newValue?.projectId;
-                  print('Selected Project ID: $_projectId'); // Debug
-                });
-              },
-            ),
-            const SizedBox(height: 16.0),
-            // Status Dropdown
-            const Text(
-              'Status*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
-            ),
-            const SizedBox(height: 8.0),
-            DropdownButtonFormField<Status>(
-              decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
-              ),
-              hint: const Text('Select Status'),
-              value: _selectedStatus,
-              items: _statuses
-                  .map((status) => DropdownMenuItem<Status>(
-                        value: status,
-                        child: Text(status.name),
-                      ))
-                  .toList(),
-              onChanged: (Status? newValue) {
-                setState(() {
-                  _selectedStatus = newValue;
-                  _statusId = newValue?.statusId;
-                  print('Selected Status ID: $_statusId'); // Debug
-                });
-              },
-            ),
-            const SizedBox(height: 16.0),
             // Location Dropdown
             const Text(
               'Location*',
@@ -970,7 +903,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 6.0),
             // Phone Number Input
             const Text(
               'Tel*',
@@ -987,14 +920,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 16.0),
-            // Meeting Type Dropdown
-            const Text(
-              'Meeting Type*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
-            ),
-            const SizedBox(height: 8.0),
-            _buildLocationDropdown(),
             const SizedBox(height: 16.0),
             // Book a Meeting Room Text
             const Text(
@@ -1390,7 +1315,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                     child: ElevatedButton(
                       onPressed: _submitEvent,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orangeAccent,
+                        backgroundColor: Color(0xFFE2AD30),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20.0),
                         ),
