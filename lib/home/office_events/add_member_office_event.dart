@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:pb_hrsystem/core/standard/constant_map.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -64,10 +64,10 @@ class _AddMemberPageState extends State<AddMemberPage> {
           _filteredMembers = _members;
         });
       } else {
-        throw Exception(localizations!.failedToLoadMembers);
+        throw Exception(AppLocalizations.of(context)!.failedToLoadMembers);
       }
     } catch (e) {
-      _showErrorMessage(localizations!.errorFetchingMembers(e.toString()));
+      _showErrorMessage(AppLocalizations.of(context)!.errorFetchingMembers(e.toString()));
     }
   }
 
@@ -95,10 +95,10 @@ class _AddMemberPageState extends State<AddMemberPage> {
               .toList();
         });
       } else {
-        throw Exception(localizations!.failedToLoadGroups);
+        throw Exception(AppLocalizations.of(context)!.failedToLoadGroups);
       }
     } catch (e) {
-      _showErrorMessage(localizations!.errorFetchingGroups(e.toString()));
+      _showErrorMessage(AppLocalizations.of(context)!.errorFetchingGroups(e.toString()));
     }
   }
 
@@ -181,7 +181,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
   Widget _buildGroupDropdown() {
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
-        labelText: localizations!.selectGroup,
+        labelText: AppLocalizations.of(context)!.selectGroup,
         prefixIcon: const Icon(Icons.group),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(30.0),
@@ -206,7 +206,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(localizations!.officeEventAddMembers),
+        title: Text(AppLocalizations.of(context)!.officeEventAddMembers),
         backgroundColor: Colors.transparent,
         elevation: 0,
         toolbarHeight: 90,
@@ -282,7 +282,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                         ),
                       ),
                       child: Text(
-                        localizations!.addButton,
+                        AppLocalizations.of(context)!.addButton,
                         style: const TextStyle(color: Colors.black, fontSize: 18),
                       ),
                     ),
@@ -298,7 +298,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                 _filterMembers(value);
               },
               decoration: InputDecoration(
-                labelText: localizations!.search,
+                labelText: AppLocalizations.of(context)!.search,
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30.0),

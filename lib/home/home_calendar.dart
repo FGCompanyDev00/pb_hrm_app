@@ -23,6 +23,7 @@ import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_offline/flutter_offline.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
@@ -433,7 +434,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         Event? event;
         if (mounted) {
           event = Event(
-            title: item['title'] ?? localizations!.meetingRoomBookings,
+            title: item['title'] ?? AppLocalizations.of(context)!.meetingRoomBookings,
             startDateTime: startDateTime,
             endDateTime: endDateTime,
             description: item['remark'] ?? 'Booking Pending',
@@ -524,7 +525,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (mounted) {
           event = Event(
-            title: item['purpose'] ?? localizations!.noTitle,
+            title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
             startDateTime: startDateTime,
             endDateTime: endDateTime,
             description: item['place'] ?? 'Car Booking Pending',
@@ -663,7 +664,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                     children: [
                       _buildPopupOption(
                         icon: Icons.person,
-                        label: '1. ${localizations!.personal}',
+                        label: '1. ${AppLocalizations.of(context)!.personal}',
                         onTap: () {
                           Navigator.pop(context);
                           _navigateToAddEvent('Personal');
@@ -672,7 +673,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                       const Divider(height: 1),
                       _buildPopupOption(
                         icon: Icons.work,
-                        label: '2. ${localizations!.office}',
+                        label: '2. ${AppLocalizations.of(context)!.office}',
                         onTap: () {
                           Navigator.pop(context);
                           _navigateToAddEvent('Office');
@@ -829,7 +830,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                               height: sizeScreen(context).height * 0.45,
                               child: Center(
                                 child: Text(
-                                  localizations!.noEventsForThisDay,
+                                  AppLocalizations.of(context)!.noEventsForThisDay,
                                   style: const TextStyle(
                                     fontSize: 16,
                                     color: Colors.grey,
@@ -910,7 +911,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               children: [
                 const SizedBox(height: 70),
                 Text(
-                  localizations!.calendar,
+                  AppLocalizations.of(context)!.calendar,
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black,
                     fontSize: 30,
@@ -928,7 +929,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 Icons.add_circle,
                 size: 55,
                 color: Colors.green,
-                semanticLabel: localizations!.addEvent,
+                semanticLabel: AppLocalizations.of(context)!.addEvent,
               ),
               onPressed: showAddEventOptionsPopup,
             ),
@@ -982,7 +983,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: TextField(
         decoration: InputDecoration(
-          labelText: localizations!.searchEvents,
+          labelText: AppLocalizations.of(context)!.searchEvents,
           prefixIcon: const Icon(Icons.search),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
         ),
@@ -1140,7 +1141,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 Icons.chevron_left,
                 size: 20,
                 color: isDarkMode ? Colors.white : Colors.black,
-                semanticLabel: localizations!.previousMonth,
+                semanticLabel: AppLocalizations.of(context)!.previousMonth,
               ),
             ),
           ),
@@ -1178,7 +1179,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 Icons.chevron_right,
                 size: 20,
                 color: isDarkMode ? Colors.white : Colors.black,
-                semanticLabel: localizations!.nextMonth,
+                semanticLabel: AppLocalizations.of(context)!.nextMonth,
               ),
             ),
           ),

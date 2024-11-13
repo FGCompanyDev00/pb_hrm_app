@@ -1,5 +1,5 @@
 import 'dart:collection';
-
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +13,6 @@ import 'package:pb_hrsystem/core/widgets/scroll_controller/fetch_more_indicator.
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/home_calendar.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class CalendarDayWidget extends HookWidget {
   const CalendarDayWidget({
@@ -252,17 +251,17 @@ class CalendarDayWidget extends HookWidget {
 
                     switch (event.category) {
                       case 'Add Meeting':
-                        eventCategory = localizations!.meetingTitle;
+                        eventCategory = AppLocalizations.of(context)!.meetingTitle;
                       case 'Leave':
-                        eventCategory = localizations!.leave;
+                        eventCategory = AppLocalizations.of(context)!.leave;
                       case 'Meeting Room Bookings':
-                        eventCategory = localizations!.meetingRoomBookings;
+                        eventCategory = AppLocalizations.of(context)!.meetingRoomBookings;
                       case 'Booking Car':
-                        eventCategory = localizations!.bookingCar;
+                        eventCategory = AppLocalizations.of(context)!.bookingCar;
                       case 'Minutes Of Meeting':
-                        eventCategory = localizations!.minutesOfMeeting;
+                        eventCategory = AppLocalizations.of(context)!.minutesOfMeeting;
                       default:
-                        eventCategory = localizations!.other;
+                        eventCategory = AppLocalizations.of(context)!.other;
                     }
 
                     event.category == "Minutes Of Meeting"
@@ -557,7 +556,7 @@ class CalendarDayWidget extends HookWidget {
         onTap: () => showDialog(
             context: context,
             builder: (context) => AlertDialog(
-                  title: Text(localizations!.attendant),
+                  title: Text(AppLocalizations.of(context)!.attendant),
                   content: SingleChildScrollView(
                     child: Column(
                       children: avatarList,

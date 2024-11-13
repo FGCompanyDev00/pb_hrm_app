@@ -5,7 +5,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:pb_hrsystem/core/standard/constant_map.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:share_plus/share_plus.dart';
@@ -143,7 +143,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final String? token = prefs.getString('token');
 
       if (token == null || token.isEmpty) {
-        throw Exception(localizations!.noTokenFound);
+        throw Exception(AppLocalizations.of(context)!.noTokenFound);
       }
 
       final response = await http.get(
@@ -159,16 +159,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (responseBody.containsKey('results') && responseBody['results'] is Map<String, dynamic>) {
           return responseBody['results'];
         } else {
-          throw Exception(localizations!.invalidResponseStructure);
+          throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
         }
       } else {
         debugPrint('Failed to load profile data - Status Code: ${response.statusCode}');
         debugPrint('Response Body: ${response.body}');
-        throw Exception(localizations!.failedToLoadProfileData);
+        throw Exception(AppLocalizations.of(context)!.failedToLoadProfileData);
       }
     } catch (e) {
       debugPrint('Error in _fetchProfileData: $e');
-      throw Exception(localizations!.failedToLoadProfileData);
+      throw Exception(AppLocalizations.of(context)!.failedToLoadProfileData);
     }
   }
 
@@ -178,7 +178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final String? token = prefs.getString('token');
 
       if (token == null || token.isEmpty) {
-        throw Exception(localizations!.noTokenFound);
+        throw Exception(AppLocalizations.of(context)!.noTokenFound);
       }
 
       final response = await http.get(
@@ -194,16 +194,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (responseBody.containsKey('results') && responseBody['results'] is List<dynamic> && responseBody['results'].isNotEmpty) {
           return responseBody['results'][0];
         } else {
-          throw Exception(localizations!.invalidResponseStructure);
+          throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
         }
       } else {
         debugPrint('Failed to load display data - Status Code: ${response.statusCode}');
         debugPrint('Response Body: ${response.body}');
-        throw Exception(localizations!.failedToLoadDisplayData);
+        throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
       }
     } catch (e) {
       debugPrint('Error in _fetchDisplayData: $e');
-      throw Exception(localizations!.failedToLoadDisplayData);
+      throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
     }
   }
 
@@ -213,7 +213,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (boundary == null) {
         Fluttertoast.showToast(
-          msg: localizations!.qrCodeNotRendered,
+          msg: AppLocalizations.of(context)!.qrCodeNotRendered,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
@@ -228,11 +228,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final file = await File('${tempDir.path}/qr_code.png').create();
       await file.writeAsBytes(uint8List);
 
-      await Share.shareXFiles([XFile(file.path)], text: localizations!.shareQRCodeText);
+      await Share.shareXFiles([XFile(file.path)], text: AppLocalizations.of(context)!.shareQRCodeText);
     } catch (e) {
       debugPrint('Error sharing QR code: $e');
       Fluttertoast.showToast(
-        msg: localizations!.errorSharingQRCode,
+        msg: AppLocalizations.of(context)!.errorSharingQRCode,
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.BOTTOM,
       );
@@ -245,7 +245,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (boundary == null) {
         Fluttertoast.showToast(
-          msg: localizations!.qrCodeNotRendered,
+          msg: AppLocalizations.of(context)!.qrCodeNotRendered,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
@@ -269,20 +269,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (result.isSuccess) {
         Fluttertoast.showToast(
-          msg: localizations!.qrCodeDownloadedSuccess,
+          msg: AppLocalizations.of(context)!.qrCodeDownloadedSuccess,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
       } else {
         Fluttertoast.showToast(
-          msg: localizations!.errorDownloadingQRCodeGeneral,
+          msg: AppLocalizations.of(context)!.errorDownloadingQRCodeGeneral,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
       }
     } catch (e) {
       Fluttertoast.showToast(
-        msg: localizations!.errorDownloadingQRCode(e.toString()),
+        msg: AppLocalizations.of(context)!.errorDownloadingQRCode(e.toString()),
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.BOTTOM,
       );
@@ -296,7 +296,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (boundary == null) {
         Fluttertoast.showToast(
-          msg: localizations!.qrCodeNotRendered,
+          msg: AppLocalizations.of(context)!.qrCodeNotRendered,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
@@ -316,20 +316,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (result.isSuccess) {
         Fluttertoast.showToast(
-          msg: localizations!.qrCodeSavedToGallery,
+          msg: AppLocalizations.of(context)!.qrCodeSavedToGallery,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
       } else {
         Fluttertoast.showToast(
-          msg: localizations!.errorSavingQRCodeGeneral,
+          msg: AppLocalizations.of(context)!.errorSavingQRCodeGeneral,
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
         );
       }
     } catch (e) {
       Fluttertoast.showToast(
-        msg: localizations!.errorSavingQRCode(e.toString()),
+        msg: AppLocalizations.of(context)!.errorSavingQRCode(e.toString()),
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.BOTTOM,
       );
@@ -359,7 +359,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         centerTitle: true,
         title: Text(
-          localizations!.qrMyProfile,
+          AppLocalizations.of(context)!.qrMyProfile,
           style: TextStyle(
             color: Colors.black,
             fontSize: size.width * 0.06,
@@ -392,7 +392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
-              return Center(child: Text(localizations!.errorWithDetails(snapshot.error.toString())));
+              return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
             } else if (snapshot.hasData) {
               final data = snapshot.data!;
 
@@ -421,16 +421,16 @@ END:VCARD
                       final shouldSave = await showDialog<bool>(
                         context: context,
                         builder: (context) => AlertDialog(
-                          title: Text(localizations!.saveImageTitle),
-                          content: Text(localizations!.saveImageConfirmation),
+                          title: Text(AppLocalizations.of(context)!.saveImageTitle),
+                          content: Text(AppLocalizations.of(context)!.saveImageConfirmation),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(false),
-                              child: Text(localizations!.cancel),
+                              child: Text(AppLocalizations.of(context)!.cancel),
                             ),
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(true),
-                              child: Text(localizations!.save),
+                              child: Text(AppLocalizations.of(context)!.save),
                             ),
                           ],
                         ),
@@ -518,7 +518,7 @@ END:VCARD
                                       child: Row(
                                         children: [
                                           Text(
-                                            localizations!.more,
+                                            AppLocalizations.of(context)!.more,
                                             style: TextStyle(
                                               fontSize: size.width * 0.04,
                                               fontWeight: FontWeight.w500,
@@ -538,7 +538,7 @@ END:VCARD
                               ),
                               SizedBox(height: size.height * 0.02),
                               Text(
-                                localizations!.greeting(data['employee_name']),
+                                AppLocalizations.of(context)!.greeting(data['employee_name']),
                                 style: TextStyle(
                                   fontSize: size.width * 0.045,
                                   fontWeight: FontWeight.w600,
@@ -563,7 +563,7 @@ END:VCARD
                                   child: Column(
                                     children: [
                                       Text(
-                                        localizations!.scanToSaveContact,
+                                        AppLocalizations.of(context)!.scanToSaveContact,
                                         style: TextStyle(
                                           fontSize: size.width * 0.04,
                                           fontWeight: FontWeight.bold,
@@ -636,7 +636,7 @@ END:VCARD
                                         size: 20,
                                       ),
                                       label: Text(
-                                        localizations!.share,
+                                        AppLocalizations.of(context)!.share,
                                         style: TextStyle(fontSize: size.width * 0.04),
                                       ),
                                       style: ElevatedButton.styleFrom(
@@ -660,7 +660,7 @@ END:VCARD
                                         size: 20,
                                       ),
                                       label: Text(
-                                        localizations!.download,
+                                        AppLocalizations.of(context)!.download,
                                         style: TextStyle(fontSize: size.width * 0.04),
                                       ),
                                       style: ElevatedButton.styleFrom(
@@ -683,7 +683,7 @@ END:VCARD
                   )
               ]);
             } else {
-              return Center(child: Text(localizations!.noDataAvailable));
+              return Center(child: Text(AppLocalizations.of(context)!.noDataAvailable));
             }
           },
         ),

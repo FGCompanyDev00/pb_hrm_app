@@ -4,7 +4,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
-import 'package:pb_hrsystem/core/standard/constant_map.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/login/notification_permission_page.dart';
@@ -101,7 +101,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     final String password = _passwordController.text.trim();
 
     if (username.isEmpty || password.isEmpty) {
-      if (mounted) _showCustomDialog(localizations!.loginFailed, localizations!.emptyFieldsMessage);
+      if (mounted) _showCustomDialog(AppLocalizations.of(context)!.loginFailed, AppLocalizations.of(context)!.emptyFieldsMessage);
       return;
     }
 
@@ -264,8 +264,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     } else {
       if (mounted) {
         _showCustomDialog(
-          localizations!.loginFailed,
-          localizations!.incorrectCredentials,
+          AppLocalizations.of(context)!.loginFailed,
+          AppLocalizations.of(context)!.incorrectCredentials,
         );
       }
     }
@@ -372,7 +372,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-                child: Text(localizations!.close),
+                child: Text(AppLocalizations.of(context)!.close),
               ),
             ],
           ),
@@ -492,7 +492,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              localizations!.chooseLanguage,
+                              AppLocalizations.of(context)!.chooseLanguage,
                               // Localized Text
                               style: TextStyle(
                                 fontSize: screenWidth * 0.045,
@@ -610,7 +610,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                localizations!.welcomeToPSBV, // Localized Title
+                AppLocalizations.of(context)!.welcomeToPSBV, // Localized Title
                 textAlign: TextAlign.left,
                 style: const TextStyle(
                   fontSize: 21,
@@ -623,7 +623,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               Padding(
                 padding: EdgeInsets.only(left: screenWidth * 0.04),
                 child: Text(
-                  localizations!.welcomeSubtitle1, // Localized Subtitle 1
+                  AppLocalizations.of(context)!.welcomeSubtitle1, // Localized Subtitle 1
                   style: const TextStyle(
                     fontSize: 14,
                     color: Colors.black,
@@ -635,7 +635,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               Padding(
                 padding: EdgeInsets.only(left: screenWidth * 0.08),
                 child: Text(
-                  localizations!.welcomeSubtitle2, // Localized Subtitle 2
+                  AppLocalizations.of(context)!.welcomeSubtitle2, // Localized Subtitle 2
                   style: const TextStyle(
                     fontSize: 14,
                     color: Colors.black,
@@ -711,7 +711,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             controller: _usernameController,
             style: const TextStyle(color: Colors.black),
             decoration: InputDecoration(
-              labelText: localizations!.username,
+              labelText: AppLocalizations.of(context)!.username,
               labelStyle: const TextStyle(color: Colors.black),
               prefixIcon: const Icon(Icons.person_outline, color: Colors.black),
               filled: true,
@@ -731,7 +731,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             obscureText: !_isPasswordVisible,
             style: const TextStyle(color: Colors.black),
             decoration: InputDecoration(
-              labelText: localizations!.password,
+              labelText: AppLocalizations.of(context)!.password,
               labelStyle: const TextStyle(color: Colors.black),
               prefixIcon: const Icon(Icons.lock_outline, color: Colors.black),
               suffixIcon: IconButton(
@@ -774,7 +774,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             checkColor: Colors.white,
           ),
           Text(
-            localizations!.rememberMe,
+            AppLocalizations.of(context)!.rememberMe,
             style: const TextStyle(color: Colors.black),
           ),
         ],
@@ -793,8 +793,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                 ? () => _authenticate(useBiometric: true)
                 : () {
                     _showCustomDialog(
-                      localizations!.biometricDisabled,
-                      localizations!.enableBiometric,
+                      AppLocalizations.of(context)!.biometricDisabled,
+                      AppLocalizations.of(context)!.enableBiometric,
                     );
                   },
             child: Container(
@@ -825,7 +825,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               ),
               alignment: Alignment.center,
               child: Text(
-                localizations!.login,
+                AppLocalizations.of(context)!.login,
                 style: TextStyle(
                   fontSize: screenWidth * 0.045,
                   color: Colors.white,

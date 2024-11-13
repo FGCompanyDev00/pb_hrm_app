@@ -1,7 +1,7 @@
 // camera_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/core/standard/constant_map.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/login/ready_page.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -33,8 +33,8 @@ class CameraPage extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(localizations!.permissionDenied),
-          content: Text(isPermanentlyDenied ? localizations!.cameraAccessPermanentlyDenied : localizations!.cameraPermissionRequired),
+          title: Text(AppLocalizations.of(context)!.permissionDenied),
+          content: Text(isPermanentlyDenied ? AppLocalizations.of(context)!.cameraAccessPermanentlyDenied : AppLocalizations.of(context)!.cameraPermissionRequired),
           actions: [
             TextButton(
               onPressed: () {
@@ -43,7 +43,7 @@ class CameraPage extends StatelessWidget {
                 }
                 Navigator.of(context).pop();
               },
-              child: Text(localizations!.ok),
+              child: Text(AppLocalizations.of(context)!.ok),
             ),
           ],
         );
@@ -78,7 +78,7 @@ class CameraPage extends StatelessWidget {
               const SizedBox(height: 20),
               Center(
                 child: Text(
-                  localizations!.cameraAndPhoto,
+                  AppLocalizations.of(context)!.cameraAndPhoto,
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -89,7 +89,7 @@ class CameraPage extends StatelessWidget {
               const SizedBox(height: 8),
               Center(
                 child: Text(
-                  localizations!.manyFunctions,
+                  AppLocalizations.of(context)!.manyFunctions,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 16,
@@ -108,7 +108,7 @@ class CameraPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                   ),
-                  child: Text(localizations!.next, style: const TextStyle(fontSize: 18)),
+                  child: Text(AppLocalizations.of(context)!.next, style: const TextStyle(fontSize: 18)),
                 ),
               ),
               const SizedBox(height: 10),
@@ -125,7 +125,7 @@ class CameraPage extends StatelessWidget {
               const SizedBox(height: 10),
               Center(
                 child: Text(
-                  localizations!.pageIndicator3of3,
+                  AppLocalizations.of(context)!.pageIndicator3of3,
                   style: const TextStyle(fontSize: 16, color: Colors.black),
                 ),
               ),

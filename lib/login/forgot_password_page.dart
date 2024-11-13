@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/core/standard/constant_map.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -74,7 +74,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         backgroundColor: Colors.transparent, // Make AppBar background transparent
         elevation: 0, // Remove shadow from the AppBar
         title: Text(
-          localizations!.forgotPassword,
+          AppLocalizations.of(context)!.forgotPassword,
           style: const TextStyle(color: Colors.black), // Ensure the title text is black
         ),
       ),
@@ -91,7 +91,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                localizations!.enterYourEmail,
+                AppLocalizations.of(context)!.enterYourEmail,
                 style: const TextStyle(
                   fontSize: 18,
                   color: Colors.black, // Explicitly setting text color to black
@@ -104,7 +104,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 keyboardType: TextInputType.emailAddress,
                 style: const TextStyle(color: Colors.black), // Ensure typed text is black
                 decoration: InputDecoration(
-                  labelText: localizations!.email,
+                  labelText: AppLocalizations.of(context)!.email,
                   labelStyle: const TextStyle(color: Colors.black), // Label text color
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8.0),
@@ -120,7 +120,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-                child: Text(localizations!.sendResetLink),
+                child: Text(AppLocalizations.of(context)!.sendResetLink),
               ),
             ],
           ),

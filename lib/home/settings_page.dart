@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:pb_hrsystem/core/standard/constant_map.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/home/notification_settings_page.dart';
 import 'package:pb_hrsystem/settings/change_password.dart';
 import 'package:pb_hrsystem/settings/edit_profile.dart';
@@ -161,14 +161,14 @@ class _SettingsPageState extends State<SettingsPage> {
       if (!canCheckBiometrics) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(localizations!.biometricNotAvailable),
+            content: Text(AppLocalizations.of(context)!.biometricNotAvailable),
           ),
         );
         return;
       }
       try {
         bool authenticated = await auth.authenticate(
-          localizedReason: localizations!.authenticateToEnableBiometrics,
+          localizedReason: AppLocalizations.of(context)!.authenticateToEnableBiometrics,
           options: const AuthenticationOptions(
             stickyAuth: true,
             useErrorDialogs: true,
@@ -186,7 +186,7 @@ class _SettingsPageState extends State<SettingsPage> {
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(localizations!.errorEnablingBiometrics(e.toString())),
+            content: Text(AppLocalizations.of(context)!.errorEnablingBiometrics(e.toString())),
           ),
         );
       }
@@ -216,7 +216,7 @@ class _SettingsPageState extends State<SettingsPage> {
       final userProfile = UserProfile.fromJson(results[0]);
       return userProfile;
     } else {
-      throw Exception(localizations!.failedToLoadUserProfile);
+      throw Exception(AppLocalizations.of(context)!.failedToLoadUserProfile);
     }
   }
 
@@ -244,7 +244,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           centerTitle: true,
           title: Text(
-            localizations!.settings,
+            AppLocalizations.of(context)!.settings,
             style: const TextStyle(
               color: Colors.black,
               fontSize: 24,
@@ -278,7 +278,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          localizations!.accountSettings,
+                          AppLocalizations.of(context)!.accountSettings,
                           style: themeNotifier.textStyle.copyWith(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -291,7 +291,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     // Change Password Tile
                     _buildSettingsTile(
                       context,
-                      title: localizations!.changePassword,
+                      title: AppLocalizations.of(context)!.changePassword,
                       icon: Icons.arrow_forward_ios,
                       onTap: () {
                         Navigator.push(
@@ -303,7 +303,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     // Edit Profile Tile
                     _buildSettingsTile(
                       context,
-                      title: localizations!.editProfile,
+                      title: AppLocalizations.of(context)!.editProfile,
                       icon: Icons.arrow_forward_ios,
                       onTap: () {
                         Navigator.push(
@@ -315,7 +315,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     // Enable Biometric Authentication Switch
                     _buildSettingsTile(
                       context,
-                      title: localizations!.enableBiometricAuth,
+                      title: AppLocalizations.of(context)!.enableBiometricAuth,
                       trailing: Switch(
                         value: _biometricEnabled,
                         onChanged: (bool value) {
@@ -343,7 +343,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     // Notification Tile
                     _buildSettingsTile(
                       context,
-                      title: localizations!.notification,
+                      title: AppLocalizations.of(context)!.notification,
                       icon: Icons.arrow_forward_ios,
                       onTap: () {
                         Navigator.push(

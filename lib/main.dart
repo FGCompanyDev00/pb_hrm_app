@@ -119,10 +119,8 @@ class LanguageNotifier with ChangeNotifier {
 
   Future<void> _loadLocale() async {
     Locale? locale = sl<UserPreferences>().getLocalizeSupport();
-    if (locale != null) {
-      _currentLocale = locale;
-      notifyListeners();
-    }
+    _currentLocale = locale;
+    notifyListeners();
   }
 
   void changeLanguage(String languageCode) async {
@@ -130,18 +128,22 @@ class LanguageNotifier with ChangeNotifier {
       case 'English':
         _currentLocale = const Locale('en');
         await sl<UserPreferences>().setLocalizeSupport('en');
+        await sl<UserPreferences>().setDefaultLanguage('English');
         break;
       case 'Laos':
         _currentLocale = const Locale('lo');
         await sl<UserPreferences>().setLocalizeSupport('lo');
+        await sl<UserPreferences>().setDefaultLanguage('Laos');
         break;
       case 'Chinese':
         _currentLocale = const Locale('zh');
         await sl<UserPreferences>().setLocalizeSupport('zh');
+        await sl<UserPreferences>().setDefaultLanguage('Chinese');
         break;
       default:
         _currentLocale = const Locale('en');
         await sl<UserPreferences>().setLocalizeSupport('en');
+        await sl<UserPreferences>().setDefaultLanguage('English');
     }
     notifyListeners();
   }

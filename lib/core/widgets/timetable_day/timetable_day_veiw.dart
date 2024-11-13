@@ -1,5 +1,5 @@
 import 'dart:collection';
-
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +7,6 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/events_utils.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class TimeTableDayWidget extends HookWidget {
   const TimeTableDayWidget({
@@ -119,17 +118,17 @@ class TimeTableDayWidget extends HookWidget {
 
                   switch (event.category) {
                     case 'Add Meeting':
-                      _eventType = localizations!.meetingTitle;
+                      _eventType = AppLocalizations.of(context)!.meetingTitle;
                     case 'Leave':
-                      _eventType = localizations!.leave;
+                      _eventType = AppLocalizations.of(context)!.leave;
                     case 'Meeting Room Bookings':
-                      _eventType = localizations!.meetingRoomBookings;
+                      _eventType = AppLocalizations.of(context)!.meetingRoomBookings;
                     case 'Booking Car':
-                      _eventType = localizations!.bookingCar;
+                      _eventType = AppLocalizations.of(context)!.bookingCar;
                     case 'Minutes Of Meeting':
-                      _eventType = localizations!.minutesOfMeeting;
+                      _eventType = AppLocalizations.of(context)!.minutesOfMeeting;
                     default:
-                      _eventType = localizations!.other;
+                      _eventType = AppLocalizations.of(context)!.other;
                   }
 
                   switch (event.status) {
