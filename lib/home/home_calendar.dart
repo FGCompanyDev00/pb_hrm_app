@@ -632,7 +632,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   }
 
   /// Displays a popup to choose between adding personal or office events
-  void _showAddEventOptionsPopup() {
+  void showAddEventOptionsPopup() {
     showDialog(
       context: context,
       barrierColor: Colors.transparent,
@@ -809,86 +809,77 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               ),
             ),
             Scaffold(
-              body: Stack(
-                children: [
-                  // Fixed Calendar Header
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: _buildCalendarHeader(isDarkMode),
-                  ),
-                  // Scrollable content with pull-to-refresh
-                  RefreshIndicator(
-                    onRefresh: _onRefresh,
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.only(top: 155),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          if (_showFiltersAndSearchBar) _buildFilters(),
-                          if (_showFiltersAndSearchBar) _buildSearchBar(),
-                          _buildCalendar(context, isDarkMode),
-                          _buildSectionSeparator(),
-                          _eventsForDay.isEmpty
-                              ? SizedBox(
-                                  height: sizeScreen(context).height * 0.45,
-                                  child: Center(
-                                    child: Text(
-                                      localizations!.noEventsForThisDay,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.grey,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
+              appBar: PreferredSize(
+                preferredSize: const Size.fromHeight(150),
+                child: _buildCalendarHeader(isDarkMode),
+              ),
+              body: RefreshIndicator(
+                onRefresh: _onRefresh,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (_showFiltersAndSearchBar) _buildFilters(),
+                      if (_showFiltersAndSearchBar) _buildSearchBar(),
+                      _buildCalendar(context, isDarkMode),
+                      _buildSectionSeparator(),
+                      _eventsForDay.isEmpty
+                          ? SizedBox(
+                              height: sizeScreen(context).height * 0.45,
+                              child: Center(
+                                child: Text(
+                                  localizations!.noEventsForThisDay,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                )
-                              : CarouselSlider(
-                                  options: CarouselOptions(
-                                    autoPlay: false,
-                                    viewportFraction: 1,
-                                    initialPage: liveHour(),
-                                    height: 410,
-                                    scrollDirection: Axis.vertical,
-                                  ),
-                                  items: [
-                                    CalendarDayWidgetCard(
-                                      selectedDay: _selectedDay,
-                                      eventsCalendar: _eventsForDay,
-                                      selectedSlotTime: 1,
-                                      heightTime: 1.4,
-                                    ),
-                                    CalendarDayWidgetCard(
-                                      selectedDay: _selectedDay,
-                                      eventsCalendar: _eventsForDay,
-                                      selectedSlotTime: 2,
-                                    ),
-                                    CalendarDayWidgetCard(
-                                      selectedDay: _selectedDay,
-                                      eventsCalendar: _eventsForDay,
-                                      selectedSlotTime: 3,
-                                    ),
-                                  ],
+                                  textAlign: TextAlign.center,
                                 ),
-                        ],
-                      ),
-                    ),
+                              ),
+                            )
+                          : CarouselSlider(
+                              options: CarouselOptions(
+                                autoPlay: false,
+                                viewportFraction: 1,
+                                initialPage: liveHour(),
+                                height: 410,
+                                scrollDirection: Axis.vertical,
+                              ),
+                              items: [
+                                CalendarDayWidgetCard(
+                                  selectedDay: _selectedDay,
+                                  eventsCalendar: _eventsForDay,
+                                  selectedSlotTime: 1,
+                                  heightTime: 1.4,
+                                ),
+                                CalendarDayWidgetCard(
+                                  selectedDay: _selectedDay,
+                                  eventsCalendar: _eventsForDay,
+                                  selectedSlotTime: 2,
+                                ),
+                                CalendarDayWidgetCard(
+                                  selectedDay: _selectedDay,
+                                  eventsCalendar: _eventsForDay,
+                                  selectedSlotTime: 3,
+                                ),
+                              ],
+                            ),
+                    ],
                   ),
-                  if (_isLoading)
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      child: LinearProgressIndicator(
-                        backgroundColor: isConnected ? Colors.blue : Colors.orange,
-                      ),
-                    ),
-                ],
+                ),
               ),
             ),
+            if (_isLoading)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: LinearProgressIndicator(
+                  backgroundColor: isConnected ? Colors.blue : Colors.orange,
+                ),
+              ),
           ],
         );
       },
@@ -939,7 +930,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 color: Colors.green,
                 semanticLabel: localizations!.addEvent,
               ),
-              onPressed: _showAddEventOptionsPopup,
+              onPressed: showAddEventOptionsPopup,
             ),
           ),
         ],
