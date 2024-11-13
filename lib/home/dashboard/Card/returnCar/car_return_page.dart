@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pb_hrsystem/home/dashboard/Card/returnCar/car_return_page_details.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:pb_hrsystem/home/dashboard/Card/returnCar/car_return_page_details.dart';
 
 class ReturnCarPage extends StatefulWidget {
   const ReturnCarPage({super.key});
@@ -15,28 +15,25 @@ class ReturnCarPage extends StatefulWidget {
 
 class _ReturnCarPageState extends State<ReturnCarPage> {
   List<dynamic> events = [];
-  List<dynamic> filteredEvents = []; // List to hold filtered events
+  List<dynamic> filteredEvents = [];
   bool isLoading = true;
-  TextEditingController searchController = TextEditingController(); // Controller for search input
-  String searchOption = 'requestor_name'; // Default search option
+  TextEditingController searchController = TextEditingController();
+  String searchOption = 'requestor_name';
 
   @override
   void initState() {
     super.initState();
     fetchEvents();
-    searchController.addListener(_filterEvents); // Add listener to search field
+    searchController.addListener(_filterEvents);
   }
 
-  // Fetch events from API
   Future<void> fetchEvents() async {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
-    // Get the Bearer Token from SharedPreferences
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');  // Assuming the token is saved as 'token'
+    final token = prefs.getString('token');
 
     if (token == null) {
-      // Handle case where the token is not available
       setState(() {
         isLoading = false;
       });
@@ -46,11 +43,10 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
       return;
     }
 
-    // Add the token to the request headers
     final response = await http.get(
       Uri.parse('$baseUrl/api/app/tasks/approvals/return'),
       headers: {
-        'Authorization': 'Bearer $token',  // Add the token here
+        'Authorization': 'Bearer $token',
       },
     );
 
@@ -58,11 +54,10 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
       final Map<String, dynamic> data = json.decode(response.body);
       setState(() {
         events = data['results'];
-        filteredEvents = events; // Initially, show all events
+        filteredEvents = events;
         isLoading = false;
       });
     } else {
-      // Handle error response
       setState(() {
         isLoading = false;
       });
@@ -72,42 +67,37 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
     }
   }
 
-  // Function to filter events based on search input
   void _filterEvents() {
     String query = searchController.text.toLowerCase();
 
     if (query.isEmpty) {
       setState(() {
-        filteredEvents = events; // If search is empty, show all events
+        filteredEvents = events;
       });
     } else {
       setState(() {
         filteredEvents = events.where((event) {
           String valueToSearch;
 
-          // Choose search criterion based on selected search option
           if (searchOption == 'requestor_name') {
             valueToSearch = (event['requestor_name'] ?? '').toLowerCase();
           } else {
             valueToSearch = (event['license_plate'] ?? '').toLowerCase();
           }
 
-          return valueToSearch.contains(query); // Filter based on selected option
+          return valueToSearch.contains(query);
         }).toList();
       });
     }
   }
 
-  // Function to handle the dropdown selection for search criteria
   void _onSearchOptionChanged(String? newValue) {
     setState(() {
       searchOption = newValue!;
-      // Reset the filtered events to the original list when the search option changes
       filteredEvents = events;
     });
   }
 
-  // Helper function to get status color based on the status value
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'waiting':
@@ -120,13 +110,13 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
       case 'cancel':
         return Colors.red;
       default:
-        return Colors.grey; // Default color if no status matches
+        return Colors.grey;
     }
   }
 
   @override
   void dispose() {
-    searchController.dispose(); // Dispose controller when not in use
+    searchController.dispose();
     super.dispose();
   }
 
@@ -178,10 +168,10 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
         children: [
-          // Search bar and dropdown for selecting search criteria
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            padding:
+            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
               children: [
                 Expanded(
@@ -214,7 +204,6 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
               ],
             ),
           ),
-          // Display a message if no results are found
           if (filteredEvents.isEmpty)
             const Expanded(
               child: Center(
@@ -240,12 +229,14 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ReturnCarPageDetails(),
+                          builder: (context) => ReturnCarPageDetails(
+                              uid: event['uid']),
                         ),
                       );
                     },
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      padding:
+                      const EdgeInsets.symmetric(vertical: 8.0),
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
@@ -276,7 +267,8 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       event['requestor_name'] ?? '',
@@ -302,6 +294,14 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                                       ),
                                     ),
                                     const SizedBox(height: 8),
+                                    Text(
+                                      'Purpose: ${event['purpose']}',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
                                     Row(
                                       children: [
                                         const Text(
@@ -312,11 +312,15 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                                           ),
                                         ),
                                         Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 4),
+                                          padding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: _getStatusColor(event['status'] ?? ''),
-                                            borderRadius: BorderRadius.circular(8),
+                                            color: _getStatusColor(
+                                                event['status'] ?? ''),
+                                            borderRadius:
+                                            BorderRadius.circular(8),
                                           ),
                                           child: Text(
                                             event['status'] ?? '',
@@ -336,7 +340,7 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                                 children: [
                                   ClipOval(
                                     child: Image.network(
-                                      event['img_name'],
+                                      event['img_name'] ?? '',
                                       width: 50,
                                       height: 50,
                                       fit: BoxFit.cover,

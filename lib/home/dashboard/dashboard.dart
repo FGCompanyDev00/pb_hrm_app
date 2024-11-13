@@ -462,11 +462,10 @@ class _DashboardState extends State<Dashboard> {
           Text(
             localizations!.notification,
             style: const TextStyle(
-              fontSize: 16,
+              fontSize: 12,
               color: Colors.black,
             ),
           ),
-          const SizedBox(width: 4),
           Stack(
             children: [
               IconButton(
