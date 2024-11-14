@@ -1,7 +1,10 @@
+//// Above code only send employee_id only, function successfully submit only for type 2 and 3 but not type 1. but keep it as backup
+
 // add_member_office_event.dart
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -53,22 +56,20 @@ class _AddMemberPageState extends State<AddMemberPage> {
           _members = data
               .where((item) => item['employee_id'] != currentUserEmployeeId)
               .map((item) => {
-            'id': item['id'],
-            'name': item['name'],
-            'surname': item['surname'],
-            'email': item['email'],
-            'employee_id': item['employee_id'],
-            // Combine name and surname to form employee_name
-            'employee_name': '${item['name']} ${item['surname']}'.trim(),
-          })
+                    'id': item['id'],
+                    'name': item['name'],
+                    'surname': item['surname'],
+                    'email': item['email'],
+                    'employee_id': item['employee_id'],
+                  })
               .toList();
           _filteredMembers = _members;
         });
       } else {
-        throw Exception('Failed to load members.');
+        throw Exception(AppLocalizations.of(context)!.failedToLoadMembers);
       }
     } catch (e) {
-      _showErrorMessage('Error fetching members: $e');
+      _showErrorMessage(AppLocalizations.of(context)!.errorFetchingMembers(e.toString()));
     }
   }
 
@@ -88,18 +89,18 @@ class _AddMemberPageState extends State<AddMemberPage> {
         setState(() {
           _groups = data
               .map((item) => {
-            'id': item['id'],
-            'groupId': item['groupId'],
-            'group_name': item['group_name'],
-            'employees': item['employees'],
-          })
+                    'id': item['id'],
+                    'groupId': item['groupId'],
+                    'group_name': item['group_name'],
+                    'employees': item['employees'],
+                  })
               .toList();
         });
       } else {
-        throw Exception('Failed to load groups.');
+        throw Exception(AppLocalizations.of(context)!.failedToLoadGroups);
       }
     } catch (e) {
-      _showErrorMessage('Error fetching groups: $e');
+      _showErrorMessage(AppLocalizations.of(context)!.errorFetchingGroups(e.toString()));
     }
   }
 
@@ -128,11 +129,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
   void _onMemberSelected(bool? selected, Map<String, dynamic> member) {
     setState(() {
       if (selected == true) {
-        _selectedMembers.add({
-          'employee_id': member['employee_id'],
-          'employee_name': member['employee_name'],
-          'email': member['email'],
-        });
+        _selectedMembers.add(member);
       } else {
         _selectedMembers.removeWhere((m) => m['employee_id'] == member['employee_id']);
       }
@@ -146,10 +143,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
 
   /// Filters the members based on the search query
   void _filterMembers(String query) {
-    List<Map<String, dynamic>> filteredList = _members.where((member) {
-      String fullName = '${member['name']} ${member['surname']}'.toLowerCase();
-      return fullName.contains(query.toLowerCase());
-    }).toList();
+    List<Map<String, dynamic>> filteredList = _members.where((member) => member['name'].toLowerCase().contains(query.toLowerCase()) || member['surname'].toLowerCase().contains(query.toLowerCase())).toList();
     setState(() {
       _filteredMembers = filteredList;
     });
@@ -165,7 +159,8 @@ class _AddMemberPageState extends State<AddMemberPage> {
           if (!_selectedMembers.any((m) => m['employee_id'] == emp['employee_id'])) {
             _selectedMembers.add({
               'employee_id': emp['employee_id'],
-              'employee_name': emp['employee_name'],
+              'name': emp['employee_name'].split(' ')[0],
+              'surname': emp['employee_name'].split(' ').length > 1 ? emp['employee_name'].split(' ')[1] : '',
               'email': '', // Email not provided in group employees
             });
           }
@@ -188,7 +183,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
   Widget _buildGroupDropdown() {
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
-        labelText: 'Select Group',
+        labelText: AppLocalizations.of(context)!.selectGroup,
         prefixIcon: const Icon(Icons.group),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(30.0),
@@ -197,9 +192,9 @@ class _AddMemberPageState extends State<AddMemberPage> {
       value: _selectedGroupId,
       items: _groups
           .map((group) => DropdownMenuItem<String>(
-        value: group['groupId'],
-        child: Text(group['group_name']),
-      ))
+                value: group['groupId'],
+                child: Text(group['group_name']),
+              ))
           .toList(),
       onChanged: (String? newValue) {
         if (newValue != null) {
@@ -213,7 +208,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Members'),
+        title: Text(AppLocalizations.of(context)!.officeEventAddMembers),
         backgroundColor: Colors.transparent,
         elevation: 0,
         toolbarHeight: 90,
@@ -288,9 +283,9 @@ class _AddMemberPageState extends State<AddMemberPage> {
                           borderRadius: BorderRadius.circular(20.0),
                         ),
                       ),
-                      child: const Text(
-                        'Add',
-                        style: TextStyle(color: Colors.black, fontSize: 18),
+                      child: Text(
+                        AppLocalizations.of(context)!.addButton,
+                        style: const TextStyle(color: Colors.black, fontSize: 18),
                       ),
                     ),
                   ),
@@ -305,7 +300,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                 _filterMembers(value);
               },
               decoration: InputDecoration(
-                labelText: 'Search',
+                labelText: AppLocalizations.of(context)!.search,
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30.0),
@@ -329,7 +324,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                   leading: FutureBuilder<String?>(
                     future: _fetchProfileImage(member['employee_id']),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.done && snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
+                      if (snapshot.connectionState == ConnectionState.done && snapshot.hasData && snapshot.data!.isNotEmpty) {
                         return CircleAvatar(
                           backgroundImage: NetworkImage(snapshot.data!),
                           radius: 25,
@@ -343,7 +338,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                       }
                     },
                   ),
-                  title: Text(member['employee_name']),
+                  title: Text('${member['name']} ${member['surname']}'),
                   subtitle: Text(member['email']),
                   trailing: Checkbox(
                     value: _selectedMembers.any((m) => m['employee_id'] == member['employee_id']),

@@ -6,12 +6,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/home/office_events/add_member_office_event.dart';
 import 'package:intl/intl.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:path/path.dart' as path;
 
 class OfficeAddEventPage extends StatefulWidget {
   const OfficeAddEventPage({super.key});
@@ -50,7 +47,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   String? _roomName;
   int? _notification; // Notification time in minutes
   String? _location; // For Add Meeting and Meeting Type for Booking Meeting Room
-  List<PlatformFile> _selectedFiles = []; // For file uploads (only Type 1)
 
   String? _employeeId; // Current user's employee ID
 
@@ -152,9 +148,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         setState(() {
           _rooms = data
               .map<Map<String, dynamic>>((item) => {
-                    'room_id': item['uid'],
-                    'room_name': item['room_name'],
-                  })
+            'room_id': item['uid'],
+            'room_name': item['room_name'],
+          })
               .toList();
           if (kDebugMode) {
             print('Fetched Rooms: $_rooms');
@@ -196,163 +192,220 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     }
   }
 
-  /// Submits the event based on the selected booking type
+  // Submits the event based on the selected booking type
   Future<void> _submitEvent() async {
-    if (_validateFields()) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      try {
-        String token = await _fetchToken();
-
-        if (_selectedBookingType == '1. Add Meeting') {
-          // Handle Type 1 using MultipartRequest for file upload
-          String url = 'https://demo-application-api.flexiflows.co/api/work-tracking/meeting/insert';
-
-          var request = http.MultipartRequest('POST', Uri.parse(url));
-          request.headers['Authorization'] = 'Bearer $token';
-          // Note: MultipartRequest automatically sets the Content-Type
-
-          // Adding text fields
-          request.fields['title'] = _titleController.text;
-          request.fields['description'] = _descriptionController.text;
-          request.fields['fromdate'] = _startDateTime != null ? DateFormat('yyyy-MM-dd').format(_startDateTime!) : '';
-          request.fields['todate'] = _endDateTime != null ? DateFormat('yyyy-MM-dd').format(_endDateTime!) : '';
-          request.fields['start_time'] = _startDateTime != null ? DateFormat('HH:mm:ss').format(_startDateTime!) : '';
-          request.fields['end_time'] = _endDateTime != null ? DateFormat('HH:mm:ss').format(_endDateTime!) : '';
-          request.fields['location'] = _location ?? '';
-          request.fields['notification'] = (_notification ?? 5).toString();
-
-          // Adding membersDetails as JSON string
-          List<Map<String, dynamic>> members = _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList();
-          request.fields['membersDetails'] = jsonEncode(members);
-
-          // Adding files if any
-          for (var file in _selectedFiles) {
-            if (file.path != null) {
-              File f = File(file.path!);
-              String fileName = path.basename(f.path);
-              request.files.add(await http.MultipartFile.fromPath(
-                'file_name', // Ensure this matches the API's expected field name
-                f.path,
-                filename: fileName,
-              ));
-            }
-          }
-
-          if (kDebugMode) {
-            print('Submitting Type 1 Add Meeting with fields: ${request.fields}');
-          }
-          if (kDebugMode) {
-            print('Submitting Type 1 Add Meeting with ${request.files.length} files.');
-          }
-
-          // Sending the request
-          var streamedResponse = await request.send();
-
-          // Getting the response
-          var response = await http.Response.fromStream(streamedResponse);
-
-          // Handle the response
-          if (response.statusCode == 200 || response.statusCode == 201) {
-            _showSuccessMessage('Event added successfully!');
-
-            // Reset the form after successful submission
-            _resetForm();
-          } else {
-            String errorMsg = 'Failed to add event.';
-            if (response.body.isNotEmpty) {
-              try {
-                final errorResponse = jsonDecode(response.body);
-                errorMsg = 'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
-              } catch (_) {
-                // If response is not JSON, keep the default error message
-              }
-            }
-            _showErrorMessage(errorMsg);
-          }
-        } else {
-          // Handle other booking types as before
-
-          String url = '';
-          Map<String, dynamic> body = {};
-
-          // Build the request based on the selected booking type
-          if (_selectedBookingType == '2. Meeting and Booking Meeting Room') {
-            url = 'https://demo-application-api.flexiflows.co/api/office-administration/book_meeting_room';
-            body = {
-              "room_id": _roomId,
-              "title": _titleController.text,
-              "from_date_time": _startDateTime != null ? DateFormat('yyyy-MM-dd').format(_startDateTime!) : "",
-              "to_date_time": _endDateTime != null ? DateFormat('yyyy-MM-dd').format(_endDateTime!) : "",
-              "start_time": _startDateTime != null ? DateFormat('HH:mm:ss').format(_startDateTime!) : '',
-              "end_time": _endDateTime != null ? DateFormat('HH:mm:ss').format(_endDateTime!) : '',
-              "employee_tel": _employeeTelController.text,
-              "remark": _remarkController.text,
-              "notification": _notification ?? 5,
-              "members": _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList(),
-            };
-            if (kDebugMode) {
-              print('Submit Book Meeting Room Body: $body');
-            } // Debug statement
-          } else if (_selectedBookingType == '3. Booking Car') {
-            // Handle Type 3 without fetching permit_branch from API
-            url = 'https://demo-application-api.flexiflows.co/api/office-administration/car_permit';
-            body = {
-              "employee_id": _employeeId,
-              "place": _placeController.text,
-              "date_in": _startDateTime != null ? DateFormat('yyyy-MM-dd').format(_startDateTime!) : "",
-              "date_out": _endDateTime != null ? DateFormat('yyyy-MM-dd').format(_endDateTime!) : "",
-              "permit_branch": 0, // Default value as per requirement
-              "notification": _notification ?? 30,
-              "members": _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList(),
-            };
-            if (kDebugMode) {
-              print('Submit Booking Car Body: $body');
-            } // Debug statement
-          } else {
-            _showErrorMessage('Invalid booking type selected.');
-            return;
-          }
-
-          // Send the POST request
-          final response = await http.post(
-            Uri.parse(url),
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode(body),
-          );
-
-          // Handle the response
-          if (response.statusCode == 200 || response.statusCode == 201) {
-            _showSuccessMessage('Event added successfully!');
-
-            // Reset the form after successful submission
-            _resetForm();
-          } else {
-            String errorMsg = 'Failed to add event.';
-            if (response.body.isNotEmpty) {
-              try {
-                final errorResponse = jsonDecode(response.body);
-                errorMsg = 'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
-              } catch (_) {
-                // If response is not JSON, keep the default error message
-              }
-            }
-            _showErrorMessage(errorMsg);
-          }
-        }
-      } catch (e) {
-        _showErrorMessage('Error: $e');
-      } finally {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+    // Validate the fields before proceeding
+    if (!_validateFields()) {
+      return; // If validation fails, exit the function
     }
+
+    setState(() {
+      _isLoading = true; // Show loading indicator
+    });
+
+    try {
+      String token = await _fetchToken(); // Fetch the authentication token
+      String url = ''; // Initialize the URL
+      Map<String, dynamic> body = {}; // Initialize the request body
+
+      // Handle different booking types
+      if (_selectedBookingType == '1. Add Meeting') {
+        // URL for Type 1
+        url = 'https://demo-application-api.flexiflows.co/api/work-tracking/meeting/insert';
+
+        // Determine status based on the presence of members
+        String status = _selectedMembers.isEmpty ? 'private' : 'public';
+
+        // Building the request body
+        body = {
+          "title": _titleController.text.trim(),
+          "description": _descriptionController.text.trim(),
+          "fromdate": formatDateTime(_startDateTime),
+          "todate": formatDateTime(_endDateTime),
+          "location": _location ?? '',
+          "status": status,
+          "notification": _notification ?? 5,
+          "guests": _selectedMembers.map((member) {
+            Map<String, dynamic> guest = {"value": member['employee_id']};
+            if (member['employee_name'] != null) {
+              guest['name'] = member['employee_name'];
+            }
+            return guest;
+          }).toList(),
+        };
+
+        // Debug: Print the API payload
+        if (kDebugMode) {
+          print('Submitting Type 1 Add Meeting with body:');
+          print(jsonEncode(body));
+        }
+
+        // Sending the POST request
+        final response = await http.post(
+          Uri.parse(url),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(body),
+        );
+
+        // Debug: Print the response status and body
+        if (kDebugMode) {
+          print('Response Status Code: ${response.statusCode}');
+          print('Response Body: ${response.body}');
+        }
+
+        // Handle the response
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          _showSuccessMessage('Event added successfully!');
+          _resetForm(); // Reset the form after successful submission
+        } else {
+          String errorMsg = 'Failed to add event.';
+          if (response.body.isNotEmpty) {
+            try {
+              final errorResponse = jsonDecode(response.body);
+              errorMsg = 'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
+            } catch (e) {
+              // Debug: Print JSON parsing error
+              if (kDebugMode) {
+                print('Error parsing response JSON: $e');
+              }
+            }
+          }
+          _showErrorMessage(errorMsg);
+        }
+      } else if (_selectedBookingType == '2. Meeting and Booking Meeting Room') {
+        // URL for Type 2
+        url = 'https://demo-application-api.flexiflows.co/api/office-administration/book_meeting_room';
+        // Building the request body
+        body = {
+          "room_id": _roomId,
+          "title": _titleController.text.trim(),
+          "from_date_time": formatDateTime(_startDateTime),
+          "to_date_time": formatDateTime(_endDateTime),
+          "employee_tel": _employeeTelController.text.trim(),
+          "remark": _remarkController.text.trim(),
+          "meeting_type": _location ?? '',
+          "notification": _notification ?? 5,
+          "members": _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList(),
+        };
+
+        // Debug: Print the API payload
+        if (kDebugMode) {
+          print('Submitting Type 2 Meeting and Booking Meeting Room with body:');
+          print(jsonEncode(body));
+        }
+
+        // Sending the POST request
+        final response = await http.post(
+          Uri.parse(url),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(body),
+        );
+
+        // Debug: Print the response status and body
+        if (kDebugMode) {
+          print('Response Status Code: ${response.statusCode}');
+          print('Response Body: ${response.body}');
+        }
+
+        // Handle the response
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          _showSuccessMessage('Event added successfully!');
+          _resetForm(); // Reset the form after successful submission
+        } else {
+          String errorMsg = 'Failed to add event.';
+          if (response.body.isNotEmpty) {
+            try {
+              final errorResponse = jsonDecode(response.body);
+              errorMsg = 'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
+            } catch (e) {
+              // Debug: Print JSON parsing error
+              if (kDebugMode) {
+                print('Error parsing response JSON: $e');
+              }
+            }
+          }
+          _showErrorMessage(errorMsg);
+        }
+      } else if (_selectedBookingType == '3. Booking Car') {
+        // URL for Type 3
+        url = 'https://demo-application-api.flexiflows.co/api/office-administration/car_permit';
+        // Building the request body
+        body = {
+          "employee_id": _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : null,
+          "place": _placeController.text.trim(),
+          "purpose": _purposeController.text.trim(),
+          "date_in": formatDateTime(_startDateTime),
+          "date_out": formatDateTime(_endDateTime),
+          "notification": _notification ?? 5,
+          "members": _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList(),
+        };
+
+        // Debug: Print the API payload
+        if (kDebugMode) {
+          print('Submitting Type 3 Booking Car with body:');
+          print(jsonEncode(body));
+        }
+
+        // Sending the POST request
+        final response = await http.post(
+          Uri.parse(url),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(body),
+        );
+
+        // Debug: Print the response status and body
+        if (kDebugMode) {
+          print('Response Status Code: ${response.statusCode}');
+          print('Response Body: ${response.body}');
+        }
+
+        // Handle the response
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          _showSuccessMessage('Event added successfully!');
+          _resetForm(); // Reset the form after successful submission
+        } else {
+          String errorMsg = 'Failed to add event.';
+          if (response.body.isNotEmpty) {
+            try {
+              final errorResponse = jsonDecode(response.body);
+              errorMsg = 'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
+            } catch (e) {
+              // Debug: Print JSON parsing error
+              if (kDebugMode) {
+                print('Error parsing response JSON: $e');
+              }
+            }
+          }
+          _showErrorMessage(errorMsg);
+        }
+      } else {
+        _showErrorMessage('Invalid booking type selected.');
+      }
+    } catch (e) {
+      // Debug: Print exception details
+      if (kDebugMode) {
+        print('Exception during submission: $e');
+      }
+      _showErrorMessage('An error occurred while submitting the event. Please try again.');
+    } finally {
+      setState(() {
+        _isLoading = false; // Hide loading indicator
+      });
+    }
+  }
+
+  /// Formats DateTime to 'yyyy-MM-dd HH:mm:ss'
+  String formatDateTime(DateTime? dateTime) {
+    return dateTime != null ? DateFormat('yyyy-MM-dd HH:mm:ss').format(dateTime) : '';
   }
 
   /// Resets the form fields to default values
@@ -369,7 +422,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       _startDateTime = null;
       _endDateTime = null;
       _selectedMembers = [];
-      _selectedFiles = [];
       _projectId = null;
       _statusId = null;
       _roomId = null;
@@ -378,7 +430,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       _notification = null;
       _selectedProject = null;
       _selectedStatus = null;
-      // Removed _permitBranchId as it's no longer used
     });
   }
 
@@ -400,14 +451,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           _showErrorMessage('Please enter a description.');
           return false;
         }
-        if (_selectedProject == null) {
-          _showErrorMessage('Please select a project.');
-          return false;
-        }
-        if (_selectedStatus == null) {
-          _showErrorMessage('Please select a status.');
-          return false;
-        }
         if (_location == null) {
           _showErrorMessage('Please select a location.');
           return false;
@@ -416,11 +459,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           _showErrorMessage('Please select a notification time.');
           return false;
         }
-        // File upload is optional; uncomment if required
-        // if (_selectedFiles.isEmpty) {
-        //   _showErrorMessage('Please add at least one file.');
-        //   return false;
-        // }
+        // For Type 1, selecting members is optional
         break;
 
       case '2. Meeting and Booking Meeting Room':
@@ -444,10 +483,14 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           _showErrorMessage('Please select a notification time.');
           return false;
         }
+        // For Type 2, at least one member must be selected
+        if (_selectedMembers.isEmpty) {
+          _showErrorMessage('Please add at least one member.');
+          return false;
+        }
         break;
 
       case '3. Booking Car':
-        // Name is optional
         if (_placeController.text.isEmpty) {
           _showErrorMessage('Please enter the place.');
           return false;
@@ -456,9 +499,13 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           _showErrorMessage('Please enter the purpose.');
           return false;
         }
-        // Removed check for _permitBranchId as it's now defaulted to '0'
         if (_notification == null) {
           _showErrorMessage('Please select a notification time.');
+          return false;
+        }
+        // For Type 3, at least one member must be selected
+        if (_selectedMembers.isEmpty) {
+          _showErrorMessage('Please add at least one member.');
           return false;
         }
         break;
@@ -480,13 +527,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       return false;
     }
 
-    if (_selectedMembers.isEmpty) {
-      String memberType = _selectedBookingType == '1. Add Meeting' ? 'guest' : 'member';
-      _showErrorMessage('Please add at least one $memberType.');
-      return false;
-    }
-
-    return true;
+    return true; // All validations passed
   }
 
   /// Shows error message using SnackBar
@@ -511,99 +552,38 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     );
   }
 
-  /// Shows date picker for selecting date
-  Future<void> _selectDate(BuildContext context, bool isStartDate) async {
-    final DateTime initialDate = isStartDate ? (_startDateTime ?? DateTime.now()) : (_endDateTime ?? DateTime.now());
-    final DateTime? picked = await showDatePicker(
+  /// Shows date and time picker for selecting date and time
+  Future<void> _selectDateTime(BuildContext context, bool isStartDateTime) async {
+    final DateTime initialDate = isStartDateTime ? (_startDateTime ?? DateTime.now()) : (_endDateTime ?? DateTime.now());
+    final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
       firstDate: DateTime(2020),
       lastDate: DateTime(2101),
     );
-    if (picked != null) {
-      setState(() {
-        if (isStartDate) {
-          _startDateTime = DateTime(
-            picked.year,
-            picked.month,
-            picked.day,
-            _startDateTime?.hour ?? 7,
-            _startDateTime?.minute ?? 0,
-          );
-          if (kDebugMode) {
-            print('Start DateTime: $_startDateTime');
-          } // Debug statement
-        } else {
-          _endDateTime = DateTime(
-            picked.year,
-            picked.month,
-            picked.day,
-            _endDateTime?.hour ?? 17,
-            _endDateTime?.minute ?? 0,
-          );
-          if (kDebugMode) {
-            print('End DateTime: $_endDateTime');
-          } // Debug statement
-        }
-      });
-    }
-  }
-
-  /// Shows time picker for selecting time
-  Future<void> _selectTime(BuildContext context, bool isStartTime) async {
-    double minHours = (isStartTime ? 7 : ((_startDateTime?.hour ?? 0) + 2)).toDouble();
-    double minMinutes = (isStartTime ? 7 : _startDateTime?.minute)!.toDouble();
-    int? fetchHour = isStartTime
-        ? _startDateTime?.hour
-        : (_endDateTime!.hour > minHours.toInt())
-            ? _endDateTime?.hour
-            : minHours.toInt();
-    int? fetchMinute = isStartTime
-        ? _startDateTime?.minute
-        : (_endDateTime!.minute > minMinutes.toInt())
-            ? _endDateTime?.minute
-            : minMinutes.toInt();
-    Time time = Time(
-      hour: fetchHour ?? 7,
-      minute: fetchMinute ?? 0,
-    );
-    Navigator.of(context).push(
-      showPicker(
+    if (pickedDate != null) {
+      final TimeOfDay initialTime = TimeOfDay.fromDateTime(initialDate);
+      final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
-        value: time,
-        minHour: minHours,
-        maxHour: 17,
-        duskSpanInMinutes: 120, // optional
-        onChange: (e) {
-          time = Time(hour: e.hour, minute: e.minute);
-          setState(() {
-            if (isStartTime) {
-              _startDateTime = DateTime(
-                _startDateTime?.year ?? DateTime.now().year,
-                _startDateTime?.month ?? DateTime.now().month,
-                _startDateTime?.day ?? DateTime.now().day,
-                e.hour,
-                e.minute,
-              );
-              if (kDebugMode) {
-                print('Start Time: $_startDateTime');
-              } // Debug statement
-            } else {
-              _endDateTime = DateTime(
-                _endDateTime?.year ?? DateTime.now().year,
-                _endDateTime?.month ?? DateTime.now().month,
-                _endDateTime?.day ?? DateTime.now().day,
-                e.hour,
-                e.minute,
-              );
-              if (kDebugMode) {
-                print('End Time: $_endDateTime');
-              } // Debug statement
+        initialTime: initialTime,
+      );
+      if (pickedTime != null) {
+        setState(() {
+          final DateTime pickedDateTime = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+          if (isStartDateTime) {
+            _startDateTime = pickedDateTime;
+            if (kDebugMode) {
+              print('Start DateTime: $_startDateTime');
             }
-          });
-        },
-      ),
-    );
+          } else {
+            _endDateTime = pickedDateTime;
+            if (kDebugMode) {
+              print('End DateTime: $_endDateTime');
+            }
+          }
+        });
+      }
+    }
   }
 
   /// Shows the Add People page and gets the selected members
@@ -623,28 +603,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         } // Debug statement
       });
     }
-  }
-
-  /// Allows users to pick files to upload (only for Type 1)
-  Future<void> _pickFiles() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      allowMultiple: true,
-      type: FileType.custom,
-      allowedExtensions: ['png', 'jpg', 'jpeg', 'pdf', 'doc', 'docx'],
-    );
-
-    if (result != null) {
-      setState(() {
-        _selectedFiles = result.files;
-      });
-    }
-  }
-
-  /// Removes a selected file
-  void _removeFile(int index) {
-    setState(() {
-      _selectedFiles.removeAt(index);
-    });
   }
 
   /// Shows the booking type modal
@@ -760,9 +718,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       value: _notification,
       items: _notificationOptions
           .map((minutes) => DropdownMenuItem<int>(
-                value: minutes,
-                child: Text('Notify me $minutes min before'),
-              ))
+        value: minutes,
+        child: Text('Notify me $minutes min before'),
+      ))
           .toList(),
       onChanged: (int? newValue) {
         setState(() {
@@ -786,9 +744,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       value: _location,
       items: _locationOptions
           .map((loc) => DropdownMenuItem<String>(
-                value: loc,
-                child: Text(loc),
-              ))
+        value: loc,
+        child: Text(loc),
+      ))
           .toList(),
       onChanged: (String? newValue) {
         setState(() {
@@ -797,80 +755,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         });
       },
     );
-  }
-
-  /// Shows the add files dialog (only for Type 1)
-  void _showAddFilesDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Add Files'),
-          content: ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _pickFiles();
-            },
-            child: const Text('Choose Files'),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Builds the file upload section (only for Type 1)
-  Widget _buildFileUploadSection() {
-    if (_selectedBookingType != '1. Add Meeting' || _selectedFiles.isEmpty) {
-      return Container();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 16.0),
-        const Text(
-          'Uploaded Files',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
-        ),
-        const SizedBox(height: 8.0),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _selectedFiles.length,
-          itemBuilder: (context, index) {
-            final file = _selectedFiles[index];
-            return ListTile(
-              leading: Icon(
-                _getFileIcon(file.extension),
-                color: Colors.blue,
-              ),
-              title: Text(file.name),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete, color: Colors.red),
-                onPressed: () => _removeFile(index),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  /// Returns appropriate icon based on file extension
-  IconData _getFileIcon(String? extension) {
-    switch (extension?.toLowerCase()) {
-      case 'pdf':
-        return Icons.picture_as_pdf;
-      case 'doc':
-      case 'docx':
-        return Icons.description;
-      case 'png':
-      case 'jpg':
-      case 'jpeg':
-        return Icons.image;
-      default:
-        return Icons.insert_drive_file;
-    }
   }
 
   /// Builds the UI based on the selected booking type
@@ -921,6 +805,14 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               ),
             ),
             const SizedBox(height: 16.0),
+            // Meeting Type Dropdown
+            const Text(
+              'Meeting Type*',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+            ),
+            const SizedBox(height: 8.0),
+            _buildLocationDropdown(),
+            const SizedBox(height: 16.0),
             // Book a Meeting Room Text
             const Text(
               'Book a Meeting Room*',
@@ -960,6 +852,22 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 16.0),
+            // Name Input (Optional)
+            const Text(
+              'Name (Optional)',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+            ),
+            const SizedBox(height: 8.0),
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
+            ),
             const SizedBox(height: 16.0),
             // Place Input
             const Text(
@@ -1078,10 +986,10 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Start Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
+                  const Text('Start Date & Time', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
                   const SizedBox(height: 8.0),
                   GestureDetector(
-                    onTap: () => _selectDate(context, true),
+                    onTap: () => _selectDateTime(context, true),
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10.0),
@@ -1091,7 +999,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_startDateTime == null ? 'Start Date' : DateFormat('yyyy-MM-dd').format(_startDateTime!)),
+                          Text(_startDateTime == null ? 'Start Date & Time' : DateFormat('yyyy-MM-dd HH:mm').format(_startDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1105,10 +1013,10 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('End Date', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
+                  const Text('End Date & Time', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
                   const SizedBox(height: 8.0),
                   GestureDetector(
-                    onTap: () => _selectDate(context, false),
+                    onTap: () => _selectDateTime(context, false),
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(10.0),
@@ -1118,7 +1026,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_endDateTime == null ? 'End Date' : DateFormat('yyyy-MM-dd').format(_endDateTime!)),
+                          Text(_endDateTime == null ? 'End Date & Time' : DateFormat('yyyy-MM-dd HH:mm').format(_endDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1130,105 +1038,22 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           ],
         ),
         const SizedBox(height: 26.0),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Start Time', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
-                  const SizedBox(height: 8.0),
-                  GestureDetector(
-                    onTap: () => _selectTime(context, true),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.grey),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(_startDateTime == null ? 'Start Time' : TimeOfDay.fromDateTime(_startDateTime!).format(context)),
-                          const Icon(Icons.access_time),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+        // Add People button
+        Center(
+          child: ElevatedButton(
+            onPressed: _showAddPeoplePage,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20.0),
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 12.0),
             ),
-            const SizedBox(width: 20.0),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('End Time', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
-                  const SizedBox(height: 8.0),
-                  GestureDetector(
-                    onTap: () => _selectTime(context, false),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.grey),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(_endDateTime == null ? 'End Time' : TimeOfDay.fromDateTime(_endDateTime!).format(context)),
-                          const Icon(Icons.access_time),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            child: const Text(
+              '+ Add People',
+              style: TextStyle(color: Colors.white),
             ),
-          ],
-        ),
-        const SizedBox(height: 16.0),
-        // Add People and Add Files buttons
-        Row(
-          children: [
-            // '+ Add People' button
-            Expanded(
-              child: ElevatedButton(
-                onPressed: _showAddPeoplePage,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20.0),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 12.0),
-                ),
-                child: const Text(
-                  '+ Add People',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-            const SizedBox(width: 20.0),
-            // Show Add Files button only for Type 1
-            if (_selectedBookingType == '1. Add Meeting') ...[
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _showAddFilesDialog,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20.0),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 12.0),
-                  ),
-                  child: const Text(
-                    '+ Add Files',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
         const SizedBox(height: 16.0),
         // Display selected members
@@ -1266,8 +1091,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               }).toList(),
             ),
           ),
-        // Display selected files (only for Type 1)
-        _buildFileUploadSection(),
         const SizedBox(height: 20.0),
       ],
     );
@@ -1275,8 +1098,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate AppBar height
-
     // Build the UI
     return Scaffold(
       appBar: AppBar(
@@ -1315,7 +1136,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                     child: ElevatedButton(
                       onPressed: _submitEvent,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFFE2AD30),
+                        backgroundColor: const Color(0xFFE2AD30),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20.0),
                         ),

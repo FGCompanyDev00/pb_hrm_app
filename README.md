@@ -22,7 +22,7 @@ Core Features
 Log-In
 Username via Email
 Password
-Option to change to biometric-based authentication with fallback to PIN code
+Option to change to biometric-based authentication
 Change Language: English, Laos, Chinese
 Forgot Password: Reset via Email
 Settings
