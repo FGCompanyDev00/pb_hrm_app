@@ -191,7 +191,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       // Save to local storage for later synchronization
       OfflineService offlineService = Provider.of<OfflineService>(context, listen: false);
       await offlineService.addPendingAttendance(record);
-      _showCustomDialog(context, AppLocalizations.of(context)!.offlineMode, AppLocalizations.of(context)!.checkInSavedOffline, isSuccess: false);
+      if (mounted) _showCustomDialog(AppLocalizations.of(context)!.offlineMode, AppLocalizations.of(context)!.checkInSavedOffline, isSuccess: false);
     }
   }
 
@@ -240,7 +240,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       // Save to local storage for later synchronization
       OfflineService offlineService = Provider.of<OfflineService>(context, listen: false);
       await offlineService.addPendingAttendance(record);
-      _showCustomDialog(context, AppLocalizations.of(context)!.offlineMode, AppLocalizations.of(context)!.checkOutSavedOffline, isSuccess: false);
+      if (mounted) _showCustomDialog(AppLocalizations.of(context)!.offlineMode, AppLocalizations.of(context)!.checkOutSavedOffline, isSuccess: false);
     }
   }
 
@@ -271,7 +271,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     String? token = prefs.getString('token');
 
     if (token == null) {
-      _showCustomDialog(context, AppLocalizations.of(context)!.error, AppLocalizations.of(context)!.noTokenFound, isSuccess: false);
+      if (mounted) {
+        _showCustomDialog(
+          AppLocalizations.of(context)!.error,
+          AppLocalizations.of(context)!.noTokenFound,
+          isSuccess: false,
+        );
+      }
       return;
     }
 
@@ -282,12 +288,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode(record.toJson()),
+        body: jsonEncode({
+          "device_id": record.deviceId,
+          "latitude": record.latitude,
+          "longitude": record.longitude,
+        }),
       );
 
       if (response.statusCode == 201 || response.statusCode == 202) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
-        _showCustomDialog(context, AppLocalizations.of(context)!.success, responseData['message'] ?? AppLocalizations.of(context)!.checkInOutSuccessful, isSuccess: true);
+        if (mounted) _showCustomDialog(AppLocalizations.of(context)!.success, responseData['message'] ?? AppLocalizations.of(context)!.checkInOutSuccessful, isSuccess: true);
       } else {
         throw Exception('Failed with status code ${response.statusCode}');
       }
@@ -295,7 +305,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       // If sending fails, save to local storage
       OfflineService offlineService = Provider.of<OfflineService>(context, listen: false);
       await offlineService.addPendingAttendance(record);
-      _showCustomDialog(context, AppLocalizations.of(context)!.error, '${AppLocalizations.of(context)!.failedToCheckInOut}: $error', isSuccess: false);
+      if (mounted) _showCustomDialog(AppLocalizations.of(context)!.error, '${AppLocalizations.of(context)!.failedToCheckInOut}: $error', isSuccess: false);
     }
   }
 
@@ -308,7 +318,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       String? token = prefs.getString('token');
 
       if (token == null) {
-        throw Exception(AppLocalizations.of(context)!.noTokenFound);
+        if (mounted) throw Exception(AppLocalizations.of(context)!.noTokenFound);
       }
 
       final response = await http.get(
@@ -333,7 +343,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           }).toList();
         });
       } else {
-        throw Exception(AppLocalizations.of(context)!.failedToLoadWeeklyRecords);
+        if (mounted) throw Exception(AppLocalizations.of(context)!.failedToLoadWeeklyRecords);
       }
     } catch (e) {
       if (kDebugMode) {
@@ -435,7 +445,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<String?> _getCheckInTime() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('checkInTime');
+
+    return null;
   }
 
   Future<String?> _getCheckOutTime() async {
@@ -455,14 +466,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
     if (!_biometricEnabled) {
-      _showCustomDialog(context, AppLocalizations.of(context)!.biometricNotEnabled, AppLocalizations.of(context)!.enableBiometricFirst, isSuccess: false);
+      _showCustomDialog(AppLocalizations.of(context)!.biometricNotEnabled, AppLocalizations.of(context)!.enableBiometricFirst, isSuccess: false);
       return;
     }
 
     bool didAuthenticate = await _authenticateWithBiometrics();
 
     if (!didAuthenticate) {
-      _showCustomDialog(context, AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
+      if (context.mounted) _showCustomDialog(AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
       return;
     }
 
@@ -516,7 +527,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           elevation: 10,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              return Container(
+              return SizedBox(
                 width: constraints.maxWidth < 400 ? constraints.maxWidth * 0.9 : 400,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -618,7 +629,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  void _showCustomDialog(BuildContext context, String title, String message, {bool isSuccess = true}) {
+  void _showCustomDialog(String title, String message, {bool isSuccess = true}) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -628,7 +639,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             builder: (context, constraints) {
               return Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Container(
+                child: SizedBox(
                   width: constraints.maxWidth < 400 ? constraints.maxWidth * 0.9 : 400,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -848,26 +859,26 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       onTap: () async {
         if (!_isCheckInActive) {
           if (now.isBefore(checkInTimeAllowed) || now.isAfter(checkInDisabledTime)) {
-            _showCustomDialog(context, AppLocalizations.of(context)!.checkInNotAllowed, AppLocalizations.of(context)!.checkInLateNotAllowed, isSuccess: false);
+            _showCustomDialog(AppLocalizations.of(context)!.checkInNotAllowed, AppLocalizations.of(context)!.checkInLateNotAllowed, isSuccess: false);
           } else if (isCheckInEnabled) {
             bool isAuthenticated = await _authenticateWithBiometrics();
             if (isAuthenticated) {
               _performCheckIn(DateTime.now());
-              _showCustomDialog(context, AppLocalizations.of(context)!.checkInSuccess, AppLocalizations.of(context)!.checkInSuccessMessage, isSuccess: true);
+              if (context.mounted) _showCustomDialog(AppLocalizations.of(context)!.checkInSuccess, AppLocalizations.of(context)!.checkInSuccessMessage, isSuccess: true);
             } else {
-              _showCustomDialog(context, AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
+              if (context.mounted) _showCustomDialog(AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
             }
           }
         } else if (_isCheckInActive && isCheckOutEnabled) {
           bool isAuthenticated = await _authenticateWithBiometrics();
           if (isAuthenticated) {
             _performCheckOut(DateTime.now());
-            _showCustomDialog(context, AppLocalizations.of(context)!.checkOutSuccess, AppLocalizations.of(context)!.checkOutSuccessMessage, isSuccess: true);
+            if (context.mounted) _showCustomDialog(AppLocalizations.of(context)!.checkOutSuccess, AppLocalizations.of(context)!.checkOutSuccessMessage, isSuccess: true);
           } else {
-            _showCustomDialog(context, AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
+            if (context.mounted) _showCustomDialog(AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
           }
         } else if (_isCheckInActive) {
-          _showCustomDialog(context, AppLocalizations.of(context)!.alreadyCheckedIn, AppLocalizations.of(context)!.alreadyCheckedInMessage, isSuccess: false);
+          _showCustomDialog(AppLocalizations.of(context)!.alreadyCheckedIn, AppLocalizations.of(context)!.alreadyCheckedInMessage, isSuccess: false);
         }
       },
       child: Container(

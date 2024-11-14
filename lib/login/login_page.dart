@@ -134,9 +134,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             await _clearCredentials();
           }
 
+          await _storage.write(key: 'username', value: username);
+          await _storage.write(key: 'password', value: password);
+
           if (_biometricEnabled) {
-            await _storage.write(key: 'username', value: username);
-            await _storage.write(key: 'password', value: password);
             await _storage.write(key: 'biometricEnabled', value: 'true');
           }
 
