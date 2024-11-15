@@ -211,7 +211,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       // Handle different booking types
       if (_selectedBookingType == '1. Add Meeting') {
         // URL for Type 1
-        url = 'https://demo-application-api.flexiflows.co/api/work-tracking/meeting/insert';
+        url = 'https://demo-application-api.flexiflows.co/api/work-tracking/out-meeting/insert';
 
         // Determine status based on the presence of members
         String status = _selectedMembers.isEmpty ? 'private' : 'public';

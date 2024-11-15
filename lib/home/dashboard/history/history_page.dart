@@ -502,228 +502,189 @@ class _HistoryPageState extends State<HistoryPage> {
   Widget _buildHistoryCard(
       BuildContext context, Map<String, dynamic> item,
       {required bool isHistory, required Size screenSize}) {
-    final themeNotifier =
-    Provider.of<ThemeNotifier>(context, listen: false);
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
     final String type = item['type'] ?? 'unknown';
 
-    String title = item['title'] ?? 'No Title';
-    String status = item['status'] ?? 'Pending';
-    String employeeName = item['employee_name'] ?? 'N/A';
-    String employeeImage = item['img_path'].isNotEmpty
-        ? item['img_path']
-        : item['img_name'] ??
-        'https://via.placeholder.com/150'; // Prefer img_path
+    Color titleColor;
+    String detailText;
+    Color detailTextColor = Colors.grey;
+    String detailLabel;
+    Color statusColor = _getStatusColor(item['status']);
     Color typeColor = _getTypeColor(type);
-    Color statusColor = _getStatusColor(status);
 
-    String startDate = item['startDate'] ?? '';
-    String endDate = item['endDate'] ?? '';
-
-    String detailLabel = '';
-    String detailValue = '';
-
-    // Determine detail label and value based on type
     switch (type) {
       case 'meeting':
-        detailLabel = 'Employee Name';
-        detailValue = item['employee_name'] ?? 'N/A';
+        titleColor = Colors.green;
+        detailLabel = 'Room:';
+        detailText = item['room'] ?? 'N/A';
+        detailTextColor = Colors.orange;
         break;
       case 'leave':
-        detailLabel = 'Type';
-        detailValue = item['leave_type'] ?? 'N/A';
+        titleColor = Colors.orange;
+        detailLabel = 'Type:';
+        detailText = item['leave_type'] ?? 'N/A';
+        detailTextColor = Colors.orange;
         break;
       case 'car':
-        detailLabel = 'Requestor Name';
-        detailValue = item['employee_name'] ?? 'N/A';
+        titleColor = Colors.blue;
+        detailLabel = 'Tel:';
+        detailText = item['employee_tel']?.toString() ?? 'No phone number';
+        detailTextColor = Colors.grey;
         break;
       default:
-        detailLabel = 'Detail';
-        detailValue = 'N/A';
+        titleColor = Colors.grey;
+        detailLabel = 'Info:';
+        detailText = 'N/A';
     }
 
-    /// Formats date strings
-    String formatDate(String? dateStr) {
-      try {
-        if (dateStr == null || dateStr.isEmpty) {
-          return 'N/A';
-        }
-        // Handle both date and datetime formats
-        DateTime parsedDate;
-        if (dateStr.contains('T')) {
-          parsedDate = DateTime.parse(dateStr);
-        } else if (dateStr.contains(' ')) {
-          parsedDate = DateTime.parse(dateStr);
-        } else {
-          parsedDate = DateTime.parse('${dateStr}T00:00:00.000Z');
-        }
-        return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);
-      } catch (e) {
-        return 'Invalid Date';
-      }
-    }
+    String startDate = item['startDate'] ?? 'N/A';
+    String endDate = item['endDate'] ?? 'N/A';
 
     return GestureDetector(
       onTap: () {
-        String types = type;
-        String id = item['id'] ?? '';
-        String status = item['status'] ?? 'pending';
-
-        if (id.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid ID')),
-          );
-          return;
-        }
-
-        // Navigate to DetailsPage with required parameters
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => DetailsPage(
-              types: types,
-              id: id,
-              status: status,
+              types: type,
+              id: item['id'] ?? '',
+              status: item['status'] ?? 'pending',
             ),
           ),
         );
       },
       child: Card(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(screenSize.width * 0.08),
-          side: BorderSide(color: typeColor, width: screenSize.width * 0.003),
+          borderRadius: BorderRadius.circular(screenSize.width * 0.03),
+          side: BorderSide(color: typeColor, width: screenSize.width * 0.001),
         ),
-        elevation: 1.5,
-        margin: EdgeInsets.symmetric(
-          vertical: screenSize.height * 0.008,
-        ),
-        child: Row(
+        margin: EdgeInsets.symmetric(vertical: screenSize.height * 0.008),
+        child: Stack(
           children: [
-            // Colored side bar indicating type
-            Container(
-              width: screenSize.width * 0.008, // 1.2% of screen width
-              height: screenSize.height * 0.10, // 12% of screen height
-              decoration: BoxDecoration(
+            Positioned(
+              top: screenSize.height * 0.01,
+              bottom: screenSize.height * 0.01,
+              left: screenSize.width * 0.001,
+              child: Container(
+                width: screenSize.width * 0.005,
                 color: typeColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(15.0),
-                  bottomLeft: Radius.circular(15.0),
-                ),
               ),
             ),
-            SizedBox(width: screenSize.width * 0.03),
-            // Main content of the card
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  vertical: screenSize.height * 0.012,
-                  horizontal: screenSize.width * 0.02,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Type Icon and Title
-                    Row(
-                      children: [
-                        Icon(
-                          item['icon'],
-                          color: typeColor,
-                          size: screenSize.width * 0.07,
-                        ),
-                        SizedBox(width: screenSize.width * 0.02),
-                        Text(
-                          type[0].toUpperCase() + type.substring(1),
-                          style: TextStyle(
-                            color: typeColor,
-                            fontSize: screenSize.width * 0.05,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: screenSize.height * 0.005),
-                    // Title
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
-                        fontSize: screenSize.width * 0.05,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: screenSize.height * 0.003),
-                    // From and To Dates
-                    Text(
-                      'From: ${formatDate(startDate)}',
-                      style: TextStyle(
-                        color: Colors.grey[700],
-                        fontSize: screenSize.width * 0.035,
-                      ),
-                    ),
-                    Text(
-                      'To: ${formatDate(endDate)}',
-                      style: TextStyle(
-                        color: Colors.grey[700],
-                        fontSize: screenSize.width * 0.035,
-                      ),
-                    ),
-                    SizedBox(height: screenSize.height * 0.003),
-                    // Detail Label and Value
-                    Text(
-                      '$detailLabel: $detailValue',
-                      style: TextStyle(
-                        color: Colors.grey[700],
-                        fontSize: screenSize.width * 0.035,
-                      ),
-                    ),
-                    SizedBox(height: screenSize.height * 0.005),
-                    // Status Indicator
-                    Row(
-                      children: [
-                        Text(
-                          'Status: ',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: screenSize.width * 0.035,
-                          ),
-                        ),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: screenSize.width * 0.02,
-                            vertical: screenSize.height * 0.005,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            borderRadius:
-                            BorderRadius.circular(screenSize.width * 0.03),
-                          ),
-                          child: Text(
-                            status[0].toUpperCase() +
-                                status.substring(1),
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: screenSize.width * 0.035,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            // Employee Avatar
             Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: screenSize.width * 0.02,
+                vertical: screenSize.height * 0.01,
+                horizontal: screenSize.width * 0.03,
               ),
-              child: CircleAvatar(
-                backgroundImage: NetworkImage(employeeImage),
-                radius: screenSize.width * 0.07, // Responsive radius
-                onBackgroundImageError: (_, __) {},
-                backgroundColor: Colors.grey[300],
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        item['icon'],
+                        color: typeColor,
+                        size: screenSize.width * 0.08,
+                      ),
+                      SizedBox(height: screenSize.height * 0.003),
+                      Text(
+                        type == 'meeting' ? 'Room' : type[0].toUpperCase() + type.substring(1),
+                        style: TextStyle(
+                          color: typeColor,
+                          fontSize: screenSize.width * 0.03,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(width: screenSize.width * 0.03),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item['title'] ?? 'No Title',
+                          style: TextStyle(
+                            color: titleColor,
+                            fontSize: screenSize.width * 0.038,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: screenSize.height * 0.005),
+                        Text(
+                          'Date: $startDate',
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                            fontSize: screenSize.width * 0.025,
+                          ),
+                        ),
+                        Text(
+                          'To: $endDate',
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                            fontSize: screenSize.width * 0.025,
+                          ),
+                        ),
+                        SizedBox(height: screenSize.height * 0.005),
+                        Text(
+                          '$detailLabel $detailText',
+                          style: TextStyle(
+                            color: detailTextColor,
+                            fontSize: screenSize.width * 0.03,
+                          ),
+                        ),
+                        SizedBox(height: screenSize.height * 0.006),
+                        Row(
+                          children: [
+                            Text(
+                              'Status: ',
+                              style: TextStyle(
+                                fontSize: screenSize.width * 0.03,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenSize.width * 0.015,
+                                vertical: screenSize.height * 0.003,
+                              ),
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                borderRadius: BorderRadius.circular(
+                                  screenSize.width * 0.02,
+                                ),
+                              ),
+                              child: Text(
+                                item['status'].toString().toUpperCase(),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: screenSize.width * 0.03,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: screenSize.width * 0.015,
+                  bottom: screenSize.height * 0.02,
+                ),
+                child: CircleAvatar(
+                  backgroundImage: NetworkImage(item['img_name']),
+                  radius: screenSize.width * 0.06,
+                  backgroundColor: Colors.grey[300],
+                ),
               ),
             ),
           ],
