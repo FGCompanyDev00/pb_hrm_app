@@ -511,9 +511,12 @@ class CalendarDayWidgetCard extends HookWidget {
                     ),
                   ),
                 )),
-        child: CircleAvatar(
-          radius: 15,
-          backgroundColor: Colors.black54,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.black54,
+            borderRadius: BorderRadius.circular(50),
+          ),
           child: Text(
             count ?? '',
             style: const TextStyle(color: Colors.white, fontSize: 11),

@@ -240,6 +240,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           // Parse 'from_date' and 'start_time' separately and combine
           DateTime fromDate = DateTime.parse(item['from_date']);
           List<String> startTimeParts = item['start_time'] != "" ? item['start_time'].split(':') : ["00", "00"];
+          if (startTimeParts.length == 3) startTimeParts.removeLast();
+
           if (startTimeParts.length != 2) {
             throw const FormatException('Invalid start_time format');
           }
