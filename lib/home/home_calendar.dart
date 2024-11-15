@@ -130,7 +130,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         _fetchMinutesOfMeeting(),
       ]).whenComplete(() => _filterAndSearchEvents());
     } catch (e) {
-      showSnackBar('Error fetching data: $e');
+      // showSnackBar('Error fetching data: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -192,7 +192,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing leave requests: $e');
+      // showSnackBar('Error parsing leave requests: $e');
     }
   }
 
@@ -220,7 +220,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-        showSnackBar('Invalid meeting data format.');
+        // showSnackBar('Invalid meeting data format.');
         return;
       }
 
@@ -229,7 +229,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       for (var item in results) {
         // Ensure necessary fields are present
         if (item['from_date'] == null || item['to_date'] == null || item['start_time'] == null || item['end_time'] == null) {
-          showSnackBar('Missing date or time fields in meeting data.');
+          // showSnackBar('Missing date or time fields in meeting data.');
           continue;
         }
 
@@ -265,7 +265,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             int.parse(endTimeParts[1]),
           );
         } catch (e) {
-          showSnackBar('Error parsing meeting dates or times: $e');
+          // showSnackBar('Error parsing meeting dates or times: $e');
           continue;
         }
 
@@ -305,7 +305,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing meeting data: $e');
+      // showSnackBar('Error parsing meeting data: $e');
     }
 
     return;
@@ -330,7 +330,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         String endTime = item['end_time'] != "" ? item['end_time'].toString() : '23:59';
 
         if (dateFrom.isEmpty || dateTo.isEmpty) {
-          showSnackBar('Missing from_date or to_date in minutes of meeting.');
+          // showSnackBar('Missing from_date or to_date in minutes of meeting.');
           continue;
         }
 
@@ -365,7 +365,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             int.parse(timeInParts[1]),
           );
         } catch (e) {
-          showSnackBar('Error parsing car booking dates: $e');
+          // showSnackBar('Error parsing car booking dates: $e');
           continue;
         }
 
@@ -402,7 +402,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing meeting room bookings: $e');
+      // showSnackBar('Error parsing meeting room bookings: $e');
     }
     return;
   }
@@ -421,7 +421,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         final DateTime? endDateTime = item['to_date_time'] != null ? DateTime.parse(item['to_date_time']) : null;
 
         if (startDateTime == null || endDateTime == null) {
-          showSnackBar('Missing from_date_time or to_date_time in meeting room booking.');
+          // showSnackBar('Missing from_date_time or to_date_time in meeting room booking.');
           continue;
         }
 
@@ -455,7 +455,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing meeting room bookings: $e');
+      // showSnackBar('Error parsing meeting room bookings: $e');
     }
     return;
   }
@@ -471,7 +471,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
       for (var item in carBookings) {
         if (item['date_out'] == null || item['date_in'] == null) {
-          showSnackBar('Missing date_out or date_in in car booking.');
+          // showSnackBar('Missing date_out or date_in in car booking.');
           continue;
         }
 
@@ -511,7 +511,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             int.parse(timeInParts[1]),
           );
         } catch (e) {
-          showSnackBar('Error parsing car booking dates: $e');
+          // showSnackBar('Error parsing car booking dates: $e');
           continue;
         }
 
@@ -545,7 +545,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing booking car: $e');
+      // showSnackBar('Error parsing booking car: $e');
     }
     return;
   }
