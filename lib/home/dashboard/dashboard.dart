@@ -29,8 +29,8 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   bool _hasUnreadNotifications = true;
-  late Future<UserProfile> futureUserProfile;
-  late Future<List<String>> futureBanners;
+  Future<UserProfile>? futureUserProfile;
+  Future<List<String>>? futureBanners;
   late PageController _pageController;
   int _currentPage = 0;
   Timer? _carouselTimer;
@@ -43,19 +43,22 @@ class _DashboardState extends State<Dashboard> {
   @override
   void initState() {
     super.initState();
-    // Initialize Hive boxes
-    _initializeHiveBoxes();
+    _init();
+  }
 
-    // Fetch user data and banners
+  // Asynchronous initialization
+  Future<void> _init() async {
+    await _initializeHiveBoxes();
+
+    setState(() {
+      futureUserProfile = loadUserProfile();
+      futureBanners = loadBanners();
+      _pageController = PageController(initialPage: _currentPage);
+      _startCarouselTimer();
+    });
+
+    // Fetch user data and update via Provider if not already fetched
     Provider.of<UserProvider>(context, listen: false).fetchAndUpdateUser();
-    futureUserProfile = fetchUserProfile();
-    futureBanners = fetchBanners();
-
-    // Initialize PageController
-    _pageController = PageController(initialPage: _currentPage);
-
-    // Start auto-swiping the carousel every 5 seconds
-    _startCarouselTimer();
   }
 
   // Initialize Hive boxes
@@ -71,6 +74,38 @@ class _DashboardState extends State<Dashboard> {
       await Hive.openBox<List<String>>('bannersBox');
     }
     bannersBox = Hive.box<List<String>>('bannersBox');
+  }
+
+  // Load User Profile: Check Hive first, else fetch from network
+  Future<UserProfile> loadUserProfile() async {
+    final cachedProfileJson = userProfileBox.get('userProfile');
+    if (cachedProfileJson != null) {
+      if (kDebugMode) {
+        print("Loaded user profile from Hive cache.");
+      }
+      return UserProfile.fromJson(jsonDecode(cachedProfileJson));
+    } else {
+      if (kDebugMode) {
+        print("No cached user profile found. Fetching from network.");
+      }
+      return await fetchUserProfile();
+    }
+  }
+
+  // Load Banners: Check Hive first, else fetch from network
+  Future<List<String>> loadBanners() async {
+    final cachedBanners = bannersBox.get('banners');
+    if (cachedBanners != null && cachedBanners.isNotEmpty) {
+      if (kDebugMode) {
+        print("Loaded banners from Hive cache.");
+      }
+      return cachedBanners;
+    } else {
+      if (kDebugMode) {
+        print("No cached banners found. Fetching from network.");
+      }
+      return await fetchBanners();
+    }
   }
 
   // Start the carousel auto-swipe timer
@@ -98,7 +133,7 @@ class _DashboardState extends State<Dashboard> {
     });
   }
 
-  // Fetch user profile from API or Hive
+  // Fetch user profile from API and save to Hive
   Future<UserProfile> fetchUserProfile() async {
     setState(() {
       _isLoading = true; // Start loading
@@ -141,7 +176,6 @@ class _DashboardState extends State<Dashboard> {
         if (kDebugMode) {
           print("Error: Failed to fetch data. Status Code: ${response.statusCode}");
         }
-        // Removed the exception related to 'failedToLoadBanners'
         throw Exception(AppLocalizations.of(context)!.errorWithDetails('Status Code: ${response.statusCode}'));
       }
     } catch (e) {
@@ -170,7 +204,7 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
-  // Fetch banners from API or Hive
+  // Fetch banners from API and save to Hive
   Future<List<String>> fetchBanners() async {
     final prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
@@ -191,6 +225,10 @@ class _DashboardState extends State<Dashboard> {
         // Save banners to Hive
         await bannersBox.put('banners', banners);
 
+        if (kDebugMode) {
+          print("Fetched and saved banners to Hive successfully.");
+        }
+
         return banners;
       } else {
         if (kDebugMode) {
@@ -205,11 +243,20 @@ class _DashboardState extends State<Dashboard> {
       }
 
       // Retrieve from Hive if network request fails
-      return bannersBox.get('banners') ?? [];
+      final cachedBanners = bannersBox.get('banners');
+      if (cachedBanners != null && cachedBanners.isNotEmpty) {
+        if (kDebugMode) {
+          print("Retrieved banners from Hive successfully.");
+        }
+        return cachedBanners;
+      } else {
+        if (kDebugMode) {
+          print("Error: No cached banners available in Hive.");
+        }
+        return [];
+      }
     }
   }
-
-  // Refresh user profile manually
 
   @override
   void dispose() {
@@ -220,6 +267,17 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   Widget build(BuildContext context) {
+    // Show a loading indicator until initialization is complete
+    if (futureUserProfile == null || futureBanners == null) {
+      return Scaffold(
+        body: Center(
+          child: _isLoading
+              ? const CircularProgressIndicator()
+              : const Text('Initializing...'),
+        ),
+      );
+    }
+
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
@@ -260,6 +318,9 @@ class _DashboardState extends State<Dashboard> {
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
+      flexibleSpace: const Center(
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 
@@ -323,7 +384,9 @@ class _DashboardState extends State<Dashboard> {
                       children: [
                         CircleAvatar(
                           radius: 28,
-                          backgroundImage: userProfile.imgName != 'default_avatar.jpg' ? NetworkImage(userProfile.imgName) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                          backgroundImage: userProfile.imgName != 'default_avatar.jpg'
+                              ? NetworkImage(userProfile.imgName)
+                              : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
                           backgroundColor: Colors.white,
                         ),
                         const SizedBox(height: 8),
@@ -524,7 +587,7 @@ class _DashboardState extends State<Dashboard> {
           'assets/data-2.png',
           AppLocalizations.of(context)!.history,
           isDarkMode,
-          () {
+              () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const HistoryPage()),
@@ -536,7 +599,7 @@ class _DashboardState extends State<Dashboard> {
           'assets/people.png',
           AppLocalizations.of(context)!.approvals,
           isDarkMode,
-          () {
+              () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
@@ -548,7 +611,7 @@ class _DashboardState extends State<Dashboard> {
           'assets/status-up.png',
           AppLocalizations.of(context)!.workTracking,
           isDarkMode,
-          () {
+              () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
@@ -560,7 +623,7 @@ class _DashboardState extends State<Dashboard> {
           'assets/car_return.png',
           AppLocalizations.of(context)!.carReturn,
           isDarkMode,
-          () {
+              () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ReturnCarPage()),
@@ -572,11 +635,12 @@ class _DashboardState extends State<Dashboard> {
           'assets/KPI.png',
           AppLocalizations.of(context)!.kpi,
           isDarkMode,
-          () {
+              () {
             // Navigator.push(
             //   context,
-            //   MaterialPageRoute(builder: (context) => const ReturnCarPage()),
+            //   MaterialPageRoute(builder: (context) => const KPIPage()),
             // );
+            // Implement KPIPage navigation if available
           },
         ),
         _buildActionCard(
@@ -584,11 +648,12 @@ class _DashboardState extends State<Dashboard> {
           'assets/inventory.png',
           AppLocalizations.of(context)!.inventory,
           isDarkMode,
-          () {
+              () {
             // Navigator.push(
             //   context,
-            //   MaterialPageRoute(builder: (context) => const ReturnCarPage()),
+            //   MaterialPageRoute(builder: (context) => const InventoryPage()),
             // );
+            // Implement InventoryPage navigation if available
           },
         ),
       ],
@@ -707,7 +772,7 @@ class _DashboardState extends State<Dashboard> {
                             MaterialPageRoute(
                               builder: (context) => const LoginPage(),
                             ),
-                            (Route<dynamic> route) => false,
+                                (Route<dynamic> route) => false,
                           );
                         },
                         style: ElevatedButton.styleFrom(

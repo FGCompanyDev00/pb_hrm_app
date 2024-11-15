@@ -150,14 +150,11 @@ class _HistoryPageState extends State<HistoryPage> {
       'statusColor': _getStatusColor(_getItemStatus(type, item)),
       'icon': _getIconForType(type),
       'iconColor': _getTypeColor(type),
-      'timestamp':
-      DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now(),
-      'img_name': item['img_name'] ??
-          'https://via.placeholder.com/150', // Placeholder image
+      'timestamp': DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now(),
+      'img_name': item['img_name'] ?? 'https://via.placeholder.com/150', // Placeholder image
       'img_path': item['img_path'] ?? '', // Add img_path if available
     };
 
-    // Add type-specific fields and ensure 'id' is consistent
     switch (type) {
       case 'meeting':
         formattedItem.addAll({
@@ -167,7 +164,6 @@ class _HistoryPageState extends State<HistoryPage> {
           'room': item['room_name'] ?? 'No Room Info',
           'employee_name': item['employee_name'] ?? 'N/A',
           'id': item['uid']?.toString() ?? '',
-          'status': _getItemStatus(type, item),
           'remark': item['remark'] ?? '',
         });
         break;
@@ -181,17 +177,19 @@ class _HistoryPageState extends State<HistoryPage> {
           'leave_type': leaveTypeName,
           'employee_name': item['requestor_name'] ?? 'N/A',
           'id': item['take_leave_request_id']?.toString() ?? '',
-          'status': _getItemStatus(type, item),
         });
         break;
       case 'car':
+
+        print('Car Item Data: $item');
+
         formattedItem.addAll({
           'title': item['purpose'] ?? 'No Purpose',
           'startDate': item['date_out'] ?? '',
           'endDate': item['date_in'] ?? '',
           'employee_name': item['requestor_name'] ?? 'N/A',
+          'employee_tel': item['employee_tel']?.toString() ?? 'No phone number',
           'id': item['uid']?.toString() ?? '',
-          'status': _getItemStatus(type, item),
         });
         break;
       default:
@@ -395,7 +393,7 @@ class _HistoryPageState extends State<HistoryPage> {
   Widget _buildTabBar(Size screenSize) {
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: screenSize.width * 0.04,
+        horizontal: screenSize.width * 0.03,
         vertical: screenSize.height * 0.003,
       ),
       child: Row(
@@ -409,7 +407,7 @@ class _HistoryPageState extends State<HistoryPage> {
               },
               child: Container(
                 padding: EdgeInsets.symmetric(
-                  vertical: screenSize.height * 0.012,
+                  vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
                   color: _isPendingSelected
@@ -423,22 +421,19 @@ class _HistoryPageState extends State<HistoryPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.hourglass_empty_rounded,
-                      size: screenSize.width * 0.07,
-                      color: _isPendingSelected
-                          ? Colors.white
-                          : Colors.grey[600],
+                    Image.asset(
+                      'assets/pending.png',
+                      width: screenSize.width * 0.07,
+                      height: screenSize.width * 0.07,
+                      color: _isPendingSelected ? Colors.white : Colors.grey[600],
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Pending',
                       style: TextStyle(
-                        color: _isPendingSelected
-                            ? Colors.white
-                            : Colors.grey[600],
+                        color: _isPendingSelected ? Colors.white : Colors.grey[600],
                         fontWeight: FontWeight.bold,
-                        fontSize: screenSize.width * 0.045,
+                        fontSize: screenSize.width * 0.04,
                       ),
                     ),
                   ],
@@ -456,7 +451,7 @@ class _HistoryPageState extends State<HistoryPage> {
               },
               child: Container(
                 padding: EdgeInsets.symmetric(
-                  vertical: screenSize.height * 0.012,
+                  vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
                   color: !_isPendingSelected
@@ -470,22 +465,19 @@ class _HistoryPageState extends State<HistoryPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.history_rounded,
-                      size: screenSize.width * 0.07,
-                      color: !_isPendingSelected
-                          ? Colors.white
-                          : Colors.grey[600],
+                    Image.asset(
+                      'assets/history.png',
+                      width: screenSize.width * 0.07,
+                      height: screenSize.width * 0.07,
+                      color: !_isPendingSelected ? Colors.white : Colors.grey[600],
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'History',
                       style: TextStyle(
-                        color: !_isPendingSelected
-                            ? Colors.white
-                            : Colors.grey[600],
+                        color: !_isPendingSelected ? Colors.white : Colors.grey[600],
                         fontWeight: FontWeight.bold,
-                        fontSize: screenSize.width * 0.045,
+                        fontSize: screenSize.width * 0.04,
                       ),
                     ),
                   ],
@@ -500,6 +492,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   /// Builds each history/pending card
   Widget _buildHistoryCard(
+
       BuildContext context, Map<String, dynamic> item,
       {required bool isHistory, required Size screenSize}) {
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
@@ -513,11 +506,20 @@ class _HistoryPageState extends State<HistoryPage> {
     Color statusColor = _getStatusColor(item['status']);
     Color typeColor = _getTypeColor(type);
     String formatDate(String dateStr) {
-      DateTime date = DateTime.parse(dateStr);
-      String day = DateFormat('EEEE').format(date); // Day of the week
-      String datePart = DateFormat('yyyy-MM-dd').format(date); // Date part
-      String timePart = DateFormat('hh:mm a').format(date); // Time part in 12-hour format
-      return '$datePart ($timePart)';
+      try {
+        DateTime date;
+        // Check if the date string has a 'T' indicating the full ISO format
+        if (dateStr.contains('T')) {
+          date = DateTime.parse(dateStr);
+        } else {
+          // If the format is simpler, manually parse it
+          date = DateFormat('yyyy-M-d').parse(dateStr);
+        }
+        return DateFormat('dd-MM-yyyy HH:mm').format(date);
+      } catch (e) {
+        // If parsing fails, return a default or error string
+        return 'Invalid Date';
+      }
     }
 
     switch (type) {
