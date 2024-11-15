@@ -122,6 +122,8 @@ class TimetablePageState extends State<TimetablePage> {
           // Parse 'from_date' and 'start_time' separately and combine
           DateTime fromDate = DateTime.parse(item['from_date']);
           List<String> startTimeParts = item['start_time'] != "" ? item['start_time'].split(':') : ["00", "00"];
+
+          if (startTimeParts.length == 3) startTimeParts.removeLast();
           if (startTimeParts.length != 2) {
             throw const FormatException('Invalid start_time format');
           }
@@ -136,6 +138,7 @@ class TimetablePageState extends State<TimetablePage> {
           // Parse 'to_date' and 'end_time' separately and combine
           DateTime toDate = DateTime.parse(item['to_date']);
           List<String> endTimeParts = item['end_time'] != "" ? item['end_time'].split(':') : ["00", "00"];
+          if (endTimeParts.length == 3) endTimeParts.removeLast();
           if (endTimeParts.length != 2) {
             throw const FormatException('Invalid end_time format');
           }
@@ -436,6 +439,7 @@ class TimetablePageState extends State<TimetablePage> {
           // Combine date and time properly
           DateTime fromDate = DateTime.parse(dateFrom);
           List<String> timeOutParts = startTime.split(':');
+          if (timeOutParts.length == 3) timeOutParts.removeLast();
           if (timeOutParts.length != 2) {
             throw const FormatException('Invalid time_out format');
           }
@@ -449,6 +453,7 @@ class TimetablePageState extends State<TimetablePage> {
 
           DateTime inDate = DateTime.parse(dateTo);
           List<String> timeInParts = endTime.split(':');
+          if (timeInParts.length == 3) timeInParts.removeLast();
           if (timeInParts.length != 2) {
             throw const FormatException('Invalid time_in format');
           }
