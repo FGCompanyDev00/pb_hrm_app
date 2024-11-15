@@ -512,6 +512,13 @@ class _HistoryPageState extends State<HistoryPage> {
     String detailLabel;
     Color statusColor = _getStatusColor(item['status']);
     Color typeColor = _getTypeColor(type);
+    String formatDate(String dateStr) {
+      DateTime date = DateTime.parse(dateStr);
+      String day = DateFormat('EEEE').format(date); // Day of the week
+      String datePart = DateFormat('yyyy-MM-dd').format(date); // Date part
+      String timePart = DateFormat('hh:mm a').format(date); // Time part in 12-hour format
+      return '$datePart ($timePart)';
+    }
 
     switch (type) {
       case 'meeting':
@@ -538,8 +545,12 @@ class _HistoryPageState extends State<HistoryPage> {
         detailText = 'N/A';
     }
 
-    String startDate = item['startDate'] ?? 'N/A';
-    String endDate = item['endDate'] ?? 'N/A';
+    String startDate = item['startDate'] != null
+        ? formatDate(item['startDate'])
+        : 'N/A';
+    String endDate = item['endDate'] != null
+        ? formatDate(item['endDate'])
+        : 'N/A';
 
     return GestureDetector(
       onTap: () {
@@ -616,14 +627,14 @@ class _HistoryPageState extends State<HistoryPage> {
                           'Date: $startDate',
                           style: TextStyle(
                             color: Colors.grey[700],
-                            fontSize: screenSize.width * 0.025,
+                            fontSize: screenSize.width * 0.03,
                           ),
                         ),
                         Text(
                           'To: $endDate',
                           style: TextStyle(
                             color: Colors.grey[700],
-                            fontSize: screenSize.width * 0.025,
+                            fontSize: screenSize.width * 0.03,
                           ),
                         ),
                         SizedBox(height: screenSize.height * 0.005),
