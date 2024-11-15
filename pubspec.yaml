@@ -129,8 +129,8 @@ flutter:
     - assets/people.png
     - assets/shop-add.png
     - assets/status-up.png
-    - assets/Vector.png
-    - assets/Vector-1.png
+    - assets/leave_icon.png
+    - assets/meeting_room.png
     - assets/Vector-2.png
     - assets/layer.png
     - assets/element-plus.png
@@ -155,3 +155,4 @@ flutter:
     - assets/fingerprint.png
     - assets/history.png
     - assets/pending.png
+    - assets/meeting_room.png

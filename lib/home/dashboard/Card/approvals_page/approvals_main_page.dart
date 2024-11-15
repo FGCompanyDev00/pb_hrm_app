@@ -573,9 +573,9 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
             Positioned(
               top: screenSize.height * 0.01,
               bottom: screenSize.height * 0.01,
-              left: screenSize.width * 0.005,
+              left: screenSize.width * 0.001,
               child: Container(
-                width: screenSize.width * 0.005,
+                width: screenSize.width * 0.008,
                 color: typeColor,
               ),
             ),
