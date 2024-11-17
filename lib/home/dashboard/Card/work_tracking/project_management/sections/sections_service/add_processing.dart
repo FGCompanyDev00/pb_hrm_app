@@ -222,20 +222,16 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       request.fields['title'] = title;
       request.fields['descriptions'] = description;
       request.fields['status_id'] = _statusMap[status]!;
-      request.fields['fromdate'] =
-          DateFormat('yyyy-MM-dd').format(fromDate!);
-      request.fields['todate'] =
-          DateFormat('yyyy-MM-dd').format(toDate!);
-      request.fields['start_time'] = _formatTime(startTime!);
-      request.fields['end_time'] = _formatTime(endTime!);
+      request.fields['fromdate'] = DateFormat('yyyy-MM-dd HH:mm:ss').format(fromDate!);
+      request.fields['todate'] = DateFormat('yyyy-MM-dd HH:mm:ss').format(toDate!);
+      // request.fields['start_time'] = _formatTime(startTime!);
+      // request.fields['end_time'] = _formatTime(endTime!);
       // Add location and notification if needed
       // request.fields['location'] = location;
       // request.fields['notification'] = notification.toString();
 
       // Add membersDetails
-      List<Map<String, String>> membersDetails = selectedMembers
-          .map((member) => {"employee_id": member['employee_id'].toString()})
-          .toList();
+      List<Map<String, String>> membersDetails = selectedMembers.map((member) => {"employee_id": member['employee_id'].toString()}).toList();
       request.fields['membersDetails'] = jsonEncode(membersDetails);
 
       // Add files
@@ -310,18 +306,13 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(title,
-              style: TextStyle(
-                  color: isError ? Colors.red : Colors.green,
-                  fontWeight: FontWeight.bold)),
+          title: Text(title, style: TextStyle(color: isError ? Colors.red : Colors.green, fontWeight: FontWeight.bold)),
           content: Text(content),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                if (!isError &&
-                    (title.toLowerCase().contains('success') ||
-                        title.toLowerCase().contains('added'))) {
+                if (!isError && (title.toLowerCase().contains('success') || title.toLowerCase().contains('added'))) {
                   if (onOk != null) {
                     onOk();
                   }
@@ -365,10 +356,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
         Padding(
           padding: const EdgeInsets.only(right: 4.0),
           child: CircleAvatar(
-            backgroundImage: selectedMembers[i]['image_url'] != null &&
-                selectedMembers[i]['image_url'].isNotEmpty
-                ? NetworkImage(selectedMembers[i]['image_url'])
-                : const AssetImage('assets/default_avatar.png') as ImageProvider,
+            backgroundImage: selectedMembers[i]['image_url'] != null && selectedMembers[i]['image_url'].isNotEmpty ? NetworkImage(selectedMembers[i]['image_url']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
             radius: 20,
             backgroundColor: Colors.grey[200],
           ),
@@ -417,8 +405,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2196F3), // Light Blue
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20.0, vertical: 10.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8.0),
               ),
@@ -429,16 +416,16 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
           selectedFiles.isEmpty
               ? const Text('No files selected.')
               : Wrap(
-            spacing: 8.0,
-            alignment: WrapAlignment.center,
-            children: List.generate(selectedFiles.length, (index) {
-              return Chip(
-                label: Text(selectedFiles[index].name),
-                deleteIcon: const Icon(Icons.close),
-                onDeleted: () => _removeFile(index),
-              );
-            }),
-          ),
+                  spacing: 8.0,
+                  alignment: WrapAlignment.center,
+                  children: List.generate(selectedFiles.length, (index) {
+                    return Chip(
+                      label: Text(selectedFiles[index].name),
+                      deleteIcon: const Icon(Icons.close),
+                      onDeleted: () => _removeFile(index),
+                    );
+                  }),
+                ),
         ],
       ),
     );
@@ -496,282 +483,268 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-              horizontal: horizontalPadding, vertical: 30.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 'Add' Button Positioned at Top Right
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton.icon(
-                    onPressed: _addProcessingItem,
-                    icon: const Icon(Icons.add, color: Colors.white),
-                    label: const Text(
-                      'Add',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFDBB342), // #DBB342
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20.0, vertical: 10.0),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      elevation: 4,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Title Input
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Title is required.';
-                    }
-                    return null;
-                  },
-                  onChanged: (value) {
-                    setState(() {
-                      title = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                // Description Input
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 4,
-                  onChanged: (value) {
-                    setState(() {
-                      description = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                // Status Dropdown
-                DropdownButtonFormField<String>(
-                  value: status,
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    border: OutlineInputBorder(),
-                  ),
-                  icon: Image.asset(
-                    'assets/task.png',
-                    width: 24,
-                    height: 24,
-                  ),
-                  items: ['Processing', 'Pending', 'Finished', 'Error']
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            color: _getStatusColor(value),
-                            size: 16,
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 30.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 'Add' Button Positioned at Top Right
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: ElevatedButton.icon(
+                          onPressed: _addProcessingItem,
+                          icon: const Icon(Icons.add, color: Colors.white),
+                          label: const Text(
+                            'Add',
+                            style: TextStyle(color: Colors.white, fontSize: 16),
                           ),
-                          const SizedBox(width: 8),
-                          Text(value),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFDBB342), // #DBB342
+                            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            elevation: 4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Title Input
+                      TextFormField(
+                        decoration: const InputDecoration(
+                          labelText: 'Title',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Title is required.';
+                          }
+                          return null;
+                        },
+                        onChanged: (value) {
+                          setState(() {
+                            title = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      // Description Input
+                      TextFormField(
+                        decoration: const InputDecoration(
+                          labelText: 'Description',
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 4,
+                        onChanged: (value) {
+                          setState(() {
+                            description = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      // Status Dropdown
+                      DropdownButtonFormField<String>(
+                        value: status,
+                        decoration: const InputDecoration(
+                          labelText: 'Status',
+                          border: OutlineInputBorder(),
+                        ),
+                        icon: Image.asset(
+                          'assets/task.png',
+                          width: 24,
+                          height: 24,
+                        ),
+                        items: ['Processing', 'Pending', 'Finished', 'Error'].map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.access_time,
+                                  color: _getStatusColor(value),
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(value),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            status = newValue!;
+                            statusId = _statusMap[status]!;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Status is required.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      // Start Date-Time
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _selectStartDate,
+                              child: AbsorbPointer(
+                                child: TextFormField(
+                                  decoration: InputDecoration(
+                                    labelText: 'Start Date',
+                                    border: const OutlineInputBorder(),
+                                    suffixIcon: IconButton(
+                                      icon: const Icon(Icons.calendar_today),
+                                      onPressed: _selectStartDate,
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (fromDate == null) {
+                                      return 'Start date is required.';
+                                    }
+                                    return null;
+                                  },
+                                  controller: TextEditingController(
+                                    text: fromDate != null ? DateFormat('yyyy-MM-dd').format(fromDate!) : '',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _selectStartTime,
+                              child: AbsorbPointer(
+                                child: TextFormField(
+                                  decoration: InputDecoration(
+                                    labelText: 'Start Time',
+                                    border: const OutlineInputBorder(),
+                                    suffixIcon: IconButton(
+                                      icon: const Icon(Icons.access_time),
+                                      onPressed: _selectStartTime,
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (startTime == null) {
+                                      return 'Start time is required.';
+                                    }
+                                    return null;
+                                  },
+                                  controller: TextEditingController(
+                                    text: startTime != null ? startTime!.format(context) : '',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      status = newValue!;
-                      statusId = _statusMap[status]!;
-                    });
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Status is required.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                // Start Date-Time
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _selectStartDate,
-                        child: AbsorbPointer(
-                          child: TextFormField(
-                            decoration: InputDecoration(
-                              labelText: 'Start Date',
-                              border: const OutlineInputBorder(),
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons.calendar_today),
-                                onPressed: _selectStartDate,
+                      const SizedBox(height: 16),
+                      // End Date-Time
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _selectEndDate,
+                              child: AbsorbPointer(
+                                child: TextFormField(
+                                  decoration: InputDecoration(
+                                    labelText: 'End Date',
+                                    border: const OutlineInputBorder(),
+                                    suffixIcon: IconButton(
+                                      icon: const Icon(Icons.calendar_today),
+                                      onPressed: _selectEndDate,
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (toDate == null) {
+                                      return 'End date is required.';
+                                    }
+                                    return null;
+                                  },
+                                  controller: TextEditingController(
+                                    text: toDate != null ? DateFormat('yyyy-MM-dd').format(toDate!) : '',
+                                  ),
+                                ),
                               ),
                             ),
-                            validator: (value) {
-                              if (fromDate == null) {
-                                return 'Start date is required.';
-                              }
-                              return null;
-                            },
-                            controller: TextEditingController(
-                              text: fromDate != null
-                                  ? DateFormat('yyyy-MM-dd')
-                                  .format(fromDate!)
-                                  : '',
-                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _selectStartTime,
-                        child: AbsorbPointer(
-                          child: TextFormField(
-                            decoration: InputDecoration(
-                              labelText: 'Start Time',
-                              border: const OutlineInputBorder(),
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons.access_time),
-                                onPressed: _selectStartTime,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _selectEndTime,
+                              child: AbsorbPointer(
+                                child: TextFormField(
+                                  decoration: InputDecoration(
+                                    labelText: 'End Time',
+                                    border: const OutlineInputBorder(),
+                                    suffixIcon: IconButton(
+                                      icon: const Icon(Icons.access_time),
+                                      onPressed: _selectEndTime,
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (endTime == null) {
+                                      return 'End time is required.';
+                                    }
+                                    return null;
+                                  },
+                                  controller: TextEditingController(
+                                    text: endTime != null ? endTime!.format(context) : '',
+                                  ),
+                                ),
                               ),
                             ),
-                            validator: (value) {
-                              if (startTime == null) {
-                                return 'Start time is required.';
-                              }
-                              return null;
-                            },
-                            controller: TextEditingController(
-                              text: startTime != null
-                                  ? startTime!.format(context)
-                                  : '',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Members Selection
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Selected Members',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // End Date-Time
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _selectEndDate,
-                        child: AbsorbPointer(
-                          child: TextFormField(
-                            decoration: InputDecoration(
-                              labelText: 'End Date',
-                              border: const OutlineInputBorder(),
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons.calendar_today),
-                                onPressed: _selectEndDate,
+                          ElevatedButton.icon(
+                            onPressed: _navigateToSelectMembers,
+                            icon: const Icon(Icons.person_add, color: Colors.white),
+                            label: const Text(
+                              'Select Members',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF4CAF50), // Green
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8.0),
                               ),
-                            ),
-                            validator: (value) {
-                              if (toDate == null) {
-                                return 'End date is required.';
-                              }
-                              return null;
-                            },
-                            controller: TextEditingController(
-                              text: toDate != null
-                                  ? DateFormat('yyyy-MM-dd')
-                                  .format(toDate!)
-                                  : '',
+                              elevation: 3,
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _selectEndTime,
-                        child: AbsorbPointer(
-                          child: TextFormField(
-                            decoration: InputDecoration(
-                              labelText: 'End Time',
-                              border: const OutlineInputBorder(),
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons.access_time),
-                                onPressed: _selectEndTime,
-                              ),
-                            ),
-                            validator: (value) {
-                              if (endTime == null) {
-                                return 'End time is required.';
-                              }
-                              return null;
-                            },
-                            controller: TextEditingController(
-                              text: endTime != null
-                                  ? endTime!.format(context)
-                                  : '',
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      _buildSelectedMembers(),
+                      const SizedBox(height: 20),
+                      // File Upload
+                      _buildFilePicker(),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                // Members Selection
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Selected Members',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: _navigateToSelectMembers,
-                      icon: const Icon(Icons.person_add, color: Colors.white),
-                      label: const Text(
-                        'Select Members',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4CAF50), // Green
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0, vertical: 10.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        elevation: 3,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                _buildSelectedMembers(),
-                const SizedBox(height: 20),
-                // File Upload
-                _buildFilePicker(),
-                const SizedBox(height: 16),
-              ],
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }

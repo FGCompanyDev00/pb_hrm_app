@@ -464,9 +464,11 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       ),
       margin: const EdgeInsets.only(right: 3),
       child: CircleAvatar(
-        radius: 15,
-        backgroundImage: link.isNotEmpty ? NetworkImage(link) : const AssetImage('assets/default_avatar.png') as ImageProvider,
-      ),
+          radius: 15,
+          backgroundImage: link.isNotEmpty ? NetworkImage(link) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+          onBackgroundImageError: (_, __) {
+            const AssetImage('assets/default_avatar.png');
+          }),
     );
   }
 
@@ -617,9 +619,11 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
         Row(
           children: [
             CircleAvatar(
-              radius: 30,
-              backgroundImage: details['imageUrl']!.isNotEmpty ? NetworkImage(details['imageUrl']!) : const AssetImage('assets/default_avatar.png') as ImageProvider,
-            ),
+                radius: 30,
+                backgroundImage: details['imageUrl']!.isNotEmpty ? NetworkImage(details['imageUrl']!) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                onBackgroundImageError: (_, __) {
+                  const AssetImage('assets/default_avatar.png');
+                }),
             const SizedBox(
               width: 15,
             ),

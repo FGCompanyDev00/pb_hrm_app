@@ -497,9 +497,11 @@ END:VCARD
                                       radius: size.width * 0.10,
                                       backgroundColor: Colors.grey[200],
                                       child: CircleAvatar(
-                                        radius: size.width * 0.09,
-                                        backgroundImage: data['images'] != null && data['images'].isNotEmpty ? NetworkImage(data['images']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
-                                      ),
+                                          radius: size.width * 0.09,
+                                          backgroundImage: data['images'] != null && data['images'].isNotEmpty ? NetworkImage(data['images']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                                          onBackgroundImageError: (_, __) {
+                                            const AssetImage('assets/default_avatar.png');
+                                          }),
                                     ),
                                   ),
                                   Positioned(

@@ -227,7 +227,7 @@ class _DashboardState extends State<Dashboard> {
       onWillPop: () async => false, // Disable back button
       child: Scaffold(
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(150.0),
+          preferredSize: const Size.fromHeight(170.0),
           child: FutureBuilder<UserProfile>(
             future: futureUserProfile,
             builder: (context, snapshot) {
@@ -322,10 +322,12 @@ class _DashboardState extends State<Dashboard> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         CircleAvatar(
-                          radius: 28,
-                          backgroundImage: userProfile.imgName != 'default_avatar.jpg' ? NetworkImage(userProfile.imgName) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
-                          backgroundColor: Colors.white,
-                        ),
+                            radius: 28,
+                            backgroundImage: userProfile.imgName != 'default_avatar.jpg' ? NetworkImage(userProfile.imgName) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                            backgroundColor: Colors.white,
+                            onBackgroundImageError: (_, __) {
+                              const AssetImage('assets/default_avatar.png');
+                            }),
                         const SizedBox(height: 8),
                         Text(
                           AppLocalizations.of(context)!.greeting(userProfile.name),
@@ -524,7 +526,7 @@ class _DashboardState extends State<Dashboard> {
           'assets/data-2.png',
           AppLocalizations.of(context)!.history,
           isDarkMode,
-              () {
+          () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const HistoryPage()),
@@ -536,7 +538,7 @@ class _DashboardState extends State<Dashboard> {
           'assets/people.png',
           AppLocalizations.of(context)!.approvals,
           isDarkMode,
-              () {
+          () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
@@ -548,7 +550,7 @@ class _DashboardState extends State<Dashboard> {
           'assets/status-up.png',
           AppLocalizations.of(context)!.workTracking,
           isDarkMode,
-              () {
+          () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
@@ -560,7 +562,7 @@ class _DashboardState extends State<Dashboard> {
           'assets/car_return.png',
           AppLocalizations.of(context)!.carReturn,
           isDarkMode,
-              () {
+          () {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const ReturnCarPage()),
@@ -572,7 +574,7 @@ class _DashboardState extends State<Dashboard> {
           'assets/KPI.png',
           AppLocalizations.of(context)!.kpi,
           isDarkMode,
-              () {
+          () {
             // Navigator.push(
             //   context,
             //   MaterialPageRoute(builder: (context) => const ReturnCarPage()),
@@ -584,7 +586,7 @@ class _DashboardState extends State<Dashboard> {
           'assets/inventory.png',
           AppLocalizations.of(context)!.inventory,
           isDarkMode,
-              () {
+          () {
             // Navigator.push(
             //   context,
             //   MaterialPageRoute(builder: (context) => const ReturnCarPage()),
@@ -707,7 +709,7 @@ class _DashboardState extends State<Dashboard> {
                             MaterialPageRoute(
                               builder: (context) => const LoginPage(),
                             ),
-                                (Route<dynamic> route) => false,
+                            (Route<dynamic> route) => false,
                           );
                         },
                         style: ElevatedButton.styleFrom(

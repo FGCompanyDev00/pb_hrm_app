@@ -9,8 +9,8 @@ import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/events_utils.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
-import 'package:pb_hrsystem/home/home_calendar.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
+import 'package:pb_hrsystem/models/event_record.dart';
 
 class CalendarDayWidgetCard extends HookWidget {
   const CalendarDayWidgetCard({
@@ -21,7 +21,7 @@ class CalendarDayWidgetCard extends HookWidget {
     this.heightTime,
   });
 
-  final List<Event> eventsCalendar;
+  final List<EventRecord> eventsCalendar;
   final DateTime? selectedDay;
   final int? selectedSlotTime;
   final double? heightTime;

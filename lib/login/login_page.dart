@@ -20,7 +20,6 @@ import 'package:flutter/services.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:flutter_offline/flutter_offline.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -394,77 +393,50 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      body: OfflineBuilder(
-        connectivityBuilder: (context, connectivity, child) {
-          final bool connected = connectivity != ConnectivityResult.none;
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              child,
-              if (!connected)
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    color: Colors.red,
-                    padding: const EdgeInsets.all(8.0),
-                    child: const Center(
-                      child: Text(
-                        'No Internet Connection',
-                        style: TextStyle(color: Colors.white),
-                      ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/background.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.05,
+                      vertical: screenHeight * 0.02,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(height: screenHeight * 0.045),
+                        _buildLanguageDropdown(languageNotifier, isDarkMode, screenWidth),
+                        SizedBox(height: screenHeight * 0.005),
+                        _buildLogoAndText(screenWidth, screenHeight),
+                        SizedBox(height: screenHeight * 0.06),
+                        _buildTextFields(screenWidth),
+                        SizedBox(height: screenHeight * 0.02),
+                        _buildRememberMeCheckbox(screenWidth),
+                        SizedBox(height: screenHeight * 0.02),
+                        _buildLoginAndBiometricButton(screenWidth),
+                        SizedBox(height: screenHeight * 0.01),
+                        const Spacer(),
+                      ],
                     ),
                   ),
                 ),
-            ],
-          );
-        },
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/background.png'),
-              fit: BoxFit.cover,
-            ),
-          ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight,
-                  ),
-                  child: IntrinsicHeight(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: screenWidth * 0.05,
-                        vertical: screenHeight * 0.02,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(height: screenHeight * 0.045),
-                          _buildLanguageDropdown(languageNotifier, isDarkMode, screenWidth),
-                          SizedBox(height: screenHeight * 0.005),
-                          _buildLogoAndText(screenWidth, screenHeight),
-                          SizedBox(height: screenHeight * 0.06),
-                          _buildTextFields(screenWidth),
-                          SizedBox(height: screenHeight * 0.02),
-                          _buildRememberMeCheckbox(screenWidth),
-                          SizedBox(height: screenHeight * 0.02),
-                          _buildLoginAndBiometricButton(screenWidth),
-                          SizedBox(height: screenHeight * 0.01),
-                          const Spacer(),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

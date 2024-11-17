@@ -1,21 +1,27 @@
 // lib/main.dart
 
+import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_background/flutter_background.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
+import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
+import 'package:pb_hrsystem/models/calendar_events_list_record.dart';
+import 'package:pb_hrsystem/models/event_record.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
+import 'package:pb_hrsystem/services/background_service.dart';
+import 'package:pb_hrsystem/services/offline_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:pb_hrsystem/splash/splashscreen.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:flutter_offline/flutter_offline.dart';
 import 'theme/theme.dart';
 import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
@@ -27,7 +33,10 @@ void main() async {
 
   await Hive.initFlutter();
   Hive.registerAdapter(AttendanceRecordAdapter());
+  Hive.registerAdapter(CalendarEventsListRecordAdapter());
+  Hive.registerAdapter(EventRecordAdapter());
   await Hive.openBox<AttendanceRecord>('pending_attendance');
+  await Hive.openBox<CalendarEventsListRecord>('store_events_calendar');
   await Hive.openBox<String>('userProfileBox');
   await Hive.openBox<List<String>>('bannersBox');
   await Hive.openBox('loginBox');
@@ -43,6 +52,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => LanguageNotifier()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => DateProvider()),
+        ChangeNotifierProvider(create: (_) => OfflineProvider()),
       ],
       child: const MyApp(),
     ),
@@ -111,12 +121,6 @@ class LanguageNotifier with ChangeNotifier {
     _loadLocale();
   }
 
-  Future<void> _initializeBackgroundService() async {
-    final bool initialized = await FlutterBackground.initialize();
-    if (!initialized) return;
-    await FlutterBackground.enableBackgroundExecution();
-  }
-
   Future<void> _loadLocale() async {
     Locale? locale = sl<UserPreferences>().getLocalizeSupport();
     _currentLocale = locale;
@@ -158,7 +162,23 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 1;
+  bool _enableConnection = false;
   final List<GlobalKey<NavigatorState>> _navigatorKeys = List.generate(4, (index) => GlobalKey<NavigatorState>());
+
+  @override
+  void initState() {
+    super.initState();
+    initializeService();
+    offlineProvider.initialize();
+    connectivityResult.onConnectivityChanged.listen((source) {
+      Future.delayed(const Duration(seconds: 20)).whenComplete(() => _enableConnection = true);
+      if (_enableConnection) {
+        if (source.contains(ConnectivityResult.none)) showToast('No internet', Colors.red, Icons.mobiledata_off_rounded);
+        if (source.contains(ConnectivityResult.wifi)) showToast('WiFi', Colors.green, Icons.wifi);
+        if (source.contains(ConnectivityResult.mobile)) showToast('Internet', Colors.green, Icons.wifi);
+      }
+    });
+  }
 
   void _onItemTapped(int index) {
     if (index != _selectedIndex) {
@@ -178,53 +198,27 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: _onWillPop,
-      child: OfflineBuilder(
-        connectivityBuilder: (context, connectivity, child) {
-          final bool connected = connectivity != ConnectivityResult.none;
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              child,
-              if (!connected)
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    color: Colors.red,
-                    padding: const EdgeInsets.all(8.0),
-                    child: const Text(
-                      'No Internet Connection',
-                      style: TextStyle(color: Colors.white),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
-          );
-        },
-        child: Scaffold(
-          body: IndexedStack(
-            index: _selectedIndex,
-            children: [
-              Navigator(
-                key: _navigatorKeys[0],
-                onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => const AttendanceScreen()),
-              ),
-              Navigator(
-                key: _navigatorKeys[1],
-                onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => const HomeCalendar()),
-              ),
-              Navigator(
-                key: _navigatorKeys[2],
-                onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => const Dashboard()),
-              ),
-            ],
-          ),
-          bottomNavigationBar: CustomBottomNavBar(
-            currentIndex: _selectedIndex,
-            onTap: _onItemTapped,
-          ),
+      child: Scaffold(
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: [
+            Navigator(
+              key: _navigatorKeys[0],
+              onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => const AttendanceScreen()),
+            ),
+            Navigator(
+              key: _navigatorKeys[1],
+              onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => const HomeCalendar()),
+            ),
+            Navigator(
+              key: _navigatorKeys[2],
+              onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => const Dashboard()),
+            ),
+          ],
+        ),
+        bottomNavigationBar: CustomBottomNavBar(
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
         ),
       ),
     );

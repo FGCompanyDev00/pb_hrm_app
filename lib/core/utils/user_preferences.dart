@@ -13,6 +13,9 @@ class UserPreferences {
   static const String _loginSession = "LOGIN_SESSION";
   static const String _defaultLang = "DEFAULT_LANGUAGE";
   static const String _defaultLocale = "DEFAULT_Locale";
+  static const String _checkInTime = "CHECK_IN_TIME";
+  static const String _checkOutTime = "CHECK_OUT_TIME";
+  static const String _workingHours = "WORKING_HOURS";
 
   //Store the token
   Future<void> setToken(String token) => prefs.setString(_token, token);
@@ -43,4 +46,29 @@ class UserPreferences {
       return Locale(getLocal);
     }
   }
+
+  Future<void> storeCheckInTime(String checkInTime) => prefs.setString(_checkInTime, checkInTime);
+  String? getCheckInTime() => prefs.getString(_checkInTime);
+
+  Future<void> storeCheckOutTime(String checkOutTime) => prefs.setString(_checkOutTime, checkOutTime);
+  String? getCheckOutTime() => prefs.getString(_checkOutTime);
+
+  Future<void> storeWorkingHours(Duration workingHours) => prefs.setString(_workingHours, workingHours.toString());
+  Duration? getWorkingHours() {
+    String? workingHoursStr = prefs.getString(_workingHours);
+    if (workingHoursStr != null) {
+      List<String> parts = workingHoursStr.split(':');
+      return Duration(hours: int.parse(parts[0]), minutes: int.parse(parts[1]), seconds: int.parse(parts[2]));
+    }
+    return null;
+  }
+
+  Future<void> reload() => prefs.reload();
+  Future<void> log() async {
+    final log = prefs.getStringList('log') ?? <String>[];
+    log.add(DateTime.now().toIso8601String());
+    await prefs.setStringList('log', log);
+  }
+
+  Future<void> onStartBackground(String msg) => prefs.setString('Hello', msg);
 }

@@ -10,15 +10,15 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
+import 'package:pb_hrsystem/core/utils/user_preferences.dart';
+import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:flutter_background/flutter_background.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'monthly_attendance_record.dart';
 import '../models/attendance_record.dart';
-import '../services/offline_service.dart';
-import 'package:provider/provider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 class AttendanceScreen extends StatefulWidget {
@@ -51,18 +51,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   static const String offsiteApiUrl = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offsite';
 
   static const double _officeRange = 500;
-  static LatLng _officeLocation = LatLng(2.891589, 101.524822);
+  static LatLng officeLocation = const LatLng(2.891589, 101.524822);
 
   @override
   void initState() {
     super.initState();
-    _initializeBackgroundService();
+
     _retrieveSavedState();
     _retrieveDeviceId();
     _fetchWeeklyRecords();
     _startLocationMonitoring();
     _startTimerForLiveTime();
     _determineAndShowLocationModal();
+    connectivityResult.onConnectivityChanged.listen((source) {
+      if (source.contains(ConnectivityResult.wifi) || source.contains(ConnectivityResult.mobile)) offlineProvider.syncPendingAttendance();
+    });
   }
 
   Future<void> _determineAndShowLocationModal() async {
@@ -79,34 +82,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       _isLoading = false;
     });
 
-    _showLocationModal(context, _detectedLocation);
-  }
-
-  Future<void> _initializeBackgroundService() async {
-    try {
-      final bool initialized = await FlutterBackground.initialize();
-
-      if (!initialized) {
-        if (kDebugMode) {
-          print('FlutterBackground plugin initialization failed');
-        }
-        return;
-      }
-
-      if (!FlutterBackground.isBackgroundExecutionEnabled) {
-        await FlutterBackground.enableBackgroundExecution();
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error initializing background service: $e');
-      }
-    }
+    _showLocationModal(_detectedLocation);
   }
 
   Future<void> _retrieveSavedState() async {
-    String? savedCheckInTime = await _getCheckInTime();
-    String? savedCheckOutTime = await _getCheckOutTime(); // Retrieve saved checkout time
-    Duration? savedWorkingHours = await _getWorkingHours();
+    String? savedCheckInTime = sl<UserPreferences>().getCheckInTime();
+    String? savedCheckOutTime = sl<UserPreferences>().getCheckOutTime(); // Retrieve saved checkout time
+    Duration? savedWorkingHours = sl<UserPreferences>().getWorkingHours();
     String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
 
     setState(() {
@@ -160,8 +142,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
 
     // Store check-in time locally
-    await _storeCheckInTime(_checkInTime); // Save the new check-in time
-    await _storeCheckOutTime(_checkOutTime); // Reset stored check-out time to --:--:--
+    sl<UserPreferences>().storeCheckInTime(_checkInTime); // Save the new check-in time
+    sl<UserPreferences>().storeCheckOutTime(_checkOutTime); // Reset stored check-out time to --:--:--
 
     // Create AttendanceRecord
     AttendanceRecord record = AttendanceRecord(
@@ -180,19 +162,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       record.longitude = currentPosition.longitude.toString();
     }
 
-    // Check connectivity
-    var connectivityResult = await Connectivity().checkConnectivity();
-    bool isOnline = connectivityResult != ConnectivityResult.none;
-
-    if (isOnline) {
-      // Send Check-in request for Home/Office or Offsite
-      await _sendCheckInOutRequest(record);
-    } else {
-      // Save to local storage for later synchronization
-      OfflineService offlineService = Provider.of<OfflineService>(context, listen: false);
-      await offlineService.addPendingAttendance(record);
-      if (mounted) _showCustomDialog(AppLocalizations.of(context)!.offlineMode, AppLocalizations.of(context)!.checkInSavedOffline, isSuccess: false);
-    }
+    await connectivityResult.checkConnectivity().then((e) async {
+      if (e.contains(ConnectivityResult.none)) {
+        await offlineProvider.addPendingAttendance(record);
+      } else {
+        await _sendCheckInOutRequest(record);
+      }
+    });
   }
 
   Future<void> _performCheckOut(DateTime now) async {
@@ -209,8 +185,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
 
     // Store check-out time and working hours locally
-    await _storeCheckOutTime(_checkOutTime); // Save the new check-out time
-    await _storeWorkingHours(_workingHours); // Save the total working hours
+    sl<UserPreferences>().storeCheckOutTime(_checkOutTime); // Save the new check-out time
+    sl<UserPreferences>().storeWorkingHours(_workingHours); // Save the total working hours
 
     // Create AttendanceRecord
     AttendanceRecord record = AttendanceRecord(
@@ -230,18 +206,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
 
     // Check connectivity
-    var connectivityResult = await Connectivity().checkConnectivity();
-    bool isOnline = connectivityResult != ConnectivityResult.none;
-
-    if (isOnline) {
-      // Send Check-out request for Home/Office or Offsite
-      await _sendCheckInOutRequest(record);
-    } else {
-      // Save to local storage for later synchronization
-      OfflineService offlineService = Provider.of<OfflineService>(context, listen: false);
-      await offlineService.addPendingAttendance(record);
-      if (mounted) _showCustomDialog(AppLocalizations.of(context)!.offlineMode, AppLocalizations.of(context)!.checkOutSavedOffline, isSuccess: false);
-    }
+    await connectivityResult.checkConnectivity().then((e) async {
+      if (e.contains(ConnectivityResult.none)) {
+        await offlineProvider.addPendingAttendance(record);
+      } else {
+        await _sendCheckInOutRequest(record);
+      }
+    });
   }
 
   Future<void> _resetSessionData() async {
@@ -254,9 +225,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
 
     // Reset stored values in SharedPreferences
-    await _storeCheckInTime(_checkInTime);
-    await _storeCheckOutTime(_checkOutTime);
-    await _storeWorkingHours(Duration.zero);
+    sl<UserPreferences>().storeCheckInTime(_checkInTime);
+    sl<UserPreferences>().storeCheckOutTime(_checkOutTime);
+    sl<UserPreferences>().storeWorkingHours(Duration.zero);
   }
 
   Future<void> _sendCheckInOutRequest(AttendanceRecord record) async {
@@ -302,10 +273,11 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         throw Exception('Failed with status code ${response.statusCode}');
       }
     } catch (error) {
-      // If sending fails, save to local storage
-      OfflineService offlineService = Provider.of<OfflineService>(context, listen: false);
-      await offlineService.addPendingAttendance(record);
-      if (mounted) _showCustomDialog(AppLocalizations.of(context)!.error, '${AppLocalizations.of(context)!.failedToCheckInOut}: $error', isSuccess: false);
+      if (mounted) {
+        // If sending fails, save to local storage
+        await offlineProvider.addPendingAttendance(record);
+        if (mounted) _showCustomDialog(AppLocalizations.of(context)!.error, '${AppLocalizations.of(context)!.failedToCheckInOut}: $error', isSuccess: false);
+      }
     }
   }
 
@@ -386,8 +358,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     double distanceToOffice = Geolocator.distanceBetween(
       position.latitude,
       position.longitude,
-      _officeLocation.latitude,
-      _officeLocation.longitude,
+      officeLocation.latitude,
+      officeLocation.longitude,
     );
 
     if (kDebugMode) {
@@ -423,45 +395,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         });
 
         // Save the working hours in SharedPreferences
-        await _storeWorkingHours(_workingHours);
+        sl<UserPreferences>().storeWorkingHours(_workingHours);
       }
     });
-  }
-
-  Future<void> _storeCheckInTime(String checkInTime) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('checkInTime', checkInTime);
-  }
-
-  Future<void> _storeCheckOutTime(String checkOutTime) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('checkOutTime', checkOutTime);
-  }
-
-  Future<void> _storeWorkingHours(Duration workingHours) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('workingHours', workingHours.toString());
-  }
-
-  Future<String?> _getCheckInTime() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-
-    return null;
-  }
-
-  Future<String?> _getCheckOutTime() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('checkOutTime');
-  }
-
-  Future<Duration?> _getWorkingHours() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? workingHoursStr = prefs.getString('workingHours');
-    if (workingHoursStr != null) {
-      List<String> parts = workingHoursStr.split(':');
-      return Duration(hours: int.parse(parts[0]), minutes: int.parse(parts[1]), seconds: int.parse(parts[2]));
-    }
-    return null;
   }
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
@@ -512,7 +448,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  void _showLocationModal(BuildContext context, String location) {
+  void _showLocationModal(String location) {
     final isHome = location == 'Home';
     final primaryColor = isHome ? Colors.orange : Colors.green;
 
@@ -1198,9 +1134,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   @override
   Widget build(BuildContext context) {
     // Fetch screen size for responsiveness
-    final mediaQuery = MediaQuery.of(context);
-    final screenWidth = mediaQuery.size.width;
-    final screenHeight = mediaQuery.size.height;
 
     return Scaffold(
       appBar: AppBar(

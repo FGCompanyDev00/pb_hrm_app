@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
@@ -12,6 +13,8 @@ import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/main.dart';
+import 'package:pb_hrsystem/models/calendar_events_list_record.dart';
+import 'package:pb_hrsystem/models/event_record.dart';
 import 'package:pb_hrsystem/services/http_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:syncfusion_flutter_calendar/calendar.dart';
@@ -22,7 +25,6 @@ import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:flutter_offline/flutter_offline.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class HomeCalendar extends StatefulWidget {
@@ -36,7 +38,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   late Box eventsBox;
 
   // ValueNotifier to hold events mapped by date
-  late final ValueNotifier<Map<DateTime, List<Event>>> _events;
+  late final ValueNotifier<Map<DateTime, List<EventRecord>>> _events;
   final selectedSlot = ValueNotifier(1);
 
   // Calendar properties
@@ -44,7 +46,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
-  List<Event> _eventsForDay = [];
+  List<EventRecord> _eventsForDay = [];
 
   // Notifications
   late final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
@@ -64,9 +66,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   // Loading State
   bool _isLoading = false;
-
-  // Connectivity State Tracking for Flutter Offline
-  bool _wasConnected = true;
 
   @override
   void initState() {
@@ -89,6 +88,10 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
     // Fetch initial data
     _fetchData();
+
+    connectivityResult.onConnectivityChanged.listen((source) {
+      if (source.contains(ConnectivityResult.none)) offlineProvider.getEventsCalendar();
+    });
   }
 
   @override
@@ -99,7 +102,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     super.dispose();
   }
 
-  void addEvent(DateTime date, Event event) {
+  void addEvent(DateTime date, EventRecord event) {
     final detectDate = normalizeDate(date);
     if (_events.value.containsKey(detectDate)) {
       // If the date already has events, add to the list
@@ -130,7 +133,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         _fetchMinutesOfMeeting(),
       ]).whenComplete(() => _filterAndSearchEvents());
     } catch (e) {
-      // showSnackBar('Error fetching data: $e');
+      showSnackBar('Error fetching data: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -171,7 +174,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (status == 'Cancelled') continue;
 
-        final event = Event(
+        final event = EventRecord(
           title: item['name'] ?? 'Leave',
           startDateTime: startDate,
           endDateTime: endDate,
@@ -192,7 +195,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      // showSnackBar('Error parsing leave requests: $e');
+      showSnackBar('Error parsing leave requests: $e');
     }
   }
 
@@ -220,7 +223,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-        // showSnackBar('Invalid meeting data format.');
+        showSnackBar('Invalid meeting data format.');
         return;
       }
 
@@ -229,7 +232,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       for (var item in results) {
         // Ensure necessary fields are present
         if (item['from_date'] == null || item['to_date'] == null || item['start_time'] == null || item['end_time'] == null) {
-          // showSnackBar('Missing date or time fields in meeting data.');
+          showSnackBar('Missing date or time fields in meeting data.');
           continue;
         }
 
@@ -268,7 +271,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             int.parse(endTimeParts[1]),
           );
         } catch (e) {
-          // showSnackBar('Error parsing meeting dates or times: $e');
+          showSnackBar('Error parsing meeting dates or times: $e');
           continue;
         }
 
@@ -279,7 +282,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (status == 'Cancelled') continue;
 
-        final event = Event(
+        final event = EventRecord(
           title: item['title'] ?? 'Add Meeting',
           startDateTime: startDateTime,
           endDateTime: endDateTime,
@@ -308,7 +311,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      // showSnackBar('Error parsing meeting data: $e');
+      showSnackBar('Error parsing meeting data: $e');
     }
 
     return;
@@ -333,7 +336,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         String endTime = item['end_time'] != "" ? item['end_time'].toString() : '23:59';
 
         if (dateFrom.isEmpty || dateTo.isEmpty) {
-          // showSnackBar('Missing from_date or to_date in minutes of meeting.');
+          showSnackBar('Missing from_date or to_date in minutes of meeting.');
           continue;
         }
 
@@ -370,7 +373,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             int.parse(timeInParts[1]),
           );
         } catch (e) {
-          // showSnackBar('Error parsing car booking dates: $e');
+          showSnackBar('Error parsing car booking dates: $e');
           continue;
         }
 
@@ -384,9 +387,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (status == 'Cancelled') continue;
 
-        Event? event;
+        EventRecord? event;
         if (mounted) {
-          event = Event(
+          event = EventRecord(
             title: item['project_name'] ?? 'Minutes Of Meeting',
             startDateTime: startDateTime,
             endDateTime: endDateTime,
@@ -407,7 +410,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      // showSnackBar('Error parsing meeting room bookings: $e');
+      showSnackBar('Error parsing meeting room bookings: $e');
     }
     return;
   }
@@ -426,7 +429,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         final DateTime? endDateTime = item['to_date_time'] != null ? DateTime.parse(item['to_date_time']) : null;
 
         if (startDateTime == null || endDateTime == null) {
-          // showSnackBar('Missing from_date_time or to_date_time in meeting room booking.');
+          showSnackBar('Missing from_date_time or to_date_time in meeting room booking.');
           continue;
         }
 
@@ -436,9 +439,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (status == 'Cancelled') continue;
 
-        Event? event;
+        EventRecord? event;
         if (mounted) {
-          event = Event(
+          event = EventRecord(
             title: item['title'] ?? AppLocalizations.of(context)!.meetingRoomBookings,
             startDateTime: startDateTime,
             endDateTime: endDateTime,
@@ -460,7 +463,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      // showSnackBar('Error parsing meeting room bookings: $e');
+      showSnackBar('Error parsing meeting room bookings: $e');
     }
     return;
   }
@@ -476,7 +479,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
       for (var item in carBookings) {
         if (item['date_out'] == null || item['date_in'] == null) {
-          // showSnackBar('Missing date_out or date_in in car booking.');
+          showSnackBar('Missing date_out or date_in in car booking.');
           continue;
         }
 
@@ -516,7 +519,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             int.parse(timeInParts[1]),
           );
         } catch (e) {
-          // showSnackBar('Error parsing car booking dates: $e');
+          showSnackBar('Error parsing car booking dates: $e');
           continue;
         }
 
@@ -526,10 +529,10 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (status == 'Cancelled') continue;
 
-        Event? event;
+        EventRecord? event;
 
         if (mounted) {
-          event = Event(
+          event = EventRecord(
             title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
             startDateTime: startDateTime,
             endDateTime: endDateTime,
@@ -550,7 +553,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      // showSnackBar('Error parsing booking car: $e');
+      showSnackBar('Error parsing booking car: $e');
     }
     return;
   }
@@ -578,16 +581,16 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   }
 
   /// Retrieves events for a specific day
-  List<Event> _getEventsForDay(DateTime day) {
+  List<EventRecord> _getEventsForDay(DateTime day) {
     final normalizedDay = normalizeDate(day);
     return _events.value[normalizedDay] ?? [];
   }
 
   /// Retrieves events for a specific day
-  List<Event> _getDubplicateEventsForDay(DateTime day) {
+  List<EventRecord> _getDubplicateEventsForDay(DateTime day) {
     final normalizedDay = normalizeDate(day);
     final listEvent = _events.value[normalizedDay] ?? [];
-    List<Event> updateEvents = [];
+    List<EventRecord> updateEvents = [];
     if (listEvent.length > 4) {
       for (var i in listEvent) {
         if (updateEvents.isEmpty) {
@@ -607,7 +610,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   /// Filters and searches events based on selected category and search query
   void _filterAndSearchEvents() {
     if (_selectedDay == null) return;
-    List<Event> dayEvents = _getEventsForDay(_selectedDay!);
+    offlineProvider.addEventsCalendar(CalendarEventsListRecord(listEvents: _events.value));
+    List<EventRecord> dayEvents = _getEventsForDay(_selectedDay!);
     if (_selectedCategory != 'All') {
       dayEvents = dayEvents.where((event) {
         return event.category == _selectedCategory;
@@ -627,7 +631,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Navigates to day view when a day is double-tapped
   void _showDayView(DateTime selectedDay) {
-    // final List<Event> dayEvents = _getEventsForDay(selectedDay);
+    // final List<EventRecord> dayEvents = _getEventsForDay(selectedDay);
 
     Navigator.push(
       context,
@@ -765,7 +769,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     required String category,
     required String uid,
   }) {
-    final newEvent = Event(
+    final newEvent = EventRecord(
       title: title,
       startDateTime: startDateTime,
       endDateTime: endDateTime,
@@ -794,102 +798,81 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    return OfflineBuilder(
-      connectivityBuilder: (context, connectivity, child) {
-        final bool isConnected = connectivity != ConnectivityResult.none;
-
-        return Stack(
-          children: [
-            Positioned(
-              height: 24.0,
-              left: 0.0,
-              right: 0.0,
-              child: Container(
-                color: isConnected ? Colors.green : Colors.red,
-                child: Center(
-                  child: Text(
-                    isConnected ? 'ONLINE' : 'OFFLINE',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-            ),
-            Scaffold(
-              appBar: PreferredSize(
-                preferredSize: const Size.fromHeight(150),
-                child: _buildCalendarHeader(isDarkMode),
-              ),
-              body: RefreshIndicator(
-                onRefresh: _onRefresh,
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      if (_showFiltersAndSearchBar) _buildFilters(),
-                      if (_showFiltersAndSearchBar) _buildSearchBar(),
-                      _buildCalendar(context, isDarkMode),
-                      _buildSectionSeparator(),
-                      _eventsForDay.isEmpty
-                          ? SizedBox(
-                              height: sizeScreen(context).height * 0.45,
-                              child: Center(
-                                child: Text(
-                                  AppLocalizations.of(context)!.noEventsForThisDay,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: PreferredSize(
+            preferredSize: const Size.fromHeight(150),
+            child: _buildCalendarHeader(isDarkMode),
+          ),
+          body: RefreshIndicator(
+            onRefresh: _onRefresh,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (_showFiltersAndSearchBar) _buildFilters(),
+                  if (_showFiltersAndSearchBar) _buildSearchBar(),
+                  _buildCalendar(context, isDarkMode),
+                  _buildSectionSeparator(),
+                  _eventsForDay.isEmpty
+                      ? SizedBox(
+                          height: sizeScreen(context).height * 0.45,
+                          child: Center(
+                            child: Text(
+                              AppLocalizations.of(context)!.noEventsForThisDay,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w500,
                               ),
-                            )
-                          : CarouselSlider(
-                              options: CarouselOptions(
-                                autoPlay: false,
-                                viewportFraction: 1,
-                                initialPage: liveHour(),
-                                height: 410,
-                                scrollDirection: Axis.vertical,
-                              ),
-                              items: [
-                                CalendarDayWidgetCard(
-                                  selectedDay: _selectedDay,
-                                  eventsCalendar: _eventsForDay,
-                                  selectedSlotTime: 1,
-                                  heightTime: 1.4,
-                                ),
-                                CalendarDayWidgetCard(
-                                  selectedDay: _selectedDay,
-                                  eventsCalendar: _eventsForDay,
-                                  selectedSlotTime: 2,
-                                ),
-                                CalendarDayWidgetCard(
-                                  selectedDay: _selectedDay,
-                                  eventsCalendar: _eventsForDay,
-                                  selectedSlotTime: 3,
-                                ),
-                              ],
+                              textAlign: TextAlign.center,
                             ),
-                    ],
-                  ),
-                ),
+                          ),
+                        )
+                      : CarouselSlider(
+                          options: CarouselOptions(
+                            autoPlay: false,
+                            viewportFraction: 1,
+                            initialPage: liveHour(),
+                            height: 410,
+                            scrollDirection: Axis.vertical,
+                          ),
+                          items: [
+                            CalendarDayWidgetCard(
+                              selectedDay: _selectedDay,
+                              eventsCalendar: _eventsForDay,
+                              selectedSlotTime: 1,
+                              heightTime: 1.4,
+                            ),
+                            CalendarDayWidgetCard(
+                              selectedDay: _selectedDay,
+                              eventsCalendar: _eventsForDay,
+                              selectedSlotTime: 2,
+                            ),
+                            CalendarDayWidgetCard(
+                              selectedDay: _selectedDay,
+                              eventsCalendar: _eventsForDay,
+                              selectedSlotTime: 3,
+                            ),
+                          ],
+                        ),
+                ],
               ),
             ),
-            if (_isLoading)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: LinearProgressIndicator(
-                  backgroundColor: isConnected ? Colors.blue : Colors.orange,
-                ),
-              ),
-          ],
-        );
-      },
-      child: Container(),
+          ),
+        ),
+        if (_isLoading)
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LinearProgressIndicator(
+              backgroundColor: Colors.blue,
+            ),
+          ),
+      ],
     );
   }
 
@@ -961,7 +944,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               });
             },
             selectedColor: getEventColor(
-              Event(
+              EventRecord(
                 title: '',
                 startDateTime: DateTime.now(),
                 endDateTime: DateTime.now(),
@@ -1017,7 +1000,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           // TableCalendar without the default header
           Consumer2<DateProvider, LanguageNotifier>(
             builder: (context, dateProvider, languageNotifier, child) {
-              return TableCalendar<Event>(
+              return TableCalendar<EventRecord>(
                 rowHeight: 38,
                 firstDay: DateTime.utc(2010, 10, 16),
                 lastDay: DateTime.utc(2030, 3, 14),
@@ -1271,60 +1254,9 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
   }
 }
 
-/// Event model class
-class Event {
-  final String title;
-  final DateTime startDateTime;
-  final DateTime endDateTime;
-  final String description;
-  final String status;
-  final bool isMeeting;
-  final String? location;
-  final String? createdBy;
-  final String? imgName;
-  final String? createdAt;
-  final String uid;
-  final String? isRepeat;
-  final String? videoConference;
-  final Color? backgroundColor;
-  final String? outmeetingUid;
-  final String? leaveType;
-  final String category;
-  final double? days;
-  final List<Map<String, dynamic>>? members;
-
-  Event({
-    required this.title,
-    required this.startDateTime,
-    required this.endDateTime,
-    required this.description,
-    required this.status,
-    required this.isMeeting,
-    this.location,
-    this.createdBy,
-    this.imgName,
-    this.createdAt,
-    required this.uid,
-    this.isRepeat,
-    this.videoConference,
-    this.backgroundColor,
-    this.outmeetingUid,
-    this.leaveType,
-    required this.category,
-    this.days,
-    this.members,
-  });
-
-  /// Returns formatted time for display
-  String get formattedTime => DateFormat.jm().format(startDateTime);
-
-  @override
-  String toString() => '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
-}
-
 /// Data source for Syncfusion Calendar
 class MeetingDataSource extends CalendarDataSource {
-  MeetingDataSource(List<Event> source) {
+  MeetingDataSource(List<EventRecord> source) {
     appointments = source;
   }
 

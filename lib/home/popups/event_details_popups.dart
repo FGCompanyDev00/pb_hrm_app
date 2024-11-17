@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../home_calendar.dart';
+import 'package:pb_hrsystem/models/event_record.dart';
 
 class EventDetailsPopup extends StatelessWidget {
-  final Event event;
+  final EventRecord event;
 
   const EventDetailsPopup({super.key, required this.event});
 

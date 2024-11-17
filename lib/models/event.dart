@@ -1,45 +1,53 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+/// Event model class
 class Event {
-  final int id;
-  final String requestorId;
-  final String requestorName;
-  final String imgPath;
-  final int leaveTypeId;
-  final String name;
-  final String reason;
+  final String title;
   final DateTime startDateTime;
   final DateTime endDateTime;
-  final int days;
+  final String description;
   final String status;
   final bool isMeeting;
+  final String? location;
+  final String? createdBy;
+  final String? imgName;
+  final String? createdAt;
+  final String uid;
+  final String? isRepeat;
+  final String? videoConference;
+  final Color? backgroundColor;
+  final String? outmeetingUid;
+  final String? leaveType;
+  final String category;
+  final double? days;
+  final List<Map<String, dynamic>>? members;
 
   Event({
-    required this.id,
-    required this.requestorId,
-    required this.requestorName,
-    required this.imgPath,
-    required this.leaveTypeId,
-    required this.name,
-    required this.reason,
+    required this.title,
     required this.startDateTime,
     required this.endDateTime,
-    required this.days,
+    required this.description,
     required this.status,
-    this.isMeeting = false,
+    required this.isMeeting,
+    this.location,
+    this.createdBy,
+    this.imgName,
+    this.createdAt,
+    required this.uid,
+    this.isRepeat,
+    this.videoConference,
+    this.backgroundColor,
+    this.outmeetingUid,
+    this.leaveType,
+    required this.category,
+    this.days,
+    this.members,
   });
 
-  factory Event.fromJson(Map<String, dynamic> json) {
-    return Event(
-      id: json['take_leave_request_id'],
-      requestorId: json['requestor_id'],
-      requestorName: json['requestor_name'],
-      imgPath: json['img_path'],
-      leaveTypeId: json['leave_type_id'],
-      name: json['name'],
-      reason: json['take_leave_reason'],
-      startDateTime: DateTime.parse(json['take_leave_from']),
-      endDateTime: DateTime.parse(json['take_leave_to']),
-      days: json['days'],
-      status: json['is_approve'],
-    );
-  }
+  /// Returns formatted time for display
+  String get formattedTime => DateFormat.jm().format(startDateTime);
+
+  @override
+  String toString() => '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
 }
