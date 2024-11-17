@@ -358,5 +358,6 @@
     "okay": "Okay",
     "credentialsNotFound": "CREDENTIAL NOT FOUND",
     "kpi": "KPI",
-    "inventory": "Inventory"
+    "inventory": "Inventory",
+    "current": "Current"
 }

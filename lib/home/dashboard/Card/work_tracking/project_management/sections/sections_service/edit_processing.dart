@@ -12,11 +12,11 @@ class UpdateProcessingPage extends StatefulWidget {
   final String baseUrl;
 
   const UpdateProcessingPage({
-    Key? key,
+    super.key,
     required this.meetingId,
     required this.projectId,
     required this.baseUrl,
-  }) : super(key: key);
+  });
 
   @override
   _UpdateProcessingPageState createState() => _UpdateProcessingPageState();
@@ -63,10 +63,38 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
     'Finished': 'e35569eb-75e1-4005-9232-bfb57303b8b3',
   };
 
+  // Controllers to manage text fields and avoid recreating them on each build
+  late TextEditingController _titleController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _startDateController;
+  late TextEditingController _endDateController;
+  late TextEditingController _startTimeController;
+  late TextEditingController _endTimeController;
+
   @override
   void initState() {
     super.initState();
     _fetchMeetingDetails();
+
+    // Initialize controllers
+    _titleController = TextEditingController();
+    _descriptionController = TextEditingController();
+    _startDateController = TextEditingController();
+    _endDateController = TextEditingController();
+    _startTimeController = TextEditingController();
+    _endTimeController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    // Dispose controllers to free resources
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _startDateController.dispose();
+    _endDateController.dispose();
+    _startTimeController.dispose();
+    _endTimeController.dispose();
+    super.dispose();
   }
 
   Color _getStatusColor(String status) {
@@ -139,6 +167,22 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
               minute: int.parse(meeting['end_time'].split(':')[1]),
             )
                 : null;
+
+            // Initialize controllers with original data
+            _titleController.text = originalTitle;
+            _descriptionController.text = originalDescription;
+            _startDateController.text = originalFromDate != null
+                ? DateFormat('yyyy-MM-dd').format(originalFromDate!)
+                : '';
+            _endDateController.text = originalToDate != null
+                ? DateFormat('yyyy-MM-dd').format(originalToDate!)
+                : '';
+            _startTimeController.text = originalStartTime != null
+                ? originalStartTime!.format(context)
+                : '';
+            _endTimeController.text = originalEndTime != null
+                ? originalEndTime!.format(context)
+                : '';
           });
         } else {
           _showAlertDialog(
@@ -180,6 +224,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
       setState(() {
         updatedFromDate = picked;
         isFromDateEdited = true;
+        _startDateController.text = DateFormat('yyyy-MM-dd').format(picked);
       });
     }
   }
@@ -196,6 +241,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
       setState(() {
         updatedStartTime = picked;
         isStartTimeEdited = true;
+        _startTimeController.text = picked.format(context);
       });
     }
   }
@@ -214,6 +260,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
       setState(() {
         updatedToDate = picked;
         isToDateEdited = true;
+        _endDateController.text = DateFormat('yyyy-MM-dd').format(picked);
       });
     }
   }
@@ -230,11 +277,16 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
       setState(() {
         updatedEndTime = picked;
         isEndTimeEdited = true;
+        _endTimeController.text = picked.format(context);
       });
     }
   }
 
   Future<void> _updateMeeting() async {
+    if (_formKey.currentState?.validate() != true) {
+      return;
+    }
+
     // Check if any field has been edited
     if (!isTitleEdited &&
         !isDescriptionEdited &&
@@ -243,15 +295,14 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
         !isToDateEdited &&
         !isStartTimeEdited &&
         !isEndTimeEdited) {
-      _showAlertDialog(
-        title: 'No Changes',
-        content: 'No fields have been updated.',
+      _showSnackBar(
+        message: 'No fields have been updated.',
         isError: false,
       );
       return;
     }
 
-    // Combine date and time into single DateTime strings
+    // Combine date and time into single DateTime objects
     DateTime fromDateTime = originalFromDate ?? DateTime.now();
     if (isFromDateEdited && updatedFromDate != null) {
       fromDateTime = DateTime(
@@ -292,9 +343,8 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
 
     // Validate that end date is not before start date
     if (toDateTime.isBefore(fromDateTime)) {
-      _showAlertDialog(
-        title: 'Invalid Dates',
-        content: 'End date cannot be before start date.',
+      _showSnackBar(
+        message: 'End date cannot be before start date.',
         isError: true,
       );
       return;
@@ -328,14 +378,14 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
         'fromdate': DateFormat('yyyy-MM-dd HH:mm:ss').format(fromDateTime),
         'todate': DateFormat('yyyy-MM-dd HH:mm:ss').format(toDateTime),
         'start_time': isStartTimeEdited && updatedStartTime != null
-            ? '${_formatTime(updatedStartTime!)}'
+            ? _formatTime(updatedStartTime!)
             : originalStartTime != null
-            ? '${_formatTime(originalStartTime!)}'
+            ? _formatTime(originalStartTime!)
             : '',
         'end_time': isEndTimeEdited && updatedEndTime != null
-            ? '${_formatTime(updatedEndTime!)}'
+            ? _formatTime(updatedEndTime!)
             : originalEndTime != null
-            ? '${_formatTime(originalEndTime!)}'
+            ? _formatTime(originalEndTime!)
             : '',
       };
 
@@ -350,11 +400,11 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        _showAlertDialog(
-          title: 'Success',
-          content: 'Meeting updated successfully.',
+        _showSnackBar(
+          message: 'Meeting updated successfully.',
           isError: false,
         );
+        // Optionally, refresh data or navigate back
       } else {
         String errorMessage = 'Failed to update meeting.';
         try {
@@ -363,16 +413,14 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
             errorMessage = responseData['message'];
           }
         } catch (_) {}
-        _showAlertDialog(
-          title: 'Error',
-          content: errorMessage,
+        _showSnackBar(
+          message: errorMessage,
           isError: true,
         );
       }
     } catch (e) {
-      _showAlertDialog(
-        title: 'Error',
-        content: 'Error updating meeting: $e',
+      _showSnackBar(
+        message: 'Error updating meeting: $e',
         isError: true,
       );
     }
@@ -403,7 +451,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey, // Grey button as per request
+                backgroundColor: Colors.red, // Changed to red for better visibility
               ),
               child: const Text('Delete', style: TextStyle(color: Colors.white)),
             ),
@@ -442,11 +490,11 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        _showAlertDialog(
-          title: 'Success',
-          content: 'Meeting deleted successfully.',
+        _showSnackBar(
+          message: 'Meeting deleted successfully.',
           isError: false,
         );
+        Navigator.pop(context); // Navigate back after deletion
       } else {
         String errorMessage = 'Failed to delete meeting.';
         try {
@@ -455,16 +503,14 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
             errorMessage = responseData['message'];
           }
         } catch (_) {}
-        _showAlertDialog(
-          title: 'Error',
-          content: errorMessage,
+        _showSnackBar(
+          message: errorMessage,
           isError: true,
         );
       }
     } catch (e) {
-      _showAlertDialog(
-        title: 'Error',
-        content: 'Error deleting meeting: $e',
+      _showSnackBar(
+        message: 'Error deleting meeting: $e',
         isError: true,
       );
     }
@@ -496,7 +542,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                 if (!isError &&
                     (title.toLowerCase().contains('success') ||
                         title.toLowerCase().contains('deleted'))) {
-
+                  Navigator.of(context).pop(); // Navigate back on success
                 }
               },
               child: const Text('OK'),
@@ -507,30 +553,40 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
     );
   }
 
+  void _showSnackBar({required String message, required bool isError}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Widget _buildEditableField({
     required String label,
-    required bool isEdited,
-    required String initialValue,
-    required Function(String) onChanged,
-    required VoidCallback onTap,
+    required TextEditingController controller,
+    required bool isEditable,
+    required Widget suffixIcon,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+    VoidCallback? onTap,
+    FormFieldValidator<String>? validator,
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Opacity(
-        opacity: isEdited ? 1.0 : 0.5,
+      child: AbsorbPointer(
+        absorbing: !isEditable,
         child: TextFormField(
-          initialValue: isEdited ? initialValue : originalTitle,
+          controller: controller,
           decoration: InputDecoration(
             labelText: label,
             border: const OutlineInputBorder(),
+            suffixIcon: suffixIcon,
           ),
-          validator: (value) {
-            // Optional fields, no validation required
-            return null;
-          },
-          onChanged: (value) {
-            onChanged(value);
-          },
+          keyboardType: keyboardType,
+          maxLines: maxLines,
+          validator: validator,
         ),
       ),
     );
@@ -594,15 +650,14 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: _deleteMeeting,
-                        icon:
-                        const Icon(Icons.close, color: Colors.white),
+                        onPressed: _isLoading ? null : _deleteMeeting,
+                        icon: const Icon(Icons.close, color: Colors.white),
                         label: const Text(
                           'Delete',
                           style: TextStyle(color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey, // Grey button
+                          backgroundColor: Colors.red, // Changed to red for better visibility
                           padding: const EdgeInsets.symmetric(
                               vertical: 12.0),
                           shape: RoundedRectangleBorder(
@@ -614,12 +669,11 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: _updateMeeting,
-                        icon:
-                        const Icon(Icons.check, color: Colors.black),
+                        onPressed: _isLoading ? null : _updateMeeting,
+                        icon: const Icon(Icons.check, color: Colors.white),
                         label: const Text(
                           'Update',
-                          style: TextStyle(color: Colors.black),
+                          style: TextStyle(color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
@@ -636,7 +690,21 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                 ),
                 const SizedBox(height: 24),
                 // Title Input
-                GestureDetector(
+                _buildEditableField(
+                  label: 'Title',
+                  controller: _titleController,
+                  isEditable: true,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      isTitleEdited ? Icons.check : Icons.edit,
+                      color: isTitleEdited ? Colors.green : Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        isTitleEdited = !isTitleEdited;
+                      });
+                    },
+                  ),
                   onTap: () {
                     if (!isTitleEdited) {
                       setState(() {
@@ -645,194 +713,96 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                       });
                     }
                   },
-                  child: Opacity(
-                    opacity: isTitleEdited ? 1.0 : 0.5,
-                    child: TextFormField(
-                      initialValue:
-                      isTitleEdited ? updatedTitle : originalTitle,
-                      decoration: const InputDecoration(
-                        labelText: 'Title',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (value) {
-                        // Optional field
-                        return null;
-                      },
-                      onChanged: (value) {
-                        setState(() {
-                          updatedTitle = value;
-                          isTitleEdited = true;
-                        });
-                      },
-                    ),
-                  ),
+                  validator: (value) {
+                    if (isTitleEdited && (value == null || value.isEmpty)) {
+                      return 'Title cannot be empty';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 24),
                 // Status Dropdown
-                GestureDetector(
-                  onTap: () {
-                    if (!isStatusEdited) {
-                      setState(() {
-                        isStatusEdited = true;
-                        updatedStatus = originalStatus;
-                        updatedStatusId = originalStatusId;
-                      });
-                    }
-                  },
-                  child: Opacity(
-                    opacity: isStatusEdited ? 1.0 : 0.5,
-                    child: DropdownButtonFormField<String>(
-                      value: isStatusEdited
-                          ? updatedStatus
-                          : originalStatus,
-                      decoration: const InputDecoration(
-                        labelText: 'Status',
-                        border: OutlineInputBorder(),
-                      ),
-                      icon: Image.asset(
-                        'assets/task.png',
-                        width: 24,
-                        height: 24,
-                      ),
-                      items: ['Processing', 'Pending', 'Finished']
-                          .map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.access_time,
-                                color: _getStatusColor(value),
-                                size: 16,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(value),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: isStatusEdited
-                          ? (String? newValue) {
-                        setState(() {
-                          updatedStatus = newValue!;
-                          updatedStatusId =
-                          _statusMap[updatedStatus!]!;
-                        });
-                      }
-                          : null,
-                      validator: (value) {
-                        // Optional field
-                        return null;
-                      },
-                    ),
+                DropdownButtonFormField<String>(
+                  value: isStatusEdited
+                      ? updatedStatus
+                      : originalStatus,
+                  decoration: const InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(),
                   ),
+                  icon: Image.asset(
+                    'assets/task.png',
+                    width: 24,
+                    height: 24,
+                  ),
+                  items: ['Processing', 'Pending', 'Finished']
+                      .map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.access_time,
+                            color: _getStatusColor(value),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(value),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: _isLoading
+                      ? null
+                      : (String? newValue) {
+                    setState(() {
+                      updatedStatus = newValue!;
+                      updatedStatusId = _statusMap[updatedStatus!]!;
+                      isStatusEdited = true;
+                    });
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please select a status';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 24),
                 // Start Date-Time
                 Row(
                   children: [
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          if (!isFromDateEdited) {
-                            setState(() {
-                              isFromDateEdited = true;
-                              updatedFromDate = originalFromDate;
-                              updatedStartTime = originalStartTime;
-                            });
-                          }
-                          _selectStartDate();
-                        },
-                        child: Opacity(
-                          opacity: isFromDateEdited ? 1.0 : 0.5,
-                          child: AbsorbPointer(
-                            child: TextFormField(
-                              decoration: InputDecoration(
-                                labelText: 'Start Date',
-                                border: const OutlineInputBorder(),
-                                suffixIcon: IconButton(
-                                  icon: const Icon(Icons.calendar_today),
-                                  onPressed: () {
-                                    if (!isFromDateEdited) {
-                                      setState(() {
-                                        isFromDateEdited = true;
-                                        updatedFromDate =
-                                            originalFromDate;
-                                        updatedStartTime =
-                                            originalStartTime;
-                                      });
-                                    }
-                                    _selectStartDate();
-                                  },
-                                ),
-                              ),
-                              validator: (value) {
-                                // Optional field
-                                return null;
-                              },
-                              controller: TextEditingController(
-                                text: isFromDateEdited &&
-                                    updatedFromDate != null
-                                    ? DateFormat('yyyy-MM-dd')
-                                    .format(updatedFromDate!)
-                                    : originalFromDate != null
-                                    ? DateFormat('yyyy-MM-dd')
-                                    .format(originalFromDate!)
-                                    : '',
-                              ),
-                            ),
-                          ),
+                      child: _buildEditableField(
+                        label: 'Start Date',
+                        controller: _startDateController,
+                        isEditable: true,
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.calendar_today),
+                          onPressed: _isLoading ? null : _selectStartDate,
                         ),
+                        onTap: _isLoading ? null : _selectStartDate,
+                        validator: (value) {
+                          // Optional field
+                          return null;
+                        },
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          if (!isStartTimeEdited) {
-                            setState(() {
-                              isStartTimeEdited = true;
-                              updatedStartTime = originalStartTime;
-                            });
-                          }
-                          _selectStartTime();
-                        },
-                        child: Opacity(
-                          opacity: isStartTimeEdited ? 1.0 : 0.5,
-                          child: AbsorbPointer(
-                            child: TextFormField(
-                              decoration: InputDecoration(
-                                labelText: 'Start Time',
-                                border: const OutlineInputBorder(),
-                                suffixIcon: IconButton(
-                                  icon: const Icon(Icons.access_time),
-                                  onPressed: () {
-                                    if (!isStartTimeEdited) {
-                                      setState(() {
-                                        isStartTimeEdited = true;
-                                        updatedStartTime =
-                                            originalStartTime;
-                                      });
-                                    }
-                                    _selectStartTime();
-                                  },
-                                ),
-                              ),
-                              validator: (value) {
-                                // Optional field
-                                return null;
-                              },
-                              controller: TextEditingController(
-                                text: isStartTimeEdited &&
-                                    updatedStartTime != null
-                                    ? updatedStartTime!.format(context)
-                                    : originalStartTime != null
-                                    ? originalStartTime!.format(context)
-                                    : '',
-                              ),
-                            ),
-                          ),
+                      child: _buildEditableField(
+                        label: 'Start Time',
+                        controller: _startTimeController,
+                        isEditable: true,
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.access_time),
+                          onPressed: _isLoading ? null : _selectStartTime,
                         ),
+                        onTap: _isLoading ? null : _selectStartTime,
+                        validator: (value) {
+                          // Optional field
+                          return null;
+                        },
                       ),
                     ),
                   ],
@@ -842,109 +812,59 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                 Row(
                   children: [
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          if (!isToDateEdited) {
-                            setState(() {
-                              isToDateEdited = true;
-                              updatedToDate = originalToDate;
-                              updatedEndTime = originalEndTime;
-                            });
-                          }
-                          _selectEndDate();
-                        },
-                        child: Opacity(
-                          opacity: isToDateEdited ? 1.0 : 0.5,
-                          child: AbsorbPointer(
-                            child: TextFormField(
-                              decoration: InputDecoration(
-                                labelText: 'End Date',
-                                border: const OutlineInputBorder(),
-                                suffixIcon: IconButton(
-                                  icon: const Icon(Icons.calendar_today),
-                                  onPressed: () {
-                                    if (!isToDateEdited) {
-                                      setState(() {
-                                        isToDateEdited = true;
-                                        updatedToDate = originalToDate;
-                                        updatedEndTime = originalEndTime;
-                                      });
-                                    }
-                                    _selectEndDate();
-                                  },
-                                ),
-                              ),
-                              validator: (value) {
-                                // Optional field
-                                return null;
-                              },
-                              controller: TextEditingController(
-                                text: isToDateEdited && updatedToDate != null
-                                    ? DateFormat('yyyy-MM-dd')
-                                    .format(updatedToDate!)
-                                    : originalToDate != null
-                                    ? DateFormat('yyyy-MM-dd')
-                                    .format(originalToDate!)
-                                    : '',
-                              ),
-                            ),
-                          ),
+                      child: _buildEditableField(
+                        label: 'End Date',
+                        controller: _endDateController,
+                        isEditable: true,
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.calendar_today),
+                          onPressed: _isLoading ? null : _selectEndDate,
                         ),
+                        onTap: _isLoading ? null : _selectEndDate,
+                        validator: (value) {
+                          // Optional field
+                          return null;
+                        },
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          if (!isEndTimeEdited) {
-                            setState(() {
-                              isEndTimeEdited = true;
-                              updatedEndTime = originalEndTime;
-                            });
-                          }
-                          _selectEndTime();
-                        },
-                        child: Opacity(
-                          opacity: isEndTimeEdited ? 1.0 : 0.5,
-                          child: AbsorbPointer(
-                            child: TextFormField(
-                              decoration: InputDecoration(
-                                labelText: 'End Time',
-                                border: const OutlineInputBorder(),
-                                suffixIcon: IconButton(
-                                  icon: const Icon(Icons.access_time),
-                                  onPressed: () {
-                                    if (!isEndTimeEdited) {
-                                      setState(() {
-                                        isEndTimeEdited = true;
-                                        updatedEndTime = originalEndTime;
-                                      });
-                                    }
-                                    _selectEndTime();
-                                  },
-                                ),
-                              ),
-                              validator: (value) {
-                                // Optional field
-                                return null;
-                              },
-                              controller: TextEditingController(
-                                text: isEndTimeEdited && updatedEndTime != null
-                                    ? updatedEndTime!.format(context)
-                                    : originalEndTime != null
-                                    ? originalEndTime!.format(context)
-                                    : '',
-                              ),
-                            ),
-                          ),
+                      child: _buildEditableField(
+                        label: 'End Time',
+                        controller: _endTimeController,
+                        isEditable: true,
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.access_time),
+                          onPressed: _isLoading ? null : _selectEndTime,
                         ),
+                        onTap: _isLoading ? null : _selectEndTime,
+                        validator: (value) {
+                          // Optional field
+                          return null;
+                        },
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
                 // Description Input
-                GestureDetector(
+                _buildEditableField(
+                  label: 'Description',
+                  controller: _descriptionController,
+                  isEditable: true,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      isDescriptionEdited ? Icons.check : Icons.edit,
+                      color: isDescriptionEdited ? Colors.green : Colors.grey,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        isDescriptionEdited = !isDescriptionEdited;
+                      });
+                    },
+                  ),
+                  keyboardType: TextInputType.multiline,
+                  maxLines: 5,
                   onTap: () {
                     if (!isDescriptionEdited) {
                       setState(() {
@@ -953,29 +873,10 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                       });
                     }
                   },
-                  child: Opacity(
-                    opacity: isDescriptionEdited ? 1.0 : 0.5,
-                    child: TextFormField(
-                      initialValue: isDescriptionEdited
-                          ? updatedDescription
-                          : originalDescription,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 5,
-                      validator: (value) {
-                        // Optional field
-                        return null;
-                      },
-                      onChanged: (value) {
-                        setState(() {
-                          updatedDescription = value;
-                          isDescriptionEdited = true;
-                        });
-                      },
-                    ),
-                  ),
+                  validator: (value) {
+                    // Optional field, add validation if necessary
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 24),
               ],

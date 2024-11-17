@@ -87,7 +87,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage>
 
     return Scaffold(
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(85.0),
+        preferredSize: const Size.fromHeight(90.0),
         child: AppBar(
           automaticallyImplyLeading: true,
           backgroundColor: Colors.transparent,

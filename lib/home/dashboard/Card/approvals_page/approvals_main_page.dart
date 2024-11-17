@@ -494,11 +494,17 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
     String type = (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
     String status = (item['status']?.toString() ?? item['is_approve']?.toString() ?? 'Pending').trim();
+    if (status == 'Branch Waiting') {
+      status = 'Waiting';
+    } else if (status == 'Branch Approved') {
+      status = 'Approved';
+    }
     String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
     String requestorName = (item['requestor_name']?.toString() ?? 'N/A').trim();
     String id = item['uid']?.toString().trim() ?? '';
     String imgName = item['img_name']?.toString().trim() ?? '';
     String imgPath = item['img_path']?.toString().trim() ?? '';
+
 
     String employeeImage;
     if (imgPath.isNotEmpty && imgPath.startsWith('http')) {
@@ -545,17 +551,34 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
     return GestureDetector(
       onTap: () {
-        if (id.isEmpty) {
+        String itemId = '';
+
+        switch (type) {
+          case 'leave':
+            itemId = item['take_leave_request_id']?.toString() ?? '';
+            break;
+          case 'meeting':
+          case 'car':
+            itemId = item['uid']?.toString() ?? '';
+            break;
+          default:
+            itemId = '';
+            break;
+        }
+
+        if (itemId.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Invalid ID')),
           );
           return;
         }
+
+        // Navigate to the ApprovalsDetailsPage with the appropriate ID
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ApprovalsDetailsPage(
-              id: id,
+              id: itemId,
               type: type,
             ),
           ),

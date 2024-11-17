@@ -3,7 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_assignment.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/update_assignment.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/edit_assignment.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/view_assignment.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';

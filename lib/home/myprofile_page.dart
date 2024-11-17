@@ -143,7 +143,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
             bottomRight: Radius.circular(30),
           ),
         ),
-        toolbarHeight: 70,
+        toolbarHeight: 100,
       ),
       body: FutureBuilder<UserProfile>(
         future: futureUserProfile,

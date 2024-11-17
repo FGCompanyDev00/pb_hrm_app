@@ -397,5 +397,6 @@
   "okay": "确定",
   "credentialsNotFound": "凭据未找到",
   "kpi": "关键绩效指标",
-  "inventory": "ສິນຄ້າຄົງເຫຼືອ"
+  "inventory": "ສິນຄ້າຄົງເຫຼືອ",
+  "current": "当前"
 }

@@ -227,7 +227,7 @@ class _DashboardState extends State<Dashboard> {
       onWillPop: () async => false, // Disable back button
       child: Scaffold(
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(170.0),
+          preferredSize: const Size.fromHeight(150.0),
           child: FutureBuilder<UserProfile>(
             future: futureUserProfile,
             builder: (context, snapshot) {
@@ -282,10 +282,7 @@ class _DashboardState extends State<Dashboard> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       flexibleSpace: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-        ),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(
@@ -295,58 +292,46 @@ class _DashboardState extends State<Dashboard> {
           ),
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 40.0),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Settings Icon
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SettingsPage()),
-                      );
-                    },
-                    child: const Icon(Icons.settings, color: Colors.black, size: 38),
+                  IconButton(
+                    icon: const Icon(Icons.settings, color: Colors.black, size: 40),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SettingsPage()),
+                    ),
                   ),
-
-                  // User Profile and Greeting
                   GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ProfileScreen()),
-                      );
-                    },
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                    ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         CircleAvatar(
-                            radius: 28,
-                            backgroundImage: userProfile.imgName != 'default_avatar.jpg' ? NetworkImage(userProfile.imgName) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
-                            backgroundColor: Colors.white,
-                            onBackgroundImageError: (_, __) {
-                              const AssetImage('assets/default_avatar.png');
-                            }),
-                        const SizedBox(height: 8),
+                          radius: 30,
+                          backgroundImage: userProfile.imgName != 'default_avatar.jpg'
+                              ? NetworkImage(userProfile.imgName)
+                              : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                          backgroundColor: Colors.white,
+                          onBackgroundImageError: (_, __) {
+                            const AssetImage('assets/default_avatar.png');
+                          },
+                        ),
+                        const SizedBox(height: 6),
                         Text(
                           AppLocalizations.of(context)!.greeting(userProfile.name),
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
+                          style: const TextStyle(color: Colors.black, fontSize: 22),
                         ),
                       ],
                     ),
                   ),
-
-                  // Logout Icon
-                  GestureDetector(
-                    onTap: () {
-                      _showLogoutDialog(context);
-                    },
-                    child: const Icon(Icons.power_settings_new, color: Colors.black, size: 38),
+                  IconButton(
+                    icon: const Icon(Icons.power_settings_new, color: Colors.black, size: 40),
+                    onPressed: () => _showLogoutDialog(context),
                   ),
                 ],
               ),
@@ -373,20 +358,12 @@ class _DashboardState extends State<Dashboard> {
   Widget _buildMainContent(BuildContext context, bool isDarkMode) {
     return Column(
       children: [
+        _buildBannerCarousel(),
+        const SizedBox(height: 10),
+        _buildActionMenuHeader(),
+        const SizedBox(height: 10),
         Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildBannerCarousel(),
-                const SizedBox(height: 16),
-                _buildActionMenuHeader(),
-                const SizedBox(height: 16),
-                _buildActionGrid(isDarkMode),
-              ],
-            ),
-          ),
+          child: _buildActionGrid(isDarkMode), // Expanded GridView to fill remaining space
         ),
       ],
     );
@@ -395,7 +372,7 @@ class _DashboardState extends State<Dashboard> {
   // Banner Carousel
   Widget _buildBannerCarousel() {
     return SizedBox(
-      height: 130.0,
+      height: 170.0,
       child: FutureBuilder<List<String>>(
         future: futureBanners,
         builder: (context, snapshot) {
@@ -414,20 +391,13 @@ class _DashboardState extends State<Dashboard> {
               },
               itemBuilder: (context, index) {
                 return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 5.0),
+                  margin: const EdgeInsets.symmetric(horizontal: 12.0),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(20),
                     image: DecorationImage(
                       image: NetworkImage(snapshot.data![index]),
                       fit: BoxFit.cover,
                     ),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.orange,
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
                   ),
                 );
               },
@@ -442,173 +412,167 @@ class _DashboardState extends State<Dashboard> {
 
   // Action Menu Header
   Widget _buildActionMenuHeader() {
-    return SizedBox(
-      height: 60,
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 24,
-            color: Colors.green,
-            margin: const EdgeInsets.only(right: 8),
-          ),
-          Text(
-            AppLocalizations.of(context)!.actionMenu,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0), // Add horizontal padding
+      child: SizedBox(
+        height: 50,
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 24,
+              color: Colors.green,
+              margin: const EdgeInsets.only(right: 12),
             ),
-          ),
-          const Spacer(),
-          Text(
-            AppLocalizations.of(context)!.notification,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.black,
-            ),
-          ),
-          Stack(
-            children: [
-              IconButton(
-                icon: Image.asset(
-                  'assets/notification-status.png',
-                  width: 24,
-                  height: 24,
-                  color: Colors.black,
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const NotificationPage()),
-                  ).then((_) {
-                    setState(() {
-                      _hasUnreadNotifications = false;
-                    });
-                  });
-                },
+            Text(
+              AppLocalizations.of(context)!.actionMenu,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
               ),
-              if (_hasUnreadNotifications)
-                Positioned(
-                  right: 11,
-                  top: 11,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 12,
-                      minHeight: 12,
+            ),
+            const Spacer(),
+            Text(
+              AppLocalizations.of(context)!.notification,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.black,
+              ),
+            ),
+            Stack(
+              children: [
+                IconButton(
+                  icon: Image.asset(
+                    'assets/notification-status.png',
+                    width: 24,
+                    height: 24,
+                    color: Colors.black,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const NotificationPage()),
+                    ).then((_) {
+                      setState(() {
+                        _hasUnreadNotifications = false;
+                      });
+                    });
+                  },
+                ),
+                if (_hasUnreadNotifications)
+                  Positioned(
+                    right: 11,
+                    top: 11,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 12,
+                        minHeight: 12,
+                      ),
                     ),
                   ),
-                ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   // Action Grid
   Widget _buildActionGrid(bool isDarkMode) {
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 0.8,
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      children: [
-        _buildActionCard(
-          context,
-          'assets/data-2.png',
-          AppLocalizations.of(context)!.history,
-          isDarkMode,
-          () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const HistoryPage()),
-            );
-          },
-        ),
-        _buildActionCard(
-          context,
-          'assets/people.png',
-          AppLocalizations.of(context)!.approvals,
-          isDarkMode,
-          () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
-            );
-          },
-        ),
-        _buildActionCard(
-          context,
-          'assets/status-up.png',
-          AppLocalizations.of(context)!.workTracking,
-          isDarkMode,
-          () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
-            );
-          },
-        ),
-        _buildActionCard(
-          context,
-          'assets/car_return.png',
-          AppLocalizations.of(context)!.carReturn,
-          isDarkMode,
-          () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ReturnCarPage()),
-            );
-          },
-        ),
-        _buildActionCard(
-          context,
-          'assets/KPI.png',
-          AppLocalizations.of(context)!.kpi,
-          isDarkMode,
-          () {
-            // Navigator.push(
-            //   context,
-            //   MaterialPageRoute(builder: (context) => const ReturnCarPage()),
-            // );
-          },
-        ),
-        _buildActionCard(
-          context,
-          'assets/inventory.png',
-          AppLocalizations.of(context)!.inventory,
-          isDarkMode,
-          () {
-            // Navigator.push(
-            //   context,
-            //   MaterialPageRoute(builder: (context) => const ReturnCarPage()),
-            // );
-          },
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: GridView.count(
+        crossAxisCount: 3,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        childAspectRatio: 0.8,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        children: [
+          _buildActionCard(
+            context,
+            'assets/data-2.png',
+            AppLocalizations.of(context)!.history,
+            isDarkMode,
+                () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HistoryPage()),
+              );
+            },
+          ),
+          _buildActionCard(
+            context,
+            'assets/people.png',
+            AppLocalizations.of(context)!.approvals,
+            isDarkMode,
+                () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
+              );
+            },
+          ),
+          _buildActionCard(
+            context,
+            'assets/status-up.png',
+            AppLocalizations.of(context)!.workTracking,
+            isDarkMode,
+                () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
+              );
+            },
+          ),
+          _buildActionCard(
+            context,
+            'assets/car_return.png',
+            AppLocalizations.of(context)!.carReturn,
+            isDarkMode,
+                () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ReturnCarPage()),
+              );
+            },
+          ),
+          _buildActionCard(
+            context,
+            'assets/KPI.png',
+            AppLocalizations.of(context)!.kpi,
+            isDarkMode,
+                () {},
+          ),
+          _buildActionCard(
+            context,
+            'assets/inventory.png',
+            AppLocalizations.of(context)!.inventory,
+            isDarkMode,
+                () {},
+          ),
+        ],
+      ),
     );
   }
 
-  // Individual Action Card
   Widget _buildActionCard(BuildContext context, String imagePath, String title, bool isDarkMode, VoidCallback onTap) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate icon and font sizes based on available width
         double iconSize = constraints.maxWidth * 0.5;
         double fontSize = constraints.maxWidth * 0.1;
-
         fontSize = fontSize.clamp(12.0, 18.0);
 
         return Card(
-          elevation: 6,
+          color: Colors.white,
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: const BorderSide(color: Color(0xFFDBB342), width: 1.5),
@@ -622,7 +586,7 @@ class _DashboardState extends State<Dashboard> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Image.asset(imagePath, height: iconSize, width: iconSize),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Flexible(
                     child: Text(
                       title,

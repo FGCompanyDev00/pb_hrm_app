@@ -463,7 +463,9 @@ class _OfficeBookingEventEditPageState
             labelText: 'Leave Type*',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
-          value: _selectedLeaveTypeId,
+          value: _leaveTypes.any((type) => type['leave_type_id'].toString() == _selectedLeaveTypeId)
+              ? _selectedLeaveTypeId
+              : null, // Ensure value is in the list
           items: _leaveTypes
               .map((leaveType) => DropdownMenuItem<String>(
             value: leaveType['leave_type_id'].toString(),
@@ -473,14 +475,11 @@ class _OfficeBookingEventEditPageState
           onChanged: (String? newValue) {
             setState(() {
               _selectedLeaveTypeId = newValue;
-              if (kDebugMode) {
-                print('Selected Leave Type ID: $_selectedLeaveTypeId');
-              }
             });
           },
-          validator: (value) =>
-          value == null ? 'Please select a leave type' : null,
+          validator: (value) => value == null ? 'Please select a leave type' : null,
         ),
+
         const SizedBox(height: 16.0),
         // From Date
         GestureDetector(
@@ -592,27 +591,20 @@ class _OfficeBookingEventEditPageState
         // Room Dropdown
         DropdownButtonFormField<String>(
           decoration: InputDecoration(
-            labelText: 'Room*',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+          labelText: 'Room*',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
-          value: _selectedRoomId,
-          items: _rooms
-              .map((room) => DropdownMenuItem<String>(
-            value: room['room_id'].toString(),
-            child: Text(room['room_name'] ?? 'Unknown Room'),
-          ))
-              .toList(),
+          value: _rooms.any((room) => room['room_id'].toString() == _selectedRoomId)
+          ? _selectedRoomId
+              : null, // Ensure _selectedRoomId is valid
+          items: _getUniqueRoomItems(),
           onChanged: (String? newValue) {
-            setState(() {
-              _selectedRoomId = newValue;
-              if (kDebugMode) {
-                print('Selected Room ID: $_selectedRoomId');
-              }
-            });
+          setState(() {
+          _selectedRoomId = newValue;
+          });
           },
-          validator: (value) =>
-          value == null ? 'Please select a room' : null,
-        ),
+          validator: (value) => value == null ? 'Please select a room' : null,
+          ),
         const SizedBox(height: 16.0),
         // Employee Telephone
         TextFormField(
@@ -671,6 +663,24 @@ class _OfficeBookingEventEditPageState
         ),
       ],
     );
+  }
+
+  List<DropdownMenuItem<String>> _getUniqueRoomItems() {
+    final Set<String> uniqueRoomIds = {}; // Set to store unique IDs
+    return _rooms.where((room) {
+      final roomId = room['room_id'].toString();
+      if (uniqueRoomIds.contains(roomId)) {
+        return false; // Skip if already added
+      } else {
+        uniqueRoomIds.add(roomId); // Add to Set if not added
+        return true; // Include in the list
+      }
+    }).map((room) {
+      return DropdownMenuItem<String>(
+        value: room['room_id'].toString(),
+        child: Text(room['room_name'] ?? 'Unknown Room'),
+      );
+    }).toList();
   }
 
   /// Builds the car form
