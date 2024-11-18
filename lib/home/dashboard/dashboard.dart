@@ -227,6 +227,7 @@ class _DashboardState extends State<Dashboard> {
     return PopScope(
       onPopInvokedWithResult: (e, result) => false, // Disable back button
       child: Scaffold(
+        backgroundColor: Colors.white,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(150.0),
           child: FutureBuilder<UserProfile>(
