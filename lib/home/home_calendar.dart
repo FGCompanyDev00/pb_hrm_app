@@ -836,7 +836,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                       autoPlay: false,
                       viewportFraction: 1,
                       initialPage: liveHour(),
-                      height: MediaQuery.of(context).size.height * 0.437,
+                      height: 410,
                       scrollDirection: Axis.vertical,
                     ),
                     items: [
