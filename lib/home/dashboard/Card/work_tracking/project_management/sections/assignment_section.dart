@@ -168,8 +168,10 @@ class _AssignmentSectionState extends State<AssignmentSection> {
     }
 
     final daysRemaining = dueDate.difference(now).inDays;
+    Color statusColor = _getStatusColor(assignment['s_name'] ?? 'Unknown');
     Color daysColor;
     String daysText;
+
     if (daysRemaining > 0) {
       daysColor = Colors.orange;
       daysText = '$daysRemaining day${daysRemaining > 1 ? 's' : ''} remaining';
@@ -186,15 +188,15 @@ class _AssignmentSectionState extends State<AssignmentSection> {
         _showViewAssignmentPage(assignment);
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+        margin: const EdgeInsets.only(top: 6.0, left: 8.0, right: 8.0, bottom: 14.0),
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: statusColor.withOpacity(0.3),
               blurRadius: 6,
-              spreadRadius: 1,
-              offset: const Offset(2, 2),
+              spreadRadius: 1.5,
+              offset: const Offset(1, 1),
             ),
           ],
           borderRadius: BorderRadius.circular(12.0),
@@ -218,12 +220,12 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                           fontSize: 14,
                         ),
                       ),
-                      Icon(Icons.access_time, color: _getStatusColor(assignment['s_name'] ?? 'Unknown'), size: 14),
+                      Icon(Icons.access_time, color: statusColor, size: 14),
                       const SizedBox(width: 4),
                       Text(
                         assignment['s_name'] ?? 'Unknown',
                         style: TextStyle(
-                          color: _getStatusColor(assignment['s_name'] ?? 'Unknown'),
+                          color: statusColor,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -250,9 +252,9 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                           });
                         },
                         child: const CircleAvatar(
-                          backgroundColor: Colors.green, // Smaller bell icon
+                          backgroundColor: Colors.green,
                           radius: 14,
-                          child: Icon(Icons.notifications, color: Colors.white, size: 16), // Smaller size for compact design
+                          child: Icon(Icons.notifications, color: Colors.white, size: 16),
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -290,7 +292,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
               // Title Section
               Row(
                 children: [
-                  Image.asset('assets/title.png', width: 16, height: 16, color: Colors.blue,),
+                  Image.asset('assets/title.png', width: 16, height: 16, color: Colors.blue),
                   const SizedBox(width: 4),
                   const Text(
                     'Title: ',
@@ -314,7 +316,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Image.asset('assets/calendar-icon.png', width: 16, height: 16, color: Colors.green,),
+                  Image.asset('assets/calendar-icon.png', width: 16, height: 16, color: Colors.green),
                   const SizedBox(width: 4),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

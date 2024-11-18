@@ -1,14 +1,17 @@
 // add_processing.dart
 
 import 'dart:convert';
+import 'dart:io'; // For File
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart'; // For Image Picker
+import 'package:http/http.dart' as http;
+import 'package:mime/mime.dart'; // For MIME type checking
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_processing_members.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:http_parser/http_parser.dart'; // For MediaType
 
 class AddProcessingPage extends StatefulWidget {
   final String projectId;
@@ -34,16 +37,14 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
   String statusId = '0a8d93f0-1c05-42b2-8e56-984a578ef077';
   DateTime? fromDate;
   DateTime? toDate;
-  TimeOfDay? startTime;
-  TimeOfDay? endTime;
 
   // Members
   List<Map<String, dynamic>> selectedMembers = [];
 
-  // File Uploads
-  List<PlatformFile> selectedFiles = [];
-
   bool _isLoading = false;
+
+  // Image File
+  File? _selectedImage;
 
   final Map<String, String> _statusMap = {
     'Error': '87403916-9113-4e2e-9d7d-b5ed269fe20a',
@@ -56,11 +57,9 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
   void initState() {
     super.initState();
     print('[_AddProcessingPageState] Initializing with projectId: ${widget.projectId}, baseUrl: ${widget.baseUrl}');
-    // Initialize default dates and times
-    fromDate = DateTime.now();
-    toDate = DateTime.now();
-    startTime = const TimeOfDay(hour: 9, minute: 0);
-    endTime = const TimeOfDay(hour: 17, minute: 0);
+    // Initialize dates as null to display placeholders initially
+    fromDate = null;
+    toDate = null;
   }
 
   Color _getStatusColor(String status) {
@@ -78,7 +77,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     }
   }
 
-  Future<void> _selectStartDate() async {
+  Future<void> _selectFromDate() async {
     final DateTime initialDate = fromDate ?? DateTime.now();
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -93,20 +92,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     }
   }
 
-  Future<void> _selectStartTime() async {
-    final TimeOfDay initialTime = startTime ?? TimeOfDay.now();
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: initialTime,
-    );
-    if (picked != null) {
-      setState(() {
-        startTime = picked;
-      });
-    }
-  }
-
-  Future<void> _selectEndDate() async {
+  Future<void> _selectToDate() async {
     final DateTime initialDate = toDate ?? DateTime.now();
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -121,35 +107,45 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     }
   }
 
-  Future<void> _selectEndTime() async {
-    final TimeOfDay initialTime = endTime ?? TimeOfDay.now();
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: initialTime,
-    );
-    if (picked != null) {
-      setState(() {
-        endTime = picked;
-      });
+  Future<void> _pickImage() async {
+    final ImagePicker _picker = ImagePicker();
+    try {
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        // Validate file size (e.g., max 5MB)
+        final file = File(image.path);
+        final fileSize = await file.length();
+        if (fileSize > 5 * 1024 * 1024) {
+          _showAlertDialog(
+            title: 'File Too Large',
+            content: 'Please select an image smaller than 5MB.',
+            isError: true,
+          );
+          return;
+        }
+
+        // Validate file type
+        final mimeType = lookupMimeType(image.path);
+        if (mimeType == null || !mimeType.startsWith('image/')) {
+          _showAlertDialog(
+            title: 'Invalid File Type',
+            content: 'Please select a valid image file.',
+            isError: true,
+          );
+          return;
+        }
+
+        setState(() {
+          _selectedImage = file;
+        });
+      }
+    } catch (e) {
+      _showAlertDialog(
+        title: 'Image Picker Error',
+        content: 'Failed to pick image: $e',
+        isError: true,
+      );
     }
-  }
-
-  Future<void> _pickFiles() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      allowMultiple: true,
-    );
-
-    if (result != null) {
-      setState(() {
-        selectedFiles.addAll(result.files);
-      });
-    }
-  }
-
-  Future<void> _removeFile(int index) async {
-    setState(() {
-      selectedFiles.removeAt(index);
-    });
   }
 
   Future<void> _addProcessingItem() async {
@@ -157,33 +153,15 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       return;
     }
 
-    // Validate dates and times
-    DateTime fromDateTime = DateTime(
-      fromDate!.year,
-      fromDate!.month,
-      fromDate!.day,
-      startTime?.hour ?? 0,
-      startTime?.minute ?? 0,
-    );
-
-    DateTime toDateTime = DateTime(
-      toDate!.year,
-      toDate!.month,
-      toDate!.day,
-      endTime?.hour ?? 0,
-      endTime?.minute ?? 0,
-    );
-
-    if (toDateTime.isBefore(fromDateTime)) {
+    if (fromDate == null || toDate == null) {
       _showAlertDialog(
         title: 'Invalid Dates',
-        content: 'End date cannot be before start date.',
+        content: 'Please select both start and end dates.',
         isError: true,
       );
       return;
     }
 
-    // Ensure at least one member is selected
     if (selectedMembers.isEmpty) {
       _showAlertDialog(
         title: 'No Members Selected',
@@ -216,32 +194,53 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       var request = http.MultipartRequest('POST', uri);
       request.headers['Authorization'] = 'Bearer $token';
 
-      // Add form fields
       request.fields['project_id'] = widget.projectId;
       request.fields['title'] = title;
       request.fields['descriptions'] = description;
       request.fields['status_id'] = _statusMap[status]!;
-      request.fields['fromdate'] = DateFormat('yyyy-MM-dd HH:mm:ss').format(fromDateTime);
-      request.fields['todate'] = DateFormat('yyyy-MM-dd HH:mm:ss').format(toDateTime);
+      request.fields['fromdate'] = DateFormat('yyyy-MM-dd').format(fromDate!);
+      request.fields['todate'] = DateFormat('yyyy-MM-dd').format(toDate!);
 
-      // Add membersDetails
-      List<Map<String, String>> membersDetails = selectedMembers.map((member) => {"employee_id": member['employee_id'].toString()}).toList();
+      List<Map<String, String>> membersDetails = selectedMembers
+          .map((member) => {"employee_id": member['employee_id'].toString()})
+          .toList();
       request.fields['membersDetails'] = jsonEncode(membersDetails);
 
-      // Add files
-      for (var file in selectedFiles) {
-        if (file.path != null) {
-          request.files.add(await http.MultipartFile.fromPath(
-            'file_name',
-            file.path!,
-            filename: file.name,
-          ));
+      if (_selectedImage != null) {
+        if (await _selectedImage!.exists()) {
+          final mimeType = lookupMimeType(_selectedImage!.path) ?? 'application/octet-stream';
+          final mimeTypeData = mimeType.split('/');
+
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'file_name', // Ensure this matches the API's expected field name
+              _selectedImage!.path,
+              contentType: MediaType(mimeTypeData[0], mimeTypeData[1]),
+            ),
+          );
+        } else {
+          _showAlertDialog(
+            title: 'File Error',
+            content: 'Selected image file does not exist.',
+            isError: true,
+          );
+          setState(() {
+            _isLoading = false;
+          });
+          return;
         }
       }
 
-      // Send the request
+      // Log request details for debugging
+      print('Sending request to: ${uri.toString()}');
+      print('Request Fields: ${request.fields}');
+      print('Number of files: ${request.files.length}');
+
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
+
+      print('Response Status Code: ${response.statusCode}');
+      print('Response Body: ${response.body}');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         _showAlertDialog(
@@ -249,7 +248,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
           content: 'Processing item added successfully.',
           isError: false,
           onOk: () {
-            Navigator.pop(context, true); // Indicate success to previous page
+            Navigator.pop(context, true);
           },
         );
       } else {
@@ -260,26 +259,42 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
             errorMessage = responseData['message'];
           }
         } catch (_) {}
-        _showAlertDialog(
-          title: 'Error',
-          content: errorMessage,
-          isError: true,
-        );
+        _showAlertDialog(title: 'Error', content: errorMessage, isError: true);
       }
-    } catch (e) {
+    } on SocketException catch (e) {
       _showAlertDialog(
-        title: 'Error',
-        content: 'Error adding processing item: $e',
+        title: 'Network Error',
+        content: 'Please check your internet connection and try again.',
         isError: true,
       );
+      print('SocketException: $e');
+    } on HttpException catch (e) {
+      _showAlertDialog(
+        title: 'HTTP Error',
+        content: 'Could not connect to the server. Please try again later.',
+        isError: true,
+      );
+      print('HttpException: $e');
+    } on FormatException catch (e) {
+      _showAlertDialog(
+        title: 'Data Format Error',
+        content: 'Unexpected data format received from the server.',
+        isError: true,
+      );
+      print('FormatException: $e');
+    } catch (e) {
+      _showAlertDialog(
+        title: 'Unexpected Error',
+        content: 'An unexpected error occurred: $e',
+        isError: true,
+      );
+      print('Unexpected error: $e');
     }
 
     setState(() {
       _isLoading = false;
     });
   }
-
-
 
   void _showAlertDialog({
     required String title,
@@ -292,13 +307,21 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(title, style: TextStyle(color: isError ? Colors.red : Colors.green, fontWeight: FontWeight.bold)),
+          title: Text(
+            title,
+            style: TextStyle(
+              color: isError ? Colors.red : Colors.green,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           content: Text(content),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                if (!isError && (title.toLowerCase().contains('success') || title.toLowerCase().contains('added'))) {
+                if (!isError &&
+                    (title.toLowerCase().contains('success') ||
+                        title.toLowerCase().contains('added'))) {
                   if (onOk != null) {
                     onOk();
                   }
@@ -335,105 +358,113 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
 
   Widget _buildSelectedMembers() {
     if (selectedMembers.isEmpty) return const Text('No members selected.');
+
     int displayCount = selectedMembers.length > 5 ? 5 : selectedMembers.length;
     List<Widget> avatars = [];
+
     for (int i = 0; i < displayCount; i++) {
       avatars.add(
-        Padding(
-          padding: const EdgeInsets.only(right: 4.0),
+        Positioned(
+          left: i * 24.0,
           child: CircleAvatar(
             backgroundImage: selectedMembers[i]['image_url'] != null && selectedMembers[i]['image_url'].isNotEmpty
                 ? NetworkImage(selectedMembers[i]['image_url'])
                 : const AssetImage('assets/default_avatar.png') as ImageProvider,
-            radius: 20,
-            backgroundColor: Colors.grey[200],
+            radius: 18,
+            backgroundColor: Colors.white,
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white, width: 4.0),
+                shape: BoxShape.circle,
+              ),
+            ),
           ),
         ),
       );
     }
+
     if (selectedMembers.length > 5) {
       avatars.add(
-        CircleAvatar(
-          backgroundColor: Colors.grey[300],
-          radius: 20,
-          child: Text(
-            '+${selectedMembers.length - 5}',
-            style: const TextStyle(color: Colors.black),
+        Positioned(
+          left: displayCount * 24.0,
+          child: CircleAvatar(
+            backgroundColor: Colors.grey[300],
+            radius: 16,
+            child: Text(
+              '+${selectedMembers.length - 5}',
+              style: const TextStyle(color: Colors.black, fontSize: 12),
+            ),
           ),
         ),
       );
     }
-    return Wrap(
-      children: avatars,
-    );
-  }
 
-  Widget _buildFilePicker() {
-    return Container(
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300, width: 1.5),
-        borderRadius: BorderRadius.circular(8.0),
-        color: Colors.grey.shade50,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const Text(
-            'Upload Files (Optional)',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          ElevatedButton.icon(
-            onPressed: _pickFiles,
-            icon: const Icon(Icons.attach_file, color: Colors.white),
-            label: const Text(
-              'Add Files',
-              style: TextStyle(color: Colors.white),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2196F3), // Light Blue
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              elevation: 2,
-            ),
-          ),
-          const SizedBox(height: 8),
-          selectedFiles.isEmpty
-              ? const Text('No files selected.')
-              : Wrap(
-            spacing: 8.0,
-            alignment: WrapAlignment.center,
-            children: List.generate(selectedFiles.length, (index) {
-              return Chip(
-                label: Text(selectedFiles[index].name),
-                deleteIcon: const Icon(Icons.close),
-                onDeleted: () => _removeFile(index),
-              );
-            }),
-          ),
-        ],
+    return SizedBox(
+      height: 32,
+      child: Stack(
+        children: avatars,
       ),
     );
   }
 
-  Widget _buildAddButton() {
-    return ElevatedButton.icon(
-      onPressed: _addProcessingItem,
-      icon: const Icon(Icons.add, color: Colors.white),
-      label: const Text(
-        'Add',
-        style: TextStyle(color: Colors.white, fontSize: 16),
-      ),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFDBB342), // #DBB342
-        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
+  Widget _buildAddButton(double buttonWidth) {
+    return SizedBox(
+      width: buttonWidth = 160,
+      child: ElevatedButton.icon(
+        onPressed: _isLoading ? null : _addProcessingItem, // Disable when loading
+        icon: const Icon(Icons.add, color: Colors.black),
+        label: const Text(
+          'Add',
+          style: TextStyle(color: Colors.black, fontSize: 16),
         ),
-        elevation: 4,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFDBB342), // #DBB342
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          elevation: 2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateInput({
+    required String label,
+    required DateTime? selectedDate,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AbsorbPointer(
+        child: TextFormField(
+          decoration: InputDecoration(
+            labelText: label.isNotEmpty ? label : null,
+            hintText: selectedDate == null ? 'dd/mm/yyyy' : '',
+            hintStyle: const TextStyle(color: Colors.grey),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+            ),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Image.asset(
+                'assets/calendar-icon.png',
+                width: 22,
+                height: 22,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          controller: TextEditingController(
+            text: selectedDate != null ? DateFormat('dd/MM/yyyy').format(selectedDate) : '',
+          ),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'This field is required.';
+            }
+            return null;
+          },
+        ),
       ),
     );
   }
@@ -445,8 +476,8 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     // Determine screen size for responsiveness
     final Size screenSize = MediaQuery.of(context).size;
 
-    // Adjust horizontal padding based on screen width
-    double horizontalPadding = screenSize.width * 0.05; // 5% of screen width
+    double horizontalPadding = screenSize.width * 0.04; // 5% of screen width
+    double verticalPadding = screenSize.height * 0.05; // 5% of screen height
     horizontalPadding = horizontalPadding < 16.0 ? 16.0 : horizontalPadding;
 
     return Scaffold(
@@ -491,248 +522,268 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
           : GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 30.0),
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 18.0),
           child: Form(
             key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 'Add' Button Positioned at Top Right
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: _buildAddButton(),
-                ),
-                const SizedBox(height: 16),
-                // Title Input
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Title is required.';
-                    }
-                    return null;
-                  },
-                  onChanged: (value) {
-                    setState(() {
-                      title = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                // Description Input
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 4,
-                  onChanged: (value) {
-                    setState(() {
-                      description = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                // Status Dropdown
-                DropdownButtonFormField<String>(
-                  value: status,
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
-                    border: OutlineInputBorder(),
-                  ),
-                  icon: Image.asset(
-                    'assets/task.png',
-                    width: 24,
-                    height: 24,
-                  ),
-                  items: ['Processing', 'Pending', 'Finished', 'Error']
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.access_time,
-                            color: _getStatusColor(value),
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(value),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      status = newValue!;
-                      statusId = _statusMap[status]!;
-                    });
-                  },
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Status is required.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                // Start Date-Time
-                Row(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _selectStartDate,
-                        child: AbsorbPointer(
-                          child: TextFormField(
-                            decoration: InputDecoration(
-                              labelText: 'Start Date',
-                              border: const OutlineInputBorder(),
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons.calendar_today),
-                                onPressed: _selectStartDate,
-                              ),
-                            ),
-                            validator: (value) {
-                              if (fromDate == null) {
-                                return 'Start date is required.';
-                              }
-                              return null;
-                            },
-                            controller: TextEditingController(
-                              text: fromDate != null ? DateFormat('yyyy-MM-dd').format(fromDate!) : '',
-                            ),
-                          ),
-                        ),
-                      ),
+                    // + Add Button at Top Right
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: _buildAddButton(100), // Fixed width for consistency
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _selectStartTime,
-                        child: AbsorbPointer(
-                          child: TextFormField(
-                            decoration: InputDecoration(
-                              labelText: 'Start Time',
-                              border: const OutlineInputBorder(),
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons.access_time),
-                                onPressed: _selectStartTime,
-                              ),
-                            ),
-                            validator: (value) {
-                              if (startTime == null) {
-                                return 'Start time is required.';
-                              }
-                              return null;
-                            },
-                            controller: TextEditingController(
-                              text: startTime != null ? startTime!.format(context) : '',
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // End Date-Time
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _selectEndDate,
-                        child: AbsorbPointer(
-                          child: TextFormField(
-                            decoration: InputDecoration(
-                              labelText: 'End Date',
-                              border: const OutlineInputBorder(),
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons.calendar_today),
-                                onPressed: _selectEndDate,
-                              ),
-                            ),
-                            validator: (value) {
-                              if (toDate == null) {
-                                return 'End date is required.';
-                              }
-                              return null;
-                            },
-                            controller: TextEditingController(
-                              text: toDate != null ? DateFormat('yyyy-MM-dd').format(toDate!) : '',
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _selectEndTime,
-                        child: AbsorbPointer(
-                          child: TextFormField(
-                            decoration: InputDecoration(
-                              labelText: 'End Time',
-                              border: const OutlineInputBorder(),
-                              suffixIcon: IconButton(
-                                icon: const Icon(Icons.access_time),
-                                onPressed: _selectEndTime,
-                              ),
-                            ),
-                            validator: (value) {
-                              if (endTime == null) {
-                                return 'End time is required.';
-                              }
-                              return null;
-                            },
-                            controller: TextEditingController(
-                              text: endTime != null ? endTime!.format(context) : '',
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Members Selection
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
+                    const SizedBox(height: 10),
+                    // Title Section
                     const Text(
-                      'Selected Members',
+                      'Title',
                       style: TextStyle(
-                        fontSize: 16,
+                        color: Colors.black,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    ElevatedButton.icon(
-                      onPressed: _navigateToSelectMembers,
-                      icon: const Icon(Icons.person_add, color: Colors.white),
-                      label: const Text(
-                        'Select Members',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4CAF50), // Green
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8.0),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      decoration: const InputDecoration(
+                        hintText: 'Enter title',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(8.0)), // Curved border
                         ),
-                        elevation: 3,
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Title is required.';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) {
+                        setState(() {
+                          title = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    // Status Dropdown and Upload Image Button Row
+                    Row(
+                      children: [
+                        Expanded( // Wrap the Status Dropdown with Expanded to prevent overflow
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Status',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              DropdownButtonFormField<String>(
+                                value: status, // Current status value
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.all(Radius.circular(8.0)), // Curved border
+                                  ),
+                                ),
+                                items: ['Processing', 'Pending', 'Finished', 'Error']
+                                    .map<DropdownMenuItem<String>>((String value) {
+                                  return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.circle,
+                                          color: _getStatusColor(value), // Method to get color based on status
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(value),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    status = newValue!;
+                                    statusId = _statusMap[status]!;
+                                  });
+                                },
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Status is required.';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded( // Wrap the Upload Image button with Expanded to take the remaining space
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 25),
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Colors.green, Colors.lightGreen], // Define your gradient colors
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8.0), // Match the button's border radius
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: _isLoading ? null : _pickImage, // Disable when loading
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent, // Set to transparent to show gradient
+                                    shadowColor: Colors.transparent, // Remove shadow to make gradient clean
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8.0), // Curved border
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 42),
+                                  ),
+                                  child: const Text(
+                                    'Upload Image',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (_selectedImage != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    'Selected: ${_selectedImage!.path.split('/').last}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    // Start Date and End Date
+                    Row(
+                      children: [
+                        // Start Date
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Start Date',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              _buildDateInput(
+                                label: '',
+                                selectedDate: fromDate,
+                                onTap: _selectFromDate,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // End Date
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'End Date',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              _buildDateInput(
+                                label: '',
+                                selectedDate: toDate,
+                                onTap: _selectToDate,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    // Add People and Selected Members
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // + Add People Button
+                        SizedBox(
+                          width: constraints.maxWidth * 0.45,
+                          child: ElevatedButton.icon(
+                            onPressed: _isLoading ? null : _navigateToSelectMembers, // Disable when loading
+                            icon: const Icon(Icons.person_add, color: Colors.white),
+                            label: const Text(
+                              'Add People',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16.0),
+                              ),
+                              elevation: 3,
+                            ),
+                          ),
+                        ),
+                        // Selected Members Display
+                        SizedBox(
+                          width: constraints.maxWidth * 0.5 - 8,
+                          child: _buildSelectedMembers(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    // Description
+                    const Text(
+                      'Description',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      decoration: const InputDecoration(
+                        hintText: 'Enter description',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(8.0)), // Curved border
+                        ),
+                      ),
+                      maxLines: 4,
+                      onChanged: (value) {
+                        setState(() {
+                          description = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 20),
                   ],
-                ),
-                const SizedBox(height: 8),
-                _buildSelectedMembers(),
-                const SizedBox(height: 20),
-                // File Upload
-                _buildFilePicker(),
-                const SizedBox(height: 16),
-              ],
+                );
+              },
             ),
           ),
         ),

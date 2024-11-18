@@ -155,9 +155,11 @@ class _ProcessingSectionState extends State<ProcessingSection> {
         : DateTime.now();
     final now = DateTime.now();
     final daysRemaining = toDate.difference(now).inDays;
-    Color daysColor;
 
+    Color statusColor = _getStatusColor(meeting['s_name'] ?? 'Unknown');
+    Color daysColor;
     String daysText;
+
     if (daysRemaining > 0) {
       daysColor = Colors.orange;
       daysText = '$daysRemaining day${daysRemaining > 1 ? 's' : ''} remaining';
@@ -174,15 +176,15 @@ class _ProcessingSectionState extends State<ProcessingSection> {
         _showViewProcessingPage(meeting);
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+        margin: const EdgeInsets.only(top: 6.0, left: 8.0, right: 8.0, bottom: 16.0),
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: statusColor.withOpacity(0.4),
               blurRadius: 6,
               spreadRadius: 1,
-              offset: const Offset(2, 2),
+              offset: const Offset(1, 1),
             ),
           ],
           borderRadius: BorderRadius.circular(12.0),
@@ -198,7 +200,6 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                 children: [
                   Row(
                     children: [
-
                       const Text(
                         'Status: ',
                         style: TextStyle(
@@ -207,12 +208,12 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                           fontSize: 14,
                         ),
                       ),
-                      Icon(Icons.access_time, color: _getStatusColor(meeting['s_name'] ?? 'Unknown'), size: 16),
+                      Icon(Icons.access_time, color: statusColor, size: 16),
                       const SizedBox(width: 3),
                       Text(
                         meeting['s_name'] ?? 'Unknown',
                         style: TextStyle(
-                          color: _getStatusColor(meeting['s_name'] ?? 'Unknown'),
+                          color: statusColor,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -239,9 +240,9 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                           });
                         },
                         child: const CircleAvatar(
-                          backgroundColor: Colors.green, // Smaller bell icon
+                          backgroundColor: Colors.green,
                           radius: 14,
-                          child: Icon(Icons.notifications, color: Colors.white, size: 16), // Smaller size for compact design
+                          child: Icon(Icons.notifications, color: Colors.white, size: 16),
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -279,7 +280,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
               // Title Section
               Row(
                 children: [
-                  Image.asset('assets/title.png', width: 16, height: 16, color: Colors.blue,),
+                  Image.asset('assets/title.png', width: 16, height: 16, color: Colors.blue),
                   const SizedBox(width: 4),
                   const Text(
                     'Title: ',

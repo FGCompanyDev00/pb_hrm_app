@@ -334,7 +334,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
 
   Widget _buildProjectCard(BuildContext context, bool isDarkMode, Map<String, dynamic> project, int index) {
     final progressColors = {
-      'Pending': Colors.orange,
+      'Pending': const Color(0xFFDBB342),
       'Processing': Colors.blue,
       'Finished': Colors.green,
     };
@@ -373,7 +373,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 SizedBox(height: 4),
                 Text(
                   'View',
-                  style: TextStyle(color: Colors.white, fontSize: 8), // Smaller text size
+                  style: TextStyle(color: Colors.white, fontSize: 8),
                 ),
               ],
             ),
@@ -404,7 +404,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 SizedBox(height: 4),
                 Text(
                   'Edit',
-                  style: TextStyle(color: Colors.white, fontSize: 8), // Smaller text size
+                  style: TextStyle(color: Colors.white, fontSize: 8),
                 ),
               ],
             ),
@@ -432,13 +432,13 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
             boxShadow: [
               BoxShadow(
                 color: statusColor.withOpacity(0.4),
-                blurRadius: 6.0,
+                blurRadius: 3.0,
                 spreadRadius: 1.0,
-                offset: const Offset(0, 2),
+                offset: const Offset(1, 1),
               ),
             ],
           ),
-          margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 14.0),
+          margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 8.0),
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -451,7 +451,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                       duration: const Duration(milliseconds: 800),
                       builder: (context, value, child) => LinearProgressIndicator(
                         value: value,
-                        color: Color.lerp(Colors.red, statusColor, value), // Animated color
+                        color: Color.lerp(Colors.red, statusColor, value),
                         backgroundColor: Colors.grey.shade300,
                       ),
                     ),
@@ -465,20 +465,58 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Container(
-                    padding: const EdgeInsets.all(6.0),
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      shape: BoxShape.circle,
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditProjectPage(
+                            project: project,
+                            onUpdate: (updatedProject) {
+                              setState(() {
+                                _projects[index] = updatedProject;
+                              });
+                              _refreshProjects();
+                            },
+                            onDelete: _refreshProjects,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6.0),
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.notifications, color: Colors.white, size: 18),
                     ),
-                    child: const Icon(Icons.notifications, color: Colors.white, size: 18),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Update',
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditProjectPage(
+                            project: project,
+                            onUpdate: (updatedProject) {
+                              setState(() {
+                                _projects[index] = updatedProject;
+                              });
+                              _refreshProjects();
+                            },
+                            onDelete: _refreshProjects,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'Update',
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -489,9 +527,9 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                   Text(
                     'Title: ',
                     style: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
+                      color: isDarkMode ? Colors.white : Colors.orange,
                       fontWeight: FontWeight.bold,
-                      fontSize: 15.0,
+                      fontSize: 14.0,
                     ),
                   ),
                   Expanded(
@@ -499,9 +537,9 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                       project['p_name'] ?? 'No Title',
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black,
-                        fontSize: 15.0,
+                        fontSize: 14.0,
                       ),
-                      overflow: TextOverflow.visible, // Ensure it wraps if too long
+                      overflow: TextOverflow.visible,
                     ),
                   ),
                 ],
@@ -515,14 +553,16 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                       Text(
                         'Deadline1: ',
                         style: TextStyle(
-                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                          color: isDarkMode ? Colors.white70 : Colors.green,
                           fontWeight: FontWeight.bold,
+                          fontSize: 13.0,
                         ),
                       ),
                       Text(
                         formatDate(project['dl']),
                         style: TextStyle(
                           color: isDarkMode ? Colors.white70 : Colors.black54,
+                          fontSize: 12.0,
                         ),
                       ),
                     ],
@@ -532,14 +572,16 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                       Text(
                         'Deadline2: ',
                         style: TextStyle(
-                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                          color: isDarkMode ? Colors.white70 : Colors.red,
                           fontWeight: FontWeight.bold,
+                          fontSize: 13.0,
                         ),
                       ),
                       Text(
                         formatDate(project['extend']),
                         style: TextStyle(
                           color: isDarkMode ? Colors.white70 : Colors.black54,
+                          fontSize: 12.0,
                         ),
                       ),
                     ],
@@ -552,9 +594,9 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                   Text(
                     'Status: ',
                     style: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
+                      color: isDarkMode ? Colors.white : Colors.black38,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14.0,
+                      fontSize: 13.0,
                     ),
                   ),
                   Text(
@@ -562,10 +604,24 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                     style: TextStyle(
                       color: statusColor,
                       fontSize: 14.0,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
+              // Conditionally render created_by if in All Project section
+              if (!_isMyProjectsSelected)
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Text(
+                    project['create_project_by'] ?? 'Unknown',
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12.0,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
