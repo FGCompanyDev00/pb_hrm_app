@@ -182,9 +182,9 @@ class _ProcessingSectionState extends State<ProcessingSection> {
           boxShadow: [
             BoxShadow(
               color: statusColor.withOpacity(0.4),
-              blurRadius: 6,
+              blurRadius: 4,
               spreadRadius: 1,
-              offset: const Offset(1, 1),
+              offset: const Offset(2, 1),
             ),
           ],
           borderRadius: BorderRadius.circular(12.0),

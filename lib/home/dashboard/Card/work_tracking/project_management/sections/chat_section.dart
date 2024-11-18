@@ -248,7 +248,7 @@ class _ChatSectionState extends State<ChatSection> {
                   if (isNewDate) // Display date header
                     Center(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
                         child: Text(
                           _formatDate(message['created_at']),
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
@@ -321,9 +321,9 @@ class _ChatSectionState extends State<ChatSection> {
     final Color sendButtonColor = isDarkMode ? Colors.green[300]! : Colors.green;
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 26.0),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 10.0),
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 12.0),
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(30.0),
@@ -331,8 +331,8 @@ class _ChatSectionState extends State<ChatSection> {
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
               spreadRadius: 1,
-              blurRadius: 8,
-              offset: const Offset(2, 4),
+              blurRadius: 6,
+              offset: const Offset(2, 1),
             ),
           ],
         ),
@@ -351,16 +351,27 @@ class _ChatSectionState extends State<ChatSection> {
               ),
             ),
             const SizedBox(width: 8),
-            CircleAvatar(
-              radius: 25,
-              backgroundColor: sendButtonColor,
-              child: IconButton(
-                icon: const Icon(Icons.send, color: Colors.white),
-                onPressed: () {
-                  if (_messageController.text.isNotEmpty) {
-                    _sendMessage(_messageController.text);
-                  }
-                },
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300), // Animation duration
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Colors.green, Colors.orange],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 28,
+                backgroundColor: Colors.transparent,
+                child: IconButton(
+                  icon: const Icon(Icons.send, color: Colors.white),
+                  onPressed: () {
+                    if (_messageController.text.isNotEmpty) {
+                      _sendMessage(_messageController.text);
+                    }
+                  },
+                ),
               ),
             ),
           ],
