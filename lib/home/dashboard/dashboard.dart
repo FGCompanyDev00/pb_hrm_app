@@ -313,7 +313,7 @@ class _DashboardState extends State<Dashboard> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         CircleAvatar(
-                          radius: 30,
+                          radius: 28,
                           backgroundImage: userProfile.imgName != 'default_avatar.jpg' ? NetworkImage(userProfile.imgName) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
                           backgroundColor: Colors.white,
                           onBackgroundImageError: (_, __) {
@@ -360,7 +360,7 @@ class _DashboardState extends State<Dashboard> {
         _buildBannerCarousel(),
         const SizedBox(height: 10),
         _buildActionMenuHeader(),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         Expanded(child: _buildActionGrid(isDarkMode) // Expanded GridView to fill remaining space
             ),
       ],
@@ -370,7 +370,7 @@ class _DashboardState extends State<Dashboard> {
   // Banner Carousel
   Widget _buildBannerCarousel() {
     return SizedBox(
-      height: 170.0,
+      height: 175.0,
       child: FutureBuilder<List<String>>(
         future: futureBanners,
         builder: (context, snapshot) {
@@ -389,7 +389,7 @@ class _DashboardState extends State<Dashboard> {
               },
               itemBuilder: (context, index) {
                 final bannerUrl = snapshot.data![index];
-                // Ensure the banner URL is valid before passing it to NetworkImage
+
                 if (bannerUrl.isEmpty || Uri.tryParse(bannerUrl)?.hasAbsolutePath != true) {
                   return Center(child: Text(AppLocalizations.of(context)!.noBannersAvailable));
                 }
@@ -416,7 +416,7 @@ class _DashboardState extends State<Dashboard> {
   // Action Menu Header
   Widget _buildActionMenuHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0), // Add horizontal padding
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: SizedBox(
         height: 50,
         child: Row(
@@ -439,7 +439,7 @@ class _DashboardState extends State<Dashboard> {
             Text(
               AppLocalizations.of(context)!.notification,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 14,
                 color: Colors.black,
               ),
             ),
@@ -487,81 +487,84 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  // Action Grid
   Widget _buildActionGrid(bool isDarkMode) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+
+    // Determine the number of columns based on screen width
+    int crossAxisCount = screenWidth < 600 ? 3 : 3;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: GridView.count(
-        crossAxisCount: 3,
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: GridView.builder(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: 0.9,
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 12,
+        ),
+        itemCount: 6,
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 0.8,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        children: [
-          _buildActionCard(
-            context,
-            'assets/data-2.png',
-            AppLocalizations.of(context)!.history,
-            isDarkMode,
-            () {
-              Navigator.push(
+        itemBuilder: (context, index) {
+          // List of action card data
+          final List<Map<String, dynamic>> actionItems = [
+            {
+              'icon': 'assets/data-2.png',
+              'label': AppLocalizations.of(context)!.history,
+              'onTap': () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const HistoryPage()),
-              );
+              ),
             },
-          ),
-          _buildActionCard(
-            context,
-            'assets/people.png',
-            AppLocalizations.of(context)!.approvals,
-            isDarkMode,
-            () {
-              Navigator.push(
+            {
+              'icon': 'assets/people.png',
+              'label': AppLocalizations.of(context)!.approvals,
+              'onTap': () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
-              );
+              ),
             },
-          ),
-          _buildActionCard(
-            context,
-            'assets/status-up.png',
-            AppLocalizations.of(context)!.workTracking,
-            isDarkMode,
-            () {
-              Navigator.push(
+            {
+              'icon': 'assets/status-up.png',
+              'label': AppLocalizations.of(context)!.workTracking,
+              'onTap': () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
-              );
+              ),
             },
-          ),
-          _buildActionCard(
-            context,
-            'assets/car_return.png',
-            AppLocalizations.of(context)!.carReturn,
-            isDarkMode,
-            () {
-              Navigator.push(
+            {
+              'icon': 'assets/car_return.png',
+              'label': AppLocalizations.of(context)!.carReturn,
+              'onTap': () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ReturnCarPage()),
-              );
+              ),
             },
-          ),
-          _buildActionCard(
-            context,
-            'assets/KPI.png',
-            AppLocalizations.of(context)!.kpi,
-            isDarkMode,
-            () {},
-          ),
-          _buildActionCard(
-            context,
-            'assets/inventory.png',
-            AppLocalizations.of(context)!.inventory,
-            isDarkMode,
-            () {},
-          ),
-        ],
+            {
+              'icon': 'assets/KPI.png',
+              'label': AppLocalizations.of(context)!.kpi,
+              'onTap': () {}, // Add functionality if needed
+            },
+            {
+              'icon': 'assets/inventory.png',
+              'label': AppLocalizations.of(context)!.inventory,
+              'onTap': () {}, // Add functionality if needed
+            },
+          ];
+
+          // Build each action card using the data
+          final item = actionItems[index];
+          return Tooltip(
+            message: item['label'],
+            child: _buildActionCard(
+              context,
+              item['icon'],
+              item['label'],
+              isDarkMode,
+              item['onTap'],
+            ),
+          );
+        },
       ),
     );
   }
@@ -569,26 +572,32 @@ class _DashboardState extends State<Dashboard> {
   Widget _buildActionCard(BuildContext context, String imagePath, String title, bool isDarkMode, VoidCallback onTap) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        double iconSize = constraints.maxWidth * 0.5;
+        double iconSize = constraints.maxWidth * 0.4;
         double fontSize = constraints.maxWidth * 0.1;
-        fontSize = fontSize.clamp(12.0, 18.0);
+        fontSize = fontSize.clamp(12.0, 16.0);
 
         return Card(
-          color: Colors.white,
-          elevation: 0,
+          color: isDarkMode ? Colors.black54 : Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFFDBB342), width: 1.5),
+            borderRadius: BorderRadius.circular(8),
+            side: const BorderSide(color: Color(0xFFDBB342), width: 0.65),
           ),
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(16),
+            splashColor: Colors.blue.withAlpha(50),
+            splashFactory: InkRipple.splashFactory,
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset(imagePath, height: iconSize, width: iconSize),
+                  Image.asset(
+                    imagePath,
+                    height: iconSize,
+                    width: iconSize,
+                    fit: BoxFit.contain,
+                  ),
                   const SizedBox(height: 12),
                   Flexible(
                     child: Text(
@@ -599,6 +608,7 @@ class _DashboardState extends State<Dashboard> {
                         color: isDarkMode ? Colors.white : Colors.black,
                       ),
                       textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -643,7 +653,7 @@ class _DashboardState extends State<Dashboard> {
                     AppLocalizations.of(context)!.logoutConfirmation,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       color: Colors.black87,
                     ),
                   ),

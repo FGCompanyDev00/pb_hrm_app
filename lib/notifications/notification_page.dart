@@ -684,6 +684,7 @@ class _NotificationPageState extends State<NotificationPage> {
         }
       },
       child: Card(
+        color: Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(screenSize.width * 0.03),
           side: BorderSide(color: typeColor, width: screenSize.width * 0.002),

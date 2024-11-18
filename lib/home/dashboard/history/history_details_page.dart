@@ -630,11 +630,13 @@ class _DetailsPageState extends State<DetailsPage> {
   }
 
   Widget _buildInfoRow(IconData icon, String title, String content, Color color, double screenWidth) {
-    return Row(
+    return Wrap(
+      spacing: 16, // Space between the icon and the text
+      runSpacing: 8, // Space between wrapped rows
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Icon(icon, size: 25, color: color),
-        const SizedBox(width: 16),
-        Expanded(
+        Flexible(
           child: Text(
             '$title: $content',
             style: const TextStyle(fontSize: 12, color: Colors.black87),
@@ -708,25 +710,29 @@ class _DetailsPageState extends State<DetailsPage> {
     final String status = widget.status.toLowerCase();
     if (['approved', 'disapproved', 'cancel'].contains(status)) return const SizedBox.shrink();
 
+    // Use a Wrap to handle small screens better
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      padding: const EdgeInsets.symmetric(vertical: 20.0),
+      child: Wrap(
+        spacing: 16, // Spacing between the buttons
+        runSpacing: 10, // Spacing for wrapping lines
+        alignment: WrapAlignment.center, // Center the buttons
         children: [
           _buildStyledButton(
             label: 'Delete',
             icon: Icons.delete,
-            backgroundColor: Color(0xFFC2C2C2),
+            backgroundColor: const Color(0xFFC2C2C2),
             textColor: Colors.white,
             onPressed: isFinalized ? null : _handleDelete,
+            buttonWidth: screenWidth < 400 ? screenWidth * 0.4 : 150, // Adjust button width for smaller screens
           ),
-
           _buildStyledButton(
             label: 'Edit',
             icon: Icons.edit,
-            backgroundColor: Color(0xFFDBB342),
+            backgroundColor: const Color(0xFFDBB342),
             textColor: Colors.white,
             onPressed: isFinalized ? null : _handleEdit,
+            buttonWidth: screenWidth < 400 ? screenWidth * 0.4 : 150, // Adjust button width for smaller screens
           ),
         ],
       ),
@@ -739,9 +745,10 @@ class _DetailsPageState extends State<DetailsPage> {
     required Color backgroundColor,
     required Color textColor,
     required VoidCallback? onPressed,
+    required double buttonWidth,
   }) {
     return SizedBox(
-      width: 150,
+      width: buttonWidth,
       child: ElevatedButton.icon(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(

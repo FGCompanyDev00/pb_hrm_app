@@ -374,7 +374,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        toolbarHeight: 100,
+        toolbarHeight: 90,
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -477,7 +477,7 @@ END:VCARD
                 else
                   Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
                       child: SingleChildScrollView(
                         child: ConstrainedBox(
                           constraints: BoxConstraints(maxHeight: size.height * 0.8),
@@ -615,7 +615,7 @@ END:VCARD
                                               version: QrVersions.auto,
                                               size: size.width * 0.5,
                                               gapless: false,
-                                              backgroundColor: Color(0xFFEAF5E2),
+                                              backgroundColor: const Color(0xFFEAF5E2),
                                               eyeStyle: const QrEyeStyle(
                                                 eyeShape: QrEyeShape.circle,
                                                 color: Colors.black,

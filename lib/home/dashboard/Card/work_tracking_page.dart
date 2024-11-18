@@ -7,7 +7,6 @@ import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_project.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/edit_project.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/view_project.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/project_management_page.dart';
-import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
@@ -16,7 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class WorkTrackingPage extends StatefulWidget {
   final String? highlightedProjectId;
 
-  const WorkTrackingPage({Key? key, this.highlightedProjectId}) : super(key: key);
+  const WorkTrackingPage({super.key, this.highlightedProjectId});
   static const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
   @override
@@ -441,6 +440,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           );
         },
         child: Card(
+          color: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16.0),
           ),
