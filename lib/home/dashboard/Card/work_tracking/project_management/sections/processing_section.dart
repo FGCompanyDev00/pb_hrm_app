@@ -174,21 +174,21 @@ class _ProcessingSectionState extends State<ProcessingSection> {
         _showViewProcessingPage(meeting);
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 12.0),
+        margin: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
+              blurRadius: 6,
               spreadRadius: 1,
-              offset: const Offset(4, 4),
+              offset: const Offset(2, 2),
             ),
           ],
-          borderRadius: BorderRadius.circular(16.0),
+          borderRadius: BorderRadius.circular(12.0),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(10.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -198,14 +198,23 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.access_time, color: _getStatusColor(meeting['s_name'] ?? 'Unknown')),
-                      const SizedBox(width: 8),
+
+                      const Text(
+                        'Status: ',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Icon(Icons.access_time, color: _getStatusColor(meeting['s_name'] ?? 'Unknown'), size: 16),
+                      const SizedBox(width: 3),
                       Text(
                         meeting['s_name'] ?? 'Unknown',
                         style: TextStyle(
                           color: _getStatusColor(meeting['s_name'] ?? 'Unknown'),
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 14,
                         ),
                       ),
                     ],
@@ -230,11 +239,12 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                           });
                         },
                         child: const CircleAvatar(
-                          backgroundColor: Colors.green,
-                          child: Icon(Icons.alarm, color: Colors.white, size: 16),
+                          backgroundColor: Colors.green, // Smaller bell icon
+                          radius: 14,
+                          child: Icon(Icons.notifications, color: Colors.white, size: 16), // Smaller size for compact design
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 4),
                       GestureDetector(
                         onTap: () {
                           Navigator.push(
@@ -257,6 +267,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                           style: TextStyle(
                             color: Colors.green,
                             fontWeight: FontWeight.bold,
+                            fontSize: 12,
                           ),
                         ),
                       ),
@@ -264,16 +275,16 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               // Title Section
               Row(
                 children: [
-                  Image.asset('assets/title.png', width: 20, height: 20),
-                  const SizedBox(width: 8),
+                  Image.asset('assets/title.png', width: 16, height: 16, color: Colors.blue,),
+                  const SizedBox(width: 4),
                   const Text(
                     'Title: ',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -281,78 +292,78 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                     child: Text(
                       meeting['title'] ?? 'No Title',
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               // Start and End Date Section
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Image.asset('assets/calendar-icon.png', width: 20, height: 20),
-                  const SizedBox(width: 8),
+                  Image.asset('assets/calendar-icon.png', width: 16, height: 16, color: Colors.green),
+                  const SizedBox(width: 4),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         'Start Date:',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
                         '${DateFormat('yyyy-MM-dd').format(fromDate)} ${meeting['start_time'] ?? ''}',
-                        style: const TextStyle(fontSize: 14),
+                        style: const TextStyle(fontSize: 12),
                       ),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Image.asset('assets/box-time.png', width: 20, height: 20),
-                  const SizedBox(width: 8),
+                  Image.asset('assets/box-time.png', width: 16, height: 16, color: Colors.red),
+                  const SizedBox(width: 4),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         'End Date:',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
                         '${DateFormat('yyyy-MM-dd').format(toDate)} ${meeting['end_time'] ?? ''}',
-                        style: const TextStyle(fontSize: 14),
+                        style: const TextStyle(fontSize: 12),
                       ),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               // Days Remaining Section
               Row(
                 children: [
-                  Icon(Icons.calendar_today, size: 16, color: daysColor),
-                  const SizedBox(width: 4),
+                  Icon(Icons.calendar_today, size: 14, color: daysColor),
+                  const SizedBox(width: 2),
                   Text(
                     daysText,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       color: daysColor,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Align(
                 alignment: Alignment.bottomRight,
                 child: RichText(
@@ -361,7 +372,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                       const TextSpan(
                         text: 'Created by: ',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 12,
                           color: Colors.green,
                           fontStyle: FontStyle.italic,
                         ),
@@ -369,7 +380,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                       TextSpan(
                         text: meeting['create_by'] ?? 'Unknown',
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 12,
                           color: Colors.black,
                           fontStyle: FontStyle.normal,
                         ),
@@ -397,7 +408,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(8.0),
           child: Row(
             children: [
               // Status Dropdown
@@ -474,18 +485,18 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withOpacity(0.1),
                         blurRadius: 10,
                         spreadRadius: 1,
                         offset: const Offset(2, 4),
                       ),
                     ],
                   ),
-                  padding: const EdgeInsets.all(10.0),
+                  padding: const EdgeInsets.all(2.0),
                   child: const Icon(
                     Icons.add,
                     color: Colors.white,
-                    size: 20.0,
+                    size: 40.0,
                   ),
                 ),
                 onPressed: _showAddProcessingPage,
@@ -510,7 +521,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
               : RefreshIndicator(
             onRefresh: _fetchMeetingData,
             child: ListView.builder(
-              padding: const EdgeInsets.all(12.0),
+              padding: const EdgeInsets.all(8.0),
               itemCount: filteredMeetings.length,
               itemBuilder: (context, index) {
                 return _buildProcessingTaskCard(filteredMeetings[index]);
