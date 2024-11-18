@@ -133,9 +133,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.only(

@@ -263,8 +263,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final result = await SaverGallery.saveImage(
         uint8List,
         quality: 100,
-        name: "qr_code.png",
-        androidExistNotSave: false,
+        fileName: "qr_code.png",
+        skipIfExists: false,
       );
 
       if (result.isSuccess) {
@@ -310,8 +310,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final result = await SaverGallery.saveImage(
         uint8List,
         quality: 100,
-        name: "qr_code.png",
-        androidExistNotSave: false,
+        fileName: "qr_code.png",
+        skipIfExists: false,
       );
 
       if (result.isSuccess) {
@@ -372,13 +372,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: Colors.black,
             size: 20,
           ),
-          onPressed: () {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const Dashboard()),
-                  (Route<dynamic> route) => false,
-            );
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         toolbarHeight: 100,
         backgroundColor: Colors.transparent,

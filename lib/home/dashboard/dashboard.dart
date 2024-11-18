@@ -223,8 +223,8 @@ class _DashboardState extends State<Dashboard> {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    return WillPopScope(
-      onWillPop: () async => false, // Disable back button
+    return PopScope(
+      onPopInvokedWithResult: (e, result) => false, // Disable back button
       child: Scaffold(
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(150.0),
@@ -313,9 +313,7 @@ class _DashboardState extends State<Dashboard> {
                       children: [
                         CircleAvatar(
                           radius: 30,
-                          backgroundImage: userProfile.imgName != 'default_avatar.jpg'
-                              ? NetworkImage(userProfile.imgName)
-                              : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                          backgroundImage: userProfile.imgName != 'default_avatar.jpg' ? NetworkImage(userProfile.imgName) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
                           backgroundColor: Colors.white,
                           onBackgroundImageError: (_, __) {
                             const AssetImage('assets/default_avatar.png');
@@ -362,9 +360,8 @@ class _DashboardState extends State<Dashboard> {
         const SizedBox(height: 10),
         _buildActionMenuHeader(),
         const SizedBox(height: 10),
-        Expanded(
-          child: _buildActionGrid(isDarkMode), // Expanded GridView to fill remaining space
-        ),
+        Expanded(child: _buildActionGrid(isDarkMode) // Expanded GridView to fill remaining space
+            ),
       ],
     );
   }
@@ -501,7 +498,7 @@ class _DashboardState extends State<Dashboard> {
             'assets/data-2.png',
             AppLocalizations.of(context)!.history,
             isDarkMode,
-                () {
+            () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const HistoryPage()),
@@ -513,7 +510,7 @@ class _DashboardState extends State<Dashboard> {
             'assets/people.png',
             AppLocalizations.of(context)!.approvals,
             isDarkMode,
-                () {
+            () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
@@ -525,7 +522,7 @@ class _DashboardState extends State<Dashboard> {
             'assets/status-up.png',
             AppLocalizations.of(context)!.workTracking,
             isDarkMode,
-                () {
+            () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
@@ -537,7 +534,7 @@ class _DashboardState extends State<Dashboard> {
             'assets/car_return.png',
             AppLocalizations.of(context)!.carReturn,
             isDarkMode,
-                () {
+            () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ReturnCarPage()),
@@ -549,14 +546,14 @@ class _DashboardState extends State<Dashboard> {
             'assets/KPI.png',
             AppLocalizations.of(context)!.kpi,
             isDarkMode,
-                () {},
+            () {},
           ),
           _buildActionCard(
             context,
             'assets/inventory.png',
             AppLocalizations.of(context)!.inventory,
             isDarkMode,
-                () {},
+            () {},
           ),
         ],
       ),

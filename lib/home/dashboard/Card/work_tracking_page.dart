@@ -27,12 +27,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
   bool _isMyProjectsSelected = true;
   String _searchText = '';
   String _selectedStatus = 'All Status';
-  final List<String> _statusOptions = [
-    'All Status',
-    'Pending',
-    'Processing',
-    'Finished'
-  ];
+  final List<String> _statusOptions = ['All Status', 'Pending', 'Processing', 'Finished'];
   List<Map<String, dynamic>> _projects = [];
   bool _isLoading = false;
   final WorkTrackingService _workTrackingService = WorkTrackingService();
@@ -102,15 +97,8 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    return WillPopScope(
-      onWillPop: () async {
-        print('Back button pressed. Navigating to Dashboard...');
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const Dashboard()),
-        );
-        return false;
-      },
+    return PopScope(
+      onPopInvokedWithResult: (e, result) => Navigator.maybePop(context),
       child: Scaffold(
         backgroundColor: isDarkMode ? Colors.black : Colors.white,
         body: RefreshIndicator(
@@ -124,9 +112,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
               _buildSearchBar(isDarkMode),
               const SizedBox(height: 8),
               Expanded(
-                child: _isLoading
-                    ? _buildLoading()
-                    : _buildProjectsList(context, isDarkMode),
+                child: _isLoading ? _buildLoading() : _buildProjectsList(context, isDarkMode),
               ),
             ],
           ),
@@ -140,8 +126,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       height: 160,
       decoration: BoxDecoration(
         image: DecorationImage(
-          image: AssetImage(
-              isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+          image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
           fit: BoxFit.cover,
         ),
         borderRadius: const BorderRadius.only(
@@ -159,14 +144,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 Icons.arrow_back,
                 color: isDarkMode ? Colors.white : Colors.black,
               ),
-              onPressed: () {
-                print('Back button pressed in Header. Navigating to Dashboard...');
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const Dashboard()),
-                      (Route<dynamic> route) => false,
-                );
-              },
+              onPressed: () => Navigator.maybePop(context),
             ),
             Text(
               'Work Tracking',
@@ -187,8 +165,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                     print('Add Project button pressed.');
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (context) => const AddProjectPage()),
+                      MaterialPageRoute(builder: (context) => const AddProjectPage()),
                     ).then((value) {
                       if (value == true) {
                         print('Project added successfully. Refreshing projects...');
@@ -240,23 +217,19 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12.0),
           decoration: BoxDecoration(
-            color: isSelected
-                ? (isDarkMode ? Colors.amber : Colors.orange)
-                : Colors.transparent,
+            color: isSelected ? (isDarkMode ? Colors.amber : Colors.orange) : Colors.transparent,
             borderRadius: BorderRadius.circular(8.0),
             border: isSelected
                 ? null
                 : Border.all(
-              color: isDarkMode ? Colors.white : Colors.black,
-            ),
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
           ),
           child: Center(
             child: Text(
               title,
               style: TextStyle(
-                color: isSelected
-                    ? (isDarkMode ? Colors.black : Colors.white)
-                    : (isDarkMode ? Colors.white : Colors.black),
+                color: isSelected ? (isDarkMode ? Colors.black : Colors.white) : (isDarkMode ? Colors.white : Colors.black),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -275,16 +248,14 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Search project name',
-                hintStyle: TextStyle(
-                    color: isDarkMode ? Colors.white70 : Colors.black54),
+                hintStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),
                 filled: true,
                 fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
                   borderSide: BorderSide.none,
                 ),
-                prefixIcon: Icon(Icons.search,
-                    color: isDarkMode ? Colors.white : Colors.black),
+                prefixIcon: Icon(Icons.search, color: isDarkMode ? Colors.white : Colors.black),
               ),
               style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
               onChanged: (value) {
@@ -298,12 +269,10 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           const SizedBox(width: 8),
           DropdownButton<String>(
             value: _selectedStatus,
-            icon: Icon(Icons.arrow_downward,
-                color: isDarkMode ? Colors.white : Colors.black),
+            icon: Icon(Icons.arrow_downward, color: isDarkMode ? Colors.white : Colors.black),
             iconSize: 24,
             elevation: 16,
-            style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black),
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
             underline: Container(
               height: 2,
               color: Colors.transparent,
@@ -314,8 +283,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 _selectedStatus = newValue!;
               });
             },
-            items: _statusOptions
-                .map<DropdownMenuItem<String>>((String value) {
+            items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
               return DropdownMenuItem<String>(
                 value: value,
                 child: Text(value),
@@ -333,14 +301,8 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
 
   Widget _buildProjectsList(BuildContext context, bool isDarkMode) {
     List<Map<String, dynamic>> filteredProjects = _projects.where((project) {
-      bool statusMatch = _selectedStatus == 'All Status' ||
-          (project['s_name']?.toString().toLowerCase() ==
-              _selectedStatus.toLowerCase());
-      bool searchMatch = project['p_name']
-          ?.toString()
-          .toLowerCase()
-          .contains(_searchText.toLowerCase()) ??
-          false;
+      bool statusMatch = _selectedStatus == 'All Status' || (project['s_name']?.toString().toLowerCase() == _selectedStatus.toLowerCase());
+      bool searchMatch = project['p_name']?.toString().toLowerCase().contains(_searchText.toLowerCase()) ?? false;
       return statusMatch && searchMatch;
     }).toList();
 
@@ -352,8 +314,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       return Center(
         child: Text(
           'Sorry, no projects match your search.',
-          style: TextStyle(
-              color: isDarkMode ? Colors.white : Colors.black, fontSize: 16),
+          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black, fontSize: 16),
         ),
       );
     }
@@ -362,22 +323,19 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       padding: const EdgeInsets.all(12.0),
       itemCount: filteredProjects.length,
       itemBuilder: (context, index) {
-        return _buildProjectCard(
-            context, isDarkMode, filteredProjects[index], index);
+        return _buildProjectCard(context, isDarkMode, filteredProjects[index], index);
       },
     );
   }
 
-  Widget _buildProjectCard(BuildContext context, bool isDarkMode,
-      Map<String, dynamic> project, int index) {
+  Widget _buildProjectCard(BuildContext context, bool isDarkMode, Map<String, dynamic> project, int index) {
     final progressColors = {
       'Pending': Colors.orange,
       'Processing': Colors.blue,
       'Finished': Colors.green,
     };
 
-    double progress =
-        double.tryParse(project['precent']?.toString() ?? '0.0') ?? 0.0;
+    double progress = double.tryParse(project['precent']?.toString() ?? '0.0') ?? 0.0;
 
     return Slidable(
       startActionPane: ActionPane(
@@ -394,8 +352,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          ViewProjectPage(project: project),
+                      builder: (context) => ViewProjectPage(project: project),
                     ),
                   );
                 },

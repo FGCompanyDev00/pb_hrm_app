@@ -11,7 +11,7 @@ final GetIt sl = GetIt.instance;
 Future<void> setupServiceLocator() async {
   final prefs = await SharedPreferences.getInstance();
 
-  sl.registerSingleton<UserPreferences>(UserPreferences(prefs));
   sl.registerSingleton<OfflineProvider>(OfflineProvider());
   sl.registerLazySingleton<Connectivity>(() => Connectivity());
+  sl.registerLazySingleton<UserPreferences>(() => UserPreferences(prefs));
 }

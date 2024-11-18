@@ -75,7 +75,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<bool> _onWillPop() async {
     Navigator.pop(context);
-    return false;
+    return true;
   }
 
   Future<void> _showBiometricModal() async {
@@ -224,8 +224,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
 
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      onPopInvokedWithResult: (e, result) => _onWillPop,
       child: Scaffold(
         backgroundColor: Colors.white,
         extendBodyBehindAppBar: false,

@@ -17,7 +17,6 @@ import 'package:pb_hrsystem/models/calendar_events_list_record.dart';
 import 'package:pb_hrsystem/models/event_record.dart';
 import 'package:pb_hrsystem/services/http_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
-import 'package:syncfusion_flutter_calendar/calendar.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
@@ -1251,37 +1250,5 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
   @override
   Widget build(BuildContext context) {
     return _buildSectionSeparator();
-  }
-}
-
-/// Data source for Syncfusion Calendar
-class MeetingDataSource extends CalendarDataSource {
-  MeetingDataSource(List<EventRecord> source) {
-    appointments = source;
-  }
-
-  @override
-  DateTime getStartTime(int index) {
-    return appointments![index].startDateTime;
-  }
-
-  @override
-  DateTime getEndTime(int index) {
-    return appointments![index].endDateTime;
-  }
-
-  @override
-  String getSubject(int index) {
-    return appointments![index].title;
-  }
-
-  @override
-  Color getColor(int index) {
-    return appointments![index].backgroundColor ?? Colors.blueAccent;
-  }
-
-  @override
-  bool isAllDay(int index) {
-    return false;
   }
 }

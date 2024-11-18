@@ -13,6 +13,7 @@ import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/models/calendar_events_list_record.dart';
 import 'package:pb_hrsystem/models/event_record.dart';
+import 'package:pb_hrsystem/models/material_color.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
 import 'package:pb_hrsystem/services/background_service.dart';
 import 'package:pb_hrsystem/services/offline_service.dart';
@@ -30,11 +31,15 @@ import 'models/attendance_record.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await setupServiceLocator();
+  await initializeService();
 
   await Hive.initFlutter();
   Hive.registerAdapter(AttendanceRecordAdapter());
   Hive.registerAdapter(CalendarEventsListRecordAdapter());
   Hive.registerAdapter(EventRecordAdapter());
+  Hive.registerAdapter(MaterialColorAdapter());
+
   await Hive.openBox<AttendanceRecord>('pending_attendance');
   await Hive.openBox<CalendarEventsListRecord>('store_events_calendar');
   await Hive.openBox<String>('userProfileBox');
@@ -42,8 +47,6 @@ void main() async {
   await Hive.openBox('loginBox');
   await Hive.openBox('calendarEventsRecordBox');
   await Hive.openBox('UserProfileRecordBox');
-
-  await setupServiceLocator();
 
   runApp(
     MultiProvider(
@@ -168,7 +171,6 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
-    initializeService();
     offlineProvider.initialize();
     connectivityResult.onConnectivityChanged.listen((source) {
       Future.delayed(const Duration(seconds: 20)).whenComplete(() => _enableConnection = true);

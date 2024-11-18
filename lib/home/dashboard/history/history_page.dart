@@ -58,16 +58,12 @@ class _HistoryPageState extends State<HistoryPage> {
         final leaveTypesBody = jsonDecode(leaveTypesResponse.body);
         if (leaveTypesBody['statusCode'] == 200) {
           final List<dynamic> leaveTypesData = leaveTypesBody['results'];
-          _leaveTypes = {
-            for (var lt in leaveTypesData) lt['leave_type_id']: lt['name']
-          };
+          _leaveTypes = {for (var lt in leaveTypesData) lt['leave_type_id']: lt['name']};
         } else {
-          throw Exception(
-              leaveTypesBody['message'] ?? 'Failed to load leave types');
+          throw Exception(leaveTypesBody['message'] ?? 'Failed to load leave types');
         }
       } else {
-        throw Exception(
-            'Failed to load leave types: ${leaveTypesResponse.statusCode}');
+        throw Exception('Failed to load leave types: ${leaveTypesResponse.statusCode}');
       }
 
       // Fetch Pending Items
@@ -97,15 +93,12 @@ class _HistoryPageState extends State<HistoryPage> {
         final responseBody = jsonDecode(pendingResponse.body);
         if (responseBody['statusCode'] == 200) {
           final List<dynamic> pendingData = responseBody['results'];
-          tempPendingItems.addAll(
-              pendingData.map((item) => _formatItem(item as Map<String, dynamic>)));
+          tempPendingItems.addAll(pendingData.map((item) => _formatItem(item as Map<String, dynamic>)));
         } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load pending data');
+          throw Exception(responseBody['message'] ?? 'Failed to load pending data');
         }
       } else {
-        throw Exception(
-            'Failed to load pending data: ${pendingResponse.statusCode}');
+        throw Exception('Failed to load pending data: ${pendingResponse.statusCode}');
       }
 
       // Process History Response
@@ -113,15 +106,12 @@ class _HistoryPageState extends State<HistoryPage> {
         final responseBody = jsonDecode(historyResponse.body);
         if (responseBody['statusCode'] == 200) {
           final List<dynamic> historyData = responseBody['results'];
-          tempHistoryItems.addAll(
-              historyData.map((item) => _formatItem(item as Map<String, dynamic>)));
+          tempHistoryItems.addAll(historyData.map((item) => _formatItem(item as Map<String, dynamic>)));
         } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load history data');
+          throw Exception(responseBody['message'] ?? 'Failed to load history data');
         }
       } else {
-        throw Exception(
-            'Failed to load history data: ${historyResponse.statusCode}');
+        throw Exception('Failed to load history data: ${historyResponse.statusCode}');
       }
 
       // Update State
@@ -180,7 +170,6 @@ class _HistoryPageState extends State<HistoryPage> {
         });
         break;
       case 'car':
-
         print('Car Item Data: $item');
 
         formattedItem.addAll({
@@ -193,7 +182,7 @@ class _HistoryPageState extends State<HistoryPage> {
         });
         break;
       default:
-      // Handle unknown types if necessary
+        // Handle unknown types if necessary
         break;
     }
 
@@ -270,64 +259,64 @@ class _HistoryPageState extends State<HistoryPage> {
           SizedBox(height: screenSize.height * 0.005),
           _isLoading
               ? const Expanded(
-            child: Center(child: CircularProgressIndicator()),
-          )
+                  child: Center(child: CircularProgressIndicator()),
+                )
               : Expanded(
-            child: RefreshIndicator(
-              onRefresh: _fetchHistoryData, // This function will refresh data
-              child: _isPendingSelected
-                  ? _pendingItems.isEmpty
-                  ? Center(
-                child: Text(
-                  'No Pending Items',
-                  style: TextStyle(
-                    fontSize: screenSize.width * 0.04,
+                  child: RefreshIndicator(
+                    onRefresh: _fetchHistoryData, // This function will refresh data
+                    child: _isPendingSelected
+                        ? _pendingItems.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'No Pending Items',
+                                  style: TextStyle(
+                                    fontSize: screenSize.width * 0.04,
+                                  ),
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: screenSize.width * 0.04,
+                                  vertical: screenSize.height * 0.008,
+                                ),
+                                itemCount: _pendingItems.length,
+                                itemBuilder: (context, index) {
+                                  final item = _pendingItems[index];
+                                  return _buildHistoryCard(
+                                    context,
+                                    item,
+                                    isHistory: false,
+                                    screenSize: screenSize,
+                                  );
+                                },
+                              )
+                        : _historyItems.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'No History Items',
+                                  style: TextStyle(
+                                    fontSize: screenSize.width * 0.04,
+                                  ),
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: screenSize.width * 0.04,
+                                  vertical: screenSize.height * 0.008,
+                                ),
+                                itemCount: _historyItems.length,
+                                itemBuilder: (context, index) {
+                                  final item = _historyItems[index];
+                                  return _buildHistoryCard(
+                                    context,
+                                    item,
+                                    isHistory: true,
+                                    screenSize: screenSize,
+                                  );
+                                },
+                              ),
                   ),
                 ),
-              )
-                  : ListView.builder(
-                padding: EdgeInsets.symmetric(
-                  horizontal: screenSize.width * 0.04,
-                  vertical: screenSize.height * 0.008,
-                ),
-                itemCount: _pendingItems.length,
-                itemBuilder: (context, index) {
-                  final item = _pendingItems[index];
-                  return _buildHistoryCard(
-                    context,
-                    item,
-                    isHistory: false,
-                    screenSize: screenSize,
-                  );
-                },
-              )
-                  : _historyItems.isEmpty
-                  ? Center(
-                child: Text(
-                  'No History Items',
-                  style: TextStyle(
-                    fontSize: screenSize.width * 0.04,
-                  ),
-                ),
-              )
-                  : ListView.builder(
-                padding: EdgeInsets.symmetric(
-                  horizontal: screenSize.width * 0.04,
-                  vertical: screenSize.height * 0.008,
-                ),
-                itemCount: _historyItems.length,
-                itemBuilder: (context, index) {
-                  final item = _historyItems[index];
-                  return _buildHistoryCard(
-                    context,
-                    item,
-                    isHistory: true,
-                    screenSize: screenSize,
-                  );
-                },
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -365,13 +354,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   color: isDarkMode ? Colors.white : Colors.black,
                   size: screenSize.width * 0.07,
                 ),
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const Dashboard()),
-                        (Route<dynamic> route) => false,
-                  );
-                },
+                onPressed: () => Navigator.maybePop(context),
               ),
               Text(
                 'My History',
@@ -410,9 +393,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
-                  color: _isPendingSelected
-                      ? Colors.amber
-                      : Colors.grey[300],
+                  color: _isPendingSelected ? Colors.amber : Colors.grey[300],
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -454,9 +435,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
-                  color: !_isPendingSelected
-                      ? Colors.amber
-                      : Colors.grey[300],
+                  color: !_isPendingSelected ? Colors.amber : Colors.grey[300],
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(20.0),
                     bottomRight: Radius.circular(20.0),
@@ -491,10 +470,7 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   /// Builds each history/pending card
-  Widget _buildHistoryCard(
-
-      BuildContext context, Map<String, dynamic> item,
-      {required bool isHistory, required Size screenSize}) {
+  Widget _buildHistoryCard(BuildContext context, Map<String, dynamic> item, {required bool isHistory, required Size screenSize}) {
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
     final String type = item['type'] ?? 'unknown';
@@ -547,12 +523,8 @@ class _HistoryPageState extends State<HistoryPage> {
         detailText = 'N/A';
     }
 
-    String startDate = item['startDate'] != null
-        ? formatDate(item['startDate'])
-        : 'N/A';
-    String endDate = item['endDate'] != null
-        ? formatDate(item['endDate'])
-        : 'N/A';
+    String startDate = item['startDate'] != null ? formatDate(item['startDate']) : 'N/A';
+    String endDate = item['endDate'] != null ? formatDate(item['endDate']) : 'N/A';
 
     return GestureDetector(
       onTap: () {

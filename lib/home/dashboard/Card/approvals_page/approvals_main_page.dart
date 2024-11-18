@@ -35,8 +35,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
   Map<int, String> _leaveTypesMap = {};
 
   // Base URL for images
-  final String _imageBaseUrl =
-      'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
+  final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
   @override
   void initState() {
@@ -91,28 +90,21 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         },
       );
 
-      print(
-          'Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
+      print('Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
 
       if (leaveTypesResponse.statusCode == 200) {
         final responseBody = jsonDecode(leaveTypesResponse.body);
-        if (responseBody['statusCode'] == 200 &&
-            responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
           final List<dynamic> leaveTypesData = responseBody['results'];
           setState(() {
-            _leaveTypesMap = {
-              for (var item in leaveTypesData)
-                item['leave_type_id'] as int: item['name'].toString()
-            };
+            _leaveTypesMap = {for (var item in leaveTypesData) item['leave_type_id'] as int: item['name'].toString()};
           });
           print('Leave types loaded: $_leaveTypesMap');
         } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load leave types');
+          throw Exception(responseBody['message'] ?? 'Failed to load leave types');
         }
       } else {
-        throw Exception(
-            'Failed to load leave types: ${leaveTypesResponse.statusCode}');
+        throw Exception('Failed to load leave types: ${leaveTypesResponse.statusCode}');
       }
     } catch (e, stackTrace) {
       print('Error fetching leave types: $e');
@@ -145,35 +137,25 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         },
       );
 
-      print(
-          'Fetching pending items: Status Code ${pendingResponse.statusCode}');
+      print('Fetching pending items: Status Code ${pendingResponse.statusCode}');
 
       if (pendingResponse.statusCode == 200) {
         final responseBody = jsonDecode(pendingResponse.body);
-        if (responseBody['statusCode'] == 200 &&
-            responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
           final List<dynamic> pendingData = responseBody['results'];
 
           // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = pendingData
-              .where((item) => item != null)
-              .map((item) => Map<String, dynamic>.from(item))
-              .where((item) =>
-          item['types'] != null &&
-              _knownTypes.contains(item['types'].toString().toLowerCase()))
-              .toList();
+          final List<Map<String, dynamic>> filteredData = pendingData.where((item) => item != null).map((item) => Map<String, dynamic>.from(item)).where((item) => item['types'] != null && _knownTypes.contains(item['types'].toString().toLowerCase())).toList();
 
           setState(() {
             _pendingItems = filteredData;
           });
           print('Pending items loaded: ${_pendingItems.length} items.');
         } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load pending data');
+          throw Exception(responseBody['message'] ?? 'Failed to load pending data');
         }
       } else {
-        throw Exception(
-            'Failed to load pending data: ${pendingResponse.statusCode}');
+        throw Exception('Failed to load pending data: ${pendingResponse.statusCode}');
       }
     } catch (e, stackTrace) {
       print('Error fetching pending data: $e');
@@ -206,35 +188,25 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         },
       );
 
-      print(
-          'Fetching history items: Status Code ${historyResponse.statusCode}');
+      print('Fetching history items: Status Code ${historyResponse.statusCode}');
 
       if (historyResponse.statusCode == 200) {
         final responseBody = jsonDecode(historyResponse.body);
-        if (responseBody['statusCode'] == 200 &&
-            responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
           final List<dynamic> historyData = responseBody['results'];
 
           // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = historyData
-              .where((item) => item != null)
-              .map((item) => Map<String, dynamic>.from(item))
-              .where((item) =>
-          item['types'] != null &&
-              _knownTypes.contains(item['types'].toString().toLowerCase()))
-              .toList();
+          final List<Map<String, dynamic>> filteredData = historyData.where((item) => item != null).map((item) => Map<String, dynamic>.from(item)).where((item) => item['types'] != null && _knownTypes.contains(item['types'].toString().toLowerCase())).toList();
 
           setState(() {
             _historyItems = filteredData;
           });
           print('History items loaded: ${_historyItems.length} items.');
         } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load history data');
+          throw Exception(responseBody['message'] ?? 'Failed to load history data');
         }
       } else {
-        throw Exception(
-            'Failed to load history data: ${historyResponse.statusCode}');
+        throw Exception('Failed to load history data: ${historyResponse.statusCode}');
       }
     } catch (e, stackTrace) {
       print('Error fetching history data: $e');
@@ -262,64 +234,64 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           SizedBox(height: screenSize.height * 0.005),
           _isLoading
               ? const Expanded(
-            child: Center(child: CircularProgressIndicator()),
-          )
+                  child: Center(child: CircularProgressIndicator()),
+                )
               : Expanded(
-            child: RefreshIndicator(
-              onRefresh: _fetchInitialData, // Refreshes all data
-              child: _isPendingSelected
-                  ? _pendingItems.isEmpty
-                  ? Center(
-                child: Text(
-                  'No Pending Items',
-                  style: TextStyle(
-                    fontSize: screenSize.width * 0.04,
+                  child: RefreshIndicator(
+                    onRefresh: _fetchInitialData, // Refreshes all data
+                    child: _isPendingSelected
+                        ? _pendingItems.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'No Pending Items',
+                                  style: TextStyle(
+                                    fontSize: screenSize.width * 0.04,
+                                  ),
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: screenSize.width * 0.04,
+                                  vertical: screenSize.height * 0.008,
+                                ),
+                                itemCount: _pendingItems.length,
+                                itemBuilder: (context, index) {
+                                  final item = _pendingItems[index];
+                                  return _buildItemCard(
+                                    context,
+                                    item,
+                                    isHistory: false,
+                                    screenSize: screenSize,
+                                  );
+                                },
+                              )
+                        : _historyItems.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'No History Items',
+                                  style: TextStyle(
+                                    fontSize: screenSize.width * 0.04,
+                                  ),
+                                ),
+                              )
+                            : ListView.builder(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: screenSize.width * 0.04,
+                                  vertical: screenSize.height * 0.008,
+                                ),
+                                itemCount: _historyItems.length,
+                                itemBuilder: (context, index) {
+                                  final item = _historyItems[index];
+                                  return _buildItemCard(
+                                    context,
+                                    item,
+                                    isHistory: true,
+                                    screenSize: screenSize,
+                                  );
+                                },
+                              ),
                   ),
                 ),
-              )
-                  : ListView.builder(
-                padding: EdgeInsets.symmetric(
-                  horizontal: screenSize.width * 0.04,
-                  vertical: screenSize.height * 0.008,
-                ),
-                itemCount: _pendingItems.length,
-                itemBuilder: (context, index) {
-                  final item = _pendingItems[index];
-                  return _buildItemCard(
-                    context,
-                    item,
-                    isHistory: false,
-                    screenSize: screenSize,
-                  );
-                },
-              )
-                  : _historyItems.isEmpty
-                  ? Center(
-                child: Text(
-                  'No History Items',
-                  style: TextStyle(
-                    fontSize: screenSize.width * 0.04,
-                  ),
-                ),
-              )
-                  : ListView.builder(
-                padding: EdgeInsets.symmetric(
-                  horizontal: screenSize.width * 0.04,
-                  vertical: screenSize.height * 0.008,
-                ),
-                itemCount: _historyItems.length,
-                itemBuilder: (context, index) {
-                  final item = _historyItems[index];
-                  return _buildItemCard(
-                    context,
-                    item,
-                    isHistory: true,
-                    screenSize: screenSize,
-                  );
-                },
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -357,13 +329,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                   color: isDarkMode ? Colors.white : Colors.black,
                   size: screenSize.width * 0.07,
                 ),
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const Dashboard()),
-                        (Route<dynamic> route) => false,
-                  );
-                },
+                onPressed: () => Navigator.maybePop(context),
               ),
               Text(
                 'Approvals',
@@ -404,9 +370,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                   vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
-                  color: _isPendingSelected
-                      ? Colors.amber
-                      : Colors.grey.shade300,
+                  color: _isPendingSelected ? Colors.amber : Colors.grey.shade300,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -450,9 +414,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                   vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
-                  color: !_isPendingSelected
-                      ? Colors.amber
-                      : Colors.grey.shade300,
+                  color: !_isPendingSelected ? Colors.amber : Colors.grey.shade300,
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(20.0),
                     bottomRight: Radius.circular(20.0),
@@ -487,8 +449,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
   }
 
   /// Builds each item card for Approvals or History.
-  Widget _buildItemCard(BuildContext context, Map<String, dynamic> item,
-      {required bool isHistory, required Size screenSize}) {
+  Widget _buildItemCard(BuildContext context, Map<String, dynamic> item, {required bool isHistory, required Size screenSize}) {
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
 

@@ -27,8 +27,7 @@ class _NotificationPageState extends State<NotificationPage> {
   bool _isLoading = true;
   final Set<String> _knownTypes = {'meeting', 'leave', 'car'};
   Map<int, String> _leaveTypesMap = {};
-  final String _imageBaseUrl =
-      'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
+  final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
   // State variables for expansion
   bool _isMeetingExpanded = false;
@@ -98,31 +97,24 @@ class _NotificationPageState extends State<NotificationPage> {
       );
 
       if (kDebugMode) {
-        print(
-          'Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
+        print('Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
       }
 
       if (leaveTypesResponse.statusCode == 200) {
         final responseBody = jsonDecode(leaveTypesResponse.body);
-        if (responseBody['statusCode'] == 200 &&
-            responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
           final List<dynamic> leaveTypesData = responseBody['results'];
           setState(() {
-            _leaveTypesMap = {
-              for (var item in leaveTypesData)
-                item['leave_type_id'] as int: item['name'].toString()
-            };
+            _leaveTypesMap = {for (var item in leaveTypesData) item['leave_type_id'] as int: item['name'].toString()};
           });
           if (kDebugMode) {
             print('Leave types loaded: $_leaveTypesMap');
           }
         } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load leave types');
+          throw Exception(responseBody['message'] ?? 'Failed to load leave types');
         }
       } else {
-        throw Exception(
-            'Failed to load leave types: ${leaveTypesResponse.statusCode}');
+        throw Exception('Failed to load leave types: ${leaveTypesResponse.statusCode}');
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
@@ -160,24 +152,16 @@ class _NotificationPageState extends State<NotificationPage> {
       );
 
       if (kDebugMode) {
-        print(
-          'Fetching pending items: Status Code ${pendingResponse.statusCode}');
+        print('Fetching pending items: Status Code ${pendingResponse.statusCode}');
       }
 
       if (pendingResponse.statusCode == 200) {
         final responseBody = jsonDecode(pendingResponse.body);
-        if (responseBody['statusCode'] == 200 &&
-            responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
           final List<dynamic> pendingData = responseBody['results'];
 
           // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = pendingData
-              .where((item) => item != null)
-              .map((item) => Map<String, dynamic>.from(item))
-              .where((item) =>
-          item['types'] != null &&
-              _knownTypes.contains(item['types'].toString().toLowerCase()))
-              .toList();
+          final List<Map<String, dynamic>> filteredData = pendingData.where((item) => item != null).map((item) => Map<String, dynamic>.from(item)).where((item) => item['types'] != null && _knownTypes.contains(item['types'].toString().toLowerCase())).toList();
 
           setState(() {
             _pendingItems = filteredData;
@@ -186,12 +170,10 @@ class _NotificationPageState extends State<NotificationPage> {
             print('Pending items loaded: ${_pendingItems.length} items.');
           }
         } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load pending data');
+          throw Exception(responseBody['message'] ?? 'Failed to load pending data');
         }
       } else {
-        throw Exception(
-            'Failed to load pending data: ${pendingResponse.statusCode}');
+        throw Exception('Failed to load pending data: ${pendingResponse.statusCode}');
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
@@ -229,24 +211,16 @@ class _NotificationPageState extends State<NotificationPage> {
       );
 
       if (kDebugMode) {
-        print(
-          'Fetching history items: Status Code ${historyResponse.statusCode}');
+        print('Fetching history items: Status Code ${historyResponse.statusCode}');
       }
 
       if (historyResponse.statusCode == 200) {
         final responseBody = jsonDecode(historyResponse.body);
-        if (responseBody['statusCode'] == 200 &&
-            responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
           final List<dynamic> historyData = responseBody['results'];
 
           // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = historyData
-              .where((item) => item != null)
-              .map((item) => Map<String, dynamic>.from(item))
-              .where((item) =>
-          item['types'] != null &&
-              _knownTypes.contains(item['types'].toString().toLowerCase()))
-              .toList();
+          final List<Map<String, dynamic>> filteredData = historyData.where((item) => item != null).map((item) => Map<String, dynamic>.from(item)).where((item) => item['types'] != null && _knownTypes.contains(item['types'].toString().toLowerCase())).toList();
 
           setState(() {
             _historyItems = filteredData;
@@ -255,12 +229,10 @@ class _NotificationPageState extends State<NotificationPage> {
             print('History items loaded: ${_historyItems.length} items.');
           }
         } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load history data');
+          throw Exception(responseBody['message'] ?? 'Failed to load history data');
         }
       } else {
-        throw Exception(
-            'Failed to load history data: ${historyResponse.statusCode}');
+        throw Exception('Failed to load history data: ${historyResponse.statusCode}');
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
@@ -279,8 +251,7 @@ class _NotificationPageState extends State<NotificationPage> {
   /// Fetches all meeting invites without pagination
   Future<void> _fetchMeetingInvites() async {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String meetingInvitesApiUrl =
-        '$baseUrl/api/office-administration/book_meeting_room/invites-meeting';
+    const String meetingInvitesApiUrl = '$baseUrl/api/office-administration/book_meeting_room/invites-meeting';
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -299,19 +270,15 @@ class _NotificationPageState extends State<NotificationPage> {
       );
 
       if (kDebugMode) {
-        print(
-          'Fetching meeting invites: Status Code ${response.statusCode}');
+        print('Fetching meeting invites: Status Code ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
-        if (responseBody['statusCode'] == 200 &&
-            responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
           final List<dynamic> meetingData = responseBody['results'];
-          final List<Map<String, dynamic>> formattedMeetingData =
-          meetingData.map((item) {
-            final Map<String, dynamic> meetingItem =
-            Map<String, dynamic>.from(item);
+          final List<Map<String, dynamic>> formattedMeetingData = meetingData.map((item) {
+            final Map<String, dynamic> meetingItem = Map<String, dynamic>.from(item);
             meetingItem['types'] = 'meeting';
             return meetingItem;
           }).toList();
@@ -321,12 +288,10 @@ class _NotificationPageState extends State<NotificationPage> {
           });
           print('Meeting invites loaded: ${_meetingInvites.length} items.');
         } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load meeting invites');
+          throw Exception(responseBody['message'] ?? 'Failed to load meeting invites');
         }
       } else {
-        throw Exception(
-            'Failed to load meeting invites: ${response.statusCode}');
+        throw Exception('Failed to load meeting invites: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
       print('Error fetching meeting invites: $e');
@@ -354,34 +319,34 @@ class _NotificationPageState extends State<NotificationPage> {
           SizedBox(height: screenSize.height * 0.008),
           _isLoading
               ? const Expanded(
-            child: Center(child: CircularProgressIndicator()),
-          )
+                  child: Center(child: CircularProgressIndicator()),
+                )
               : Expanded(
-            child: RefreshIndicator(
-              onRefresh: _fetchInitialData, // Refreshes all data
-              child: _isMeetingSelected
-                  ? _meetingInvites.isEmpty
-                  ? Center(
-                child: Text(
-                  'No Meeting Invites',
-                  style: TextStyle(
-                    fontSize: screenSize.width * 0.045,
+                  child: RefreshIndicator(
+                    onRefresh: _fetchInitialData, // Refreshes all data
+                    child: _isMeetingSelected
+                        ? _meetingInvites.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'No Meeting Invites',
+                                  style: TextStyle(
+                                    fontSize: screenSize.width * 0.045,
+                                  ),
+                                ),
+                              )
+                            : _buildMeetingList(screenSize)
+                        : (_pendingItems.isEmpty && _historyItems.isEmpty)
+                            ? Center(
+                                child: Text(
+                                  'No Approval Items',
+                                  style: TextStyle(
+                                    fontSize: screenSize.width * 0.045,
+                                  ),
+                                ),
+                              )
+                            : _buildApprovalList(screenSize),
                   ),
                 ),
-              )
-                  : _buildMeetingList(screenSize)
-                  : (_pendingItems.isEmpty && _historyItems.isEmpty)
-                  ? Center(
-                child: Text(
-                  'No Approval Items',
-                  style: TextStyle(
-                    fontSize: screenSize.width * 0.045,
-                  ),
-                ),
-              )
-                  : _buildApprovalList(screenSize),
-            ),
-          ),
         ],
       ),
     );
@@ -389,9 +354,7 @@ class _NotificationPageState extends State<NotificationPage> {
 
   /// Builds the Meeting list with View More functionality
   Widget _buildMeetingList(Size screenSize) {
-    int itemCount = _isMeetingExpanded
-        ? _meetingInvites.length
-        : (_meetingInvites.length > 30 ? 30 : _meetingInvites.length);
+    int itemCount = _isMeetingExpanded ? _meetingInvites.length : (_meetingInvites.length > 30 ? 30 : _meetingInvites.length);
 
     bool showViewMore = _meetingInvites.length > 30 && !_isMeetingExpanded;
 
@@ -428,19 +391,11 @@ class _NotificationPageState extends State<NotificationPage> {
 
   /// Builds the Approval list with View More functionality
   Widget _buildApprovalList(Size screenSize) {
-    List<Map<String, dynamic>> combinedApprovalItems = [
-      ..._pendingItems,
-      ..._historyItems
-    ];
+    List<Map<String, dynamic>> combinedApprovalItems = [..._pendingItems, ..._historyItems];
 
-    int itemCount = _isApprovalExpanded
-        ? combinedApprovalItems.length
-        : (combinedApprovalItems.length > 30
-        ? 30
-        : combinedApprovalItems.length);
+    int itemCount = _isApprovalExpanded ? combinedApprovalItems.length : (combinedApprovalItems.length > 30 ? 30 : combinedApprovalItems.length);
 
-    bool showViewMore =
-        combinedApprovalItems.length > 30 && !_isApprovalExpanded;
+    bool showViewMore = combinedApprovalItems.length > 30 && !_isApprovalExpanded;
 
     return ListView.builder(
       padding: EdgeInsets.symmetric(
@@ -506,13 +461,7 @@ class _NotificationPageState extends State<NotificationPage> {
                   color: isDarkMode ? Colors.white : Colors.black,
                   size: screenSize.width * 0.07,
                 ),
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => const Dashboard()),
-                        (Route<dynamic> route) => false,
-                  );
-                },
+                onPressed: () => Navigator.maybePop(context),
               ),
               Text(
                 'Notification',
@@ -553,8 +502,7 @@ class _NotificationPageState extends State<NotificationPage> {
                   vertical: screenSize.height * 0.010,
                 ),
                 decoration: BoxDecoration(
-                  color:
-                  _isMeetingSelected ? Colors.amber : Colors.grey.shade300,
+                  color: _isMeetingSelected ? Colors.amber : Colors.grey.shade300,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -566,17 +514,13 @@ class _NotificationPageState extends State<NotificationPage> {
                     Icon(
                       Icons.meeting_room,
                       size: screenSize.width * 0.07,
-                      color: _isMeetingSelected
-                          ? Colors.white
-                          : Colors.grey.shade600,
+                      color: _isMeetingSelected ? Colors.white : Colors.grey.shade600,
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Meeting',
                       style: TextStyle(
-                        color: _isMeetingSelected
-                            ? Colors.white
-                            : Colors.grey.shade600,
+                        color: _isMeetingSelected ? Colors.white : Colors.grey.shade600,
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -601,9 +545,7 @@ class _NotificationPageState extends State<NotificationPage> {
                   vertical: screenSize.height * 0.010,
                 ),
                 decoration: BoxDecoration(
-                  color: !_isMeetingSelected
-                      ? Colors.amber
-                      : Colors.grey.shade300,
+                  color: !_isMeetingSelected ? Colors.amber : Colors.grey.shade300,
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(20.0),
                     bottomRight: Radius.circular(20.0),
@@ -638,8 +580,7 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   /// Builds each item card for Meeting or Approval.
-  Widget _buildItemCard(BuildContext context, Map<String, dynamic> item,
-      {required bool isHistory, required Size screenSize}) {
+  Widget _buildItemCard(BuildContext context, Map<String, dynamic> item, {required bool isHistory, required Size screenSize}) {
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
 

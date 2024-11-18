@@ -1,7 +1,5 @@
 // office_add_event.dart
 
-import 'package:day_night_time_picker/day_night_time_picker.dart';
-import 'package:day_night_time_picker/lib/state/time.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -148,9 +146,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         setState(() {
           _rooms = data
               .map<Map<String, dynamic>>((item) => {
-            'room_id': item['uid'],
-            'room_name': item['room_name'],
-          })
+                    'room_id': item['uid'],
+                    'room_name': item['room_name'],
+                  })
               .toList();
           if (kDebugMode) {
             print('Fetched Rooms: $_rooms');
@@ -718,9 +716,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       value: _notification,
       items: _notificationOptions
           .map((minutes) => DropdownMenuItem<int>(
-        value: minutes,
-        child: Text('Notify me $minutes min before'),
-      ))
+                value: minutes,
+                child: Text('Notify me $minutes min before'),
+              ))
           .toList(),
       onChanged: (int? newValue) {
         setState(() {
@@ -744,9 +742,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       value: _location,
       items: _locationOptions
           .map((loc) => DropdownMenuItem<String>(
-        value: loc,
-        child: Text(loc),
-      ))
+                value: loc,
+                child: Text(loc),
+              ))
           .toList(),
       onChanged: (String? newValue) {
         setState(() {
