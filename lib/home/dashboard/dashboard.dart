@@ -34,7 +34,8 @@ class _DashboardState extends State<Dashboard> {
   late PageController _pageController;
   int _currentPage = 0;
   Timer? _carouselTimer;
-  bool _isLoading = false; // Defined _isLoading to manage loading state
+  bool _isLoading = false;
+  bool get wantKeepAlive => true;
 
   // Hive boxes
   late Box<String> userProfileBox;
@@ -377,7 +378,7 @@ class _DashboardState extends State<Dashboard> {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
-          } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+          } else if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
             return PageView.builder(
               controller: _pageController,
               itemCount: snapshot.data!.length,
@@ -387,12 +388,17 @@ class _DashboardState extends State<Dashboard> {
                 });
               },
               itemBuilder: (context, index) {
+                final bannerUrl = snapshot.data![index];
+                // Ensure the banner URL is valid before passing it to NetworkImage
+                if (bannerUrl.isEmpty || Uri.tryParse(bannerUrl)?.hasAbsolutePath != true) {
+                  return Center(child: Text(AppLocalizations.of(context)!.noBannersAvailable));
+                }
                 return Container(
                   margin: const EdgeInsets.symmetric(horizontal: 12.0),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
                     image: DecorationImage(
-                      image: NetworkImage(snapshot.data![index]),
+                      image: NetworkImage(bannerUrl),
                       fit: BoxFit.cover,
                     ),
                   ),

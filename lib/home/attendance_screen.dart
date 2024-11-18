@@ -1180,7 +1180,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: mediaQuery.padding.bottom + 20,
+            bottom: mediaQuery.padding.bottom,
             child: Center(
               child: ElevatedButton.icon(
                 onPressed: () {
@@ -1195,7 +1195,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   backgroundColor: Colors.green,
-                  elevation: 5,
+                  elevation: 4,
                 ),
                 icon: const Icon(Icons.report, color: Colors.white),
                 label: Text(

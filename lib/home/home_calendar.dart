@@ -800,6 +800,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     return Stack(
       children: [
         Scaffold(
+          backgroundColor: Colors.white,
           appBar: PreferredSize(
             preferredSize: const Size.fromHeight(150),
             child: _buildCalendarHeader(isDarkMode),
@@ -831,14 +832,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                           ),
                         )
                       : CarouselSlider(
-                          options: CarouselOptions(
-                            autoPlay: false,
-                            viewportFraction: 1,
-                            initialPage: liveHour(),
-                            height: 410,
-                            scrollDirection: Axis.vertical,
-                          ),
-                          items: [
+                    options: CarouselOptions(
+                      autoPlay: false,
+                      viewportFraction: 1,
+                      initialPage: liveHour(),
+                      height: MediaQuery.of(context).size.height * 0.437,
+                      scrollDirection: Axis.vertical,
+                    ),
+                    items: [
                             CalendarDayWidgetCard(
                               selectedDay: _selectedDay,
                               eventsCalendar: _eventsForDay,
@@ -987,20 +988,19 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   /// Builds the TableCalendar widget with customized navigation arrows
   Widget _buildCalendar(BuildContext context, bool isDarkMode) {
     return Container(
-      margin: const EdgeInsets.all(12.0),
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.black : Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Custom Header
           _buildCustomHeader(isDarkMode),
-          // TableCalendar without the default header
           Consumer2<DateProvider, LanguageNotifier>(
             builder: (context, dateProvider, languageNotifier, child) {
               return TableCalendar<EventRecord>(
-                rowHeight: 38,
+                rowHeight: 42,
                 firstDay: DateTime.utc(2010, 10, 16),
                 lastDay: DateTime.utc(2030, 3, 14),
                 focusedDay: dateProvider.selectedDate,
@@ -1041,7 +1041,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                   });
                 },
                 eventLoader: _getDubplicateEventsForDay,
-                // eventLoader: _getDubplicateEventsForDay,
                 calendarStyle: CalendarStyle(
                   todayDecoration: BoxDecoration(
                     color: Colors.orangeAccent.withOpacity(0.5),
@@ -1079,7 +1078,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                             return Container(
                               width: 5,
                               height: 5,
-                              margin: const EdgeInsets.symmetric(horizontal: 1),
+                              margin: const EdgeInsets.symmetric(horizontal: 1.5),
                               decoration: BoxDecoration(
                                 color: getEventColor(event),
                                 shape: BoxShape.circle,
@@ -1177,15 +1176,22 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Builds a gradient animated line as a section separator
   Widget _buildSectionSeparator() {
-    return const Column(
+    return Column(
       children: [
-        GradientAnimationLine(),
-        SizedBox(
-          height: 5,
+        Container(
+          decoration: const BoxDecoration(
+            borderRadius: BorderRadius.horizontal(
+              left: Radius.circular(10),
+              right: Radius.circular(10),
+            ),
+          ),
+          child: const GradientAnimationLine(),
         ),
+        const SizedBox(height: 5),
       ],
     );
   }
+
 }
 
 /// Gradient animated line widget
@@ -1214,7 +1220,7 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
     ).animate(_controller);
     _colorAnimation2 = ColorTween(
       begin: Colors.orange,
-      end: Colors.yellow,
+      end: Colors.redAccent,
     ).animate(_controller);
   }
 
@@ -1241,7 +1247,7 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
               ],
             ),
           ),
-          margin: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 2.0),
+          margin: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
         );
       },
     );
@@ -1251,4 +1257,14 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
   Widget build(BuildContext context) {
     return _buildSectionSeparator();
   }
+}
+
+/// Function to use the animated line as a separator
+Widget buildSectionSeparator() {
+  return const Column(
+    children: [
+      GradientAnimationLine(),
+      SizedBox(height: 5),
+    ],
+  );
 }

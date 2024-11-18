@@ -1,11 +1,6 @@
-// view_assignment.dart
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -30,8 +25,8 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
   bool _isLoading = true;
   bool _hasError = false;
   Map<String, dynamic>? _assignmentDetails;
-  List<Map<String, dynamic>> _files = [];
   List<Map<String, dynamic>> _members = [];
+  List<Map<String, dynamic>> _files = [];
 
   @override
   void initState() {
@@ -71,48 +66,62 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        if (data['statusCode'] == 200 && data['result'] != null && data['result'] is List && data['result'].isNotEmpty) {
-          final assignment = data['result'][0];
-
+        if (data['statusCode'] == 200 && data['result'] != null && data['result'].isNotEmpty) {
           setState(() {
-            _assignmentDetails = assignment;
-            _files = List<Map<String, dynamic>>.from(data['files'] ?? []);
+            _assignmentDetails = data['result'][0];
             _members = List<Map<String, dynamic>>.from(data['members'] ?? []);
+            _files = List<Map<String, dynamic>>.from(data['files'] ?? []);
             _isLoading = false;
           });
+
+          // Fetch member images
+          if (_members.isNotEmpty) {
+            await _fetchMembersImages(token);
+          }
         } else {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['message'] ?? 'Failed to load assignment details')),
-          );
-          setState(() {
-            _isLoading = false;
-            _hasError = true;
-          });
+          _showError(data['message'] ?? 'Failed to load assignment details');
         }
       } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load assignment details: ${response.statusCode}')),
-        );
-        setState(() {
-          _isLoading = false;
-          _hasError = true;
-        });
+        _showError('Failed to load assignment details: ${response.statusCode}');
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Failed to load assignment details: $e');
-      }
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching assignment details: $e')),
-      );
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-      });
+      _showError('Error fetching assignment details: $e');
     }
+  }
+
+  Future<void> _fetchMembersImages(String token) async {
+    List<Future<void>> fetchTasks = _members.map((member) async {
+      String empId = member['emp_id'];
+      try {
+        final response = await http.get(
+          Uri.parse('${widget.baseUrl}/api/profile/$empId'),
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          String? imageUrl = data['results']?['images'];
+          setState(() {
+            member['image_url'] = imageUrl ?? 'https://via.placeholder.com/50';
+          });
+        }
+      } catch (e) {
+        print('Error fetching image for $empId: $e');
+      }
+    }).toList();
+
+    await Future.wait(fetchTasks);
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    setState(() {
+      _isLoading = false;
+      _hasError = true;
+    });
   }
 
   Color _getStatusColor(String? status) {
@@ -142,9 +151,37 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
     }
   }
 
-  Widget _buildFileList() {
+  Widget _buildMembersList() {
+    if (_members.isEmpty) {
+      return const Text('No members assigned.', style: TextStyle(fontSize: 14));
+    }
+
+    return Wrap(
+      spacing: 12,
+      children: _members.map((member) {
+        String imageUrl = member['image_url'] ?? 'https://via.placeholder.com/50';
+        String memberName = '${member['name']} ${member['surname']}';
+        return Column(
+          children: [
+            CircleAvatar(
+              backgroundImage: NetworkImage(imageUrl),
+              radius: 20,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              memberName,
+              style: const TextStyle(fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildFilesList() {
     if (_files.isEmpty) {
-      return const Center(child: Text('No files attached.'));
+      return const Text('No files attached.', style: TextStyle(fontSize: 14));
     }
 
     return ListView.builder(
@@ -153,234 +190,23 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
       itemCount: _files.length,
       itemBuilder: (context, index) {
         final file = _files[index];
-        final images = file['images'];
-        final fileUrl = (images != null && images is List && images.isNotEmpty) ? images[0] : null;
-        final originalName = file['originalname'] ?? 'No Name';
+        final fileUrl = file['url'] ?? '';
+        final originalName = file['name'] ?? 'Unnamed File';
 
         return ListTile(
-          leading: const Icon(Icons.attach_file, color: Colors.green),
-          title: Text(originalName),
+          leading: const Icon(Icons.file_present, color: Colors.blue), // Modern file icon
+          title: Text(originalName, style: const TextStyle(fontSize: 14)),
           trailing: IconButton(
-            icon: const Icon(Icons.download, color: Colors.blue),
-            onPressed: fileUrl != null
-                ? () => _downloadFile(fileUrl, originalName)
-                : null,
+            icon: const Icon(Icons.download_rounded, color: Colors.green), // Modern download icon
+            onPressed: () => _downloadFile(fileUrl, originalName),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildMembersList() {
-    if (_members.isEmpty) {
-      return const Center(child: Text('No members assigned.'));
-    }
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _members.length,
-      itemBuilder: (context, index) {
-        final member = _members[index];
-        final fullName = '${member['name'] ?? ''} ${member['surname'] ?? ''}'.trim();
-        final email = member['email'] ?? 'No Email';
-
-        return ListTile(
-          leading: const Icon(Icons.person, color: Colors.blue),
-          title: Text(fullName.isNotEmpty ? fullName : 'No Name'),
-          subtitle: Text(email),
-        );
-      },
-    );
-  }
-
-  Widget _buildAssignmentDetails() {
-    if (_assignmentDetails == null) {
-      return const Center(child: Text('No assignment details available.'));
-    }
-
-    final createdAt = _assignmentDetails!['created_at'] != null
-        ? DateTime.parse(_assignmentDetails!['created_at'])
-        : DateTime.now();
-    final updatedAt = _assignmentDetails!['updated_at'] != null
-        ? DateTime.parse(_assignmentDetails!['updated_at'])
-        : DateTime.now();
-    final status = _assignmentDetails!['s_name'] ?? 'Unknown';
-    final assignmentId = _assignmentDetails!['as_id'] ?? 'N/A';
-    final title = _assignmentDetails!['title'] ?? 'No Title';
-    final description = _assignmentDetails!['description'] ?? 'No Description';
-    final createdBy = _assignmentDetails!['create_by'] ?? 'Unknown';
-    final updatedBy = _assignmentDetails!['update_by'] ?? 'Unknown';
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Status
-          Center(
-            child: Column(
-              children: [
-                Icon(Icons.access_time, color: _getStatusColor(status), size: 30),
-                const SizedBox(height: 8),
-                Text(
-                  status,
-                  style: TextStyle(
-                    color: _getStatusColor(status),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 24,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Assignment ID
-          Center(
-            child: Text(
-              'ID: $assignmentId',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Title
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.title, color: Colors.purple),
-              const SizedBox(width: 8),
-              const Text(
-                'Title: ',
-                style: TextStyle(
-                  fontSize: 14,
-
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Description
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.description, color: Colors.orange),
-              const SizedBox(width: 8),
-              const Text(
-                'Description: ',
-                style: TextStyle(
-                  fontSize: 14,
-
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  description,
-                  style: const TextStyle(
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Created By
-          Row(
-            children: [
-              const Icon(Icons.person, color: Colors.teal),
-              const SizedBox(width: 8),
-              Text(
-                'Created by: $createdBy',
-                style: const TextStyle(
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Created At
-          Row(
-            children: [
-              const Icon(Icons.calendar_today, color: Colors.cyan),
-              const SizedBox(width: 8),
-              Text(
-                'Created at: ${DateFormat('yyyy-MM-dd – kk:mm').format(createdAt)}',
-                style: const TextStyle(
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Updated By
-          Row(
-            children: [
-              const Icon(Icons.update, color: Colors.pink),
-              const SizedBox(width: 8),
-              Text(
-                'Updated by: ${updatedBy != 'Unknown' ? updatedBy : 'No new update yet'}',
-                style: const TextStyle(
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Updated At
-          Row(
-            children: [
-              const Icon(Icons.update, color: Colors.lime),
-              const SizedBox(width: 8),
-              Text(
-                'Updated at: ${DateFormat('yyyy-MM-dd – kk:mm').format(updatedAt)}',
-                style: const TextStyle(
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          // Members Section
-          const Text(
-            'Assigned Members:',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildMembersList(),
-          const SizedBox(height: 24),
-          // Files Section
-          const Text(
-            'Attached Files:',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildFileList(),
-        ],
-      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
-
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: Container(
@@ -397,7 +223,7 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
         ),
         centerTitle: true,
         title: const Text(
-          'View Assignment',
+          'Assignment / Task',
           style: TextStyle(
             color: Colors.black,
             fontSize: 22,
@@ -405,11 +231,7 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
           ),
         ),
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new,
-            color: Colors.black,
-            size: 20,
-          ),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -422,9 +244,97 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
           ? const Center(child: CircularProgressIndicator())
           : _hasError
           ? const Center(child: Text('Failed to load assignment details'))
-          : Padding(
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-        child: _buildAssignmentDetails(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title and Status
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.title, color: Colors.purple),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Title:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        Text(
+                          _assignmentDetails!['title'] ?? 'No Title',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    const Icon(Icons.access_time, color: Colors.black),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Status:',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _assignmentDetails!['s_name'] ?? 'Pending',
+                      style: TextStyle(
+                        color: _getStatusColor(_assignmentDetails!['s_name']),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Members
+            const Text('Member:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            _buildMembersList(),
+            const SizedBox(height: 16),
+
+            // Description and Download Button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.folder_open, color: Colors.black),
+                    const SizedBox(width: 8),
+                    const Text('Description:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {}, // Add your download logic here
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  ),
+                  icon: const Icon(Icons.cloud_download, color: Colors.white),
+                  label: const Text('Download', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _assignmentDetails!['description']?.isNotEmpty == true
+                  ? _assignmentDetails!['description']
+                  : 'No Description',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+
+            // Files
+            const Text('Files:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            _buildFilesList(),
+          ],
+        ),
       ),
     );
   }
