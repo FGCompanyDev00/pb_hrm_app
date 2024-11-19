@@ -30,12 +30,9 @@ void callbackDispatcher() async {
       'This is a notification triggered by WorkManager.', // Body
       platformDetails,
     );
-
     // Return true if the task completed successfully
     return Future.value(true);
   });
-
-  await scheduleBackgroundTask();
 }
 
 Future<void> scheduleBackgroundTask() async {
