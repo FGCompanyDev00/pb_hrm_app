@@ -15,14 +15,15 @@ import 'package:pb_hrsystem/models/calendar_events_list_record.dart';
 import 'package:pb_hrsystem/models/event_record.dart';
 import 'package:pb_hrsystem/models/material_color.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
-import 'package:pb_hrsystem/services/background_service.dart';
 import 'package:pb_hrsystem/services/offline_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
+import 'package:pb_hrsystem/services/work_manager_notification.dart';
 import 'package:pb_hrsystem/splash/splashscreen.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:workmanager/workmanager.dart';
 import 'theme/theme.dart';
 import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
@@ -31,22 +32,16 @@ import 'models/attendance_record.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await setupServiceLocator();
-  await initializeService();
+  await initializeHive();
+  // await initializeService();
+  // Initialize notifications
+  await initializeNotifications();
+  await scheduleBackgroundTask();
 
-  await Hive.initFlutter();
-  Hive.registerAdapter(AttendanceRecordAdapter());
-  Hive.registerAdapter(CalendarEventsListRecordAdapter());
-  Hive.registerAdapter(EventRecordAdapter());
-  Hive.registerAdapter(MaterialColorAdapter());
-
-  await Hive.openBox<AttendanceRecord>('pending_attendance');
-  await Hive.openBox<CalendarEventsListRecord>('store_events_calendar');
-  await Hive.openBox<String>('userProfileBox');
-  await Hive.openBox<List<String>>('bannersBox');
-  await Hive.openBox('loginBox');
-  await Hive.openBox('calendarEventsRecordBox');
-  await Hive.openBox('UserProfileRecordBox');
+  // Initialize WorkManager
+  Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
 
   runApp(
     MultiProvider(
@@ -225,4 +220,20 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
+}
+
+Future<void> initializeHive() async {
+  await Hive.initFlutter();
+  Hive.registerAdapter(AttendanceRecordAdapter());
+  Hive.registerAdapter(CalendarEventsListRecordAdapter());
+  Hive.registerAdapter(EventRecordAdapter());
+  Hive.registerAdapter(MaterialColorAdapter());
+
+  await Hive.openBox<AttendanceRecord>('pending_attendance');
+  await Hive.openBox<CalendarEventsListRecord>('store_events_calendar');
+  await Hive.openBox<String>('userProfileBox');
+  await Hive.openBox<List<String>>('bannersBox');
+  await Hive.openBox('loginBox');
+  await Hive.openBox('calendarEventsRecordBox');
+  await Hive.openBox('UserProfileRecordBox');
 }

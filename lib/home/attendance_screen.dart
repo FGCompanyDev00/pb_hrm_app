@@ -13,7 +13,6 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -31,6 +30,7 @@ class AttendanceScreen extends StatefulWidget {
 class _AttendanceScreenState extends State<AttendanceScreen> {
   final LocalAuthentication auth = LocalAuthentication();
   final _storage = const FlutterSecureStorage();
+  final userPreferences = sl<UserPreferences>();
   int _selectedIndex = 0; // 0 for Home/Office, 1 for Offsite
   bool _isCheckInActive = false;
   String _checkInTime = '--:--:--';
@@ -86,9 +86,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _retrieveSavedState() async {
-    String? savedCheckInTime = sl<UserPreferences>().getCheckInTime();
-    String? savedCheckOutTime = sl<UserPreferences>().getCheckOutTime(); // Retrieve saved checkout time
-    Duration? savedWorkingHours = sl<UserPreferences>().getWorkingHours();
+    String? savedCheckInTime = userPreferences.getCheckInTime();
+    String? savedCheckOutTime = userPreferences.getCheckOutTime(); // Retrieve saved checkout time
+    Duration? savedWorkingHours = userPreferences.getWorkingHours();
     String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
 
     setState(() {
@@ -142,8 +142,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
 
     // Store check-in time locally
-    sl<UserPreferences>().storeCheckInTime(_checkInTime); // Save the new check-in time
-    sl<UserPreferences>().storeCheckOutTime(_checkOutTime); // Reset stored check-out time to --:--:--
+    userPreferences.storeCheckInTime(_checkInTime); // Save the new check-in time
+    userPreferences.storeCheckOutTime(_checkOutTime); // Reset stored check-out time to --:--:--
 
     // Create AttendanceRecord
     AttendanceRecord record = AttendanceRecord(
@@ -185,8 +185,8 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
 
     // Store check-out time and working hours locally
-    sl<UserPreferences>().storeCheckOutTime(_checkOutTime); // Save the new check-out time
-    sl<UserPreferences>().storeWorkingHours(_workingHours); // Save the total working hours
+    userPreferences.storeCheckOutTime(_checkOutTime); // Save the new check-out time
+    userPreferences.storeWorkingHours(_workingHours); // Save the total working hours
 
     // Create AttendanceRecord
     AttendanceRecord record = AttendanceRecord(
@@ -225,9 +225,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     });
 
     // Reset stored values in SharedPreferences
-    sl<UserPreferences>().storeCheckInTime(_checkInTime);
-    sl<UserPreferences>().storeCheckOutTime(_checkOutTime);
-    sl<UserPreferences>().storeWorkingHours(Duration.zero);
+    userPreferences.storeCheckInTime(_checkInTime);
+    userPreferences.storeCheckOutTime(_checkOutTime);
+    userPreferences.storeWorkingHours(Duration.zero);
   }
 
   Future<void> _sendCheckInOutRequest(AttendanceRecord record) async {
@@ -238,8 +238,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       url = offsiteApiUrl;
     }
 
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('token');
+    String? token = userPreferences.getToken();
 
     if (token == null) {
       if (mounted) {
@@ -286,8 +285,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     const String endpoint = '$baseUrl/api/attendance/checkin-checkout/offices/weekly/me';
 
     try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString('token');
+      String? token = userPreferences.getToken();
 
       if (token == null) {
         if (mounted) throw Exception(AppLocalizations.of(context)!.noTokenFound);
@@ -395,7 +393,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         });
 
         // Save the working hours in SharedPreferences
-        sl<UserPreferences>().storeWorkingHours(_workingHours);
+        userPreferences.storeWorkingHours(_workingHours);
       }
     });
   }

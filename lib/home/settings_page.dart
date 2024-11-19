@@ -37,18 +37,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _loadBiometricSetting();
     _loadNotificationSetting();
     futureUserProfile = fetchUserProfile();
-    _initializeNotifications();
     _loadAppVersion();
-  }
-
-  Future<void> _initializeNotifications() async {
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
-    const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
-
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-    if (kDebugMode) {
-      print('Notification system initialized');
-    }
   }
 
   Future<void> _loadAppVersion() async {

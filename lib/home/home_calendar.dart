@@ -73,12 +73,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     _events = ValueNotifier({});
     _eventsForDay = [];
 
-    // Initialize local notifications
-    flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
-    flutterLocalNotificationsPlugin.initialize(initializationSettings);
-
     // Initialize Animation Controller
     _animationController = AnimationController(
       vsync: this,
@@ -833,14 +827,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                           ),
                         )
                       : CarouselSlider(
-                    options: CarouselOptions(
-                      autoPlay: false,
-                      viewportFraction: 1,
-                      initialPage: liveHour(),
-                      height: 410,
-                      scrollDirection: Axis.vertical,
-                    ),
-                    items: [
+                          options: CarouselOptions(
+                            autoPlay: false,
+                            viewportFraction: 1,
+                            initialPage: liveHour(),
+                            height: 410,
+                            scrollDirection: Axis.vertical,
+                          ),
+                          items: [
                             CalendarDayWidgetCard(
                               selectedDay: _selectedDay,
                               eventsCalendar: _eventsForDay,
@@ -1177,22 +1171,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Builds a gradient animated line as a section separator
   Widget _buildSectionSeparator() {
-    return Column(
-      children: [
-        Container(
-          decoration: const BoxDecoration(
-            borderRadius: BorderRadius.horizontal(
-              left: Radius.circular(10),
-              right: Radius.circular(10),
-            ),
-          ),
-          child: const GradientAnimationLine(),
-        ),
-        const SizedBox(height: 5),
-      ],
-    );
+    return const GradientAnimationLine();
   }
-
 }
 
 /// Gradient animated line widget
@@ -1248,7 +1228,7 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
               ],
             ),
           ),
-          margin: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
+          margin: const EdgeInsets.only(top: 20.0, bottom: 2.0, left: 15.0, right: 15.0),
         );
       },
     );

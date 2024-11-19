@@ -30,7 +30,17 @@ class UserPreferences {
   //Login Session
   Future<void> setLoginSession(String loginTime) => prefs.setString(_loginSession, loginTime);
   Future<void> removeLoginSession() => prefs.remove(_loginSession);
-  String? getLoginSession() => prefs.getString(_loginSession);
+  DateTime? getLoginSession() {
+    final sessionString = prefs.getString(_loginSession);
+
+    // If sessionString is null or empty, return null
+    if (sessionString == null || sessionString.isEmpty) {
+      return null;
+    }
+
+    // Try parsing the string
+    return DateTime.tryParse(sessionString);
+  }
 
   //Store the default language
   Future<void> setDefaultLanguage(String lang) => prefs.setString(_defaultLang, lang);

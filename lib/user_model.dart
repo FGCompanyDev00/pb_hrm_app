@@ -19,6 +19,7 @@ class User {
 
 // User Provider that includes token management and API interaction
 class UserProvider extends ChangeNotifier {
+  final prefs = sl<UserPreferences>();
   User _currentUser = User(id: '1', name: 'Default User', roles: ['User']);
   bool _isLoggedIn = false;
   String _token = '';
@@ -34,9 +35,9 @@ class UserProvider extends ChangeNotifier {
 
   // Public method to load user login status and token from shared preferences
   Future<void> loadUser() async {
-    _isLoggedIn = sl<UserPreferences>().getLoggedIn() ?? false;
-    _token = sl<UserPreferences>().getToken() ?? '';
-    _loginTime = DateTime.tryParse(sl<UserPreferences>().getLoginSession() ?? '');
+    _isLoggedIn = prefs.getLoggedIn() ?? false;
+    _token = prefs.getToken() ?? '';
+    _loginTime = prefs.getLoginSession();
     notifyListeners();
   }
 
@@ -47,7 +48,7 @@ class UserProvider extends ChangeNotifier {
 
   Future<void> setLoginTime() async {
     _loginTime = DateTime.now();
-    sl<UserPreferences>().setLoginSession(_loginTime.toString());
+    prefs.setLoginSession(_loginTime.toString());
     notifyListeners();
   }
 
@@ -59,7 +60,7 @@ class UserProvider extends ChangeNotifier {
 
   // Fetch user data from API and update current user
   Future<void> fetchAndUpdateUser() async {
-    final String? token = sl<UserPreferences>().getToken();
+    final String? token = prefs.getToken();
 
     if (token == null) {
       debugPrint('No token found');
@@ -99,8 +100,8 @@ class UserProvider extends ChangeNotifier {
   Future<void> login(String token) async {
     _isLoggedIn = true;
     _token = token;
-    sl<UserPreferences>().setLoggedIn(true);
-    sl<UserPreferences>().setToken(token);
+    prefs.setLoggedIn(true);
+    prefs.setToken(token);
     await setLoginTime(); // Save login time immediately after login
     notifyListeners();
   }
@@ -111,9 +112,9 @@ class UserProvider extends ChangeNotifier {
     _token = '';
     _loginTime = null;
 
-    await sl<UserPreferences>().setLoggedOff();
-    await sl<UserPreferences>().removeToken();
-    await sl<UserPreferences>().removeLoginSession();
+    await prefs.setLoggedOff();
+    await prefs.removeToken();
+    await prefs.removeLoginSession();
 
     notifyListeners(); // Notify listeners to refresh UI based on the new state
   }
