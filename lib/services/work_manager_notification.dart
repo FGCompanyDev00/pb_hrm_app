@@ -5,13 +5,24 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterL
 
 Future<void> initializeNotifications() async {
   const AndroidInitializationSettings androidInitializationSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+  DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
+    requestAlertPermission: true,
+    requestBadgePermission: true,
+    requestSoundPermission: true,
+    onDidReceiveLocalNotification: (int id, String? title, String? body, String? payload) async {
+      // Handle notification received on iOS
+    },
+  );
 
-  const InitializationSettings initializationSettings = InitializationSettings(android: androidInitializationSettings);
+  InitializationSettings initializationSettings = InitializationSettings(
+    android: androidInitializationSettings,
+    iOS: initializationSettingsIOS,
+  );
 
   await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 }
 
-void callbackDispatcher() async {
+void callbackDispatcher(int notificationID, String title, String desc) async {
   Workmanager().executeTask((task, inputData) async {
     // Initialize the FlutterLocalNotificationsPlugin
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
@@ -21,14 +32,15 @@ void callbackDispatcher() async {
       priority: Priority.high,
     );
 
-    const NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
-
     // Show notification
     await flutterLocalNotificationsPlugin.show(
-      0, // Notification ID
-      'Hello from WorkManager', // Title
-      'This is a notification triggered by WorkManager.', // Body
-      platformDetails,
+      notificationID, // Notification ID
+      title, // Title
+      desc, // Body
+      const NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(),
+      ),
     );
     // Return true if the task completed successfully
     return Future.value(true);
@@ -37,9 +49,8 @@ void callbackDispatcher() async {
 
 Future<void> scheduleBackgroundTask() async {
   Workmanager().registerPeriodicTask(
-    'task_id', // Unique task name
+    '1', // Unique task name
     'sendNotification', // Task function name
     frequency: const Duration(minutes: 15), // Minimum interval on Android
-    inputData: {'message': 'Hello from WorkManager!'}, // Optional input data
   );
 }
