@@ -38,7 +38,6 @@ void main() async {
   // await initializeService();
   // Initialize notifications
   await initializeNotifications();
-  await scheduleBackgroundTask();
 
   // Initialize WorkManager
   Workmanager().initialize(callbackDispatcher, isInDebugMode: true);

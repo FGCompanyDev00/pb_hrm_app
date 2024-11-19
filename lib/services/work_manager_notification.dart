@@ -11,7 +11,7 @@ Future<void> initializeNotifications() async {
   await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 }
 
-void callbackDispatcher() {
+void callbackDispatcher() async {
   Workmanager().executeTask((task, inputData) async {
     // Initialize the FlutterLocalNotificationsPlugin
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
@@ -34,6 +34,8 @@ void callbackDispatcher() {
     // Return true if the task completed successfully
     return Future.value(true);
   });
+
+  await scheduleBackgroundTask();
 }
 
 Future<void> scheduleBackgroundTask() async {
