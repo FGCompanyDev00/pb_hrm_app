@@ -631,27 +631,30 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                               Container(
                                 decoration: BoxDecoration(
                                   gradient: const LinearGradient(
-                                    colors: [Colors.green, Colors.lightGreen], // Define your gradient colors
+                                    colors: [Colors.green, Colors.lightGreen],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
-                                  borderRadius: BorderRadius.circular(8.0), // Match the button's border radius
+                                  borderRadius: BorderRadius.circular(8.0),
                                 ),
                                 child: ElevatedButton(
                                   onPressed: _isLoading ? null : _pickImage, // Disable when loading
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent, // Set to transparent to show gradient
-                                    shadowColor: Colors.transparent, // Remove shadow to make gradient clean
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8.0), // Curved border
+                                      borderRadius: BorderRadius.circular(8.0),
                                     ),
-                                    padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 42),
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 18.0,
+                                      horizontal: MediaQuery.of(context).size.width < 400 ? 44 : 44,
+                                    ),
                                   ),
-                                  child: const Text(
+                                  child: Text(
                                     'Upload Image',
                                     style: TextStyle(
                                       color: Colors.black,
-                                      fontSize: 14,
+                                      fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14, // Reduce font size for smaller screens
                                     ),
                                   ),
                                 ),

@@ -809,7 +809,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                   if (_showFiltersAndSearchBar) _buildFilters(),
                   if (_showFiltersAndSearchBar) _buildSearchBar(),
                   _buildCalendar(context, isDarkMode),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 2),
                   _buildSectionSeparator(),
                   _eventsForDay.isEmpty
                       ? SizedBox(
@@ -983,7 +983,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   /// Builds the TableCalendar widget with customized navigation arrows
   Widget _buildCalendar(BuildContext context, bool isDarkMode) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 16.0),
+      margin: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 10.0),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.black : Colors.white,
         borderRadius: BorderRadius.circular(8),

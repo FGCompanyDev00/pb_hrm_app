@@ -14,11 +14,11 @@ class DetailsPage extends StatefulWidget {
   final String status;
 
   const DetailsPage({
-    Key? key,
+    super.key,
     required this.types,
     required this.id,
     required this.status,
-  }) : super(key: key);
+  });
 
   @override
   _DetailsPageState createState() => _DetailsPageState();
@@ -633,7 +633,7 @@ class _DetailsPageState extends State<DetailsPage> {
     return Wrap(
       spacing: 16, // Space between the icon and the text
       runSpacing: 8, // Space between wrapped rows
-      crossAxisAlignment: WrapCrossAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.start, // Try changing this to 'start' instead of 'center'
       children: [
         Icon(icon, size: 25, color: color),
         Flexible(
@@ -710,13 +710,10 @@ class _DetailsPageState extends State<DetailsPage> {
     final String status = widget.status.toLowerCase();
     if (['approved', 'disapproved', 'cancel'].contains(status)) return const SizedBox.shrink();
 
-    // Use a Wrap to handle small screens better
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20.0),
-      child: Wrap(
-        spacing: 16, // Spacing between the buttons
-        runSpacing: 10, // Spacing for wrapping lines
-        alignment: WrapAlignment.center, // Center the buttons
+      padding: const EdgeInsets.symmetric(vertical: 10.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _buildStyledButton(
             label: 'Delete',
@@ -724,15 +721,16 @@ class _DetailsPageState extends State<DetailsPage> {
             backgroundColor: const Color(0xFFC2C2C2),
             textColor: Colors.white,
             onPressed: isFinalized ? null : _handleDelete,
-            buttonWidth: screenWidth < 400 ? screenWidth * 0.4 : 150, // Adjust button width for smaller screens
+            buttonWidth: screenWidth < 400 ? screenWidth * 0.35 : 150,
           ),
+          const SizedBox(width: 20),  // Add some spacing
           _buildStyledButton(
             label: 'Edit',
             icon: Icons.edit,
             backgroundColor: const Color(0xFFDBB342),
             textColor: Colors.white,
             onPressed: isFinalized ? null : _handleEdit,
-            buttonWidth: screenWidth < 400 ? screenWidth * 0.4 : 150, // Adjust button width for smaller screens
+            buttonWidth: screenWidth < 400 ? screenWidth * 0.35 : 150,
           ),
         ],
       ),
@@ -752,7 +750,7 @@ class _DetailsPageState extends State<DetailsPage> {
       child: ElevatedButton.icon(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(30),
           ),
@@ -766,7 +764,7 @@ class _DetailsPageState extends State<DetailsPage> {
         label: Text(
           label,
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
             color: textColor,
           ),
@@ -945,15 +943,15 @@ class _DetailsPageState extends State<DetailsPage> {
             : SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _buildRequestorSection(screenWidth),
                 _buildBlueSection(screenWidth),
-                const SizedBox(height: 20),
+                const SizedBox(height: 14),
                 _buildDetailsSection(screenWidth),
-                const SizedBox(height: 20),
+                const SizedBox(height: 14),
                 _buildWorkflowSection(screenWidth),
                 _buildActionButtons(screenWidth),
               ],

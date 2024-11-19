@@ -1178,7 +1178,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: mediaQuery.padding.bottom,
+            bottom: 18,
             child: Center(
               child: ElevatedButton.icon(
                 onPressed: () {
@@ -1188,7 +1188,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),

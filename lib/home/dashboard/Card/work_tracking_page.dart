@@ -157,10 +157,10 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
             Transform.translate(
               offset: const Offset(-12.0, 0.0),
               child: CircleAvatar(
-                radius: 27,
+                radius: 24,
                 backgroundColor: Colors.green,
                 child: IconButton(
-                  icon: const Icon(Icons.add, color: Colors.white, size: 38),
+                  icon: const Icon(Icons.add, color: Colors.white, size: 32),
                   onPressed: () {
                     print('Add Project button pressed.');
                     Navigator.push(
@@ -184,7 +184,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
 
   Widget _buildTabs() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -215,18 +215,18 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
               child: Text(
                 title,
                 style: TextStyle(
-                  color: isSelected ? Colors.orange.shade800 : Colors.grey,
+                  color: isSelected ? const Color(0xFFDBB342) : Colors.grey,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 16,
+                  fontSize: 17,
                 ),
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 8),
             if (isSelected)
               Container(
                 height: 2,
                 width: double.infinity,
-                color: Colors.orange.shade800,
+                color: const Color(0xFFDBB342),
               ),
           ],
         ),

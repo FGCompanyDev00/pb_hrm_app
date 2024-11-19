@@ -211,7 +211,6 @@ class _DashboardState extends State<Dashboard> {
   }
 
   // Refresh user profile manually
-
   @override
   void dispose() {
     _pageController.dispose();
@@ -249,7 +248,10 @@ class _DashboardState extends State<Dashboard> {
         body: Stack(
           children: [
             if (isDarkMode) _buildDarkBackground(),
-            _buildMainContent(context, isDarkMode),
+            // Make the body scrollable
+            SingleChildScrollView(
+              child: _buildMainContent(context, isDarkMode),
+            ),
             if (_isLoading) _buildLoadingIndicator(),
           ],
         ),
@@ -354,16 +356,16 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  // Main content of the dashboard
   Widget _buildMainContent(BuildContext context, bool isDarkMode) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildBannerCarousel(),
         const SizedBox(height: 10),
         _buildActionMenuHeader(),
         const SizedBox(height: 6),
-        Expanded(child: _buildActionGrid(isDarkMode) // Expanded GridView to fill remaining space
-            ),
+        // Use Expanded here to allow scrolling of the GridView
+        _buildActionGrid(isDarkMode),
       ],
     );
   }
