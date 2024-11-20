@@ -228,7 +228,7 @@ class _DashboardState extends State<Dashboard> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(150.0),
+          preferredSize: const Size.fromHeight(140.0),
           child: FutureBuilder<UserProfile>(
             future: futureUserProfile,
             builder: (context, snapshot) {
@@ -286,7 +286,7 @@ class _DashboardState extends State<Dashboard> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       flexibleSpace: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(10),
         child: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(
