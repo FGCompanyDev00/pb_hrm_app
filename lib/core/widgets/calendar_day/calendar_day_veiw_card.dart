@@ -41,19 +41,19 @@ class CalendarDayWidgetCard extends HookWidget {
       switch (switchTime.value) {
         case 1:
           currentHour.value = 7;
-          untilEnd.value = 11;
+          untilEnd.value = 10;
           displayTime.value = '7AM-10AM';
         case 2:
           currentHour.value = 10;
-          untilEnd.value = 15;
+          untilEnd.value = 13;
           displayTime.value = '10AM-2PM';
         case 3:
-          currentHour.value = 14;
-          untilEnd.value = 19;
+          currentHour.value = 13;
+          untilEnd.value = 17;
           displayTime.value = '2PM-6PM';
         default:
           currentHour.value = 7;
-          untilEnd.value = 11;
+          untilEnd.value = 10;
       }
 
       currentEvents.value.clear();
@@ -112,8 +112,8 @@ class CalendarDayWidgetCard extends HookWidget {
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          untilEnd.value - 1,
-          0,
+          untilEnd.value,
+          10,
         );
 
         // }
@@ -187,7 +187,7 @@ class CalendarDayWidgetCard extends HookWidget {
             currentDate: selectedDay ?? DateTime.now(),
             heightPerMin: heightTime ?? 1,
             startOfDay: TimeOfDay(hour: currentHour.value, minute: 0),
-            endOfDay: TimeOfDay(hour: untilEnd.value, minute: 0),
+            endOfDay: TimeOfDay(hour: untilEnd.value + 1, minute: 0),
             renderRowAsListView: true,
             cropBottomEvents: true,
             showMoreOnRowButton: true,

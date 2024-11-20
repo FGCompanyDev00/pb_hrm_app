@@ -22,7 +22,7 @@ Future<void> initializeNotifications() async {
   await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 }
 
-void callbackDispatcher(int notificationID, String title, String desc) async {
+void callbackDispatcher({int? notificationID, String? title, String? desc}) async {
   Workmanager().executeTask((task, inputData) async {
     // Initialize the FlutterLocalNotificationsPlugin
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
@@ -34,9 +34,9 @@ void callbackDispatcher(int notificationID, String title, String desc) async {
 
     // Show notification
     await flutterLocalNotificationsPlugin.show(
-      notificationID, // Notification ID
-      title, // Title
-      desc, // Body
+      notificationID ?? 1, // Notification ID
+      title ?? 'Work', // Title
+      desc ?? 'Manager Work', // Body
       const NotificationDetails(
         android: androidDetails,
         iOS: DarwinNotificationDetails(),

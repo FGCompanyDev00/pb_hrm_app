@@ -220,11 +220,10 @@ class TimeTableDayWidget extends HookWidget {
                     child: Container(
                       margin: const EdgeInsets.only(right: 10),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 2,
+                        horizontal: 4,
                         vertical: 10,
                       ),
                       height: constraints.maxHeight,
-                      width: 60,
                       decoration: BoxDecoration(
                           color: statusColor.withOpacity(0.2),
                           borderRadius: const BorderRadius.all(Radius.circular(10)),

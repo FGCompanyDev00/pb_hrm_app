@@ -831,7 +831,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                             autoPlay: false,
                             viewportFraction: 1,
                             initialPage: liveHour(),
-                            height: 410,
+                            height: 400,
                             scrollDirection: Axis.vertical,
                           ),
                           items: [
@@ -839,17 +839,19 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                               selectedDay: _selectedDay,
                               eventsCalendar: _eventsForDay,
                               selectedSlotTime: 1,
-                              heightTime: 1.4,
+                              heightTime: 1.5,
                             ),
                             CalendarDayWidgetCard(
                               selectedDay: _selectedDay,
                               eventsCalendar: _eventsForDay,
                               selectedSlotTime: 2,
+                              heightTime: 1.5,
                             ),
                             CalendarDayWidgetCard(
                               selectedDay: _selectedDay,
                               eventsCalendar: _eventsForDay,
                               selectedSlotTime: 3,
+                              heightTime: 1.2,
                             ),
                           ],
                         ),
@@ -1228,7 +1230,7 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
               ],
             ),
           ),
-          margin: const EdgeInsets.only(top: 20.0, bottom: 2.0, left: 15.0, right: 15.0),
+          margin: const EdgeInsets.only(top: 20.0, bottom: 30.0, left: 15.0, right: 15.0),
         );
       },
     );
