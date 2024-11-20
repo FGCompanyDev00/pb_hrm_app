@@ -59,7 +59,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
       if (rolesResponse.statusCode == 200) {
         final rolesBody = jsonDecode(rolesResponse.body);
         if (rolesBody['results'] != null && rolesBody['results'].isNotEmpty) {
-          userProfile.roles = rolesBody['results'][0]['roles']; // Set the roles from the second API
+          userProfile.roles = rolesBody['results'][0]['roles'];
         }
       } else {
         throw Exception(AppLocalizations.of(context)!.failedToLoadRoles);
