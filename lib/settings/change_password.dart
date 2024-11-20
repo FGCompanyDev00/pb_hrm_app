@@ -132,7 +132,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           Container(
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/background.png'),
+                image: AssetImage('assets/ready_bg.png'),
                 fit: BoxFit.cover,
               ),
             ),
@@ -180,7 +180,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   ),
                 ),
                 CircleAvatar(
-                  radius: 50,
+                  radius: 46,
                   backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
                       ? NetworkImage(_profileImageUrl!)
                       : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
@@ -193,7 +193,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       color: Colors.white,
                       borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
                     ),
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(20.0),
                     child: SingleChildScrollView(
                       child: Form(
                         key: _formKey,
@@ -210,7 +210,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                 });
                               },
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 18),
                             _buildPasswordField(
                               label: 'New Password *',
                               controller: _newPasswordController,
@@ -221,7 +221,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                 });
                               },
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 18),
                             _buildPasswordField(
                               label: 'Password (Confirm) *',
                               controller: _confirmPasswordController,
@@ -232,7 +232,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                 });
                               },
                             ),
-                            const SizedBox(height: 30),
+                            const SizedBox(height: 24),
                             ElevatedButton(
                               onPressed: () {
                                 if (_formKey.currentState!.validate()) {
@@ -244,10 +244,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                 }
                               },
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 15),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
                                 backgroundColor: const Color(0xFFE3B200),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
+                                  borderRadius: BorderRadius.circular(20),
                                 ),
                               ),
                               child: _isLoading
@@ -255,11 +255,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                   : const Text(
                                 'Change Password',
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.white,
+                                  fontSize: 16,
+                                  color: Colors.black,
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 8),
                             Center(
                               child: TextButton(
                                 onPressed: () {
@@ -268,7 +269,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                 child: const Text(
                                   'Cancel',
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 14,
                                     color: Colors.green,
                                   ),
                                 ),

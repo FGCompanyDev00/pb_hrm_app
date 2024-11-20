@@ -171,7 +171,7 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
           Container(
             color: Colors.white,
             padding:
-            const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
                 Expanded(
@@ -196,7 +196,7 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                         ],
                       ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(60),
                       ),
                     ),
                   ),

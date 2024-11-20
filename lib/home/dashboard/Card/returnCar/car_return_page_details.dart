@@ -60,10 +60,10 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
         eventData = data['results'];
 
         // Map fields correctly
-        recipientNameController.text = eventData?['driver_name'] ?? '';
+        recipientNameController.text = eventData?['requestor_name'] ?? '';
         distanceController.text = eventData?['distance_end']?.toString() ?? '';
-        departureDateController.text = eventData?['real_time_out'] ?? '';
-        returnDateController.text = eventData?['real_time_in'] ?? '';
+        departureDateController.text = eventData?['date_out'] ?? '';
+        returnDateController.text = eventData?['date_in'] ?? '';
 
         setState(() {
           isLoading = false;

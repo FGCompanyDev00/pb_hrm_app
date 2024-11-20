@@ -473,7 +473,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    final double appBarHeight = mediaQuery.size.height * 0.15;
+    final double appBarHeight = mediaQuery.size.height * 0.16;
 
     return Scaffold(
       body: Stack(
@@ -490,13 +490,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
             fit: BoxFit.cover,
           ),
           borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(40),
-            bottomRight: Radius.circular(40),
+            bottomLeft: Radius.circular(20),
+            bottomRight: Radius.circular(20),
           ),
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 6.0),
             child: Row(
               children: [
                 IconButton(
@@ -511,7 +511,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       'Edit Profile',
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: 20,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -545,7 +545,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   child: Stack(
                     children: [
                       CircleAvatar(
-                        radius: 50,
+                        radius: 45,
                         backgroundImage: _image != null
                             ? FileImage(_image!)
                             : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty
@@ -558,7 +558,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         child: Container(
                           padding: const EdgeInsets.all(8.0),
                           decoration: const BoxDecoration(
-                            color: Colors.orange,
+                            color: Color(0xFFDBB342),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -628,21 +628,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 18),
                 // Update Profile Button
                 ElevatedButton(
                   onPressed: _isLoading ? null : _saveProfile,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFDAA520),
+                    backgroundColor:const Color(0xFFDBB342),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20.0),
+                      borderRadius: BorderRadius.circular(30.0),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
                   ),
                   child: const Text(
                     'Update Profile',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
