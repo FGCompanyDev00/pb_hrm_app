@@ -54,3 +54,7 @@ Future<void> scheduleBackgroundTask() async {
     frequency: const Duration(minutes: 15), // Minimum interval on Android
   );
 }
+
+Future<void> cancelBackgroundTask() async {
+  Workmanager().cancelAll();
+}

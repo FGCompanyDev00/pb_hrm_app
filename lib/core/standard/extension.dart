@@ -18,5 +18,34 @@ String formatDateString(String dateStr) {
   }
 }
 
+int startManageHour(String hour) {
+  final convertHour = int.parse(hour);
 
+  if (convertHour > 7 && convertHour < 11) {
+    return 8;
+  }
+  if (convertHour > 9 && convertHour > 14) {
+    return 10;
+  }
+  if (convertHour > 13 && convertHour > 18) {
+    return 13;
+  }
 
+  return 8;
+}
+
+int endManageHour(String hour) {
+  final convertHour = int.parse(hour);
+
+  if (convertHour > 7 && convertHour < 11) {
+    return 10;
+  }
+  if (convertHour > 9 && convertHour > 14) {
+    return 13;
+  }
+  if (convertHour > 13 && convertHour > 18) {
+    return 17;
+  }
+
+  return 10;
+}

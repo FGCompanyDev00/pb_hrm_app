@@ -564,9 +564,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
     if (hour < 11) {
       return 0;
-    } else if (hour < 15) {
+    } else if (hour < 14) {
       return 1;
-    } else if (hour < 19) {
+    } else if (hour < 18) {
       return 2;
     } else {
       return 1;
@@ -791,73 +791,125 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(130),
+        child: _buildCalendarHeader(isDarkMode),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _onRefresh,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (_showFiltersAndSearchBar) _buildFilters(),
+              if (_showFiltersAndSearchBar) _buildSearchBar(),
+              _buildCalendar(context, isDarkMode),
+              const SizedBox(height: 2),
+              _buildSectionSeparator(),
+              _eventsForDay.isEmpty
+                  ? SizedBox(
+                      height: sizeScreen(context).height * 0.45,
+                      child: Center(
+                        child: Text(
+                          AppLocalizations.of(context)!.noEventsForThisDay,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                  : CarouselSlider(
+                      options: CarouselOptions(
+                        autoPlay: false,
+                        viewportFraction: 1,
+                        initialPage: liveHour(),
+                        scrollDirection: Axis.vertical,
+                        height: 385,
+                        aspectRatio: 0,
+                      ),
+                      items: [
+                        CalendarDayWidgetCard(
+                          selectedDay: _selectedDay,
+                          eventsCalendar: _eventsForDay,
+                          selectedSlotTime: 1,
+                          heightTime: 1.5,
+                        ),
+                        CalendarDayWidgetCard(
+                          selectedDay: _selectedDay,
+                          eventsCalendar: _eventsForDay,
+                          selectedSlotTime: 2,
+                          heightTime: 1.5,
+                        ),
+                        CalendarDayWidgetCard(
+                          selectedDay: _selectedDay,
+                          eventsCalendar: _eventsForDay,
+                          selectedSlotTime: 3,
+                          heightTime: 1.2,
+                        ),
+                      ],
+                    ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Builds the calendar header with background and add button
+  Widget _buildCalendarHeader(bool isDarkMode) {
     return Stack(
       children: [
-        Scaffold(
-          backgroundColor: Colors.white,
-          appBar: PreferredSize(
-            preferredSize: const Size.fromHeight(150),
-            child: _buildCalendarHeader(isDarkMode),
-          ),
-          body: RefreshIndicator(
-            onRefresh: _onRefresh,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (_showFiltersAndSearchBar) _buildFilters(),
-                  if (_showFiltersAndSearchBar) _buildSearchBar(),
-                  _buildCalendar(context, isDarkMode),
-                  const SizedBox(height: 2),
-                  _buildSectionSeparator(),
-                  _eventsForDay.isEmpty
-                      ? SizedBox(
-                          height: sizeScreen(context).height * 0.45,
-                          child: Center(
-                            child: Text(
-                              AppLocalizations.of(context)!.noEventsForThisDay,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Colors.grey,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        )
-                      : CarouselSlider(
-                          options: CarouselOptions(
-                            autoPlay: false,
-                            viewportFraction: 1,
-                            initialPage: liveHour(),
-                            height: 400,
-                            scrollDirection: Axis.vertical,
-                          ),
-                          items: [
-                            CalendarDayWidgetCard(
-                              selectedDay: _selectedDay,
-                              eventsCalendar: _eventsForDay,
-                              selectedSlotTime: 1,
-                              heightTime: 1.5,
-                            ),
-                            CalendarDayWidgetCard(
-                              selectedDay: _selectedDay,
-                              eventsCalendar: _eventsForDay,
-                              selectedSlotTime: 2,
-                              heightTime: 1.5,
-                            ),
-                            CalendarDayWidgetCard(
-                              selectedDay: _selectedDay,
-                              eventsCalendar: _eventsForDay,
-                              selectedSlotTime: 3,
-                              heightTime: 1.2,
-                            ),
-                          ],
-                        ),
-                ],
-              ),
+        Container(
+          width: double.infinity,
+          height: 120,
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+              fit: BoxFit.cover,
             ),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(20),
+              bottomRight: Radius.circular(20),
+            ),
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 45),
+                    Text(
+                      AppLocalizations.of(context)!.calendar,
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: 45,
+                right: 15,
+                child: IconButton(
+                  icon: Icon(
+                    Icons.add_circle,
+                    size: 55,
+                    color: Colors.green,
+                    semanticLabel: AppLocalizations.of(context)!.addEvent,
+                  ),
+                  onPressed: showAddEventOptionsPopup,
+                ),
+              ),
+            ],
           ),
         ),
         if (_isLoading)
@@ -870,57 +922,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             ),
           ),
       ],
-    );
-  }
-
-  /// Builds the calendar header with background and add button
-  Widget _buildCalendarHeader(bool isDarkMode) {
-    return Container(
-      width: double.infinity,
-      height: 155,
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-          fit: BoxFit.cover,
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-        ),
-      ),
-      child: Stack(
-        children: [
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 70),
-                Text(
-                  AppLocalizations.of(context)!.calendar,
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
-                    fontSize: 30,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 75,
-            right: 18,
-            child: IconButton(
-              icon: Icon(
-                Icons.add_circle,
-                size: 55,
-                color: Colors.green,
-                semanticLabel: AppLocalizations.of(context)!.addEvent,
-              ),
-              onPressed: showAddEventOptionsPopup,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

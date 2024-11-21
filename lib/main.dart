@@ -37,8 +37,9 @@ void main() async {
   await initializeHive();
   // await initializeService();
   // Initialize notifications
-  await initializeNotifications();
+  // await initializeNotifications();
   // await scheduleBackgroundTask();
+  await cancelBackgroundTask();
 
   runApp(
     MultiProvider(

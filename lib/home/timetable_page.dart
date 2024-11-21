@@ -638,6 +638,7 @@ class TimetablePageState extends State<TimetablePage> {
               ],
             ),
           ),
+          const SizedBox(height: 10),
           TimeTableDayWidget(
             eventsTimeTable: currentEvents,
             selectedDay: selectedDate,
