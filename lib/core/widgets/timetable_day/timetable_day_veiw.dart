@@ -24,15 +24,9 @@ class TimeTableDayWidget extends HookWidget {
   Widget build(BuildContext context) {
     final ValueNotifier<List<TimetableItem<String>>> currentEvents = useState([]);
     final ValueNotifier<List<OverTimeEventsRow<String>>> currentOverflowEventsRow = useState([]);
-    int currentHour = 7;
-    int untilEnd = 19;
-    late String _eventType;
-
-    final listSections = [
-      [7, 10],
-      [10, 13],
-      [13, 17],
-    ];
+    int currentHour = 8;
+    int untilEnd = 18;
+    late String eventType;
 
     autoEventsSlot() {
       currentEvents.value.clear();
@@ -42,99 +36,45 @@ class TimeTableDayWidget extends HookWidget {
         DateTime endTime;
 
         if (e.start.hour == 0 && e.end.hour == 0) {
-          for (var section in listSections) {
-            startTime = DateTime.utc(
-              selectedDay!.year,
-              selectedDay!.month,
-              selectedDay!.day,
-              section[0],
-              5,
-            );
-            endTime = DateTime.utc(
-              selectedDay!.year,
-              selectedDay!.month,
-              selectedDay!.day,
-              section[1] - 1,
-              55,
-            );
-            currentEvents.value.add(TimetableItem(
-              uid: e.uid,
-              title: e.title ?? '',
-              desc: e.desc ?? '',
-              start: startTime,
-              end: endTime,
-              category: e.category ?? '',
-              members: e.members,
-              status: e.status,
-              leaveType: e.leaveType,
-            ));
-          }
-        } else if (e.start.hour > 7 && e.end.hour > 11) {
           startTime = DateTime.utc(
             selectedDay!.year,
             selectedDay!.month,
             selectedDay!.day,
-            7,
-            5,
-          );
-          endTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            9,
-            55,
-          );
-          currentEvents.value.add(TimetableItem(
-            uid: e.uid,
-            title: e.title ?? '',
-            desc: e.desc ?? '',
-            start: startTime,
-            end: endTime,
-            category: e.category ?? '',
-            members: e.members,
-            status: e.status,
-            leaveType: e.leaveType,
-          ));
-        } else if (e.start.hour > 10 && e.end.hour > 14) {
-          startTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            10,
-            5,
-          );
-          endTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            13,
-            55,
-          );
-          currentEvents.value.add(TimetableItem(
-            uid: e.uid,
-            title: e.title ?? '',
-            desc: e.desc ?? '',
-            start: startTime,
-            end: endTime,
-            category: e.category ?? '',
-            members: e.members,
-            status: e.status,
-            leaveType: e.leaveType,
-          ));
-        } else if (e.start.hour > 14 && e.end.hour > 18) {
-          startTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            13,
-            5,
+            8,
+            0,
           );
           endTime = DateTime.utc(
             selectedDay!.year,
             selectedDay!.month,
             selectedDay!.day,
             17,
-            55,
+            0,
+          );
+          currentEvents.value.add(TimetableItem(
+            uid: e.uid,
+            title: e.title ?? '',
+            desc: e.desc ?? '',
+            start: startTime,
+            end: endTime,
+            category: e.category ?? '',
+            members: e.members,
+            status: e.status,
+            leaveType: e.leaveType,
+          ));
+        } else if (e.start.hour > 7 && e.end.hour < 18) {
+          startTime = DateTime.utc(
+            selectedDay!.year,
+            selectedDay!.month,
+            selectedDay!.day,
+            e.start.hour,
+            e.start.minute,
+          );
+          endTime = DateTime.utc(
+            selectedDay!.year,
+            selectedDay!.month,
+            selectedDay!.day,
+            e.end.hour,
+            e.end.minute,
           );
           currentEvents.value.add(TimetableItem(
             uid: e.uid,
@@ -191,17 +131,17 @@ class TimeTableDayWidget extends HookWidget {
 
                 switch (event.category) {
                   case 'Add Meeting':
-                    _eventType = AppLocalizations.of(context)!.meetingTitle;
+                    eventType = AppLocalizations.of(context)!.meetingTitle;
                   case 'Leave':
-                    _eventType = AppLocalizations.of(context)!.leave;
+                    eventType = AppLocalizations.of(context)!.leave;
                   case 'Meeting Room Bookings':
-                    _eventType = AppLocalizations.of(context)!.meetingRoomBookings;
+                    eventType = AppLocalizations.of(context)!.meetingRoomBookings;
                   case 'Booking Car':
-                    _eventType = AppLocalizations.of(context)!.bookingCar;
+                    eventType = AppLocalizations.of(context)!.bookingCar;
                   case 'Minutes Of Meeting':
-                    _eventType = AppLocalizations.of(context)!.minutesOfMeeting;
+                    eventType = AppLocalizations.of(context)!.minutesOfMeeting;
                   default:
-                    _eventType = AppLocalizations.of(context)!.other;
+                    eventType = AppLocalizations.of(context)!.other;
                 }
 
                 switch (event.status) {
@@ -222,7 +162,7 @@ class TimeTableDayWidget extends HookWidget {
                             width: 3,
                           )),
                       child: Text(
-                        _eventType,
+                        eventType,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           fontSize: 12,
@@ -247,7 +187,7 @@ class TimeTableDayWidget extends HookWidget {
                         radius: const Radius.circular(12),
                         padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
                         child: Text(
-                          _eventType,
+                          eventType,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 12,
@@ -314,7 +254,7 @@ class TimeTableDayWidget extends HookWidget {
                               children: [
                                 const Icon(Icons.window_rounded, size: 15),
                                 const SizedBox(width: 5),
-                                Text(_eventType),
+                                Text(eventType),
                               ],
                             ),
                             Column(

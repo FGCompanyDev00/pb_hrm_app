@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final mediaQuery = MediaQuery.of(navigatorKey.currentState!.context);
+final fullHeight = mediaQuery.size.height;
 final connectivityResult = sl<Connectivity>();
 OfflineProvider offlineProvider = Provider.of<OfflineProvider>(navigatorKey.currentState!.context, listen: false);
 FToast fToast = FToast();

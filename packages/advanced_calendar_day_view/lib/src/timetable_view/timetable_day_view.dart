@@ -169,7 +169,7 @@ class _TimeTableDayViewState<T extends Object> extends State<TimeTableDayView> {
           primary: widget.primary,
           controller: widget.controller,
           physics: widget.physics ?? const ClampingScrollPhysics(),
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(top: 20, bottom: 10),
           child: SizedBox(
             height: totalHeight,
             child: Stack(

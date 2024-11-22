@@ -71,7 +71,7 @@ class CalendarDayWidgetCard extends HookWidget {
         //   selectedDay!.year,
         //   selectedDay!.month,
         //   selectedDay!.day,
-        //   untilEnd.value - 1,
+        //   untilEnd.value,
         //   0,
         // );
         DateTime startTime = DateTime.utc(
@@ -93,29 +93,15 @@ class CalendarDayWidgetCard extends HookWidget {
         // } else if (endTime.isBefore(slotStartTime)) {
         // } else if (startTime.isAfter(endTime)) {
         // } else if (startTime.isBefore(slotStartTime)) {
-        // statusList.value.add(Container(
-        //   width: 5,
-        //   height: 5,
-        //   margin: const EdgeInsets.symmetric(horizontal: 1),
-        //   decoration: BoxDecoration(
-        //     color: getEventColor(e),
-        //     shape: BoxShape.circle,
-        //   ),
-        // ));
-        startTime = DateTime.utc(
-          selectedDay!.year,
-          selectedDay!.month,
-          selectedDay!.day,
-          currentHour.value,
-          0,
-        );
-        endTime = DateTime.utc(
-          selectedDay!.year,
-          selectedDay!.month,
-          selectedDay!.day,
-          untilEnd.value,
-          0,
-        );
+        statusList.value.add(Container(
+          width: 5,
+          height: 5,
+          margin: const EdgeInsets.symmetric(horizontal: 1),
+          decoration: BoxDecoration(
+            color: getEventColor(e),
+            shape: BoxShape.circle,
+          ),
+        ));
 
         // }
 
@@ -166,6 +152,7 @@ class CalendarDayWidgetCard extends HookWidget {
         //   ));
         // }
       }
+      // }
 
       currentOverflowEventsRow.value = processOverflowEvents(
         [...currentEvents.value]..sort((a, b) => a.compare(b)),
@@ -193,6 +180,7 @@ class CalendarDayWidgetCard extends HookWidget {
           cropBottomEvents: true,
           showMoreOnRowButton: true,
           timeTitleColumnWidth: 40,
+          physics: const NeverScrollableScrollPhysics(),
           time12: true,
           overflowItemBuilder: (context, constraints, itemIndex, event) {
             Color statusColor = categoryColors[event.category] ?? Colors.grey;
