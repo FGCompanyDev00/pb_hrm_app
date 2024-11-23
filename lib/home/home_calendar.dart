@@ -811,7 +811,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               _buildSectionSeparator(),
               _eventsForDay.isEmpty
                   ? SizedBox(
-                      height: sizeScreen(context).height * 0.45,
+                      height: sizeScreen(context).height * 0.20,
                       child: Center(
                         child: Text(
                           AppLocalizations.of(context)!.noEventsForThisDay,
@@ -986,7 +986,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   /// Builds the TableCalendar widget with customized navigation arrows
   Widget _buildCalendar(BuildContext context, bool isDarkMode) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 10.0),
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.black : Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -998,7 +998,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           Consumer2<DateProvider, LanguageNotifier>(
             builder: (context, dateProvider, languageNotifier, child) {
               return TableCalendar<EventRecord>(
-                rowHeight: 42,
+                rowHeight: 34,
                 firstDay: DateTime.utc(2010, 10, 16),
                 lastDay: DateTime.utc(2030, 3, 14),
                 focusedDay: dateProvider.selectedDate,
@@ -1041,11 +1041,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 eventLoader: _getDubplicateEventsForDay,
                 calendarStyle: CalendarStyle(
                   todayDecoration: BoxDecoration(
-                    color: Colors.orangeAccent.withOpacity(0.5),
+                    color: Colors.orangeAccent.withOpacity(1),
                     shape: BoxShape.circle,
                   ),
                   selectedDecoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.7),
+                    color: Colors.green.withOpacity(1),
                     shape: BoxShape.circle,
                   ),
                   outsideDaysVisible: false,
@@ -1076,7 +1076,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                             return Container(
                               width: 5,
                               height: 5,
-                              margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                              margin: const EdgeInsets.symmetric(horizontal: 2),
                               decoration: BoxDecoration(
                                 color: getEventColor(event),
                                 shape: BoxShape.circle,
@@ -1100,7 +1100,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   /// Builds a custom header with bordered navigation arrows
   Widget _buildCustomHeader(bool isDarkMode) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 12.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1117,13 +1117,13 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             },
             child: Container(
               decoration: BoxDecoration(
-                border: Border.all(color: isDarkMode ? Colors.white : Colors.black),
-                borderRadius: BorderRadius.circular(4.0),
+                border: Border.all(color: isDarkMode ? Colors.white : Colors.grey),
+                borderRadius: BorderRadius.circular(7.0),
               ),
               padding: const EdgeInsets.all(4.0),
               child: Icon(
                 Icons.chevron_left,
-                size: 20,
+                size: 15,
                 color: isDarkMode ? Colors.white : Colors.black,
                 semanticLabel: AppLocalizations.of(context)!.previousMonth,
               ),
@@ -1135,9 +1135,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               return Text(
                 DateFormat.MMMM(sl<UserPreferences>().getLocalizeSupport().languageCode).format(dateProvider.selectedDate),
                 style: TextStyle(
-                  fontSize: 16.0,
+                  fontSize: 20.0,
                   fontWeight: FontWeight.bold,
-                  color: isDarkMode ? Colors.white : Colors.black,
+                  color: isDarkMode ? Colors.white : Colors.black87,
                 ),
               );
             },
@@ -1155,13 +1155,13 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             },
             child: Container(
               decoration: BoxDecoration(
-                border: Border.all(color: isDarkMode ? Colors.white : Colors.black),
-                borderRadius: BorderRadius.circular(4.0),
+                border: Border.all(color: isDarkMode ? Colors.white : Colors.grey),
+                borderRadius: BorderRadius.circular(7.0),
               ),
               padding: const EdgeInsets.all(4.0),
               child: Icon(
                 Icons.chevron_right,
-                size: 20,
+                size: 15,
                 color: isDarkMode ? Colors.white : Colors.black,
                 semanticLabel: AppLocalizations.of(context)!.nextMonth,
               ),
@@ -1204,7 +1204,7 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
     ).animate(_controller);
     _colorAnimation2 = ColorTween(
       begin: Colors.orange,
-      end: Colors.green,
+      end: const Color(0xFFDBB342),
     ).animate(_controller);
   }
 
@@ -1220,7 +1220,7 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
       animation: _controller,
       builder: (context, child) {
         return Container(
-          height: 8.0,
+          height: 5.0,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topRight,
@@ -1231,7 +1231,7 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
               ],
             ),
           ),
-          margin: const EdgeInsets.only(top: 20.0, bottom: 30.0, left: 15.0, right: 15.0),
+          margin: const EdgeInsets.only(bottom: 20.0, left: 15.0, right: 15.0),
         );
       },
     );

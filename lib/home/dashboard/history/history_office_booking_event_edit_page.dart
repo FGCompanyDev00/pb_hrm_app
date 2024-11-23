@@ -1002,7 +1002,6 @@ class _OfficeBookingEventEditPageState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Update Button at the top right under AppBar
               Align(
                 alignment: Alignment.topRight,
                 child: Container(
