@@ -8,7 +8,7 @@ import 'add_member_office_event.dart';
 import 'package:intl/intl.dart';
 
 class OfficeAddEventPage extends StatefulWidget {
-  const OfficeAddEventPage({Key? key}) : super(key: key);
+  const OfficeAddEventPage({super.key});
 
   @override
   _OfficeAddEventPageState createState() => _OfficeAddEventPageState();
@@ -32,7 +32,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   final _employeeTelController = TextEditingController();
   final _purposeController = TextEditingController();
   final _placeController = TextEditingController();
-  final _nameController = TextEditingController(); // For Booking Car (Optional)
+  final _nameController = TextEditingController(); // For Booking Car
 
   // Loading state
   bool _isLoading = false;
@@ -126,15 +126,15 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     }
 
     setState(() {
-      _isLoading = true; // Show loading indicator
+      _isLoading = true;
     });
 
     try {
-      String token = await _fetchToken(); // Fetch the authentication token
-      String url = ''; // Initialize the URL
-      Map<String, dynamic> body = {}; // Initialize the request body
+      String token = await _fetchToken();
+      String url = '';
+      Map<String, dynamic> body = {};
 
-      // Handle different booking types
+      // Handle different booking types (type 1,2 and 3)
       if (_selectedBookingType == '1. Add Meeting') {
         // URL for Type 1
         url = 'https://demo-application-api.flexiflows.co/api/work-tracking/out-meeting/insert';
@@ -142,7 +142,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         // Determine status based on the presence of members
         String status = _selectedMembers.isEmpty ? 'private' : 'public';
 
-        // Building the request body
+        // Request body
         body = {
           "title": _titleController.text.trim(),
           "description": _descriptionController.text.trim(),
@@ -177,10 +177,13 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         } else {
           String errorMsg = 'Failed to add event.';
           if (response.body.isNotEmpty) {
+            print('Error response body: ${response.body}');
             try {
               final errorResponse = jsonDecode(response.body);
               errorMsg = 'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
-            } catch (_) {}
+            } catch (e) {
+              errorMsg = 'Failed to add event: Unable to parse error message.';
+            }
           }
           _showErrorMessage(errorMsg);
         }
@@ -331,7 +334,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
       case '2. Meeting and Booking Meeting Room':
         if (_remarkController.text.isEmpty) {
-          _showErrorMessage('Please enter a remark.');
+          _showErrorMessage('Please enter a description.');
           return false;
         }
         if (_roomId == null) {
@@ -358,6 +361,10 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         break;
 
       case '3. Booking Car':
+        if (_nameController.text.isEmpty) {
+          _showErrorMessage('Please enter the name.');
+          return false;
+        }
         if (_placeController.text.isEmpty) {
           _showErrorMessage('Please enter the place.');
           return false;
@@ -608,44 +615,23 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     );
   }
 
-  /// Builds the UI based on the selected booking type
-  Widget _buildAdditionalFields() {
+  /// Builds the UI form fields based on the selected booking type
+  Widget _buildFormFields() {
+    if (_selectedBookingType == null) return Container();
+
     switch (_selectedBookingType) {
       case '1. Add Meeting':
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Location Dropdown
+            // Title input
             const Text(
-              'Location*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
-            ),
-            const SizedBox(height: 4.0),
-            _buildLocationDropdown(),
-            const SizedBox(height: 12.0),
-            // Notification Dropdown
-            const Text(
-              'Notification*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
-            ),
-            const SizedBox(height: 4.0),
-            _buildNotificationDropdown(),
-          ],
-        );
-
-      case '2. Meeting and Booking Meeting Room':
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Phone Number Input
-            const Text(
-              'Tel*',
+              'Title*',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
             const SizedBox(height: 4.0),
             TextField(
-              controller: _employeeTelController,
-              keyboardType: TextInputType.phone,
+              controller: _titleController,
               decoration: InputDecoration(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
                 border: OutlineInputBorder(
@@ -654,15 +640,269 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               ),
             ),
             const SizedBox(height: 12.0),
-            // Meeting Type Dropdown
+            // Description input
             const Text(
-              'Meeting Type*',
+              'Description',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
             const SizedBox(height: 4.0),
+            TextField(
+              controller: _descriptionController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12.0),
+            // Start and End Date & Time labels in same row
+            Row(
+              children: [
+                Expanded(
+                  child: const Text('Start Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                ),
+                const SizedBox(width: 12.0),
+                Expanded(
+                  child: const Text('End Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4.0),
+            // Start and End Date & Time inputs in same row
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _selectDateTime(context, true),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20.0),
+                        border: Border.all(color: Colors.grey),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_startDateTime == null
+                              ? 'dd/mm/yy'
+                              : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
+                          const Icon(Icons.calendar_today),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12.0),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _selectDateTime(context, false),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20.0),
+                        border: Border.all(color: Colors.grey),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_endDateTime == null
+                              ? 'dd/mm/yy'
+                              : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
+                          const Icon(Icons.calendar_today),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12.0),
+            // Type of meeting text
+            const Text(
+              'Type of meeting*',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+            ),
+            const SizedBox(height: 4.0),
+            // Location dropdown
             _buildLocationDropdown(),
             const SizedBox(height: 12.0),
-            // Book a Meeting Room Text
+            // Notification dropdown
+            const Text(
+              'Notification*',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+            ),
+            const SizedBox(height: 4.0),
+            _buildNotificationDropdown(),
+            const SizedBox(height: 20.0),
+            // Add People button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                ElevatedButton(
+                  onPressed: _showAddPeoplePage,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20.0),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 12.0),
+                  ),
+                  child: const Text(
+                    '+ Add People',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12.0),
+            // Display selected members
+            if (_selectedMembers.isNotEmpty)
+              Wrap(
+                spacing: 8.0,
+                children: _selectedMembers.map((member) {
+                  return FutureBuilder<String?>(
+                    future: _fetchProfileImage(member['employee_id']),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const CircleAvatar(
+                          radius: 24.0,
+                          child: CircularProgressIndicator(),
+                        );
+                      } else if (snapshot.hasError) {
+                        return const CircleAvatar(
+                          radius: 24.0,
+                          child: Icon(Icons.error),
+                        );
+                      } else if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
+                        return CircleAvatar(
+                          backgroundImage: NetworkImage(snapshot.data!),
+                          radius: 24.0,
+                        );
+                      } else {
+                        return const CircleAvatar(
+                          radius: 24.0,
+                          child: Icon(Icons.person),
+                        );
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+            const SizedBox(height: 20.0),
+          ],
+        );
+
+      case '2. Meeting and Booking Meeting Room':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title input
+            const Text(
+              'Title*',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+            ),
+            const SizedBox(height: 4.0),
+            TextField(
+              controller: _titleController,
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12.0),
+            // Description input
+            const Text(
+              'Description',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+            ),
+            const SizedBox(height: 4.0),
+            TextField(
+              controller: _remarkController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12.0),
+            // Start and End Date & Time labels in same row
+            Row(
+              children: [
+                Expanded(
+                  child: const Text('Start Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                ),
+                const SizedBox(width: 12.0),
+                Expanded(
+                  child: const Text('End Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4.0),
+            // Start and End Date & Time inputs in same row
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _selectDateTime(context, true),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20.0),
+                        border: Border.all(color: Colors.grey),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_startDateTime == null
+                              ? 'dd/mm/yy'
+                              : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
+                          const Icon(Icons.calendar_today),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12.0),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _selectDateTime(context, false),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20.0),
+                        border: Border.all(color: Colors.grey),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_endDateTime == null
+                              ? 'dd/mm/yy'
+                              : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
+                          const Icon(Icons.calendar_today),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12.0),
+            // Type of meeting text
+            const Text(
+              'Type of meeting*',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+            ),
+            const SizedBox(height: 4.0),
+            // Meeting type dropdown
+            _buildLocationDropdown(),
+            const SizedBox(height: 12.0),
+            // Book a Meeting Room text
             const Text(
               'Book a Meeting Room*',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
@@ -687,13 +927,69 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               ),
             ),
             const SizedBox(height: 12.0),
-            // Notification Dropdown
+            // Notification dropdown
             const Text(
               'Notification*',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
             const SizedBox(height: 4.0),
             _buildNotificationDropdown(),
+            const SizedBox(height: 20.0),
+            // Add People button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                ElevatedButton(
+                  onPressed: _showAddPeoplePage,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20.0),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 12.0),
+                  ),
+                  child: const Text(
+                    '+ Add People',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12.0),
+            // Display selected members
+            if (_selectedMembers.isNotEmpty)
+              Wrap(
+                spacing: 8.0,
+                children: _selectedMembers.map((member) {
+                  return FutureBuilder<String?>(
+                    future: _fetchProfileImage(member['employee_id']),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const CircleAvatar(
+                          radius: 24.0,
+                          child: CircularProgressIndicator(),
+                        );
+                      } else if (snapshot.hasError) {
+                        return const CircleAvatar(
+                          radius: 24.0,
+                          child: Icon(Icons.error),
+                        );
+                      } else if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
+                        return CircleAvatar(
+                          backgroundImage: NetworkImage(snapshot.data!),
+                          radius: 24.0,
+                        );
+                      } else {
+                        return const CircleAvatar(
+                          radius: 24.0,
+                          child: Icon(Icons.person),
+                        );
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+            const SizedBox(height: 20.0),
           ],
         );
 
@@ -701,9 +997,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Name Input (Optional)
+            // Name input
             const Text(
-              'Name (Optional)',
+              'Name*',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
             const SizedBox(height: 4.0),
@@ -717,7 +1013,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               ),
             ),
             const SizedBox(height: 12.0),
-            // Place Input
+            // Place input
             const Text(
               'Place*',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
@@ -733,7 +1029,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               ),
             ),
             const SizedBox(height: 12.0),
-            // Purpose Input
+            // Purpose input
             const Text(
               'Purpose*',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
@@ -750,93 +1046,24 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               ),
             ),
             const SizedBox(height: 12.0),
-            // Notification Dropdown
-            const Text(
-              'Notification*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+            // Start and End Date & Time labels in same row
+            Row(
+              children: [
+                Expanded(
+                  child: const Text('Start Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                ),
+                const SizedBox(width: 12.0),
+                Expanded(
+                  child: const Text('End Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                ),
+              ],
             ),
             const SizedBox(height: 4.0),
-            _buildNotificationDropdown(),
-          ],
-        );
-
-      default:
-        return Container();
-    }
-  }
-
-  /// Builds the UI form fields based on the selected booking type
-  Widget _buildFormFields() {
-    if (_selectedBookingType == null) return Container();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Title input
-        const Text(
-          'Title*',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
-        ),
-        const SizedBox(height: 4.0),
-        TextField(
-          controller: _titleController,
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12.0),
-        // Description or Remark based on booking type
-        if (_selectedBookingType == '1. Add Meeting') ...[
-          const Text(
-            'Description*',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
-          ),
-          const SizedBox(height: 4.0),
-          TextField(
-            controller: _descriptionController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12.0),
-        ] else if (_selectedBookingType == '2. Meeting and Booking Meeting Room') ...[
-          const Text(
-            'Remark*',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
-          ),
-          const SizedBox(height: 4.0),
-          TextField(
-            controller: _remarkController,
-            maxLines: 3,
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12.0),
-        ],
-        // Additional fields based on booking type
-        _buildAdditionalFields(),
-        const SizedBox(height: 12.0),
-        // Date and time pickers
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Start Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
-                  const SizedBox(height: 4.0),
-                  GestureDetector(
+            // Start and End Date & Time inputs in same row
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
                     onTap: () => _selectDateTime(context, true),
                     child: Container(
                       decoration: BoxDecoration(
@@ -855,17 +1082,10 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12.0),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('End Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
-                  const SizedBox(height: 4.0),
-                  GestureDetector(
+                ),
+                const SizedBox(width: 12.0),
+                Expanded(
+                  child: GestureDetector(
                     onTap: () => _selectDateTime(context, false),
                     child: Container(
                       decoration: BoxDecoration(
@@ -884,68 +1104,79 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+            const SizedBox(height: 12.0),
+            // Notification dropdown
+            const Text(
+              'Notification*',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+            ),
+            const SizedBox(height: 4.0),
+            _buildNotificationDropdown(),
+            const SizedBox(height: 20.0),
+            // Add People button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                ElevatedButton(
+                  onPressed: _showAddPeoplePage,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20.0),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 12.0),
+                  ),
+                  child: const Text(
+                    '+ Add People',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12.0),
+            // Display selected members
+            if (_selectedMembers.isNotEmpty)
+              Wrap(
+                spacing: 8.0,
+                children: _selectedMembers.map((member) {
+                  return FutureBuilder<String?>(
+                    future: _fetchProfileImage(member['employee_id']),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const CircleAvatar(
+                          radius: 24.0,
+                          child: CircularProgressIndicator(),
+                        );
+                      } else if (snapshot.hasError) {
+                        return const CircleAvatar(
+                          radius: 24.0,
+                          child: Icon(Icons.error),
+                        );
+                      } else if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
+                        return CircleAvatar(
+                          backgroundImage: NetworkImage(snapshot.data!),
+                          radius: 24.0,
+                        );
+                      } else {
+                        return const CircleAvatar(
+                          radius: 24.0,
+                          child: Icon(Icons.person),
+                        );
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+            const SizedBox(height: 20.0),
           ],
-        ),
-        const SizedBox(height: 20.0),
-        // Add People button
-        Center(
-          child: ElevatedButton(
-            onPressed: _showAddPeoplePage,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20.0),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 12.0),
-            ),
-            child: const Text(
-              '+ Add People',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12.0),
-        // Display selected members
-        if (_selectedMembers.isNotEmpty)
-          Center(
-            child: Wrap(
-              spacing: 8.0,
-              children: _selectedMembers.map((member) {
-                return FutureBuilder<String?>(
-                  future: _fetchProfileImage(member['employee_id']),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const CircleAvatar(
-                        radius: 24.0,
-                        child: CircularProgressIndicator(),
-                      );
-                    } else if (snapshot.hasError) {
-                      return const CircleAvatar(
-                        radius: 24.0,
-                        child: Icon(Icons.error),
-                      );
-                    } else if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
-                      return CircleAvatar(
-                        backgroundImage: NetworkImage(snapshot.data!),
-                        radius: 24.0,
-                      );
-                    } else {
-                      return const CircleAvatar(
-                        radius: 24.0,
-                        child: Icon(Icons.person),
-                      );
-                    }
-                  },
-                );
-              }).toList(),
-            ),
-          ),
-        const SizedBox(height: 20.0),
-      ],
-    );
+        );
+
+      default:
+        return Container();
+    }
   }
 
   @override
