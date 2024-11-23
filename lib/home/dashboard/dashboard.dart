@@ -286,7 +286,7 @@ class _DashboardState extends State<Dashboard> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       flexibleSpace: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(15),
         child: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(

@@ -176,6 +176,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
 
   /// Shows an error message using a SnackBar
   void _showErrorMessage(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message, style: const TextStyle(color: Colors.white)),
@@ -190,8 +191,9 @@ class _AddMemberPageState extends State<AddMemberPage> {
       decoration: InputDecoration(
         labelText: 'Select Group',
         prefixIcon: const Icon(Icons.group),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30.0),
+          borderRadius: BorderRadius.circular(20.0),
         ),
       ),
       value: _selectedGroupId,
@@ -209,14 +211,181 @@ class _AddMemberPageState extends State<AddMemberPage> {
     );
   }
 
+  /// Builds the selected members avatar list
+  Widget _buildSelectedMembersAvatars() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+      height: 75,
+      child: Row(
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: 50,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: List.generate(
+                  _selectedMembers.length > 5 ? 6 : _selectedMembers.length,
+                      (index) {
+                    if (index == 5) {
+                      return Positioned(
+                        left: index * 30.0,
+                        child: CircleAvatar(
+                          radius: 25,
+                          backgroundColor: Colors.grey.shade800,
+                          child: Text(
+                            '+${_selectedMembers.length - 5}',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      );
+                    }
+                    final member = _selectedMembers[index];
+                    return Positioned(
+                      left: index * 30.0,
+                      child: FutureBuilder<String?>(
+                        future: _fetchProfileImage(member['employee_id']),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+                            return CircleAvatar(
+                              backgroundImage: snapshot.data != null
+                                  ? NetworkImage(snapshot.data!)
+                                  : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                              radius: 25,
+                            );
+                          } else {
+                            return const CircleAvatar(
+                              backgroundColor: Colors.grey,
+                              radius: 25,
+                              child: Icon(Icons.person, color: Colors.white),
+                            );
+                          }
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          ElevatedButton(
+            onPressed: _onAddButtonPressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE2AD30),
+              padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 12.0),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20.0),
+              ),
+            ),
+            child: const Text(
+              '+ Add',
+              style: TextStyle(color: Colors.black, fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Builds the member list item
+  Widget _buildMemberListItem(Map<String, dynamic> member) {
+    bool isSelected = _selectedMembers.any((m) => m['employee_id'] == member['employee_id']);
+    return ListTile(
+      leading: FutureBuilder<String?>(
+        future: _fetchProfileImage(member['employee_id']),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done && snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
+            return CircleAvatar(
+              backgroundImage: NetworkImage(snapshot.data!),
+              radius: 25,
+            );
+          } else {
+            return const CircleAvatar(
+              backgroundColor: Colors.grey,
+              radius: 25,
+              child: Icon(Icons.person, color: Colors.white),
+            );
+          }
+        },
+      ),
+      title: Text(member['employee_name']),
+      subtitle: Text(member['email']),
+      trailing: Checkbox(
+        value: isSelected,
+        activeColor: Colors.green,
+        onChanged: (bool? selected) {
+          _onMemberSelected(selected, member);
+        },
+      ),
+      onTap: () {
+        _onMemberSelected(!isSelected, member);
+      },
+    );
+  }
+
+  /// Builds the member list
+  Widget _buildMemberList() {
+    return Expanded(
+      child: ListView.builder(
+        itemCount: _filteredMembers.length,
+        itemBuilder: (context, index) {
+          final member = _filteredMembers[index];
+          return _buildMemberListItem(member);
+        },
+      ),
+    );
+  }
+
+  /// Builds the search bar
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+      child: TextField(
+        onChanged: (value) {
+          _filterMembers(value);
+        },
+        decoration: InputDecoration(
+          labelText: 'Search',
+          prefixIcon: const Icon(Icons.search),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Builds the main content
+  Widget _buildContent() {
+    return Column(
+      children: [
+        if (_selectedMembers.isNotEmpty) _buildSelectedMembersAvatars(),
+        const SizedBox(height: 10),
+        _buildSearchBar(),
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0),
+          child: _buildGroupDropdown(),
+        ),
+        const SizedBox(height: 10),
+        _buildMemberList(),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Responsive padding
+    final double horizontalPadding = MediaQuery.of(context).size.width * 0.04;
+    final double verticalPadding = MediaQuery.of(context).size.height * 0.01;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Members'),
+        title: const Text('Add Members', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        toolbarHeight: 90,
+        toolbarHeight: 80,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(
@@ -224,139 +393,17 @@ class _AddMemberPageState extends State<AddMemberPage> {
               fit: BoxFit.cover,
             ),
             borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
+              bottomLeft: Radius.circular(20),
+              bottomRight: Radius.circular(20),
             ),
           ),
         ),
         centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: Column(
-        children: [
-          if (_selectedMembers.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              height: 80,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _selectedMembers.length > 3 ? 3 : _selectedMembers.length,
-                      itemBuilder: (context, index) {
-                        final member = _selectedMembers[index];
-                        return FutureBuilder<String?>(
-                          future: _fetchProfileImage(member['employee_id']),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                                child: CircleAvatar(
-                                  backgroundImage: snapshot.data != null ? NetworkImage(snapshot.data!) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
-                                  radius: 25,
-                                ),
-                              );
-                            } else {
-                              return const CircleAvatar(
-                                backgroundColor: Colors.grey,
-                                radius: 25,
-                                child: Icon(Icons.person, color: Colors.white),
-                              );
-                            }
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                  if (_selectedMembers.length > 3)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8.0),
-                      child: CircleAvatar(
-                        radius: 25,
-                        backgroundColor: Colors.grey[300],
-                        child: Text('+${_selectedMembers.length - 3}', style: const TextStyle(color: Colors.black)),
-                      ),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16.0),
-                    child: ElevatedButton(
-                      onPressed: _onAddButtonPressed,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE2AD30),
-                        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 15.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20.0),
-                        ),
-                      ),
-                      child: const Text(
-                        'Add',
-                        style: TextStyle(color: Colors.black, fontSize: 18),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          // Search Box
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              onChanged: (value) {
-                _filterMembers(value);
-              },
-              decoration: InputDecoration(
-                labelText: 'Search',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30.0),
-                ),
-              ),
-            ),
-          ),
-          // Group Selection Dropdown
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: _buildGroupDropdown(),
-          ),
-          const SizedBox(height: 16.0),
-          // Members List
-          Expanded(
-            child: ListView.builder(
-              itemCount: _filteredMembers.length,
-              itemBuilder: (context, index) {
-                final member = _filteredMembers[index];
-                return ListTile(
-                  leading: FutureBuilder<String?>(
-                    future: _fetchProfileImage(member['employee_id']),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.done && snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
-                        return CircleAvatar(
-                          backgroundImage: NetworkImage(snapshot.data!),
-                          radius: 25,
-                        );
-                      } else {
-                        return const CircleAvatar(
-                          backgroundColor: Colors.grey,
-                          radius: 25,
-                          child: Icon(Icons.person, color: Colors.white),
-                        );
-                      }
-                    },
-                  ),
-                  title: Text(member['employee_name']),
-                  subtitle: Text(member['email']),
-                  trailing: Checkbox(
-                    value: _selectedMembers.any((m) => m['employee_id'] == member['employee_id']),
-                    activeColor: Colors.green,
-                    onChanged: (bool? selected) {
-                      _onMemberSelected(selected, member);
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+      body: Padding(
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
+        child: _buildContent(),
       ),
     );
   }

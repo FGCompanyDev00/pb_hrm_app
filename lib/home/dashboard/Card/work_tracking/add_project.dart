@@ -147,8 +147,8 @@ class AddProjectPageState extends State<AddProjectPage> {
               fit: BoxFit.cover,
             ),
             borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
+              bottomLeft: Radius.circular(20),
+              bottomRight: Radius.circular(20),
             ),
           ),
         ),
@@ -185,7 +185,6 @@ class AddProjectPageState extends State<AddProjectPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 20),
                   _buildTextField(
                     label: 'Name of Project',
                     controller: _projectNameController,

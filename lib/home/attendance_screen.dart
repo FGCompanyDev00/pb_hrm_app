@@ -554,9 +554,32 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             _buildSectionContainer(),
             const SizedBox(height: 16),
             _buildHeaderContent(context),
-            const SizedBox(height: 16),
             _buildWeeklyRecordsList(),
-            const SizedBox(height: 80),
+            const SizedBox(height: 16),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MonthlyAttendanceReport()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  backgroundColor: Colors.green,
+                  elevation: 4,
+                ),
+                icon: const Icon(Icons.view_agenda, color: Colors.white),
+                label: Text(
+                  AppLocalizations.of(context)!.viewAll,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(height: 25),
           ],
         ),
       ),
@@ -1175,34 +1198,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         children: [
           _buildPageContent(context),
           if (_isLoading) _buildLoadingIndicator(),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 18,
-            child: Center(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const MonthlyAttendanceReport()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  backgroundColor: Colors.green,
-                  elevation: 4,
-                ),
-                icon: const Icon(Icons.report, color: Colors.white),
-                label: Text(
-                  AppLocalizations.of(context)!.viewAll,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
