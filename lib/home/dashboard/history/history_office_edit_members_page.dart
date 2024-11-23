@@ -26,12 +26,23 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
   List<Map<String, dynamic>> _selectedMembers = [];
   bool _isLoading = false;
   String? _errorMessage;
+  String? _currentUserId; // Added variable to store current user ID
 
   @override
   void initState() {
     super.initState();
     _selectedMembers = List<Map<String, dynamic>>.from(widget.initialSelectedMembers);
-    _fetchAllMembers();
+    _fetchCurrentUserId().then((_) {
+      _fetchAllMembers();
+    });
+  }
+
+  /// Fetches the current user's employee ID from shared preferences
+  Future<void> _fetchCurrentUserId() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _currentUserId = prefs.getString('employee_id') ?? '';
+    });
   }
 
   Future<String> _fetchToken() async {
@@ -73,6 +84,11 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
               'employee_name': '${item['name']} ${item['surname']}',
               'img_name': null, // Placeholder, will fetch actual image later
             }));
+
+            // Exclude the current user from the list
+            _allMembers.removeWhere(
+                    (member) => member['employee_id'] == _currentUserId);
+
             _filteredMembers = List<Map<String, dynamic>>.from(_allMembers);
             _fetchImages();
           });
@@ -100,7 +116,8 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
     for (var member in _allMembers) {
       try {
         String token = await _fetchToken();
-        String url = 'https://demo-application-api.flexiflows.co/api/profile/${member['employee_id']}';
+        String url =
+            'https://demo-application-api.flexiflows.co/api/profile/${member['employee_id']}';
 
         final response = await http.get(
           Uri.parse(url),
@@ -113,7 +130,8 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
         if (response.statusCode == 200) {
           final profileData = jsonDecode(response.body)['results'];
           setState(() {
-            member['img_name'] = profileData['images'] ?? 'https://www.w3schools.com/howto/img_avatar.png';
+            member['img_name'] =
+                profileData['images'] ?? 'https://www.w3schools.com/howto/img_avatar.png';
           });
         } else {
           if (kDebugMode) {
@@ -131,9 +149,7 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
   void _filterMembers(String query) {
     List<Map<String, dynamic>> filteredList = _allMembers
         .where((member) =>
-        member['employee_name']
-            .toLowerCase()
-            .contains(query.toLowerCase()))
+        member['employee_name'].toLowerCase().contains(query.toLowerCase()))
         .toList();
     setState(() {
       _filteredMembers = filteredList;
@@ -175,7 +191,8 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
                     'https://www.w3schools.com/howto/img_avatar.png'),
             onBackgroundImageError: (_, __) {
               setState(() {
-                member['img_name'] = 'https://www.w3schools.com/howto/img_avatar.png';
+                member['img_name'] =
+                'https://www.w3schools.com/howto/img_avatar.png';
               });
             },
           ),
@@ -226,8 +243,7 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
           ? Center(
         child: Text(
           _errorMessage!,
-          style:
-          const TextStyle(color: Colors.red, fontSize: 16.0),
+          style: const TextStyle(color: Colors.red, fontSize: 16.0),
         ),
       )
           : Padding(

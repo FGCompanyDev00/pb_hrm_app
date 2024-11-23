@@ -49,11 +49,10 @@ class _OfficeBookingEventEditPageState
   final TextEditingController _leaveReasonController = TextEditingController();
   final TextEditingController _leaveDaysController = TextEditingController();
 
-  // Controllers for Meeting (if any editable fields exist)
+  // Controllers for Meeting
   final TextEditingController _meetingTitleController = TextEditingController();
   final TextEditingController _meetingFromController = TextEditingController();
   final TextEditingController _meetingToController = TextEditingController();
-  // Removed _meetingRoomController as room is selected via dropdown
   final TextEditingController _meetingTelController = TextEditingController();
   final TextEditingController _meetingRemarkController =
   TextEditingController();
@@ -87,7 +86,6 @@ class _OfficeBookingEventEditPageState
     _meetingTitleController.dispose();
     _meetingFromController.dispose();
     _meetingToController.dispose();
-    // _meetingRoomController.dispose(); // Removed
     _meetingTelController.dispose();
     _meetingRemarkController.dispose();
 
@@ -316,7 +314,6 @@ class _OfficeBookingEventEditPageState
           ? DateFormat('yyyy-MM-dd')
           .format(DateTime.parse(data['to_date_time']))
           : '';
-      // _meetingRoomController.text = data['room_name'] ?? ''; // Removed
       _selectedRoomId = data['room_id']?.toString();
       _meetingTelController.text = data['employee_tel'] ?? '';
       _meetingRemarkController.text = data['remark'] ?? '';
@@ -340,7 +337,6 @@ class _OfficeBookingEventEditPageState
       _carDateOutController.text = data['date_out'] ?? '';
       _employeeId = data['employee_id']?.toString() ?? _employeeId;
 
-      // Assuming 'members' are part of car booking as per API
       _selectedMembers = List<Map<String, dynamic>>.from(
           data['members']?.map((member) => {
             'employee_id': member['employee_id'],
@@ -403,8 +399,6 @@ class _OfficeBookingEventEditPageState
         return false;
     }
 
-    // Additional validations can be added here, e.g., date comparisons
-
     return true;
   }
 
@@ -457,13 +451,18 @@ class _OfficeBookingEventEditPageState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Leave Type Dropdown
+        // Leave Type Label and Dropdown
+        const Text('Leave Type*'),
+        const SizedBox(height: 8.0),
         DropdownButtonFormField<String>(
           decoration: InputDecoration(
-            labelText: 'Leave Type*',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+            contentPadding: const EdgeInsets.symmetric(
+                vertical: 12.0, horizontal: 10.0),
+            border:
+            OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
-          value: _leaveTypes.any((type) => type['leave_type_id'].toString() == _selectedLeaveTypeId)
+          value: _leaveTypes.any((type) =>
+          type['leave_type_id'].toString() == _selectedLeaveTypeId)
               ? _selectedLeaveTypeId
               : null, // Ensure value is in the list
           items: _leaveTypes
@@ -477,11 +476,13 @@ class _OfficeBookingEventEditPageState
               _selectedLeaveTypeId = newValue;
             });
           },
-          validator: (value) => value == null ? 'Please select a leave type' : null,
+          validator: (value) =>
+          value == null ? 'Please select a leave type' : null,
         ),
-
         const SizedBox(height: 16.0),
-        // From Date
+        // From Date Label and Picker
+        const Text('From Date*'),
+        const SizedBox(height: 8.0),
         GestureDetector(
           onTap: () =>
               _selectDate(context, _leaveFromController, 'From Date'),
@@ -489,47 +490,57 @@ class _OfficeBookingEventEditPageState
             child: TextFormField(
               controller: _leaveFromController,
               decoration: InputDecoration(
-                labelText: 'From Date*',
+                contentPadding: const EdgeInsets.symmetric(
+                    vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
-                border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
           ),
         ),
         const SizedBox(height: 16.0),
-        // To Date
+        // To Date Label and Picker
+        const Text('To Date*'),
+        const SizedBox(height: 8.0),
         GestureDetector(
           onTap: () => _selectDate(context, _leaveToController, 'To Date'),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _leaveToController,
               decoration: InputDecoration(
-                labelText: 'To Date*',
+                contentPadding: const EdgeInsets.symmetric(
+                    vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
-                border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
           ),
         ),
         const SizedBox(height: 16.0),
-        // Reason
+        // Reason Label and Input
+        const Text('Reason*'),
+        const SizedBox(height: 8.0),
         TextFormField(
           controller: _leaveReasonController,
           decoration: InputDecoration(
-            labelText: 'Reason*',
+            contentPadding:
+            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
             border:
             OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
           maxLines: 3,
         ),
         const SizedBox(height: 16.0),
-        // Days (Read Only, calculated or editable as per requirement)
+        // Days Label and Input (Read Only)
+        const Text('Days'),
+        const SizedBox(height: 8.0),
         TextFormField(
           controller: _leaveDaysController,
           decoration: InputDecoration(
-            labelText: 'Days',
+            contentPadding:
+            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
             border:
             OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
@@ -545,17 +556,22 @@ class _OfficeBookingEventEditPageState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title
+        // Title Label and Input
+        const Text('Title*'),
+        const SizedBox(height: 8.0),
         TextFormField(
           controller: _meetingTitleController,
           decoration: InputDecoration(
-            labelText: 'Title*',
+            contentPadding:
+            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
             border:
             OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
         ),
         const SizedBox(height: 16.0),
-        // From Date
+        // From Date Label and Picker
+        const Text('From Date*'),
+        const SizedBox(height: 8.0),
         GestureDetector(
           onTap: () =>
               _selectDate(context, _meetingFromController, 'From Date'),
@@ -563,72 +579,87 @@ class _OfficeBookingEventEditPageState
             child: TextFormField(
               controller: _meetingFromController,
               decoration: InputDecoration(
-                labelText: 'From Date*',
+                contentPadding: const EdgeInsets.symmetric(
+                    vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
-                border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
           ),
         ),
         const SizedBox(height: 16.0),
-        // To Date
+        // To Date Label and Picker
+        const Text('To Date*'),
+        const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _meetingToController, 'To Date'),
+          onTap: () =>
+              _selectDate(context, _meetingToController, 'To Date'),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _meetingToController,
               decoration: InputDecoration(
-                labelText: 'To Date*',
+                contentPadding: const EdgeInsets.symmetric(
+                    vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
-                border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
           ),
         ),
         const SizedBox(height: 16.0),
-        // Room Dropdown
+        // Room Label and Dropdown
+        const Text('Room*'),
+        const SizedBox(height: 8.0),
         DropdownButtonFormField<String>(
           decoration: InputDecoration(
-          labelText: 'Room*',
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+            contentPadding:
+            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+            border:
+            OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
           value: _rooms.any((room) => room['room_id'].toString() == _selectedRoomId)
-          ? _selectedRoomId
+              ? _selectedRoomId
               : null, // Ensure _selectedRoomId is valid
           items: _getUniqueRoomItems(),
           onChanged: (String? newValue) {
-          setState(() {
-          _selectedRoomId = newValue;
-          });
+            setState(() {
+              _selectedRoomId = newValue;
+            });
           },
           validator: (value) => value == null ? 'Please select a room' : null,
-          ),
+        ),
         const SizedBox(height: 16.0),
-        // Employee Telephone
+        // Employee Telephone Label and Input
+        const Text('Employee Telephone*'),
+        const SizedBox(height: 8.0),
         TextFormField(
           controller: _meetingTelController,
           decoration: InputDecoration(
-            labelText: 'Employee Telephone*',
+            contentPadding:
+            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
             border:
             OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
           keyboardType: TextInputType.phone,
         ),
         const SizedBox(height: 16.0),
-        // Remark
+        // Remark Label and Input
+        const Text('Remark'),
+        const SizedBox(height: 8.0),
         TextFormField(
           controller: _meetingRemarkController,
           decoration: InputDecoration(
-            labelText: 'Remark',
+            contentPadding:
+            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
             border:
             OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
           maxLines: 3,
         ),
         const SizedBox(height: 16.0),
-        // Members
+        // Members Label and Edit Button
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -638,6 +669,12 @@ class _OfficeBookingEventEditPageState
             ),
             ElevatedButton(
               onPressed: _editMembers,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                    vertical: 8.0, horizontal: 16.0),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0)),
+              ),
               child: const Text('Edit Members'),
             ),
           ],
@@ -688,28 +725,36 @@ class _OfficeBookingEventEditPageState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Purpose
+        // Purpose Label and Input
+        const Text('Purpose*'),
+        const SizedBox(height: 8.0),
         TextFormField(
           controller: _carPurposeController,
           decoration: InputDecoration(
-            labelText: 'Purpose*',
+            contentPadding:
+            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
             border:
             OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
           maxLines: 3,
         ),
         const SizedBox(height: 16.0),
-        // Place
+        // Place Label and Input
+        const Text('Place*'),
+        const SizedBox(height: 8.0),
         TextFormField(
           controller: _carPlaceController,
           decoration: InputDecoration(
-            labelText: 'Place*',
+            contentPadding:
+            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
             border:
             OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
         ),
         const SizedBox(height: 16.0),
-        // Date In
+        // Date In Label and Picker
+        const Text('Date In*'),
+        const SizedBox(height: 8.0),
         GestureDetector(
           onTap: () =>
               _selectDate(context, _carDateInController, 'Date In'),
@@ -717,16 +762,19 @@ class _OfficeBookingEventEditPageState
             child: TextFormField(
               controller: _carDateInController,
               decoration: InputDecoration(
-                labelText: 'Date In*',
+                contentPadding: const EdgeInsets.symmetric(
+                    vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
-                border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
           ),
         ),
         const SizedBox(height: 16.0),
-        // Date Out
+        // Date Out Label and Picker
+        const Text('Date Out*'),
+        const SizedBox(height: 8.0),
         GestureDetector(
           onTap: () =>
               _selectDate(context, _carDateOutController, 'Date Out'),
@@ -734,10 +782,11 @@ class _OfficeBookingEventEditPageState
             child: TextFormField(
               controller: _carDateOutController,
               decoration: InputDecoration(
-                labelText: 'Date Out*',
+                contentPadding: const EdgeInsets.symmetric(
+                    vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
-                border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
           ),
@@ -766,8 +815,9 @@ class _OfficeBookingEventEditPageState
       onPressed: _isLoading ? null : _submitEdit,
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.orangeAccent,
-        padding: const EdgeInsets.symmetric(horizontal: 50.0, vertical: 15.0),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 12.0),
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
       ),
       child: _isLoading
           ? const SizedBox(
@@ -780,7 +830,7 @@ class _OfficeBookingEventEditPageState
       )
           : const Text(
         'Update',
-        style: TextStyle(color: Colors.black, fontSize: 18.0),
+        style: TextStyle(color: Colors.black, fontSize: 15.0),
       ),
     );
   }
@@ -932,37 +982,41 @@ class _OfficeBookingEventEditPageState
             ),
           ),
         ),
-        iconTheme: const IconThemeData(color: Colors.black), // Back button color
+        iconTheme:
+        const IconThemeData(color: Colors.black), // Back button color
       ),
-      body: Stack(
-        children: [
-          Padding(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage != null
-                ? Center(
-              child: Text(
-                _errorMessage!,
-                style:
-                const TextStyle(color: Colors.red, fontSize: 16.0),
-              ),
-            )
-                : SingleChildScrollView(
-              child: Form(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildFormFields(),
-                    const SizedBox(height: 30.0),
-                    Center(child: _buildSubmitButton()),
-                  ],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? Center(
+        child: Text(
+          _errorMessage!,
+          style:
+          const TextStyle(color: Colors.red, fontSize: 16.0),
+        ),
+      )
+          : SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: 16.0, vertical: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Update Button at the top right under AppBar
+              Align(
+                alignment: Alignment.topRight,
+                child: Container(
+                  child: _buildSubmitButton(),
                 ),
               ),
-            ),
+              const SizedBox(height: 10.0),
+              // Form Fields
+              Form(
+                child: _buildFormFields(),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

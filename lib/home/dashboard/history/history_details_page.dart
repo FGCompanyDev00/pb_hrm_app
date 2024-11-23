@@ -31,7 +31,7 @@ class _DetailsPageState extends State<DetailsPage> {
   String? imageUrl;
   String? lineManagerImageUrl;
   String? hrImageUrl;
-// Declared _errorMessage
+  String? _errorMessage; // Added error message variable
 
   @override
   void initState() {
@@ -55,6 +55,9 @@ class _DetailsPageState extends State<DetailsPage> {
       if (tokenValue == null) {
         _showErrorDialog('Authentication Error',
             'Token not found. Please log in again.');
+        setState(() {
+          _errorMessage = 'Token not found. Please log in again.';
+        });
         return;
       }
       final response = await http.get(
@@ -88,6 +91,7 @@ class _DetailsPageState extends State<DetailsPage> {
       }
     } catch (e) {
       setState(() {
+        _errorMessage = 'Error fetching leave types: $e';
       });
       if (kDebugMode) {
         print('Error fetching leave types: $e');
@@ -99,7 +103,7 @@ class _DetailsPageState extends State<DetailsPage> {
   Future<void> _fetchData() async {
     setState(() {
       isLoading = true;
-// Reset error message before fetching
+      _errorMessage = null; // Reset error message before fetching
     });
 
     final String type = widget.types.toLowerCase();
@@ -146,6 +150,7 @@ class _DetailsPageState extends State<DetailsPage> {
             'Token not found. Please log in again.');
         setState(() {
           isLoading = false;
+          _errorMessage = 'Token not found. Please log in again.';
         });
         return;
       }
@@ -207,6 +212,7 @@ class _DetailsPageState extends State<DetailsPage> {
             _showErrorDialog('Error', 'Invalid API response structure.');
             setState(() {
               isLoading = false;
+              _errorMessage = 'Invalid API response structure.';
             });
             return;
           }
@@ -241,6 +247,7 @@ class _DetailsPageState extends State<DetailsPage> {
                 setState(() {
                   data = null;
                   isLoading = false;
+                  _errorMessage = 'No data found.';
                 });
               }
             } else {
@@ -248,13 +255,15 @@ class _DetailsPageState extends State<DetailsPage> {
               setState(() {
                 data = null;
                 isLoading = false;
+                _errorMessage = 'Unexpected data format.';
               });
               _showErrorDialog('Error', 'Unexpected data format.');
             }
           } else {
             // For meeting and car, handle existing POST response
             // Handle 'results' as a list for 'meeting' and 'car' types
-            if (responseData['results'] is List && responseData['results'].isNotEmpty) {
+            if (responseData['results'] is List &&
+                responseData['results'].isNotEmpty) {
               setState(() {
                 data = responseData['results'][0] as Map<String, dynamic>;
                 isLoading = false;
@@ -269,6 +278,7 @@ class _DetailsPageState extends State<DetailsPage> {
               setState(() {
                 data = null;
                 isLoading = false;
+                _errorMessage = 'Unexpected data format.';
               });
               _showErrorDialog('Error', 'Unexpected data format.');
             }
@@ -292,6 +302,7 @@ class _DetailsPageState extends State<DetailsPage> {
           _showErrorDialog('Error', errorMessage);
           setState(() {
             isLoading = false;
+            _errorMessage = errorMessage;
           });
         }
       } else {
@@ -300,15 +311,18 @@ class _DetailsPageState extends State<DetailsPage> {
             'Error', 'Failed to fetch details: ${response.statusCode}');
         setState(() {
           isLoading = false;
+          _errorMessage = 'Failed to fetch details: ${response.statusCode}';
         });
       }
     } catch (e) {
       print('Error fetching details: $e');
-      _showErrorDialog(
-          'Error', 'An unexpected error occurred while fetching details.');
       setState(() {
         isLoading = false;
+        _errorMessage =
+        'An unexpected error occurred while fetching details.';
       });
+      _showErrorDialog(
+          'Error', 'An unexpected error occurred while fetching details.');
     }
   }
 
@@ -324,6 +338,7 @@ class _DetailsPageState extends State<DetailsPage> {
             'Token not found. Please log in again.');
         setState(() {
           imageUrl = _defaultAvatarUrl();
+          _errorMessage = 'Token not found. Please log in again.';
         });
         return;
       }
@@ -362,6 +377,7 @@ class _DetailsPageState extends State<DetailsPage> {
           } else {
             setState(() {
               imageUrl = _defaultAvatarUrl();
+              _errorMessage = 'Invalid profile API response.';
             });
             _showErrorDialog('Error', 'Invalid profile API response.');
           }
@@ -371,11 +387,14 @@ class _DetailsPageState extends State<DetailsPage> {
           _showErrorDialog('Error', errorMessage);
           setState(() {
             imageUrl = _defaultAvatarUrl();
+            _errorMessage = errorMessage;
           });
         }
       } else {
         setState(() {
           imageUrl = _defaultAvatarUrl();
+          _errorMessage =
+          'Failed to fetch profile image: ${response.statusCode}';
         });
         _showErrorDialog('Error',
             'Failed to fetch profile image: ${response.statusCode}');
@@ -384,6 +403,7 @@ class _DetailsPageState extends State<DetailsPage> {
       print('Error fetching profile image: $e');
       setState(() {
         imageUrl = _defaultAvatarUrl();
+        _errorMessage = 'An error occurred while fetching profile image.';
       });
       _showErrorDialog(
           'Error', 'An unexpected error occurred while fetching profile image.');
@@ -484,7 +504,7 @@ class _DetailsPageState extends State<DetailsPage> {
             color: Colors.black,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8), // Reduced spacing
 
         // Profile Image and Name
         Row(
@@ -492,7 +512,7 @@ class _DetailsPageState extends State<DetailsPage> {
           children: [
             CircleAvatar(
               backgroundImage: NetworkImage(requestorImageUrl),
-              radius: 35, // Profile image size
+              radius: 30, // Reduced profile image size
               backgroundColor: Colors.grey[300],
               onBackgroundImageError: (_, __) {
                 setState(() {
@@ -500,28 +520,32 @@ class _DetailsPageState extends State<DetailsPage> {
                 });
               },
             ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  requestorName,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+            const SizedBox(width: 12), // Reduced spacing
+            Expanded( // Added Expanded to adjust to screen size
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    requestorName,
+                    style: const TextStyle(
+                      fontSize: 16, // Reduced font size
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis, // Handle overflow
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Submitted on $submittedOn',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black54,
+                  const SizedBox(height: 2), // Reduced spacing
+                  Text(
+                    'Submitted on $submittedOn',
+                    style: const TextStyle(
+                      fontSize: 12, // Reduced font size
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black54,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -529,13 +553,12 @@ class _DetailsPageState extends State<DetailsPage> {
     );
   }
 
-
   /// Build Blue Section
   Widget _buildBlueSection() {
     return Container(
-      width: 120, // Matches the button width in the image
-      margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+      width: 100, // Reduced width
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
       decoration: BoxDecoration(
         color: Colors.lightBlue[100], // Light blue background color
         borderRadius: BorderRadius.circular(20),
@@ -544,7 +567,7 @@ class _DetailsPageState extends State<DetailsPage> {
         child: Text(
           '${widget.types[0].toUpperCase()}${widget.types.substring(1).toLowerCase()}', // Capitalize first letter
           style: const TextStyle(
-            fontSize: 14,
+            fontSize: 12, // Reduced font size
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
@@ -552,7 +575,6 @@ class _DetailsPageState extends State<DetailsPage> {
       ),
     );
   }
-
 
   /// Build Details Section
   Widget _buildDetailsSection() {
@@ -565,25 +587,24 @@ class _DetailsPageState extends State<DetailsPage> {
           children: [
             _buildInfoRow(
                 Icons.bookmark, 'Title', data?['title'] ?? 'No Title', Colors.blue),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _buildInfoRow(Icons.calendar_today, 'Date',
                 '${formatDate(data?['from_date_time'])} - ${formatDate(data?['to_date_time'])}', Colors.green),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _buildInfoRow(Icons.access_time, 'Time',
                 '${formatDate(data?['from_date_time'], includeTime: true)} - ${formatDate(data?['to_date_time'], includeTime: true)}', Colors.orange),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _buildInfoRow(
                 Icons.description, 'Description', data?['remark'] ?? 'No Remark', Colors.indigo),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               'Room: ${data?['room_name'] ?? 'No room specified'}',
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 14, // Reduced font size
                 fontWeight: FontWeight.bold,
                 color: Colors.orange,
               ),
             ),
-
           ],
         );
       case 'car':
@@ -592,19 +613,19 @@ class _DetailsPageState extends State<DetailsPage> {
           children: [
             _buildInfoRow(
                 Icons.bookmark, 'Purpose', data?['purpose'] ?? 'No Purpose', Colors.blue),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _buildInfoRow(Icons.place, 'Place', data?['place'] ?? 'N/A', Colors.green),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _buildInfoRow(Icons.calendar_today, 'Date',
                 '${formatDate(data?['date_out'])} - ${formatDate(data?['date_in'])}', Colors.orange),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _buildInfoRow(Icons.access_time, 'Time',
                 '${data?['time_out'] ?? 'N/A'} - ${data?['time_in'] ?? 'N/A'}', Colors.purple),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               'Discretion: ${data?['employee_tel'] ?? 'N/A'}',
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 14, // Reduced font size
                 fontWeight: FontWeight.bold,
                 color: Colors.red,
               ),
@@ -619,16 +640,16 @@ class _DetailsPageState extends State<DetailsPage> {
           children: [
             _buildInfoRow(
                 Icons.bookmark, 'Title', data?['name'] ?? 'No Title', Colors.blue),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _buildInfoRow(Icons.calendar_today, 'Date',
                 '${formatDate(data?['take_leave_from'])} - ${formatDate(data?['take_leave_to'])}', Colors.green),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _buildInfoRow(Icons.label, 'Type of leave',
                 '$leaveTypeName (${data?['days']?.toString() ?? 'N/A'})', Colors.orange),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Container(
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+              padding: const EdgeInsets.all(8), // Reduced padding
+              margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 10), // Reduced margins
               decoration: BoxDecoration(
                 color: Colors.green[50],
                 borderRadius: BorderRadius.circular(12),
@@ -637,7 +658,7 @@ class _DetailsPageState extends State<DetailsPage> {
               child: Center(
                 child: Text(
                   data?['take_leave_reason'] ?? 'No Description Provided',
-                  style: const TextStyle(fontSize: 14, color: Colors.black),
+                  style: const TextStyle(fontSize: 12, color: Colors.black), // Reduced font size
                 ),
               ),
             ),
@@ -654,45 +675,56 @@ class _DetailsPageState extends State<DetailsPage> {
   }
 
   Widget _buildInfoRow(IconData icon, String title, String content, Color color) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: color), // Use the provided color
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            '$title: $content',
-            style: const TextStyle(fontSize: 14, color: Colors.black),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0), // Added padding to each row
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start, // Adjusted alignment
+        children: [
+          Icon(icon, size: 18, color: color), // Reduced icon size
+          const SizedBox(width: 6), // Reduced spacing
+          Expanded( // Added Expanded to adjust to screen size
+            child: Text(
+              '$title: $content',
+              style: const TextStyle(fontSize: 13, color: Colors.black), // Reduced font size
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   /// Build Workflow Section
   Widget _buildWorkflowSection() {
     if (widget.types.toLowerCase() == 'leave') {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      return Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 10, // Reduced spacing
+        runSpacing: 10, // Reduced spacing
         children: [
           _buildUserAvatar(imageUrl ?? _defaultAvatarUrl(), borderColor: Colors.green),
-          const SizedBox(width: 12),
-          const Icon(Icons.arrow_forward, color: Colors.orange, size: 20),
-          const SizedBox(width: 12),
+          Transform.translate(
+            offset: const Offset(0, 13.0),
+            child: const Icon(Icons.arrow_forward, color: Colors.orange, size: 18),
+          ),
           _buildUserAvatar(lineManagerImageUrl ?? _defaultAvatarUrl(), borderColor: Colors.orange),
-          const SizedBox(width: 12),
-          const Icon(Icons.arrow_forward, color: Colors.grey, size: 20),
-          const SizedBox(width: 12),
+          Transform.translate(
+            offset: const Offset(0, 13.0),
+            child: const Icon(Icons.arrow_forward, color: Colors.grey, size: 18),
+          ),
           _buildUserAvatar(hrImageUrl ?? _defaultAvatarUrl(), borderColor: Colors.grey),
         ],
       );
     } else if (widget.types.toLowerCase() == 'meeting') {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      return Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 10,
+        runSpacing: 10,
         children: [
           _buildUserAvatar(imageUrl ?? _defaultAvatarUrl(), borderColor: Colors.blue),
-          const SizedBox(width: 12),
-          const Icon(Icons.arrow_forward, color: Colors.blue, size: 20),
-          const SizedBox(width: 12),
+          Transform.translate(
+            offset: const Offset(0, 13.0),
+            child: const Icon(Icons.arrow_forward, color: Colors.orange, size: 18),
+          ),
           _buildUserAvatar(_defaultAvatarUrl(), borderColor: Colors.grey),
         ],
       );
@@ -702,10 +734,10 @@ class _DetailsPageState extends State<DetailsPage> {
 
   Widget _buildUserAvatar(String imageUrl, {Color borderColor = Colors.grey}) {
     return CircleAvatar(
-      radius: 25,
+      radius: 22, // Reduced radius
       backgroundColor: borderColor,
       child: CircleAvatar(
-        radius: 23,
+        radius: 20, // Reduced radius
         backgroundImage: NetworkImage(imageUrl),
         onBackgroundImageError: (_, __) {
           setState(() {
@@ -726,9 +758,8 @@ class _DetailsPageState extends State<DetailsPage> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 25.0),
+      padding: const EdgeInsets.symmetric(vertical: 20.0), // Reduced vertical padding
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           Expanded(
             child: _buildStyledButton(
@@ -736,10 +767,10 @@ class _DetailsPageState extends State<DetailsPage> {
               icon: Icons.close,
               backgroundColor: Colors.grey,
               textColor: Colors.white,
-              onPressed: isFinalized ? null : () => _handleDelete(),
+              onPressed: isFinalized ? null : () => _confirmDelete(), // Updated to _confirmDelete()
             ),
           ),
-          const SizedBox(width: 15),
+          const SizedBox(width: 10), // Reduced spacing
           Expanded(
             child: _buildStyledButton(
               label: 'Edit',
@@ -764,16 +795,16 @@ class _DetailsPageState extends State<DetailsPage> {
     return ElevatedButton.icon(
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor,
-        padding: const EdgeInsets.symmetric(vertical: 12.0),
+        padding: const EdgeInsets.symmetric(vertical: 10.0), // Reduced vertical padding
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20.0),
         ),
       ),
       onPressed: onPressed,
-      icon: Icon(icon, color: textColor),
+      icon: Icon(icon, color: textColor, size: 18), // Reduced icon size
       label: Text(
         label,
-        style: TextStyle(color: textColor, fontSize: 14.0),
+        style: TextStyle(color: textColor, fontSize: 13.0), // Reduced font size
       ),
     );
   }
@@ -822,6 +853,32 @@ class _DetailsPageState extends State<DetailsPage> {
     setState(() {
       isFinalized = false;
     });
+  }
+
+  /// Confirm Delete Action
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: const Text('Are you sure you want to delete this request?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop(); // Close the dialog
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop(); // Close the dialog
+              _handleDelete(); // Proceed with deletion
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Handle Delete Action
@@ -962,10 +1019,23 @@ class _DetailsPageState extends State<DetailsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final horizontalPadding = screenWidth < 360 ? 12.0 : 16.0; // Reduced padding for small screens
+
     return Scaffold(
       appBar: _buildAppBar(context),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+          ? Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            _errorMessage!,
+            style: const TextStyle(fontSize: 16, color: Colors.red),
+          ),
+        ),
+      )
           : RefreshIndicator(
         onRefresh: _handleRefresh, // Pull down to refresh
         child: data == null
@@ -979,21 +1049,23 @@ class _DetailsPageState extends State<DetailsPage> {
             : SingleChildScrollView(
           physics:
           const AlwaysScrollableScrollPhysics(), // To allow pull-to-refresh even when content is less
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 24.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 10),
-                _buildRequestorSection(),
-                _buildBlueSection(),
-                const SizedBox(height: 20),
-                _buildDetailsSection(),
-                const SizedBox(height: 20),
-                _buildWorkflowSection(),
-                _buildActionButtons(context),
-              ],
+          child: Center( // Wrapped content in Center widget
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding, vertical: 12.0), // Reduced vertical padding
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 8),
+                  _buildRequestorSection(),
+                  _buildBlueSection(),
+                  const SizedBox(height: 16),
+                  _buildDetailsSection(),
+                  const SizedBox(height: 16),
+                  _buildWorkflowSection(),
+                  _buildActionButtons(context),
+                ],
+              ),
             ),
           ),
         ),

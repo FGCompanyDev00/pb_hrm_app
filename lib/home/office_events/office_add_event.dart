@@ -1,15 +1,14 @@
 // office_add_event.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:pb_hrsystem/home/office_events/add_member_office_event.dart';
+import 'add_member_office_event.dart';
 import 'package:intl/intl.dart';
 
 class OfficeAddEventPage extends StatefulWidget {
-  const OfficeAddEventPage({super.key});
+  const OfficeAddEventPage({Key? key}) : super(key: key);
 
   @override
   _OfficeAddEventPageState createState() => _OfficeAddEventPageState();
@@ -39,8 +38,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   bool _isLoading = false;
 
   // Additional fields based on booking type
-  String? _projectId;
-  String? _statusId;
   String? _roomId;
   String? _roomName;
   int? _notification; // Notification time in minutes
@@ -50,37 +47,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
   // List of rooms
   List<Map<String, dynamic>> _rooms = [];
-
-  // Lists for Projects and Statuses
-  List<Project> _projects = [];
-
-  // Hard-coded list of Statuses as per provided API data
-  final List<Status> _statuses = [
-    Status(
-      id: 1,
-      statusId: "87403916-9113-4e2e-9d7d-b5ed269fe20a",
-      name: "Error",
-    ),
-    Status(
-      id: 2,
-      statusId: "40d2ba5e-a978-47ce-bc48-caceca8668e9",
-      name: "Pending",
-    ),
-    Status(
-      id: 3,
-      statusId: "0a8d93f0-1c05-42b2-8e56-984a578ef077",
-      name: "Processing",
-    ),
-    Status(
-      id: 4,
-      statusId: "e35569eb-75e1-4005-9232-bfb57303b8b3",
-      name: "Finished",
-    ),
-  ];
-
-  // Selected Project and Status
-  Project? _selectedProject;
-  Status? _selectedStatus;
 
   // Location options for Add Meeting and Meeting Type for Booking Meeting Room
   final List<String> _locationOptions = ["Meeting at Local Office", "Meeting Online", "Deadline"];
@@ -93,7 +59,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     super.initState();
     _fetchEmployeeId();
     _fetchRooms();
-    _fetchProjects();
   }
 
   @override
@@ -113,9 +78,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       _employeeId = prefs.getString('employee_id') ?? '';
-      if (kDebugMode) {
-        print('Employee ID: $_employeeId');
-      } // Debug statement
     });
   }
 
@@ -123,9 +85,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   Future<String> _fetchToken() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     String token = prefs.getString('token') ?? '';
-    if (kDebugMode) {
-      print('Fetched Token: $token');
-    } // Debug statement
     return token;
   }
 
@@ -146,47 +105,16 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         setState(() {
           _rooms = data
               .map<Map<String, dynamic>>((item) => {
-                    'room_id': item['uid'],
-                    'room_name': item['room_name'],
-                  })
+            'room_id': item['uid'],
+            'room_name': item['room_name'],
+          })
               .toList();
-          if (kDebugMode) {
-            print('Fetched Rooms: $_rooms');
-          } // Debug statement
         });
       } else {
         throw Exception('Failed to load rooms');
       }
     } catch (e) {
       _showErrorMessage('Error fetching rooms: $e');
-    }
-  }
-
-  /// Fetches the list of projects from the API
-  Future<void> _fetchProjects() async {
-    try {
-      String token = await _fetchToken();
-
-      final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/proj/find-My-Project-list'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body)['result'];
-        setState(() {
-          _projects = data.map<Project>((item) => Project.fromJson(item)).toList();
-          if (kDebugMode) {
-            print('Fetched Projects: $_projects');
-          } // Debug statement
-        });
-      } else {
-        throw Exception('Failed to load projects');
-      }
-    } catch (e) {
-      _showErrorMessage('Error fetching projects: $e');
     }
   }
 
@@ -232,12 +160,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           }).toList(),
         };
 
-        // Debug: Print the API payload
-        if (kDebugMode) {
-          print('Submitting Type 1 Add Meeting with body:');
-          print(jsonEncode(body));
-        }
-
         // Sending the POST request
         final response = await http.post(
           Uri.parse(url),
@@ -247,12 +169,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           },
           body: jsonEncode(body),
         );
-
-        // Debug: Print the response status and body
-        if (kDebugMode) {
-          print('Response Status Code: ${response.statusCode}');
-          print('Response Body: ${response.body}');
-        }
 
         // Handle the response
         if (response.statusCode == 200 || response.statusCode == 201) {
@@ -264,12 +180,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             try {
               final errorResponse = jsonDecode(response.body);
               errorMsg = 'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
-            } catch (e) {
-              // Debug: Print JSON parsing error
-              if (kDebugMode) {
-                print('Error parsing response JSON: $e');
-              }
-            }
+            } catch (_) {}
           }
           _showErrorMessage(errorMsg);
         }
@@ -289,12 +200,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           "members": _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList(),
         };
 
-        // Debug: Print the API payload
-        if (kDebugMode) {
-          print('Submitting Type 2 Meeting and Booking Meeting Room with body:');
-          print(jsonEncode(body));
-        }
-
         // Sending the POST request
         final response = await http.post(
           Uri.parse(url),
@@ -304,12 +209,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           },
           body: jsonEncode(body),
         );
-
-        // Debug: Print the response status and body
-        if (kDebugMode) {
-          print('Response Status Code: ${response.statusCode}');
-          print('Response Body: ${response.body}');
-        }
 
         // Handle the response
         if (response.statusCode == 200 || response.statusCode == 201) {
@@ -321,12 +220,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             try {
               final errorResponse = jsonDecode(response.body);
               errorMsg = 'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
-            } catch (e) {
-              // Debug: Print JSON parsing error
-              if (kDebugMode) {
-                print('Error parsing response JSON: $e');
-              }
-            }
+            } catch (_) {}
           }
           _showErrorMessage(errorMsg);
         }
@@ -344,12 +238,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           "members": _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList(),
         };
 
-        // Debug: Print the API payload
-        if (kDebugMode) {
-          print('Submitting Type 3 Booking Car with body:');
-          print(jsonEncode(body));
-        }
-
         // Sending the POST request
         final response = await http.post(
           Uri.parse(url),
@@ -359,12 +247,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           },
           body: jsonEncode(body),
         );
-
-        // Debug: Print the response status and body
-        if (kDebugMode) {
-          print('Response Status Code: ${response.statusCode}');
-          print('Response Body: ${response.body}');
-        }
 
         // Handle the response
         if (response.statusCode == 200 || response.statusCode == 201) {
@@ -376,12 +258,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             try {
               final errorResponse = jsonDecode(response.body);
               errorMsg = 'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
-            } catch (e) {
-              // Debug: Print JSON parsing error
-              if (kDebugMode) {
-                print('Error parsing response JSON: $e');
-              }
-            }
+            } catch (_) {}
           }
           _showErrorMessage(errorMsg);
         }
@@ -389,10 +266,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         _showErrorMessage('Invalid booking type selected.');
       }
     } catch (e) {
-      // Debug: Print exception details
-      if (kDebugMode) {
-        print('Exception during submission: $e');
-      }
       _showErrorMessage('An error occurred while submitting the event. Please try again.');
     } finally {
       setState(() {
@@ -420,14 +293,10 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       _startDateTime = null;
       _endDateTime = null;
       _selectedMembers = [];
-      _projectId = null;
-      _statusId = null;
       _roomId = null;
       _roomName = null;
       _location = null;
       _notification = null;
-      _selectedProject = null;
-      _selectedStatus = null;
     });
   }
 
@@ -570,14 +439,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           final DateTime pickedDateTime = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
           if (isStartDateTime) {
             _startDateTime = pickedDateTime;
-            if (kDebugMode) {
-              print('Start DateTime: $_startDateTime');
-            }
           } else {
             _endDateTime = pickedDateTime;
-            if (kDebugMode) {
-              print('End DateTime: $_endDateTime');
-            }
           }
         });
       }
@@ -596,9 +459,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     if (selectedMembers != null && selectedMembers.isNotEmpty) {
       setState(() {
         _selectedMembers = selectedMembers;
-        if (kDebugMode) {
-          print('Selected Members: $_selectedMembers');
-        } // Debug statement
       });
     }
   }
@@ -621,7 +481,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 onTap: () {
                   setState(() {
                     _selectedBookingType = '1. Add Meeting';
-                    print('Selected Booking Type: $_selectedBookingType'); // Debug
+                    // Set default values for Type 1
+                    _location = "Meeting at Local Office";
+                    _notification = 5;
                   });
                   Navigator.pop(context);
                 },
@@ -631,9 +493,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 onTap: () {
                   setState(() {
                     _selectedBookingType = '2. Meeting and Booking Meeting Room';
-                    if (kDebugMode) {
-                      print('Selected Booking Type: $_selectedBookingType');
-                    } // Debug
                   });
                   Navigator.pop(context);
                 },
@@ -643,9 +502,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 onTap: () {
                   setState(() {
                     _selectedBookingType = '3. Booking Car';
-                    if (kDebugMode) {
-                      print('Selected Booking Type: $_selectedBookingType');
-                    } // Debug
                   });
                   Navigator.pop(context);
                 },
@@ -688,7 +544,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         setState(() {
                           _roomId = room['room_id'];
                           _roomName = room['room_name'];
-                          print('Selected Room: $_roomName'); // Debug
                         });
                         Navigator.pop(context);
                       },
@@ -707,7 +562,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   Widget _buildNotificationDropdown() {
     return DropdownButtonFormField<int>(
       decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.0),
         ),
@@ -716,14 +571,13 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       value: _notification,
       items: _notificationOptions
           .map((minutes) => DropdownMenuItem<int>(
-                value: minutes,
-                child: Text('Notify me $minutes min before'),
-              ))
+        value: minutes,
+        child: Text('Notify me $minutes min before'),
+      ))
           .toList(),
       onChanged: (int? newValue) {
         setState(() {
           _notification = newValue;
-          print('Selected Notification: $_notification'); // Debug
         });
       },
     );
@@ -733,7 +587,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   Widget _buildLocationDropdown() {
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.0),
         ),
@@ -742,14 +596,13 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       value: _location,
       items: _locationOptions
           .map((loc) => DropdownMenuItem<String>(
-                value: loc,
-                child: Text(loc),
-              ))
+        value: loc,
+        child: Text(loc),
+      ))
           .toList(),
       onChanged: (String? newValue) {
         setState(() {
           _location = newValue;
-          print('Selected Location/Meeting Type: $_location'); // Debug
         });
       },
     );
@@ -762,21 +615,20 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 8.0),
             // Location Dropdown
             const Text(
               'Location*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
-            const SizedBox(height: 8.0),
+            const SizedBox(height: 4.0),
             _buildLocationDropdown(),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 12.0),
             // Notification Dropdown
             const Text(
               'Notification*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
-            const SizedBox(height: 8.0),
+            const SizedBox(height: 4.0),
             _buildNotificationDropdown(),
           ],
         );
@@ -785,38 +637,37 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 6.0),
             // Phone Number Input
             const Text(
               'Tel*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
-            const SizedBox(height: 8.0),
+            const SizedBox(height: 4.0),
             TextField(
               controller: _employeeTelController,
               keyboardType: TextInputType.phone,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
               ),
             ),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 12.0),
             // Meeting Type Dropdown
             const Text(
               'Meeting Type*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
-            const SizedBox(height: 8.0),
+            const SizedBox(height: 4.0),
             _buildLocationDropdown(),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 12.0),
             // Book a Meeting Room Text
             const Text(
               'Book a Meeting Room*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
-            const SizedBox(height: 8.0),
+            const SizedBox(height: 4.0),
             // Room ID Dropdown
             GestureDetector(
               onTap: _selectRoom,
@@ -825,7 +676,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   borderRadius: BorderRadius.circular(10.0),
                   border: Border.all(color: Colors.grey),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -835,13 +686,13 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 12.0),
             // Notification Dropdown
             const Text(
               'Notification*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
-            const SizedBox(height: 8.0),
+            const SizedBox(height: 4.0),
             _buildNotificationDropdown(),
           ],
         );
@@ -850,62 +701,61 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 16.0),
             // Name Input (Optional)
             const Text(
               'Name (Optional)',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
-            const SizedBox(height: 8.0),
+            const SizedBox(height: 4.0),
             TextField(
               controller: _nameController,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
               ),
             ),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 12.0),
             // Place Input
             const Text(
               'Place*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
-            const SizedBox(height: 8.0),
+            const SizedBox(height: 4.0),
             TextField(
               controller: _placeController,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
               ),
             ),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 12.0),
             // Purpose Input
             const Text(
               'Purpose*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
-            const SizedBox(height: 8.0),
+            const SizedBox(height: 4.0),
             TextField(
               controller: _purposeController,
               maxLines: 3,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
               ),
             ),
-            const SizedBox(height: 16.0),
+            const SizedBox(height: 12.0),
             // Notification Dropdown
             const Text(
               'Notification*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
-            const SizedBox(height: 8.0),
+            const SizedBox(height: 4.0),
             _buildNotificationDropdown(),
           ],
         );
@@ -925,58 +775,58 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         // Title input
         const Text(
           'Title*',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
         ),
-        const SizedBox(height: 8.0),
+        const SizedBox(height: 4.0),
         TextField(
           controller: _titleController,
           decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10.0),
             ),
           ),
         ),
-        const SizedBox(height: 16.0),
+        const SizedBox(height: 12.0),
         // Description or Remark based on booking type
         if (_selectedBookingType == '1. Add Meeting') ...[
           const Text(
             'Description*',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
           ),
-          const SizedBox(height: 8.0),
+          const SizedBox(height: 4.0),
           TextField(
             controller: _descriptionController,
             maxLines: 3,
             decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10.0),
               ),
             ),
           ),
-          const SizedBox(height: 16.0),
+          const SizedBox(height: 12.0),
         ] else if (_selectedBookingType == '2. Meeting and Booking Meeting Room') ...[
           const Text(
             'Remark*',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
           ),
-          const SizedBox(height: 8.0),
+          const SizedBox(height: 4.0),
           TextField(
             controller: _remarkController,
             maxLines: 3,
             decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10.0),
               ),
             ),
           ),
-          const SizedBox(height: 16.0),
+          const SizedBox(height: 12.0),
         ],
         // Additional fields based on booking type
         _buildAdditionalFields(),
-        const SizedBox(height: 16.0),
+        const SizedBox(height: 12.0),
         // Date and time pickers
         Row(
           children: [
@@ -984,20 +834,22 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Start Date & Time', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
-                  const SizedBox(height: 8.0),
+                  const Text('Start Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                  const SizedBox(height: 4.0),
                   GestureDetector(
                     onTap: () => _selectDateTime(context, true),
                     child: Container(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10.0),
+                        borderRadius: BorderRadius.circular(20.0),
                         border: Border.all(color: Colors.grey),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_startDateTime == null ? 'Start Date & Time' : DateFormat('yyyy-MM-dd HH:mm').format(_startDateTime!)),
+                          Text(_startDateTime == null
+                              ? 'dd/mm/yy'
+                              : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1006,25 +858,27 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ],
               ),
             ),
-            const SizedBox(width: 20.0),
+            const SizedBox(width: 12.0),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('End Date & Time', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)),
-                  const SizedBox(height: 8.0),
+                  const Text('End Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                  const SizedBox(height: 4.0),
                   GestureDetector(
                     onTap: () => _selectDateTime(context, false),
                     child: Container(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10.0),
+                        borderRadius: BorderRadius.circular(20.0),
                         border: Border.all(color: Colors.grey),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_endDateTime == null ? 'End Date & Time' : DateFormat('yyyy-MM-dd HH:mm').format(_endDateTime!)),
+                          Text(_endDateTime == null
+                              ? 'dd/mm/yy'
+                              : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1035,7 +889,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             ),
           ],
         ),
-        const SizedBox(height: 26.0),
+        const SizedBox(height: 20.0),
         // Add People button
         Center(
           child: ElevatedButton(
@@ -1053,7 +907,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             ),
           ),
         ),
-        const SizedBox(height: 16.0),
+        const SizedBox(height: 12.0),
         // Display selected members
         if (_selectedMembers.isNotEmpty)
           Center(
@@ -1096,7 +950,10 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Build the UI
+    // Adjust padding based on screen size
+    final double horizontalPadding = MediaQuery.of(context).size.width < 360 ? 16.0 : 14.0;
+    final double verticalPadding = MediaQuery.of(context).size.height < 600 ? 10.0 : 16.0;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -1105,7 +962,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        toolbarHeight: 90,
+        toolbarHeight: 80,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(
@@ -1123,7 +980,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       body: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1138,21 +995,23 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20.0),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 15.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 12.0),
+                        elevation: 2.0,
+                        shadowColor: Colors.grey.withOpacity(0.5),
                       ),
                       child: const Text(
                         '+ Add',
-                        style: TextStyle(color: Colors.black, fontSize: 18.0),
+                        style: TextStyle(color: Colors.black, fontSize: 16.0),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20.0),
+                  const SizedBox(height: 16.0),
                   // Booking type selection
                   const Text(
                     'Type of Booking*',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
                   ),
-                  const SizedBox(height: 8.0),
+                  const SizedBox(height: 4.0),
                   GestureDetector(
                     onTap: () => _showBookingTypeModal(context),
                     child: Container(
@@ -1160,7 +1019,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         borderRadius: BorderRadius.circular(10.0),
                         border: Border.all(color: Colors.grey),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -1170,7 +1029,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16.0),
+                  const SizedBox(height: 12.0),
                   // Display additional fields based on booking type
                   _buildFormFields(),
                 ],
@@ -1212,49 +1071,5 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     } catch (e) {
       throw Exception('Error fetching profile image: $e');
     }
-  }
-}
-
-/// Model class for Project
-class Project {
-  final int id;
-  final String pName;
-  final String projectId;
-
-  Project({
-    required this.id,
-    required this.pName,
-    required this.projectId,
-  });
-
-  factory Project.fromJson(Map<String, dynamic> json) {
-    return Project(
-      id: json['id'],
-      pName: json['p_name'],
-      projectId: json['project_id'],
-    );
-  }
-
-  @override
-  String toString() {
-    return 'Project(id: $id, pName: $pName, projectId: $projectId)';
-  }
-}
-
-/// Model class for Status
-class Status {
-  final int id;
-  final String statusId;
-  final String name;
-
-  Status({
-    required this.id,
-    required this.statusId,
-    required this.name,
-  });
-
-  @override
-  String toString() {
-    return 'Status(id: $id, statusId: $statusId, name: $name)';
   }
 }

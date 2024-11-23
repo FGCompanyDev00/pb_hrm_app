@@ -282,7 +282,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                     child: ElevatedButton(
                       onPressed: _onAddButtonPressed,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.yellow[700],
+                        backgroundColor: const Color(0xFFE2AD30),
                         padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 15.0),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20.0),
