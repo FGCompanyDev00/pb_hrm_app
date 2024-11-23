@@ -658,14 +658,14 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             ),
             const SizedBox(height: 12.0),
             // Start and End Date & Time labels in same row
-            Row(
+            const Row(
               children: [
                 Expanded(
-                  child: const Text('Start Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                  child: Text('Start Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
                 ),
-                const SizedBox(width: 12.0),
+                SizedBox(width: 12.0),
                 Expanded(
-                  child: const Text('End Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                  child: Text('End Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
                 ),
               ],
             ),
@@ -724,16 +724,10 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               'Type of meeting*',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
             ),
-            const SizedBox(height: 4.0),
+            const SizedBox(height: 6.0),
             // Location dropdown
             _buildLocationDropdown(),
             const SizedBox(height: 12.0),
-            // Notification dropdown
-            const Text(
-              'Notification*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
-            ),
-            const SizedBox(height: 4.0),
             _buildNotificationDropdown(),
             const SizedBox(height: 20.0),
             // Add People button
@@ -751,7 +745,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   ),
                   child: const Text(
                     '+ Add People',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: Colors.black),
                   ),
                 ),
               ],
@@ -832,14 +826,14 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             ),
             const SizedBox(height: 12.0),
             // Start and End Date & Time labels in same row
-            Row(
+            const Row(
               children: [
                 Expanded(
-                  child: const Text('Start Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                  child: Text('Start Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
                 ),
-                const SizedBox(width: 12.0),
+                SizedBox(width: 12.0),
                 Expanded(
-                  child: const Text('End Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                  child: Text('End Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
                 ),
               ],
             ),
@@ -901,13 +895,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             const SizedBox(height: 4.0),
             // Meeting type dropdown
             _buildLocationDropdown(),
-            const SizedBox(height: 12.0),
-            // Book a Meeting Room text
-            const Text(
-              'Book a Meeting Room*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
-            ),
-            const SizedBox(height: 4.0),
+            const SizedBox(height: 6.0),
             // Room ID Dropdown
             GestureDetector(
               onTap: _selectRoom,
@@ -926,13 +914,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 12.0),
-            // Notification dropdown
-            const Text(
-              'Notification*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
-            ),
-            const SizedBox(height: 4.0),
+            const SizedBox(height: 6.0),
             _buildNotificationDropdown(),
             const SizedBox(height: 20.0),
             // Add People button
@@ -950,7 +932,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   ),
                   child: const Text(
                     '+ Add People',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: Colors.black),
                   ),
                 ),
               ],
@@ -1047,14 +1029,14 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
             ),
             const SizedBox(height: 12.0),
             // Start and End Date & Time labels in same row
-            Row(
+            const Row(
               children: [
                 Expanded(
-                  child: const Text('Start Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                  child: Text('Start Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
                 ),
-                const SizedBox(width: 12.0),
+                SizedBox(width: 12.0),
                 Expanded(
-                  child: const Text('End Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
+                  child: Text('End Date & Time*', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0)),
                 ),
               ],
             ),
@@ -1107,13 +1089,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 12.0),
-            // Notification dropdown
-            const Text(
-              'Notification*',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
-            ),
-            const SizedBox(height: 4.0),
+            const SizedBox(height: 8.0),
             _buildNotificationDropdown(),
             const SizedBox(height: 20.0),
             // Add People button
@@ -1131,7 +1107,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   ),
                   child: const Text(
                     '+ Add People',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: Colors.black),
                   ),
                 ),
               ],
