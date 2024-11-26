@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 class DayViewProvider extends InheritedWidget {
   const DayViewProvider({
-    Key? key,
-    required Widget child,
+    super.key,
+    required super.child,
     required this.state,
-  }) : super(child: child, key: key);
+  });
 
   final DayViewState state;
 

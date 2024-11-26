@@ -8,7 +8,7 @@ import '../../widgets/background_ignore_pointer.dart';
 
 class OverflowListViewRow<T extends Object> extends StatefulWidget {
   const OverflowListViewRow({
-    Key? key,
+    super.key,
     required this.oEvents,
     required this.overflowItemBuilder,
     required this.heightUnit,
@@ -18,7 +18,7 @@ class OverflowListViewRow<T extends Object> extends StatefulWidget {
     required this.ignored,
     required this.totalHeight,
     required this.cropBottomEvents,
-  }) : super(key: key);
+  });
 
   final OverflowEventsRow<T> oEvents;
   final DayViewItemBuilder<T> overflowItemBuilder;

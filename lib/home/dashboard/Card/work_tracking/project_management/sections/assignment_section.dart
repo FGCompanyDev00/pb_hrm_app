@@ -18,10 +18,10 @@ class AssignmentSection extends StatefulWidget {
   final String baseUrl;
 
   const AssignmentSection({
-    Key? key,
+    super.key,
     required this.projectId,
     required this.baseUrl,
-  }) : super(key: key);
+  });
 
   @override
   State<AssignmentSection> createState() => _AssignmentSectionState();

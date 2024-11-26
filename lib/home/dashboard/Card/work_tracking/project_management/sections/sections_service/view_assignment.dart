@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ViewAssignmentPage extends StatefulWidget {
@@ -11,11 +10,11 @@ class ViewAssignmentPage extends StatefulWidget {
   final String baseUrl;
 
   const ViewAssignmentPage({
-    Key? key,
+    super.key,
     required this.assignmentId,
     required this.projectId,
     required this.baseUrl,
-  }) : super(key: key);
+  });
 
   @override
   State<ViewAssignmentPage> createState() => _ViewAssignmentPageState();
@@ -273,9 +272,9 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
                   children: [
                     const Icon(Icons.access_time, color: Colors.black),
                     const SizedBox(width: 4),
-                    Text(
+                    const Text(
                       'Status:',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
                     ),
                     const SizedBox(width: 4),
                     Text(
@@ -302,11 +301,11 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
+                const Row(
                   children: [
-                    const Icon(Icons.folder_open, color: Colors.black),
-                    const SizedBox(width: 8),
-                    const Text('Description:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    Icon(Icons.folder_open, color: Colors.black),
+                    SizedBox(width: 8),
+                    Text('Description:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 ElevatedButton.icon(

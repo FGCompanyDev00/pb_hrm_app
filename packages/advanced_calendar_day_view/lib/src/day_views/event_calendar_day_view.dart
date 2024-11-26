@@ -10,7 +10,7 @@ import '../models/typedef.dart';
 /// it listed and sorted by the time that the events start
 class EventCalendarDayView<T extends Object> extends StatefulWidget {
   const EventCalendarDayView({
-    Key? key,
+    super.key,
     required this.events,
     required this.eventDayViewItemBuilder,
     this.timeTextColor,
@@ -25,7 +25,7 @@ class EventCalendarDayView<T extends Object> extends StatefulWidget {
     this.timeTitleColumnWidth = 50.0,
     this.time12 = false,
     this.showHourly = false,
-  }) : super(key: key);
+  });
 
   /// List of events to be display in the day view
   final List<AdvancedDayEvent<T>> events;

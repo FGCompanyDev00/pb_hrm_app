@@ -16,10 +16,10 @@ class ProjectManagementPage extends StatefulWidget {
   final String baseUrl;
 
   const ProjectManagementPage({
-    Key? key,
+    super.key,
     required this.projectId,
     required this.baseUrl,
-  }) : super(key: key);
+  });
 
   @override
   _ProjectManagementPageState createState() => _ProjectManagementPageState();

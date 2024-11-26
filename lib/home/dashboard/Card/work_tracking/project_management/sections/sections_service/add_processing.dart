@@ -108,9 +108,9 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
   }
 
   Future<void> _pickImage() async {
-    final ImagePicker _picker = ImagePicker();
+    final ImagePicker picker = ImagePicker();
     try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
         // Validate file size (e.g., max 5MB)
         final file = File(image.path);

@@ -7,7 +7,7 @@ import '../../widgets/background_ignore_pointer.dart';
 
 class TimeTableViewRow<T extends Object> extends StatefulWidget {
   const TimeTableViewRow({
-    Key? key,
+    super.key,
     required this.oEvents,
     required this.timeViewItemBuilder,
     required this.heightUnit,
@@ -17,7 +17,7 @@ class TimeTableViewRow<T extends Object> extends StatefulWidget {
     required this.ignored,
     required this.totalHeight,
     required this.cropBottomEvents,
-  }) : super(key: key);
+  });
 
   final OverTimeEventsRow<T> oEvents;
   final TimeViewItemBuilder<T> timeViewItemBuilder;

@@ -3,10 +3,10 @@ import 'package:flutter/rendering.dart';
 
 class BackgroundIgnorePointer extends SingleChildRenderObjectWidget {
   const BackgroundIgnorePointer({
-    Key? key,
-    required Widget child,
+    super.key,
+    required Widget super.child,
     this.ignored = true,
-  }) : super(key: key, child: child);
+  });
   final bool ignored;
 
   @override
@@ -38,10 +38,10 @@ class BackgroundIgnoreRenderBox extends RenderProxyBox {
 
 class StopBackgroundIgnorePointer extends StatelessWidget {
   const StopBackgroundIgnorePointer({
-    Key? key,
+    super.key,
     required this.child,
     required this.ignored,
-  }) : super(key: key);
+  });
 
   final Widget child;
   final bool ignored;

@@ -18,10 +18,10 @@ class ProcessingSection extends StatefulWidget {
   final String baseUrl;
 
   const ProcessingSection({
-    Key? key,
+    super.key,
     required this.projectId,
     required this.baseUrl,
-  }) : super(key: key);
+  });
 
   @override
   State<ProcessingSection> createState() => _ProcessingSectionState();

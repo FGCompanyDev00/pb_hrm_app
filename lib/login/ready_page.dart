@@ -87,7 +87,7 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     // Use a ScrollController to customize the scrollbar
-    final ScrollController _scrollController = ScrollController();
+    final ScrollController scrollController = ScrollController();
 
     return Scaffold(
       body: Stack(
@@ -107,13 +107,13 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
           ),
           // Main content with smooth scrolling
           Scrollbar(
-            controller: _scrollController,
+            controller: scrollController,
             thumbVisibility: true,
             thickness: 8.0,
             radius: const Radius.circular(10),
             scrollbarOrientation: ScrollbarOrientation.right,
             child: SingleChildScrollView(
-              controller: _scrollController,
+              controller: scrollController,
               physics: const BouncingScrollPhysics(),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 48.0),

@@ -10,9 +10,9 @@ class NotificationMeetingDetailsPage extends StatefulWidget {
   final String id;
 
   const NotificationMeetingDetailsPage({
-    Key? key,
+    super.key,
     required this.id,
-  }) : super(key: key);
+  });
 
   @override
   _NotificationMeetingDetailsPageState createState() =>
@@ -321,7 +321,7 @@ class _NotificationMeetingDetailsPageState
               dense: true,
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }
@@ -442,7 +442,7 @@ class _NotificationMeetingDetailsPageState
 
   Future<void> _handleMeetingAction(String action) async {
     final String uid = widget.id;
-    final String baseUrl = 'https://demo-application-api.flexiflows.co';
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
     String endpoint;
 

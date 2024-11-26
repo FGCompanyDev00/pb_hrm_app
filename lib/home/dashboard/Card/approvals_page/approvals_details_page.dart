@@ -11,10 +11,10 @@ class ApprovalsDetailsPage extends StatefulWidget {
   final String type;
 
   const ApprovalsDetailsPage({
-    Key? key,
+    super.key,
     required this.id,
     required this.type,
-  }) : super(key: key);
+  });
 
   @override
   _ApprovalsDetailsPageState createState() => _ApprovalsDetailsPageState();
@@ -607,7 +607,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       isFinalized = true;
     });
 
-    final String baseUrl = 'https://demo-application-api.flexiflows.co';
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String? token = await _getToken();
     if (token == null) {
       _showErrorDialog('Authentication Error',

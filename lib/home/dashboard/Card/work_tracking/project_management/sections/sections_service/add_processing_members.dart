@@ -11,11 +11,11 @@ class SelectProcessingMembersPage extends StatefulWidget {
   final List<Map<String, dynamic>> alreadySelectedMembers;
 
   const SelectProcessingMembersPage({
-    Key? key,
+    super.key,
     required this.projectId,
     required this.baseUrl,
     this.alreadySelectedMembers = const [],
-  }) : super(key: key);
+  });
 
   @override
   _SelectProcessingMembersPageState createState() =>

@@ -10,10 +10,10 @@ class SelectAssignmentMembersPage extends StatefulWidget {
   final String baseUrl;
 
   const SelectAssignmentMembersPage({
-    Key? key,
+    super.key,
     required this.projectId,
     required this.baseUrl,
-  }) : super(key: key);
+  });
 
   @override
   _SelectAssignmentMembersPageState createState() =>

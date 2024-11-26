@@ -12,7 +12,7 @@ import 'widgets/timetable_list_view_row.dart';
 
 class TimeTableDayView extends StatefulWidget {
   const TimeTableDayView({
-    Key? key,
+    super.key,
     required this.events,
     this.timeTitleColumnWidth = 70.0,
     this.startOfDay = const TimeOfDay(hour: 7, minute: 00),
@@ -36,12 +36,7 @@ class TimeTableDayView extends StatefulWidget {
     this.cropBottomEvents = true,
     this.time12 = false,
     this.overflowEvents = const [],
-  }) :
-        //  assert(endOfDay.difference(startOfDay).inHours > 0,
-        //     "endOfDay and startOfDay must be at least 1 hour different. The different now is: ${endOfDay.difference(startOfDay).inHours}"),
-        // assert(endOfDay.difference(startOfDay).inHours <= 24,
-        //     "endOfDay and startOfDay must be at max 24 hour different. The different now is: ${endOfDay.difference(startOfDay).inHours}"),
-        super(key: key);
+  });
 
   /// The width of the column that contain list of time points
   final double timeTitleColumnWidth;

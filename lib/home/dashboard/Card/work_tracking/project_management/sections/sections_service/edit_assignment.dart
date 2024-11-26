@@ -1,7 +1,6 @@
 // update_assignment.dart
 
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/theme/theme.dart';
@@ -48,8 +47,8 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
 
   // File Handling
   List<Map<String, dynamic>> _existingFiles = [];
-  List<Map<String, dynamic>> _filesToDelete = [];
-  List<PlatformFile> _newFiles = [];
+  final List<Map<String, dynamic>> _filesToDelete = [];
+  final List<PlatformFile> _newFiles = [];
 
   bool _isLoading = false;
 
@@ -572,7 +571,7 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
               isMarkedForDeletion ? Colors.red.withOpacity(0.1) : null,
             ),
           );
-        }).toList(),
+        }),
         // New Files
         ..._newFiles.map((file) {
           return ListTile(
@@ -587,7 +586,7 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
               },
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }
