@@ -620,7 +620,7 @@ class _DetailsPageState extends State<DetailsPage> {
                 '${formatDate(data?['date_out'])} - ${formatDate(data?['date_in'])}', Colors.orange),
             const SizedBox(height: 8),
             _buildInfoRow(Icons.access_time, 'Time',
-                '${data?['time_out'] ?? 'N/A'} - ${data?['time_in'] ?? 'N/A'}', Colors.purple),
+                '${data?['time_out'] ?? 'N/A'} - ${data?['time_in'] ?? 'No time out and time in'}', Colors.purple),
             const SizedBox(height: 8),
             Text(
               'Discretion: ${data?['employee_tel'] ?? 'N/A'}',
@@ -767,10 +767,10 @@ class _DetailsPageState extends State<DetailsPage> {
               icon: Icons.close,
               backgroundColor: Colors.grey,
               textColor: Colors.white,
-              onPressed: isFinalized ? null : () => _confirmDelete(), // Updated to _confirmDelete()
+              onPressed: isFinalized ? null : () => _confirmDelete(),
             ),
           ),
-          const SizedBox(width: 10), // Reduced spacing
+          const SizedBox(width: 10),
           Expanded(
             child: _buildStyledButton(
               label: 'Edit',
@@ -792,19 +792,42 @@ class _DetailsPageState extends State<DetailsPage> {
     required Color textColor,
     required VoidCallback? onPressed,
   }) {
-    return ElevatedButton.icon(
+    return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor,
-        padding: const EdgeInsets.symmetric(vertical: 10.0), // Reduced vertical padding
+        padding: const EdgeInsets.symmetric(vertical: 10.0),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
+          borderRadius: BorderRadius.circular(18.0),
         ),
       ),
       onPressed: onPressed,
-      icon: Icon(icon, color: textColor, size: 18), // Reduced icon size
-      label: Text(
-        label,
-        style: TextStyle(color: textColor, fontSize: 13.0), // Reduced font size
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Icon inside a circular container
+          Container(
+            width: 20,
+            height: 20,
+            decoration: const BoxDecoration(
+              color: Colors.white, // Circle background color
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: backgroundColor, // Icon color matches the button background
+              size: 18, // Icon size
+            ),
+          ),
+          const SizedBox(width: 8), // Space between icon and label
+          Text(
+            label,
+            style: TextStyle(
+              color: textColor,
+              fontSize: 14.0, // Font size
+              fontWeight: FontWeight.bold, // Optional: Bold text
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1048,11 +1071,11 @@ class _DetailsPageState extends State<DetailsPage> {
         )
             : SingleChildScrollView(
           physics:
-          const AlwaysScrollableScrollPhysics(), // To allow pull-to-refresh even when content is less
+          const AlwaysScrollableScrollPhysics(),
           child: Center( // Wrapped content in Center widget
             child: Padding(
               padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding, vertical: 12.0), // Reduced vertical padding
+                  horizontal: horizontalPadding, vertical: 12.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -1063,6 +1086,9 @@ class _DetailsPageState extends State<DetailsPage> {
                   _buildDetailsSection(),
                   const SizedBox(height: 16),
                   _buildWorkflowSection(),
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.02,
+                  ),
                   _buildActionButtons(context),
                 ],
               ),

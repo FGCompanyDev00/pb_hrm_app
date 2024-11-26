@@ -58,6 +58,7 @@ class _OfficeBookingEventEditPageState
   TextEditingController();
 
   // Controllers for Car
+  final TextEditingController _carEmployeeIDController = TextEditingController();
   final TextEditingController _carPurposeController = TextEditingController();
   final TextEditingController _carPlaceController = TextEditingController();
   final TextEditingController _carDateInController = TextEditingController();
@@ -90,6 +91,7 @@ class _OfficeBookingEventEditPageState
     _meetingRemarkController.dispose();
 
     // Car Controllers
+    _carEmployeeIDController.dispose();
     _carPurposeController.dispose();
     _carPlaceController.dispose();
     _carDateInController.dispose();
@@ -331,19 +333,20 @@ class _OfficeBookingEventEditPageState
   /// Populates car booking data into controllers
   void _populateCarData(Map<String, dynamic> data) {
     setState(() {
+      _carEmployeeIDController.text = data['employee_id'] ?? 'No Employee ID';
       _carPurposeController.text = data['purpose'] ?? '';
       _carPlaceController.text = data['place'] ?? '';
       _carDateInController.text = data['date_in'] ?? '';
       _carDateOutController.text = data['date_out'] ?? '';
       _employeeId = data['employee_id']?.toString() ?? _employeeId;
-
-      _selectedMembers = List<Map<String, dynamic>>.from(
-          data['members']?.map((member) => {
-            'employee_id': member['employee_id'],
-            'employee_name': member['employee_name'],
-            'img_name': member['img_name'],
-          }) ??
-              []);
+      //
+      // _selectedMembers = List<Map<String, dynamic>>.from(
+      //     data['members']?.map((member) => {
+      //       'employee_id': member['employee_id'],
+      //       'employee_name': member['employee_name'],
+      //       'img_name': member['img_name'],
+      //     }) ??
+      //         []);
     });
   }
 
@@ -660,44 +663,44 @@ class _OfficeBookingEventEditPageState
         ),
         const SizedBox(height: 16.0),
         // Members Label and Edit Button
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Members*',
-              style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
-            ),
-            ElevatedButton(
-              onPressed: _editMembers,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                    vertical: 8.0, horizontal: 16.0),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0)),
-              ),
-              child: const Text('Edit Members'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8.0),
-        _selectedMembers.isNotEmpty
-            ? Wrap(
-          spacing: 8.0,
-          children: _selectedMembers.map((member) {
-            return Chip(
-              avatar: CircleAvatar(
-                backgroundImage: NetworkImage(
-                    member['img_name'] ??
-                        'https://www.w3schools.com/howto/img_avatar.png'),
-              ),
-              label: Text(member['employee_name'] ?? 'No Name'),
-            );
-          }).toList(),
-        )
-            : const Text(
-          'No members selected.',
-          style: TextStyle(color: Colors.grey),
-        ),
+        // Row(
+        //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        //   children: [
+        //     const Text(
+        //       'Members*',
+        //       style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
+        //     ),
+        //     ElevatedButton(
+        //       onPressed: _editMembers,
+        //       style: ElevatedButton.styleFrom(
+        //         padding: const EdgeInsets.symmetric(
+        //             vertical: 8.0, horizontal: 16.0),
+        //         shape: RoundedRectangleBorder(
+        //             borderRadius: BorderRadius.circular(10.0)),
+        //       ),
+        //       child: const Text('Edit Members'),
+        //     ),
+        //   ],
+        // ),
+        // const SizedBox(height: 8.0),
+        // _selectedMembers.isNotEmpty
+        //     ? Wrap(
+        //   spacing: 8.0,
+        //   children: _selectedMembers.map((member) {
+        //     return Chip(
+        //       avatar: CircleAvatar(
+        //         backgroundImage: NetworkImage(
+        //             member['img_name'] ??
+        //                 'https://www.w3schools.com/howto/img_avatar.png'),
+        //       ),
+        //       label: Text(member['employee_name'] ?? member['employee_id'] ?? 'No Name'),
+        //     );
+        //   }).toList(),
+        // )
+        //     : const Text(
+        //   'No members selected.',
+        //   style: TextStyle(color: Colors.grey),
+        // ),
       ],
     );
   }
@@ -715,7 +718,7 @@ class _OfficeBookingEventEditPageState
     }).map((room) {
       return DropdownMenuItem<String>(
         value: room['room_id'].toString(),
-        child: Text(room['room_name'] ?? 'Unknown Room'),
+        child: Text(room['room_name']?.isNotEmpty == true ? room['room_name'] : 'Unknown Room'),
       );
     }).toList();
   }
@@ -725,6 +728,17 @@ class _OfficeBookingEventEditPageState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text('Employee ID'),
+        const SizedBox(height: 8.0),
+        TextFormField(
+          controller: _carEmployeeIDController,
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+          ),
+          enabled: false,
+        ),
+        const SizedBox(height: 12.0),
         // Purpose Label and Input
         const Text('Purpose*'),
         const SizedBox(height: 8.0),
@@ -814,7 +828,7 @@ class _OfficeBookingEventEditPageState
     return ElevatedButton(
       onPressed: _isLoading ? null : _submitEdit,
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.orangeAccent,
+        backgroundColor: const Color(0xFFDBB342),
         padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 12.0),
         shape:
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
@@ -897,11 +911,6 @@ class _OfficeBookingEventEditPageState
             "date_out": _carDateOutController.text.isNotEmpty
                 ? _carDateOutController.text
                 : null,
-            "members": _selectedMembers.isNotEmpty
-                ? _selectedMembers
-                .map((member) => {"employee_id": member['employee_id']})
-                .toList()
-                : [],
           };
           break;
         default:
@@ -938,8 +947,14 @@ class _OfficeBookingEventEditPageState
         if (response.body.isNotEmpty) {
           try {
             final errorResponse = jsonDecode(response.body);
-            errorMsg =
-            'Failed to update event: ${errorResponse['message'] ?? 'Please try again.'}';
+
+            // Include 'title' in the error message if present
+            final title = errorResponse['title'] ?? '';
+            final message = errorResponse['message'] ?? 'Please try again.';
+
+            errorMsg = title.isNotEmpty
+                ? '$title\n$message'
+                : 'Failed to update event: $message';
           } catch (_) {
             // If response is not JSON, keep the default error message
           }
@@ -969,7 +984,7 @@ class _OfficeBookingEventEditPageState
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        toolbarHeight: 90,
+        toolbarHeight: 80,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             image: DecorationImage(

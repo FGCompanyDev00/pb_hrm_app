@@ -129,7 +129,8 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
     }
     try {
       final response = await http.get(
-        Uri.parse('${widget.baseUrl}/api/work-tracking/meeting/get-all-meeting'),
+        Uri.parse(
+            '${widget.baseUrl}/api/work-tracking/meeting/get-all-meeting'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -391,7 +392,8 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
 
       final response = await http.put(
         Uri.parse(
-            '${widget.baseUrl}/api/work-tracking/meeting/update/${widget.meetingId}'),
+            '${widget.baseUrl}/api/work-tracking/meeting/update/${widget
+                .meetingId}'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -451,9 +453,11 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red, // Changed to red for better visibility
+                backgroundColor: Colors
+                    .redAccent,
               ),
-              child: const Text('Delete', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                  'Delete', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -483,7 +487,8 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
     try {
       final response = await http.put(
         Uri.parse(
-            '${widget.baseUrl}/api/work-tracking/meeting/delete/${widget.meetingId}'),
+            '${widget.baseUrl}/api/work-tracking/meeting/delete/${widget
+                .meetingId}'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -581,8 +586,13 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
           controller: controller,
           decoration: InputDecoration(
             labelText: label,
+            labelStyle: TextStyle(color: Colors.grey.shade600),
             border: const OutlineInputBorder(),
             suffixIcon: suffixIcon,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+            focusedBorder: const OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.blue, width: 2),
+            ),
           ),
           keyboardType: keyboardType,
           maxLines: maxLines,
@@ -616,8 +626,8 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
           'Edit Processing Item',
           style: TextStyle(
             color: Colors.black,
-            fontSize: 22,
-            fontWeight: FontWeight.w500,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
           ),
         ),
         leading: IconButton(
@@ -630,7 +640,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
             Navigator.pop(context);
           },
         ),
-        toolbarHeight: 80,
+        toolbarHeight: 70,
         elevation: 0,
         backgroundColor: Colors.transparent,
       ),
@@ -639,7 +649,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
           : GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Form(
             key: _formKey,
             child: Column(
@@ -657,16 +667,15 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                           style: TextStyle(color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red, // Changed to red for better visibility
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 12.0),
+                          backgroundColor: Colors.grey,
+                          padding: const EdgeInsets.symmetric(vertical: 10.0),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
+                            borderRadius: BorderRadius.circular(10.0),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: _isLoading ? null : _updateMeeting,
@@ -676,19 +685,17 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                           style: TextStyle(color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                          const Color(0xFFDBB342), // Hex #DBB342
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 12.0),
+                          backgroundColor: const Color(0xFFDBB342),
+                          padding: const EdgeInsets.symmetric(vertical: 10.0),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
+                            borderRadius: BorderRadius.circular(10.0),
                           ),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 // Title Input
                 _buildEditableField(
                   label: 'Title',
@@ -720,12 +727,10 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 // Status Dropdown
                 DropdownButtonFormField<String>(
-                  value: isStatusEdited
-                      ? updatedStatus
-                      : originalStatus,
+                  value: isStatusEdited ? updatedStatus : originalStatus,
                   decoration: const InputDecoration(
                     labelText: 'Status',
                     border: OutlineInputBorder(),
@@ -768,7 +773,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 // Start Date-Time
                 Row(
                   children: [
@@ -783,12 +788,11 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                         ),
                         onTap: _isLoading ? null : _selectStartDate,
                         validator: (value) {
-                          // Optional field
-                          return null;
+                          return null; // Optional
                         },
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: _buildEditableField(
                         label: 'Start Time',
@@ -800,14 +804,13 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                         ),
                         onTap: _isLoading ? null : _selectStartTime,
                         validator: (value) {
-                          // Optional field
-                          return null;
+                          return null; // Optional
                         },
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 // End Date-Time
                 Row(
                   children: [
@@ -822,12 +825,11 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                         ),
                         onTap: _isLoading ? null : _selectEndDate,
                         validator: (value) {
-                          // Optional field
-                          return null;
+                          return null; // Optional
                         },
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: _buildEditableField(
                         label: 'End Time',
@@ -839,14 +841,13 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                         ),
                         onTap: _isLoading ? null : _selectEndTime,
                         validator: (value) {
-                          // Optional field
-                          return null;
+                          return null; // Optional
                         },
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 // Description Input
                 _buildEditableField(
                   label: 'Description',
@@ -874,11 +875,10 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                     }
                   },
                   validator: (value) {
-                    // Optional field, add validation if necessary
-                    return null;
+                    return null; // Optional
                   },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
               ],
             ),
           ),

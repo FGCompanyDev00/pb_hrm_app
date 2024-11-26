@@ -356,7 +356,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       key: ValueKey(index),
       startActionPane: ActionPane(
         motion: const DrawerMotion(),
-        extentRatio: 0.35,
+        extentRatio: 0.40,
         children: [
           CustomSlidableAction(
             onPressed: (context) {

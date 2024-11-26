@@ -654,7 +654,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                                     'Upload Image',
                                     style: TextStyle(
                                       color: Colors.black,
-                                      fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14, // Reduce font size for smaller screens
+                                      fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
                                     ),
                                   ),
                                 ),
