@@ -123,7 +123,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
 
   Widget _buildHeader(bool isDarkMode) {
     return Container(
-      height: 150,
+      height: 120,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
@@ -135,32 +135,42 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(top: 60.0, left: 8.0, right: 8.0),
+        padding: const EdgeInsets.only(top: 40.0, left: 16.0, right: 16.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // Back Button
             IconButton(
               icon: Icon(
-                Icons.arrow_back,
+                Icons.arrow_back_ios_new,
                 color: isDarkMode ? Colors.white : Colors.black,
+                size: 20,
               ),
               onPressed: () => Navigator.maybePop(context),
+              tooltip: 'Back',
             ),
-            Text(
-              'Work Tracking',
-              style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+            // Title
+            Expanded(
+              child: Text(
+                'Work Tracking',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
-            Transform.translate(
-              offset: const Offset(-12.0, 0.0),
-              child: CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.green,
+            // Add Project Button
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: Colors.green,
+              child: Transform.scale(
+                scale: 1.5,
                 child: IconButton(
-                  icon: const Icon(Icons.add, color: Colors.white, size: 32),
+                  icon: const Icon(Icons.add, color: Colors.white, size: 24),
                   onPressed: () {
                     print('Add Project button pressed.');
                     Navigator.push(
@@ -173,6 +183,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                       }
                     });
                   },
+                  tooltip: 'Add Project',
                 ),
               ),
             ),
