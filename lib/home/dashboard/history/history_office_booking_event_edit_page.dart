@@ -339,14 +339,14 @@ class _OfficeBookingEventEditPageState
       _carDateInController.text = data['date_in'] ?? '';
       _carDateOutController.text = data['date_out'] ?? '';
       _employeeId = data['employee_id']?.toString() ?? _employeeId;
-      //
-      // _selectedMembers = List<Map<String, dynamic>>.from(
-      //     data['members']?.map((member) => {
-      //       'employee_id': member['employee_id'],
-      //       'employee_name': member['employee_name'],
-      //       'img_name': member['img_name'],
-      //     }) ??
-      //         []);
+
+      _selectedMembers = List<Map<String, dynamic>>.from(
+          data['members']?.map((member) => {
+            'employee_id': member['employee_id'],
+            'employee_name': member['employee_name'],
+            'img_name': member['img_name'],
+          }) ??
+              []);
     });
   }
 
@@ -663,44 +663,44 @@ class _OfficeBookingEventEditPageState
         ),
         const SizedBox(height: 16.0),
         // Members Label and Edit Button
-        // Row(
-        //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        //   children: [
-        //     const Text(
-        //       'Members*',
-        //       style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
-        //     ),
-        //     ElevatedButton(
-        //       onPressed: _editMembers,
-        //       style: ElevatedButton.styleFrom(
-        //         padding: const EdgeInsets.symmetric(
-        //             vertical: 8.0, horizontal: 16.0),
-        //         shape: RoundedRectangleBorder(
-        //             borderRadius: BorderRadius.circular(10.0)),
-        //       ),
-        //       child: const Text('Edit Members'),
-        //     ),
-        //   ],
-        // ),
-        // const SizedBox(height: 8.0),
-        // _selectedMembers.isNotEmpty
-        //     ? Wrap(
-        //   spacing: 8.0,
-        //   children: _selectedMembers.map((member) {
-        //     return Chip(
-        //       avatar: CircleAvatar(
-        //         backgroundImage: NetworkImage(
-        //             member['img_name'] ??
-        //                 'https://www.w3schools.com/howto/img_avatar.png'),
-        //       ),
-        //       label: Text(member['employee_name'] ?? member['employee_id'] ?? 'No Name'),
-        //     );
-        //   }).toList(),
-        // )
-        //     : const Text(
-        //   'No members selected.',
-        //   style: TextStyle(color: Colors.grey),
-        // ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Members*',
+              style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
+            ),
+            ElevatedButton(
+              onPressed: _editMembers,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                    vertical: 8.0, horizontal: 16.0),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0)),
+              ),
+              child: const Text('Edit Members'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8.0),
+        _selectedMembers.isNotEmpty
+            ? Wrap(
+          spacing: 8.0,
+          children: _selectedMembers.map((members) {
+            return Chip(
+              avatar: CircleAvatar(
+                backgroundImage: NetworkImage(
+                    members['img_name'] ??
+                        'https://www.w3schools.com/howto/img_avatar.png'),
+              ),
+              label: Text(members['employee_name'] ?? members['employee_id'] ?? 'No Name'),
+            );
+          }).toList(),
+        )
+            : const Text(
+          'No members selected.',
+          style: TextStyle(color: Colors.grey),
+        ),
       ],
     );
   }
@@ -911,6 +911,12 @@ class _OfficeBookingEventEditPageState
             "date_out": _carDateOutController.text.isNotEmpty
                 ? _carDateOutController.text
                 : null,
+            "permit_branch": "0", // Always send "0"
+            "members": _selectedMembers.isNotEmpty
+                ? _selectedMembers
+                .map((member) => {"employee_id": member['employee_id']})
+                .toList()
+                : [],
           };
           break;
         default:

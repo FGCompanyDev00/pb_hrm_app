@@ -627,7 +627,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
           style: TextStyle(
             color: Colors.black,
             fontSize: 20,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
           ),
         ),
         leading: IconButton(
