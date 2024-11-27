@@ -483,7 +483,7 @@ class _HistoryPageState extends State<HistoryPage> {
     String formatDate(String dateStr) {
       try {
         DateTime date;
-        // Check if the date string has a 'T' indicating the full ISO format
+
         if (dateStr.contains('T')) {
           date = DateTime.parse(dateStr);
         } else {
