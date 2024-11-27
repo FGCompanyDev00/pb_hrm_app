@@ -4,6 +4,7 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/standard/extension.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
@@ -603,7 +604,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   /// Filters and searches events based on selected category and search query
   void _filterAndSearchEvents() {
     if (_selectedDay == null) return;
-    offlineProvider.addEventsCalendar(CalendarEventsListRecord(listEvents: _events.value));
+    // offlineProvider.addEventsCalendar(CalendarEventsListRecord(listEvents: _events.value));
     List<EventRecord> dayEvents = _getEventsForDay(_selectedDay!);
     if (_selectedCategory != 'All') {
       dayEvents = dayEvents.where((event) {
@@ -1041,12 +1042,18 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 eventLoader: _getDubplicateEventsForDay,
                 calendarStyle: CalendarStyle(
                   todayDecoration: BoxDecoration(
-                    color: Colors.orangeAccent.withOpacity(1),
-                    shape: BoxShape.circle,
+                    color: ColorStandardization().colorDarkGold,
+                    borderRadius: BorderRadius.circular(5),
                   ),
                   selectedDecoration: BoxDecoration(
                     color: Colors.green.withOpacity(1),
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  defaultDecoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  weekendDecoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(5),
                   ),
                   outsideDaysVisible: false,
                   weekendTextStyle: TextStyle(
@@ -1068,25 +1075,23 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                         return date.isAfter(event.startDateTime.subtract(const Duration(days: 1))) && date.isBefore(event.endDateTime.add(const Duration(days: 1)));
                       }).toList();
 
-                      return Align(
-                        alignment: Alignment.bottomCenter,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: eventSpans.map((event) {
-                            return Container(
-                              width: 5,
-                              height: 5,
-                              margin: const EdgeInsets.symmetric(horizontal: 2),
-                              decoration: BoxDecoration(
-                                color: getEventColor(event),
-                                shape: BoxShape.circle,
-                              ),
-                            );
-                          }).toList(),
-                        ),
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: eventSpans.map((event) {
+                          final totalDays = event.endDateTime.difference(event.startDateTime);
+                          return Container(
+                            height: 2,
+                            margin: EdgeInsets.symmetric(vertical: 1, horizontal: totalDays.inDays > 0 ? 0 : 20),
+                            decoration: BoxDecoration(
+                              color: ColorStandardization().colorDarkGreen,
+                              shape: BoxShape.rectangle,
+                            ),
+                          );
+                        }).toList(),
                       );
                     }
-                    return null;
+                    return child;
                   },
                 ),
               );
