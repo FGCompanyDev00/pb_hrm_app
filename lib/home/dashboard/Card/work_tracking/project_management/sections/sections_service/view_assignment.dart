@@ -151,28 +151,58 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
   }
 
   Widget _buildMembersList() {
-    if (_members.isEmpty) {
+    // Filter duplicates based on member names
+    var uniqueMembers = <Map<String, dynamic>>[];
+    var seenNames = <String>{};
+
+    for (var member in _members) {
+      String fullName = '${member['name']} ${member['surname']}';
+      if (!seenNames.contains(fullName)) {
+        seenNames.add(fullName);
+        uniqueMembers.add(member);
+      }
+    }
+
+    if (uniqueMembers.isEmpty) {
       return const Text('No members assigned.', style: TextStyle(fontSize: 14));
     }
 
     return Wrap(
       spacing: 12,
-      children: _members.map((member) {
+      children: uniqueMembers.map((member) {
         String imageUrl = member['image_url'] ?? 'https://via.placeholder.com/50';
         String memberName = '${member['name']} ${member['surname']}';
-        return Column(
-          children: [
-            CircleAvatar(
-              backgroundImage: NetworkImage(imageUrl),
-              radius: 20,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              memberName,
-              style: const TextStyle(fontSize: 12),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+
+        return GestureDetector(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Selected Member'),
+                  content: Text('Name: $memberName'),
+                  actions: <Widget>[
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('Close'),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+          child: Column(
+            children: [
+              CircleAvatar(
+                backgroundImage: NetworkImage(imageUrl),
+                radius: 30,
+              ),
+              // Remove the member name from being displayed by default
+              // The name will only show when clicked.
+            ],
+          ),
         );
       }).toList(),
     );

@@ -108,46 +108,27 @@ class _DetailsPageState extends State<DetailsPage> {
 
     final String type = widget.types.toLowerCase();
     final String id = widget.id;
-    final String status;
-    if (widget.types.toLowerCase() == 'leave') {
-      if (widget.status.toLowerCase() == 'approved') {
-        status = 'Approved';
-      } else if (widget.status.toLowerCase() == 'cancel') {
-        status = 'Cancel';
-      } else if (widget.status.toLowerCase() == 'processing') {
-        status = 'Processing';
-      } else {
-        status = widget.status; // Keep as is for other statuses
-      }
-    } else if (widget.types.toLowerCase() == 'meeting') {
-      if (widget.status.toLowerCase() == 'approved') {
-        status = 'approved';
-      } else if (widget.status.toLowerCase() == 'cancel') {
-        status = 'cancel';
-      } else {
-        status = widget.status; // Keep as is for other statuses
-      }
+    final String status = widget.status.toLowerCase();
+
+    // Mapping types and statuses
+    String statusValue;
+    if (type == 'meeting') {
+      statusValue = status == 'waiting' ? 'waiting' : status;
+    } else if (type == 'car') {
+      statusValue = status == 'waiting' ? 'Branch Waiting' : status;
+    } else if (type == 'leave') {
+      statusValue = status == 'waiting' ? 'Waiting' : status;
     } else {
-      status = widget.status; // Keep as is for other types like car
+      statusValue = 'unknown';
     }
 
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    // Initialize API URL based on type
-    String apiUrl;
-
-    if (type == 'leave') {
-      // For leave type, use GET request to /api/leave_request/all/{take_leave_request_id}
-      apiUrl = '$baseUrl/api/leave_request/all/$id';
-    } else {
-      // For other types, use existing POST request
-      apiUrl = '$baseUrl/api/app/users/history/pending/$id';
-    }
+    final String apiUrl = '$baseUrl/api/app/users/history/pending/$id';
 
     try {
       final String? tokenValue = await _getToken();
       if (tokenValue == null) {
-        _showErrorDialog('Authentication Error',
-            'Token not found. Please log in again.');
+        _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
         setState(() {
           isLoading = false;
           _errorMessage = 'Token not found. Please log in again.';
@@ -157,56 +138,35 @@ class _DetailsPageState extends State<DetailsPage> {
 
       http.Response response;
 
-      if (type == 'leave') {
-        // Send GET request for leave type
-        if (kDebugMode) {
-          print('Sending GET request to $apiUrl');
-        }
-        response = await http.get(
-          Uri.parse(apiUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $tokenValue',
-          },
-        );
-      } else {
-        // Send POST request for other types
-        // Prepare the request body with 'types' and 'status'
-        Map<String, dynamic> requestBody = {
-          'types': widget.types,
-          'status': status,
-        };
+      // Prepare request body for POST request
+      Map<String, dynamic> requestBody = {
+        'types': type,
+        'status': statusValue,
+      };
 
-        if (kDebugMode) {
-          print(
-              'Sending POST request to $apiUrl with body: $requestBody');
-        }
-
-        response = await http.post(
-          Uri.parse(apiUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $tokenValue',
-          },
-          body: jsonEncode(requestBody),
-        );
+      if (kDebugMode) {
+        print('Sending POST request to $apiUrl with body: $requestBody');
       }
+
+      // Sending POST request for all types (meeting, leave, car)
+      response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $tokenValue',
+        },
+        body: jsonEncode(requestBody),
+      );
 
       if (kDebugMode) {
         print('Received response with status code: ${response.statusCode}');
         print('Response body: ${response.body}');
       }
 
-      if (response.statusCode == 200 ||
-          response.statusCode == 201 ||
-          response.statusCode == 202) {
+      if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 202) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
 
-        // Check the 'statusCode' in the response body
-        if (responseData.containsKey('statusCode') &&
-            (responseData['statusCode'] == 200 ||
-                responseData['statusCode'] == 201 ||
-                responseData['statusCode'] == 202)) {
+        if (responseData.containsKey('statusCode') && (responseData['statusCode'] == 200 || responseData['statusCode'] == 201 || responseData['statusCode'] == 202)) {
           // Success
           if (!responseData.containsKey('results')) {
             _showErrorDialog('Error', 'Invalid API response structure.');
@@ -217,88 +177,64 @@ class _DetailsPageState extends State<DetailsPage> {
             return;
           }
 
-          if (type == 'leave') {
-            // For leave, the API returns a GET response with a list containing leave details
+          // Handle the results based on type
+          if (type == 'meeting') {
+            if (responseData['results'] is Map) {
+              final Map<String, dynamic> meetingData = responseData['results'];
+              setState(() {
+                data = meetingData;
+                isLoading = false;
+              });
+            } else {
+              setState(() {
+                data = null;
+                isLoading = false;
+                _errorMessage = 'Unexpected data format for meeting.';
+              });
+              _showErrorDialog('Error', 'Unexpected data format for meeting.');
+            }
+          } else if (type == 'car') {
+            if (responseData['results'] is Map) {
+              final Map<String, dynamic> carData = responseData['results'];
+              setState(() {
+                data = carData;
+                isLoading = false;
+              });
+            } else {
+              setState(() {
+                data = null;
+                isLoading = false;
+                _errorMessage = 'Unexpected data format for car.';
+              });
+              _showErrorDialog('Error', 'Unexpected data format for car.');
+            }
+          } else if (type == 'leave') {
             if (responseData['results'] is List) {
-              final List<dynamic> resultsList = responseData['results'];
-              if (resultsList.isNotEmpty) {
+              final List<dynamic> leaveData = responseData['results'];
+              if (leaveData.isNotEmpty) {
                 setState(() {
-                  data = resultsList[0] as Map<String, dynamic>;
+                  data = leaveData[0] as Map<String, dynamic>;
                   isLoading = false;
                 });
-
-                if (data != null) {
-                  // Determine the ID to fetch profile image
-                  String profileId = data?['requestor_id'] ?? '';
-                  if (profileId.isNotEmpty) {
-                    _fetchProfileImage(profileId);
-                  } else {
-                    setState(() {
-                      imageUrl = _defaultAvatarUrl();
-                    });
-                  }
-                } else {
-                  setState(() {
-                    imageUrl = _defaultAvatarUrl();
-                  });
-                }
               } else {
-                // Empty list
                 setState(() {
                   data = null;
                   isLoading = false;
-                  _errorMessage = 'No data found.';
+                  _errorMessage = 'No leave data found.';
                 });
               }
             } else {
-              // Unexpected structure
               setState(() {
                 data = null;
                 isLoading = false;
-                _errorMessage = 'Unexpected data format.';
+                _errorMessage = 'Unexpected data format for leave.';
               });
-              _showErrorDialog('Error', 'Unexpected data format.');
-            }
-          } else {
-            // For meeting and car, handle existing POST response
-            // Handle 'results' as a list for 'meeting' and 'car' types
-            if (responseData['results'] is List &&
-                responseData['results'].isNotEmpty) {
-              setState(() {
-                data = responseData['results'][0] as Map<String, dynamic>;
-                isLoading = false;
-              });
-            } else if (responseData['results'] is Map<String, dynamic>) {
-              setState(() {
-                data = responseData['results'] as Map<String, dynamic>;
-                isLoading = false;
-              });
-            } else {
-              // Unexpected structure
-              setState(() {
-                data = null;
-                isLoading = false;
-                _errorMessage = 'Unexpected data format.';
-              });
-              _showErrorDialog('Error', 'Unexpected data format.');
-            }
-
-            if (type != 'leave' && data != null) {
-              // Determine the ID to fetch profile image
-              String profileId = data?['employee_id'] ?? '';
-              if (profileId.isNotEmpty) {
-                _fetchProfileImage(profileId);
-              } else {
-                setState(() {
-                  imageUrl = _defaultAvatarUrl();
-                });
-              }
+              _showErrorDialog('Error', 'Unexpected data format for leave.');
             }
           }
         } else {
           // Handle API-level errors
-          String errorMessage =
-              responseData['message'] ?? 'Unknown error.';
+          String errorMessage = responseData['message'] ?? 'Unknown error.';
           _showErrorDialog('Error', errorMessage);
           setState(() {
             isLoading = false;
@@ -307,8 +243,7 @@ class _DetailsPageState extends State<DetailsPage> {
         }
       } else {
         // Handle HTTP errors
-        _showErrorDialog(
-            'Error', 'Failed to fetch details: ${response.statusCode}');
+        _showErrorDialog('Error', 'Failed to fetch details: ${response.statusCode}');
         setState(() {
           isLoading = false;
           _errorMessage = 'Failed to fetch details: ${response.statusCode}';
@@ -318,11 +253,9 @@ class _DetailsPageState extends State<DetailsPage> {
       print('Error fetching details: $e');
       setState(() {
         isLoading = false;
-        _errorMessage =
-        'An unexpected error occurred while fetching details.';
+        _errorMessage = 'An unexpected error occurred while fetching details.';
       });
-      _showErrorDialog(
-          'Error', 'An unexpected error occurred while fetching details.');
+      _showErrorDialog('Error', 'An unexpected error occurred while fetching details.');
     }
   }
 
@@ -579,99 +512,43 @@ class _DetailsPageState extends State<DetailsPage> {
   /// Build Details Section
   Widget _buildDetailsSection() {
     final String type = widget.types.toLowerCase();
+    final List<Map<String, dynamic>> details = [];
 
-    switch (type) {
-      case 'meeting':
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoRow(
-                Icons.bookmark, 'Title', data?['title'] ?? 'No Title', Colors.blue),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.calendar_today, 'Date',
-                '${formatDate(data?['from_date_time'])} - ${formatDate(data?['to_date_time'])}', Colors.green),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.access_time, 'Time',
-                '${formatDate(data?['from_date_time'], includeTime: true)} - ${formatDate(data?['to_date_time'], includeTime: true)}', Colors.orange),
-            const SizedBox(height: 8),
-            _buildInfoRow(
-                Icons.description, 'Description', data?['remark'] ?? 'No Remark', Colors.indigo),
-            const SizedBox(height: 8),
-            Text(
-              'Room: ${data?['room_name'] ?? 'No room specified'}',
-              style: const TextStyle(
-                fontSize: 14, // Reduced font size
-                fontWeight: FontWeight.bold,
-                color: Colors.orange,
-              ),
-            ),
-          ],
-        );
-      case 'car':
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoRow(
-                Icons.bookmark, 'Purpose', data?['purpose'] ?? 'No Purpose', Colors.blue),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.place, 'Place', data?['place'] ?? 'N/A', Colors.green),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.calendar_today, 'Date',
-                '${formatDate(data?['date_out'])} - ${formatDate(data?['date_in'])}', Colors.orange),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.access_time, 'Time',
-                '${data?['time_out'] ?? 'N/A'} - ${data?['time_in'] ?? 'No time out and time in'}', Colors.purple),
-            const SizedBox(height: 8),
-            Text(
-              'Discretion: ${data?['employee_tel'] ?? 'N/A'}',
-              style: const TextStyle(
-                fontSize: 14, // Reduced font size
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
-              ),
-            ),
-          ],
-        );
-      case 'leave':
-        String leaveTypeName =
-            _leaveTypes[data?['leave_type_id']] ?? 'Unknown Leave Type';
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoRow(
-                Icons.bookmark, 'Title', data?['name'] ?? 'No Title', Colors.blue),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.calendar_today, 'Date',
-                '${formatDate(data?['take_leave_from'])} - ${formatDate(data?['take_leave_to'])}', Colors.green),
-            const SizedBox(height: 8),
-            _buildInfoRow(Icons.label, 'Type of leave',
-                '$leaveTypeName (${data?['days']?.toString() ?? 'N/A'})', Colors.orange),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(8), // Reduced padding
-              margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 10), // Reduced margins
-              decoration: BoxDecoration(
-                color: Colors.green[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.green),
-              ),
-              child: Center(
-                child: Text(
-                  data?['take_leave_reason'] ?? 'No Description Provided',
-                  style: const TextStyle(fontSize: 12, color: Colors.black), // Reduced font size
-                ),
-              ),
-            ),
-          ],
-        );
-      default:
-        return const Center(
-          child: Text(
-            'Unknown Request Type',
-            style: TextStyle(fontSize: 16, color: Colors.red),
-          ),
-        );
+    if (type == 'meeting') {
+      details.addAll([
+        {'icon': Icons.bookmark, 'title': 'Title', 'value': data?['title'] ?? 'No Title', 'color': Colors.blue},
+        {'icon': Icons.calendar_today, 'title': 'Date', 'value': '${formatDate(data?['from_date_time'])} - ${formatDate(data?['to_date_time'])}', 'color': Colors.green},
+        {'icon': Icons.access_time, 'title': 'Time', 'value': '${formatDate(data?['from_date_time'], includeTime: true)} - ${formatDate(data?['to_date_time'], includeTime: true)}', 'color': Colors.orange},
+        {'icon': Icons.description, 'title': 'Description', 'value': data?['remark'] ?? 'No Remark', 'color': Colors.indigo},
+        {'icon': Icons.location_on, 'title': 'Room', 'value': data?['room_name'] ?? 'No room specified', 'color': Colors.orange}
+      ]);
+    } else if (type == 'car') {
+      details.addAll([
+        {'icon': Icons.bookmark, 'title': 'Purpose', 'value': data?['purpose'] ?? 'No Purpose', 'color': Colors.blue},
+        {'icon': Icons.place, 'title': 'Place', 'value': data?['place'] ?? 'N/A', 'color': Colors.green},
+        {'icon': Icons.calendar_today, 'title': 'Date', 'value': '${formatDate(data?['date_out'])} - ${formatDate(data?['date_in'])}', 'color': Colors.orange},
+        {'icon': Icons.access_time, 'title': 'Time', 'value': '${data?['time_out'] ?? 'N/A'} - ${data?['time_in'] ?? 'No time out and time in'}', 'color': Colors.purple},
+        {'icon': Icons.phone, 'title': 'Discretion', 'value': data?['employee_tel'] ?? 'N/A', 'color': Colors.red}
+      ]);
+    } else if (type == 'leave') {
+      String leaveTypeName = _leaveTypes[data?['leave_type_id']] ?? 'Unknown Leave Type';
+      details.addAll([
+        {'icon': Icons.bookmark, 'title': 'Title', 'value': data?['name'] ?? 'No Title', 'color': Colors.blue},
+        {'icon': Icons.calendar_today, 'title': 'Date', 'value': '${formatDate(data?['take_leave_from'])} - ${formatDate(data?['take_leave_to'])}', 'color': Colors.green},
+        {'icon': Icons.label, 'title': 'Type of leave', 'value': '$leaveTypeName (${data?['days']?.toString() ?? 'N/A'})', 'color': Colors.orange},
+        {'icon': Icons.description, 'title': 'Description', 'value': data?['take_leave_reason'] ?? 'No Description Provided', 'color': Colors.green}
+      ]);
     }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: details.map((detail) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: _buildInfoRow(detail['icon'], detail['title'], detail['value'], detail['color']),
+        );
+      }).toList(),
+    );
   }
 
   Widget _buildInfoRow(IconData icon, String title, String content, Color color) {
