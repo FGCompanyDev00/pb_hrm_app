@@ -70,6 +70,7 @@ dependencies:
   workmanager: ^0.5.2
   mime: any
   http_parser: any
+  sqflite: ^2.4.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 part 'event_record.g.dart';
 
 @HiveType(typeId: 3)
-class EventRecord extends HiveObject {
+class EventRecord {
   @HiveField(0)
   final String title;
   @HiveField(1)

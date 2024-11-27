@@ -14,7 +14,7 @@ import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/main.dart';
-import 'package:pb_hrsystem/models/event_record.dart';
+import 'package:pb_hrsystem/models/event.dart';
 import 'package:pb_hrsystem/services/http_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -37,7 +37,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   late Box eventsBox;
 
   // ValueNotifier to hold events mapped by date
-  late final ValueNotifier<Map<DateTime, List<EventRecord>>> _events;
+  late final ValueNotifier<Map<DateTime, List<Events>>> _events;
   final selectedSlot = ValueNotifier(1);
 
   // Calendar properties
@@ -45,7 +45,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
-  List<EventRecord> _eventsForDay = [];
+  List<Events> _eventsForDay = [];
+  List<Events> _eventsForAll = [];
 
   // Notifications
   late final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
@@ -72,18 +73,18 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     _selectedDay = _focusedDay;
     _events = ValueNotifier({});
     _eventsForDay = [];
+    _eventsForAll = [];
 
     // Initialize Animation Controller
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-
     // Fetch initial data
     _fetchData();
 
-    connectivityResult.onConnectivityChanged.listen((source) {
-      if (source.contains(ConnectivityResult.none)) offlineProvider.getEventsCalendar();
+    connectivityResult.onConnectivityChanged.listen((source) async {
+      if (source.contains(ConnectivityResult.none)) _eventsForDay = await offlineProvider.getCalendar();
     });
   }
 
@@ -95,7 +96,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     super.dispose();
   }
 
-  void addEvent(DateTime date, EventRecord event) {
+  void addEvent(DateTime date, Events event) {
+    if (date.year == _selectedDay?.year) {
+      _eventsForAll.add(event);
+    }
+
     final detectDate = normalizeDate(date);
     if (_events.value.containsKey(detectDate)) {
       // If the date already has events, add to the list
@@ -109,6 +114,25 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     } else {
       // Otherwise, create a new list with this event
       _events.value[detectDate] = [event];
+    }
+  }
+
+  void addEventOffline(DateTime date, List<Events> eventOffline) {
+    final detectDate = normalizeDate(date);
+    for (var i in eventOffline) {
+      if (_events.value.containsKey(detectDate)) {
+        // If the date already has events, add to the list
+        if (_events.value[detectDate]!.where((desc) => desc.description == i.description).isEmpty) {
+          _events.value[detectDate]!.add(i);
+        } else {
+          i.members?.forEach(
+            (e) => _events.value[detectDate]!.where((desc) => desc.description == i.description).first.members?.add(e),
+          );
+        }
+      } else {
+        // Otherwise, create a new list with this event
+        _events.value[detectDate] = [i];
+      }
     }
   }
 
@@ -167,7 +191,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (status == 'Cancelled') continue;
 
-        final event = EventRecord(
+        final event = Events(
           title: item['name'] ?? 'Leave',
           startDateTime: startDate,
           endDateTime: endDate,
@@ -275,7 +299,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (status == 'Cancelled') continue;
 
-        final event = EventRecord(
+        final event = Events(
           title: item['title'] ?? 'Add Meeting',
           startDateTime: startDateTime,
           endDateTime: endDateTime,
@@ -380,9 +404,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (status == 'Cancelled') continue;
 
-        EventRecord? event;
+        Events? event;
         if (mounted) {
-          event = EventRecord(
+          event = Events(
             title: item['project_name'] ?? 'Minutes Of Meeting',
             startDateTime: startDateTime,
             endDateTime: endDateTime,
@@ -432,9 +456,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (status == 'Cancelled') continue;
 
-        EventRecord? event;
+        Events? event;
         if (mounted) {
-          event = EventRecord(
+          event = Events(
             title: item['title'] ?? AppLocalizations.of(context)!.meetingRoomBookings,
             startDateTime: startDateTime,
             endDateTime: endDateTime,
@@ -522,10 +546,10 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         if (status == 'Cancelled') continue;
 
-        EventRecord? event;
+        Events? event;
 
         if (mounted) {
-          event = EventRecord(
+          event = Events(
             title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
             startDateTime: startDateTime,
             endDateTime: endDateTime,
@@ -553,9 +577,18 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Handles pull-to-refresh action
   Future<void> _onRefresh() async {
-    await _fetchData();
-    setState(() {
-      _showFiltersAndSearchBar = !_showFiltersAndSearchBar;
+    connectivityResult.checkConnectivity().then((e) async {
+      if (e.contains(ConnectivityResult.none)) {
+        _eventsForDay = await offlineProvider.getCalendar();
+        setState(() {
+          addEventOffline(_selectedDay!, _eventsForDay);
+        });
+      } else {
+        await _fetchData();
+        setState(() {
+          _showFiltersAndSearchBar = !_showFiltersAndSearchBar;
+        });
+      }
     });
   }
 
@@ -574,16 +607,16 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   }
 
   /// Retrieves events for a specific day
-  List<EventRecord> _getEventsForDay(DateTime day) {
+  List<Events> _getEventsForDay(DateTime day) {
     final normalizedDay = normalizeDate(day);
     return _events.value[normalizedDay] ?? [];
   }
 
   /// Retrieves events for a specific day
-  List<EventRecord> _getDubplicateEventsForDay(DateTime day) {
+  List<Events> _getDubplicateEventsForDay(DateTime day) {
     final normalizedDay = normalizeDate(day);
     final listEvent = _events.value[normalizedDay] ?? [];
-    List<EventRecord> updateEvents = [];
+    List<Events> updateEvents = [];
     if (listEvent.length > 4) {
       for (var i in listEvent) {
         if (updateEvents.isEmpty) {
@@ -603,12 +636,28 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   /// Filters and searches events based on selected category and search query
   void _filterAndSearchEvents() {
     if (_selectedDay == null) return;
-    // offlineProvider.addEventsCalendar(CalendarEventsListRecord(listEvents: _events.value));
-    List<EventRecord> dayEvents = _getEventsForDay(_selectedDay!);
+    offlineProvider.insertCalendar(_eventsForAll);
+    List<Events> dayEvents = _getEventsForDay(_selectedDay!);
     if (_selectedCategory != 'All') {
+      dayEvents = dayEvents.where((event) => event.category == _selectedCategory).toList();
+    }
+    if (_searchQuery.isNotEmpty) {
       dayEvents = dayEvents.where((event) {
-        return event.category == _selectedCategory;
+        final eventTitle = event.title.toLowerCase();
+        final eventDescription = event.description.toLowerCase();
+        return eventTitle.contains(_searchQuery.toLowerCase()) || eventDescription.contains(_searchQuery.toLowerCase());
       }).toList();
+    }
+    setState(() {
+      _eventsForDay = dayEvents;
+    });
+  }
+
+  void _eventsOffline() {
+    if (_selectedDay == null) return;
+    List<Events> dayEvents = _getEventsForDay(_selectedDay!);
+    if (_selectedCategory != 'All') {
+      dayEvents = dayEvents.where((event) => event.category == _selectedCategory).toList();
     }
     if (_searchQuery.isNotEmpty) {
       dayEvents = dayEvents.where((event) {
@@ -624,7 +673,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Navigates to day view when a day is double-tapped
   void _showDayView(DateTime selectedDay) {
-    // final List<EventRecord> dayEvents = _getEventsForDay(selectedDay);
+    // final List<Events> dayEvents = _getEventsForDay(selectedDay);
 
     Navigator.push(
       context,
@@ -762,7 +811,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     required String category,
     required String uid,
   }) {
-    final newEvent = EventRecord(
+    final newEvent = Events(
       title: title,
       startDateTime: startDateTime,
       endDateTime: endDateTime,
@@ -800,8 +849,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       body: RefreshIndicator(
         onRefresh: _onRefresh,
         child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.max,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (_showFiltersAndSearchBar) _buildFilters(),
@@ -942,7 +992,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               });
             },
             selectedColor: getEventColor(
-              EventRecord(
+              Events(
                 title: '',
                 startDateTime: DateTime.now(),
                 endDateTime: DateTime.now(),
@@ -997,7 +1047,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           _buildCustomHeader(isDarkMode),
           Consumer2<DateProvider, LanguageNotifier>(
             builder: (context, dateProvider, languageNotifier, child) {
-              return TableCalendar<EventRecord>(
+              return TableCalendar<Events>(
                 rowHeight: 34,
                 firstDay: DateTime.utc(2010, 10, 16),
                 lastDay: DateTime.utc(2030, 3, 14),
@@ -1235,7 +1285,7 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
               ],
             ),
           ),
-          margin: const EdgeInsets.only(bottom: 20.0, left: 15.0, right: 15.0),
+          margin: const EdgeInsets.only(bottom: 20.0, left: 15.0, right: 15.0, top: 20.0),
         );
       },
     );

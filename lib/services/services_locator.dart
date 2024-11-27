@@ -2,6 +2,7 @@
 
 import 'package:get_it/get_it.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
+import 'package:pb_hrsystem/services/offline_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
@@ -12,4 +13,5 @@ Future<void> setupServiceLocator() async {
 
   sl.registerLazySingleton<UserPreferences>(() => UserPreferences(prefs));
   sl.registerLazySingleton<Connectivity>(() => Connectivity());
+  sl.registerLazySingleton<OfflineProvider>(() => OfflineProvider());
 }

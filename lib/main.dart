@@ -11,9 +11,9 @@ import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
-import 'package:pb_hrsystem/models/calendar_events_list_record.dart';
-import 'package:pb_hrsystem/models/event_record.dart';
-import 'package:pb_hrsystem/models/material_color.dart';
+import 'package:pb_hrsystem/hive_helper/model/calendar_events_list_record.dart';
+import 'package:pb_hrsystem/hive_helper/model/event_record.dart';
+import 'package:pb_hrsystem/hive_helper/model/material_color.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
 import 'package:pb_hrsystem/services/offline_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
@@ -27,7 +27,7 @@ import 'theme/theme.dart';
 import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'models/attendance_record.dart';
+import 'hive_helper/model/attendance_record.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +39,7 @@ void main() async {
   // await initializeNotifications();
   // await scheduleBackgroundTask();
   await cancelBackgroundTask();
+  sl<OfflineProvider>().initializeCalendar();
 
   runApp(
     MultiProvider(
@@ -222,15 +223,15 @@ class _MainScreenState extends State<MainScreen> {
 Future<void> initializeHive() async {
   await Hive.initFlutter();
   Hive.registerAdapter(AttendanceRecordAdapter());
-  Hive.registerAdapter(CalendarEventsListRecordAdapter());
-  Hive.registerAdapter(EventRecordAdapter());
-  Hive.registerAdapter(MaterialColorAdapter());
+  // Hive.registerAdapter(CalendarEventsListRecordAdapter());
+  // Hive.registerAdapter(EventRecordAdapter());
+  // Hive.registerAdapter(MaterialColorAdapter());
 
   await Hive.openBox<AttendanceRecord>('pending_attendance');
-  await Hive.openBox<CalendarEventsListRecord>('store_events_calendar');
+  // await Hive.openBox<CalendarEventsListRecord>('store_events_calendar');
   await Hive.openBox<String>('userProfileBox');
   await Hive.openBox<List<String>>('bannersBox');
   await Hive.openBox('loginBox');
-  await Hive.openBox('calendarEventsRecordBox');
+  // await Hive.openBox('calendarEventsRecordBox');
   await Hive.openBox('UserProfileRecordBox');
 }

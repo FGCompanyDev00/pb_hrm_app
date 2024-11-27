@@ -12,7 +12,7 @@ import 'package:pb_hrsystem/core/widgets/scroll_controller/check_mark_indicator.
 import 'package:pb_hrsystem/core/widgets/scroll_controller/fetch_more_indicator.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
-import 'package:pb_hrsystem/models/event_record.dart';
+import 'package:pb_hrsystem/hive_helper/model/event_record.dart';
 
 class CalendarDayWidget extends HookWidget {
   const CalendarDayWidget({

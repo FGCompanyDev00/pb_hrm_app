@@ -5,29 +5,44 @@ import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
-import 'package:pb_hrsystem/models/calendar_events_list_record.dart';
+import 'package:pb_hrsystem/models/event.dart';
+import 'package:pb_hrsystem/services/local_database_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
-import '../models/attendance_record.dart';
+import '../hive_helper/model/attendance_record.dart';
 import 'package:flutter/foundation.dart';
 
 class OfflineProvider extends ChangeNotifier {
   late Box<AttendanceRecord> _attendanceBox;
-  late Box<CalendarEventsListRecord> _calendarEventsBox;
+  LocalDatabaseService localDatabaseService = LocalDatabaseService();
+
+  // late Box<CalendarEventsListRecord> _calendarEventsBox;
+
+  void initializeCalendar() async {
+    await localDatabaseService.initializeDatabase('calendar');
+  }
+
+  void insertCalendar(List<Events> events) async {
+    await localDatabaseService.insertEvents(events);
+  }
+
+  Future<List<Events>> getCalendar() async {
+    return await localDatabaseService.getListEvents();
+  }
 
   void initialize() async {
     _attendanceBox = Hive.box<AttendanceRecord>('pending_attendance');
-    _calendarEventsBox = Hive.box<CalendarEventsListRecord>('store_events_calendar');
+    // _calendarEventsBox = Hive.box<CalendarEventsListRecord>('store_events_calendar');
   }
 
-  Future<void> addEventsCalendar(CalendarEventsListRecord events) async {
-    await _calendarEventsBox.add(events);
-    debugPrint('calendar ${_calendarEventsBox.values.first.listEvents.length}');
-  }
+  // Future<void> addEventsCalendar(CalendarEventsListRecord events) async {
+  //   await _calendarEventsBox.add(events);
+  //   debugPrint('calendar ${_calendarEventsBox.values.first.listEvents.length}');
+  // }
 
-  CalendarEventsListRecord? getEventsCalendar() {
-    if (_calendarEventsBox.isNotEmpty) return _calendarEventsBox.values.first;
-    return null;
-  }
+  // CalendarEventsListRecord? getEventsCalendar() {
+  //   if (_calendarEventsBox.isNotEmpty) return _calendarEventsBox.values.first;
+  //   return null;
+  // }
 
   Future<void> addPendingAttendance(AttendanceRecord record) async {
     await _attendanceBox.add(record);
