@@ -3,7 +3,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
-import 'package:pb_hrsystem/models/event_record.dart';
+import 'package:pb_hrsystem/models/event.dart';
 import 'package:pb_hrsystem/services/offline_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:provider/provider.dart';
@@ -33,7 +33,7 @@ final Map<String, IconData> categoryIcon = {
 };
 
 /// Retrieves the color associated with an event category
-Color getEventColor(EventRecord event) {
+Color getEventColor(Events event) {
   return categoryColors[event.category] ?? Colors.grey;
 }
 

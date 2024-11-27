@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/models/event_record.dart';
+import 'package:pb_hrsystem/hive_helper/model/event_record.dart';
 
 class EventDetailsPopup extends StatelessWidget {
   final EventRecord event;

@@ -17,7 +17,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'monthly_attendance_record.dart';
-import '../models/attendance_record.dart';
+import '../hive_helper/model/attendance_record.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 class AttendanceScreen extends StatefulWidget {
