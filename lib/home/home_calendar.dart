@@ -1253,7 +1253,7 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
       vsync: this,
     )..repeat(reverse: true);
     _colorAnimation1 = ColorTween(
-      begin: Colors.yellow,
+      begin: Colors.deepOrange,
       end: Colors.orange,
     ).animate(_controller);
     _colorAnimation2 = ColorTween(

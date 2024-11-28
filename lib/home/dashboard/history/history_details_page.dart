@@ -115,7 +115,7 @@ class _DetailsPageState extends State<DetailsPage> {
     if (type == 'meeting') {
       statusValue = status == 'waiting' ? 'waiting' : status;
     } else if (type == 'car') {
-      statusValue = status == 'waiting' ? 'Branch Waiting' : status;
+      statusValue = status == 'waiting' ? 'Waiting' : status;
     } else if (type == 'leave') {
       statusValue = status == 'waiting' ? 'Waiting' : status;
     } else {
@@ -423,7 +423,7 @@ class _DetailsPageState extends State<DetailsPage> {
         data?['created_at'] ?? data?['date_create'],
         includeTime: true
     );
-    String requestorImageUrl = imageUrl ?? _defaultAvatarUrl();
+    String requestorImageUrl = data?['img_name'] ?? '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -444,17 +444,20 @@ class _DetailsPageState extends State<DetailsPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircleAvatar(
-              backgroundImage: NetworkImage(requestorImageUrl),
-              radius: 30, // Reduced profile image size
+              backgroundImage: requestorImageUrl.isNotEmpty
+                  ? NetworkImage(requestorImageUrl) // Use the image URL from API
+                  : NetworkImage(_defaultAvatarUrl()), // Fallback to default image if URL is empty
+              radius: 30, // Profile image size
               backgroundColor: Colors.grey[300],
               onBackgroundImageError: (_, __) {
                 setState(() {
-                  imageUrl = _defaultAvatarUrl();
+                  // If there's an error loading the image, fallback to the default image
+                  requestorImageUrl = _defaultAvatarUrl();
                 });
               },
             ),
             const SizedBox(width: 12), // Reduced spacing
-            Expanded( // Added Expanded to adjust to screen size
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

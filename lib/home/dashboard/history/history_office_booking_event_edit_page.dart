@@ -107,6 +107,21 @@ class _OfficeBookingEventEditPageState
     });
   }
 
+  String formatDate(String? dateString) {
+    // Check if the date is valid
+    if (dateString == null || dateString == '0000-0-00' || dateString.isEmpty) {
+      return '';  // Return an empty string for invalid dates
+    }
+    try {
+      // Try parsing the date and formatting it
+      DateTime parsedDate = DateTime.parse(dateString);
+      return DateFormat('yyyy-MM-dd').format(parsedDate);
+    } catch (e) {
+      // If there's an error parsing, return an empty string
+      return '';
+    }
+  }
+
   /// Fetches leave types from the API
   Future<void> _fetchLeaveTypes() async {
     try {
@@ -336,17 +351,16 @@ class _OfficeBookingEventEditPageState
       _carEmployeeIDController.text = data['employee_id'] ?? 'No Employee ID';
       _carPurposeController.text = data['purpose'] ?? '';
       _carPlaceController.text = data['place'] ?? '';
-      _carDateInController.text = data['date_in'] ?? '';
-      _carDateOutController.text = data['date_out'] ?? '';
-      _employeeId = data['employee_id']?.toString() ?? _employeeId;
+      _carDateInController.text = formatDate(data['date_in']);
+      _carDateOutController.text = formatDate(data['date_out']);
 
-      _selectedMembers = List<Map<String, dynamic>>.from(
-          data['members']?.map((member) => {
-            'employee_id': member['employee_id'],
-            'employee_name': member['employee_name'],
-            'img_name': member['img_name'],
-          }) ??
-              []);
+      // _selectedMembers = List<Map<String, dynamic>>.from(
+      //     data['members']?.map((member) => {
+      //       'employee_id': member['employee_id'],
+      //       'employee_name': member['employee_name'],
+      //       'img_name': member['img_name'],
+      //     }) ??
+      //         []);
     });
   }
 
@@ -663,44 +677,44 @@ class _OfficeBookingEventEditPageState
         ),
         const SizedBox(height: 16.0),
         // Members Label and Edit Button
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Members*',
-              style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
-            ),
-            ElevatedButton(
-              onPressed: _editMembers,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                    vertical: 8.0, horizontal: 16.0),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0)),
-              ),
-              child: const Text('Edit Members'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8.0),
-        _selectedMembers.isNotEmpty
-            ? Wrap(
-          spacing: 8.0,
-          children: _selectedMembers.map((members) {
-            return Chip(
-              avatar: CircleAvatar(
-                backgroundImage: NetworkImage(
-                    members['img_name'] ??
-                        'https://www.w3schools.com/howto/img_avatar.png'),
-              ),
-              label: Text(members['employee_name'] ?? members['employee_id'] ?? 'No Name'),
-            );
-          }).toList(),
-        )
-            : const Text(
-          'No members selected.',
-          style: TextStyle(color: Colors.grey),
-        ),
+        // Row(
+        //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        //   children: [
+        //     const Text(
+        //       'Members*',
+        //       style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
+        //     ),
+        //     ElevatedButton(
+        //       onPressed: _editMembers,
+        //       style: ElevatedButton.styleFrom(
+        //         padding: const EdgeInsets.symmetric(
+        //             vertical: 8.0, horizontal: 16.0),
+        //         shape: RoundedRectangleBorder(
+        //             borderRadius: BorderRadius.circular(10.0)),
+        //       ),
+        //       child: const Text('Edit Members'),
+        //     ),
+        //   ],
+        // ),
+        // const SizedBox(height: 8.0),
+        // _selectedMembers.isNotEmpty
+        //     ? Wrap(
+        //   spacing: 8.0,
+        //   children: _selectedMembers.map((members) {
+        //     return Chip(
+        //       avatar: CircleAvatar(
+        //         backgroundImage: NetworkImage(
+        //             members['img_name'] ??
+        //                 'https://www.w3schools.com/howto/img_avatar.png'),
+        //       ),
+        //       label: Text(members['employee_name'] ?? members['employee_id'] ?? 'No Name'),
+        //     );
+        //   }).toList(),
+        // )
+        //     : const Text(
+        //   'No members selected.',
+        //   style: TextStyle(color: Colors.grey),
+        // ),
       ],
     );
   }

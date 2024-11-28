@@ -170,8 +170,7 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
         children: [
           Container(
             color: Colors.white,
-            padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
                 Expanded(
@@ -229,14 +228,13 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => ReturnCarPageDetails(
-                              uid: event['uid']),
+                          builder: (context) =>
+                              ReturnCarPageDetails(uid: event['uid']),
                         ),
                       );
                     },
                     child: Padding(
-                      padding:
-                      const EdgeInsets.symmetric(vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
@@ -244,9 +242,10 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                           color: Colors.white,
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.all(12.0),
+                          padding: const EdgeInsets.all(8.0),
                           child: Row(
                             children: [
+                              // Left section for car image and text
                               Column(
                                 children: [
                                   Image.asset(
@@ -254,34 +253,36 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                                     width: 40,
                                     height: 40,
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 6),
                                   const Text(
                                     'Car',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: Colors.blueAccent,
+                                      fontSize: 12,
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 12),
+                              // Main content section
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       event['requestor_name'] ?? '',
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                        fontSize: 14,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       'Date: ${event['date_out']} To ${event['date_in']}',
                                       style: TextStyle(
-                                        fontSize: 14,
+                                        fontSize: 12,
+
                                         color: Colors.grey[600],
                                       ),
                                     ),
@@ -289,44 +290,47 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                                     Text(
                                       'Tel: ${event['license_plate']}',
                                       style: TextStyle(
-                                        fontSize: 14,
+                                        fontSize: 12,
+                                        // Adjusted for better compactness
                                         color: Colors.grey[600],
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 6),
+                                    // Reduced spacing
                                     Text(
                                       'Purpose: ${event['purpose']}',
                                       style: TextStyle(
-                                        fontSize: 14,
+                                        fontSize: 12,
+
                                         color: Colors.grey[600],
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 6),
+                                    // Reduced spacing
                                     Row(
                                       children: [
                                         const Text(
                                           'Status: ',
                                           style: TextStyle(
-                                            fontSize: 14,
+                                            fontSize: 12,
+
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                         Container(
-                                          padding:
-                                          const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
                                           decoration: BoxDecoration(
                                             color: _getStatusColor(
                                                 event['status'] ?? ''),
-                                            borderRadius:
-                                            BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(
+                                                8),
                                           ),
                                           child: Text(
                                             event['status'] ?? '',
                                             style: const TextStyle(
                                               color: Colors.white,
-                                              fontSize: 12,
+                                              fontSize: 10,
                                             ),
                                           ),
                                         ),
@@ -335,23 +339,25 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 12),
+                              // Right section for image
                               Column(
                                 children: [
                                   ClipOval(
                                     child: Image.network(
                                       event['img_name'] ?? '',
-                                      width: 50,
-                                      height: 50,
+                                      width: 40,
+                                      height: 40,
                                       fit: BoxFit.cover,
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 6),
                                   const Text(
                                     'View Detail',
                                     style: TextStyle(
                                       color: Colors.orangeAccent,
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 12,
                                     ),
                                   ),
                                 ],
