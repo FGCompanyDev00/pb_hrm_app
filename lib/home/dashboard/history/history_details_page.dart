@@ -423,7 +423,7 @@ class _DetailsPageState extends State<DetailsPage> {
         data?['created_at'] ?? data?['date_create'],
         includeTime: true
     );
-    String requestorImageUrl = data?['img_name'] ?? '';
+    String requestorImageUrl = data?['img_name'] ?? data?['img_path'] ?? '';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -581,7 +581,7 @@ class _DetailsPageState extends State<DetailsPage> {
         spacing: 10, // Reduced spacing
         runSpacing: 10, // Reduced spacing
         children: [
-          _buildUserAvatar(imageUrl ?? _defaultAvatarUrl(), borderColor: Colors.green),
+          _buildUserAvatar(data?['img_name'] ?? _defaultAvatarUrl(), borderColor: Colors.green),
           Transform.translate(
             offset: const Offset(0, 13.0),
             child: const Icon(Icons.arrow_forward, color: Colors.orange, size: 18),
@@ -600,7 +600,7 @@ class _DetailsPageState extends State<DetailsPage> {
         spacing: 10,
         runSpacing: 10,
         children: [
-          _buildUserAvatar(imageUrl ?? _defaultAvatarUrl(), borderColor: Colors.blue),
+          _buildUserAvatar(data?['img_name'] ?? _defaultAvatarUrl(), borderColor: Colors.green),
           Transform.translate(
             offset: const Offset(0, 13.0),
             child: const Icon(Icons.arrow_forward, color: Colors.orange, size: 18),

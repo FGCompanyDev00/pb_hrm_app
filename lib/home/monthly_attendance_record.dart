@@ -25,6 +25,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
     _fetchAttendanceRecords();
   }
 
+  // Update to use POST request with month data
   Future<void> _fetchAttendanceRecords() async {
     String? token = await _getToken();
     if (token == null || token.isEmpty) {
@@ -36,13 +37,19 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
     const String url =
         'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offices/months/me';
 
+    // Format the current month as "yyyy-MM"
+    String formattedMonth = DateFormat('yyyy-MM').format(_currentMonth);
+
     try {
-      final response = await http.get(
+      final response = await http.post(
         Uri.parse(url),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
+        body: jsonEncode({
+          'month': formattedMonth, // Send the current or selected month
+        }),
       );
 
       if (response.statusCode == 200) {
@@ -156,8 +163,8 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
 
     return Card(
       color: Colors.white.withOpacity(0.8),
-      elevation: 2,
-      margin: const EdgeInsets.symmetric(vertical: 4),
+      elevation: 1,
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         title: Center(
@@ -225,7 +232,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
               Text(
                 DateFormat('MMMM yyyy').format(_currentMonth),
                 style: const TextStyle(
-                  fontSize: 24,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -243,7 +250,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -353,7 +360,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
         ),
         onPressed: () => Navigator.of(context).pop(),
       ),
-      toolbarHeight: 100,
+      toolbarHeight: 80,
       elevation: 0,
       backgroundColor: Colors.transparent,
     );
