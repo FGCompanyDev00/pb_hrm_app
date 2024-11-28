@@ -1,7 +1,7 @@
 import 'dart:collection';
+import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:flutter_datetime_format/flutter_datetime_format.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -17,12 +17,12 @@ class TimeTableDayWidget extends HookWidget {
     this.selectedDay,
   });
 
-  final List<TimetableItem> eventsTimeTable;
+  final List<Events> eventsTimeTable;
   final DateTime? selectedDay;
 
   @override
   Widget build(BuildContext context) {
-    final ValueNotifier<List<TimetableItem<String>>> currentEvents = useState([]);
+    final ValueNotifier<List<Events>> currentEvents = useState([]);
     final ValueNotifier<List<OverTimeEventsRow<String>>> currentOverflowEventsRow = useState([]);
     int currentHour = 8;
     int untilEnd = 18;
@@ -50,7 +50,7 @@ class TimeTableDayWidget extends HookWidget {
             17,
             0,
           );
-          currentEvents.value.add(TimetableItem(
+          currentEvents.value.add(Events(
             uid: e.uid,
             title: e.title ?? '',
             desc: e.desc ?? '',
@@ -76,18 +76,44 @@ class TimeTableDayWidget extends HookWidget {
             e.end.hour,
             e.end.minute,
           );
-          currentEvents.value.add(TimetableItem(
+          currentEvents.value.add(Events(
             uid: e.uid,
-            title: e.title ?? '',
-            desc: e.desc ?? '',
+            title: e.title,
+            desc: e.desc,
             start: startTime,
             end: endTime,
-            category: e.category ?? '',
+            category: e.category,
             members: e.members,
             status: e.status,
             leaveType: e.leaveType,
           ));
-        } else {}
+        } else {
+          startTime = DateTime.utc(
+            selectedDay!.year,
+            selectedDay!.month,
+            selectedDay!.day,
+            e.start.hour,
+            e.start.minute,
+          );
+          endTime = DateTime.utc(
+            selectedDay!.year,
+            selectedDay!.month,
+            selectedDay!.day,
+            e.end.hour,
+            e.end.minute,
+          );
+          currentEvents.value.add(Events(
+            uid: e.uid,
+            title: e.title,
+            desc: e.desc,
+            start: startTime,
+            end: endTime,
+            category: e.category,
+            members: e.members,
+            status: e.status,
+            leaveType: e.leaveType,
+          ));
+        }
       }
 
       currentOverflowEventsRow.value = processOverTimeEvents(

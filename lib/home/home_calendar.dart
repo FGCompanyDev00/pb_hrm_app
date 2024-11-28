@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -14,7 +15,6 @@ import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/main.dart';
-import 'package:pb_hrsystem/models/event.dart';
 import 'package:pb_hrsystem/services/http_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -37,7 +37,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   late Box eventsBox;
 
   // ValueNotifier to hold events mapped by date
-  late final ValueNotifier<Map<DateTime, List<Events>>> _events;
   final selectedSlot = ValueNotifier(1);
 
   // Calendar properties
@@ -45,8 +44,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
-  List<Events> _eventsForDay = [];
-  List<Events> _eventsForAll = [];
 
   // Notifications
   late final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
@@ -71,9 +68,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    _events = ValueNotifier({});
-    _eventsForDay = [];
-    _eventsForAll = [];
+    events = ValueNotifier({});
+    eventsForDay = [];
+    eventsForAll = [];
 
     // Initialize Animation Controller
     _animationController = AnimationController(
@@ -84,13 +81,13 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     _fetchData();
 
     connectivityResult.onConnectivityChanged.listen((source) async {
-      if (source.contains(ConnectivityResult.none)) _eventsForDay = await offlineProvider.getCalendar();
+      if (source.contains(ConnectivityResult.none)) eventsForDay = await offlineProvider.getCalendar();
     });
   }
 
   @override
   void dispose() {
-    _events.dispose();
+    events.dispose();
     _animationController.dispose();
     _doubleTapTimer?.cancel();
     super.dispose();
@@ -98,40 +95,40 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   void addEvent(DateTime date, Events event) {
     if (date.year == _selectedDay?.year) {
-      _eventsForAll.add(event);
+      eventsForAll.add(event);
     }
 
     final detectDate = normalizeDate(date);
-    if (_events.value.containsKey(detectDate)) {
+    if (events.value.containsKey(detectDate)) {
       // If the date already has events, add to the list
-      if (_events.value[detectDate]!.where((desc) => desc.description == event.description).isEmpty) {
-        _events.value[detectDate]!.add(event);
+      if (events.value[detectDate]!.where((desc) => desc.desc == event.desc).isEmpty) {
+        events.value[detectDate]!.add(event);
       } else {
         event.members?.forEach(
-          (e) => _events.value[detectDate]!.where((desc) => desc.description == event.description).first.members?.add(e),
+          (e) => events.value[detectDate]!.where((desc) => desc.desc == event.desc).first.members?.add(e),
         );
       }
     } else {
       // Otherwise, create a new list with this event
-      _events.value[detectDate] = [event];
+      events.value[detectDate] = [event];
     }
   }
 
   void addEventOffline(DateTime date, List<Events> eventOffline) {
     final detectDate = normalizeDate(date);
     for (var i in eventOffline) {
-      if (_events.value.containsKey(detectDate)) {
+      if (events.value.containsKey(detectDate)) {
         // If the date already has events, add to the list
-        if (_events.value[detectDate]!.where((desc) => desc.description == i.description).isEmpty) {
-          _events.value[detectDate]!.add(i);
+        if (events.value[detectDate]!.where((desc) => desc.desc == i.desc).isEmpty) {
+          events.value[detectDate]!.add(i);
         } else {
           i.members?.forEach(
-            (e) => _events.value[detectDate]!.where((desc) => desc.description == i.description).first.members?.add(e),
+            (e) => events.value[detectDate]!.where((desc) => desc.desc == i.desc).first.members?.add(e),
           );
         }
       } else {
         // Otherwise, create a new list with this event
-        _events.value[detectDate] = [i];
+        events.value[detectDate] = [i];
       }
     }
   }
@@ -193,9 +190,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         final event = Events(
           title: item['name'] ?? 'Leave',
-          startDateTime: startDate,
-          endDateTime: endDate,
-          description: item['take_leave_reason'] ?? 'Approval Pending',
+          start: startDate,
+          end: endDate,
+          desc: item['take_leave_reason'] ?? 'Approval Pending',
           status: status,
           isMeeting: false,
           category: 'Leave',
@@ -301,9 +298,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         final event = Events(
           title: item['title'] ?? 'Add Meeting',
-          startDateTime: startDateTime,
-          endDateTime: endDateTime,
-          description: item['description'] ?? '',
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['description'] ?? '',
           status: status,
           isMeeting: true,
           location: item['location'] ?? '', // Assuming 'location' field exists
@@ -408,9 +405,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (mounted) {
           event = Events(
             title: item['project_name'] ?? 'Minutes Of Meeting',
-            startDateTime: startDateTime,
-            endDateTime: endDateTime,
-            description: item['descriptions'] ?? 'Minutes Of Meeting Pending',
+            start: startDateTime,
+            end: endDateTime,
+            desc: item['descriptions'] ?? 'Minutes Of Meeting Pending',
             status: status,
             isMeeting: true,
             category: 'Minutes Of Meeting',
@@ -460,9 +457,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (mounted) {
           event = Events(
             title: item['title'] ?? AppLocalizations.of(context)!.meetingRoomBookings,
-            startDateTime: startDateTime,
-            endDateTime: endDateTime,
-            description: item['remark'] ?? 'Booking Pending',
+            start: startDateTime,
+            end: endDateTime,
+            desc: item['remark'] ?? 'Booking Pending',
             status: status,
             isMeeting: true,
             category: 'Meeting Room Bookings',
@@ -551,9 +548,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (mounted) {
           event = Events(
             title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
-            startDateTime: startDateTime,
-            endDateTime: endDateTime,
-            description: item['place'] ?? 'Car Booking Pending',
+            start: startDateTime,
+            end: endDateTime,
+            desc: item['place'] ?? 'Car Booking Pending',
             status: status,
             isMeeting: false,
             category: 'Booking Car',
@@ -579,9 +576,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   Future<void> _onRefresh() async {
     connectivityResult.checkConnectivity().then((e) async {
       if (e.contains(ConnectivityResult.none)) {
-        _eventsForDay = await offlineProvider.getCalendar();
+        eventsForDay = await offlineProvider.getCalendar();
         setState(() {
-          addEventOffline(_selectedDay!, _eventsForDay);
+          addEventOffline(_selectedDay!, eventsForDay);
         });
       } else {
         await _fetchData();
@@ -609,13 +606,13 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   /// Retrieves events for a specific day
   List<Events> _getEventsForDay(DateTime day) {
     final normalizedDay = normalizeDate(day);
-    return _events.value[normalizedDay] ?? [];
+    return events.value[normalizedDay] ?? [];
   }
 
   /// Retrieves events for a specific day
   List<Events> _getDubplicateEventsForDay(DateTime day) {
     final normalizedDay = normalizeDate(day);
-    final listEvent = _events.value[normalizedDay] ?? [];
+    final listEvent = events.value[normalizedDay] ?? [];
     List<Events> updateEvents = [];
     if (listEvent.length > 4) {
       for (var i in listEvent) {
@@ -636,7 +633,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   /// Filters and searches events based on selected category and search query
   void _filterAndSearchEvents() {
     if (_selectedDay == null) return;
-    offlineProvider.insertCalendar(_eventsForAll);
+    offlineProvider.insertCalendar(eventsForAll);
     List<Events> dayEvents = _getEventsForDay(_selectedDay!);
     if (_selectedCategory != 'All') {
       dayEvents = dayEvents.where((event) => event.category == _selectedCategory).toList();
@@ -644,12 +641,12 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     if (_searchQuery.isNotEmpty) {
       dayEvents = dayEvents.where((event) {
         final eventTitle = event.title.toLowerCase();
-        final eventDescription = event.description.toLowerCase();
+        final eventDescription = event.desc.toLowerCase();
         return eventTitle.contains(_searchQuery.toLowerCase()) || eventDescription.contains(_searchQuery.toLowerCase());
       }).toList();
     }
     setState(() {
-      _eventsForDay = dayEvents;
+      eventsForDay = dayEvents;
     });
   }
 
@@ -662,12 +659,12 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     if (_searchQuery.isNotEmpty) {
       dayEvents = dayEvents.where((event) {
         final eventTitle = event.title.toLowerCase();
-        final eventDescription = event.description.toLowerCase();
+        final eventDescription = event.desc.toLowerCase();
         return eventTitle.contains(_searchQuery.toLowerCase()) || eventDescription.contains(_searchQuery.toLowerCase());
       }).toList();
     }
     setState(() {
-      _eventsForDay = dayEvents;
+      eventsForDay = dayEvents;
     });
   }
 
@@ -813,9 +810,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   }) {
     final newEvent = Events(
       title: title,
-      startDateTime: startDateTime,
-      endDateTime: endDateTime,
-      description: description,
+      start: startDateTime,
+      end: endDateTime,
+      desc: description,
       status: status,
       isMeeting: isMeeting,
       category: category,
@@ -823,12 +820,12 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     );
     final normalizedDay = normalizeDate(startDateTime);
     setState(() {
-      if (_events.value.containsKey(normalizedDay)) {
-        if (!_events.value[normalizedDay]!.any((e) => e.uid == uid)) {
-          _events.value[normalizedDay]!.add(newEvent);
+      if (events.value.containsKey(normalizedDay)) {
+        if (!events.value[normalizedDay]!.any((e) => e.uid == uid)) {
+          events.value[normalizedDay]!.add(newEvent);
         }
       } else {
-        _events.value[normalizedDay] = [newEvent];
+        events.value[normalizedDay] = [newEvent];
       }
       _filterAndSearchEvents();
       _animationController.forward(from: 0.0);
@@ -859,7 +856,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               _buildCalendar(context, isDarkMode),
               const SizedBox(height: 2),
               _buildSectionSeparator(),
-              _eventsForDay.isEmpty
+              eventsForDay.isEmpty
                   ? SizedBox(
                       height: sizeScreen(context).height * 0.20,
                       child: Center(
@@ -886,19 +883,19 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                       items: [
                         CalendarDayWidgetCard(
                           selectedDay: _selectedDay,
-                          eventsCalendar: _eventsForDay,
+                          eventsCalendar: eventsForDay,
                           selectedSlotTime: 1,
                           heightTime: (fullHeight * 0.25) / 150,
                         ),
                         CalendarDayWidgetCard(
                           selectedDay: _selectedDay,
-                          eventsCalendar: _eventsForDay,
+                          eventsCalendar: eventsForDay,
                           selectedSlotTime: 2,
                           heightTime: (fullHeight * 0.25) / 150,
                         ),
                         CalendarDayWidgetCard(
                           selectedDay: _selectedDay,
-                          eventsCalendar: _eventsForDay,
+                          eventsCalendar: eventsForDay,
                           selectedSlotTime: 3,
                           heightTime: (fullHeight * 0.25) / 190,
                         ),
@@ -994,9 +991,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             selectedColor: getEventColor(
               Events(
                 title: '',
-                startDateTime: DateTime.now(),
-                endDateTime: DateTime.now(),
-                description: '',
+                start: DateTime.now(),
+                end: DateTime.now(),
+                desc: '',
                 status: '',
                 isMeeting: false,
                 category: category,
@@ -1118,17 +1115,17 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 calendarBuilders: CalendarBuilders(
                   markerBuilder: (context, date, events) {
                     if (events.isNotEmpty) {
-                      final sortedEvents = events..sort((a, b) => b.startDateTime.compareTo(a.startDateTime));
+                      final sortedEvents = events..sort((a, b) => b.start.compareTo(a.start));
                       final latestEvents = sortedEvents.take(3).toList();
                       final eventSpans = latestEvents.where((event) {
-                        return date.isAfter(event.startDateTime.subtract(const Duration(days: 1))) && date.isBefore(event.endDateTime.add(const Duration(days: 1)));
+                        return date.isAfter(event.start.subtract(const Duration(days: 1))) && date.isBefore(event.end.add(const Duration(days: 1)));
                       }).toList();
 
                       return Column(
                         mainAxisAlignment: MainAxisAlignment.end,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: eventSpans.map((event) {
-                          final totalDays = event.endDateTime.difference(event.startDateTime);
+                          final totalDays = event.end.difference(event.start);
                           return Container(
                             height: 2,
                             margin: EdgeInsets.symmetric(vertical: 1, horizontal: totalDays.inDays > 0 ? 0 : 20),

@@ -1,9 +1,9 @@
 // Category colors mapping
+import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
-import 'package:pb_hrsystem/models/event.dart';
 import 'package:pb_hrsystem/services/offline_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +14,9 @@ final fullHeight = mediaQuery.size.height;
 final connectivityResult = sl<Connectivity>();
 OfflineProvider offlineProvider = Provider.of<OfflineProvider>(navigatorKey.currentState!.context, listen: false);
 FToast fToast = FToast();
+List<Events> eventsForDay = [];
+List<Events> eventsForAll = [];
+late final ValueNotifier<Map<DateTime, List<Events>>> events;
 
 final Map<String, Color> categoryColors = {
   'Add Meeting': Colors.blue,

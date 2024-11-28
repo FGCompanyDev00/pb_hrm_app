@@ -1,25 +1,38 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-class TimetableItem<T> {
-  TimetableItem({
+/// Parses color from hex string
+Color parseColorTime(String colorString) {
+  try {
+    return Color(int.parse(colorString.replaceFirst('#', '0xff')));
+  } catch (_) {
+    return Colors.blueAccent;
+  }
+}
+
+class Events {
+  Events({
     required this.uid,
     required this.start,
     required this.end,
+    required this.category,
+    required this.title,
+    required this.desc,
+    this.isMeeting = false,
     this.id,
     this.days,
     this.leaveTypeID,
-    this.data,
     this.requestorID,
     this.imgName,
     this.imgPath,
     this.name,
-    this.title,
-    this.desc,
     this.location,
     this.reason,
     this.denyReason,
-    this.category,
     this.status,
     this.createdAt,
     this.createdBy,
@@ -33,21 +46,21 @@ class TimetableItem<T> {
   final int? id;
   final DateTime start;
   final DateTime end;
-  final T? data;
   final String? requestorID;
   final String? imgName;
   final String? imgPath;
   final int? leaveTypeID;
   final String? name;
-  final String? title;
-  final String? desc;
+  final String title;
+  final String desc;
   final String? location;
   final String? reason;
   final double? days;
+  final bool isMeeting;
   final String? denyReason;
-  final String? category;
+  final String category;
   final String? status;
-  final DateTime? createdAt;
+  final String? createdAt;
   final String? createdBy;
   final String uid;
   final String? isRepeat;
@@ -56,10 +69,83 @@ class TimetableItem<T> {
   final String? outmeetingUid;
   final String? leaveType;
   final List<Map<String, dynamic>>? members;
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'startDateTime': start.toIso8601String(),
+        'endDateTime': end.toIso8601String(),
+        'description': desc,
+        'status': status,
+        'isMeeting': isMeeting ? 1 : 0,
+        'location': location,
+        'createdBy': createdBy,
+        'imgName': imgName,
+        'createdAt': createdAt,
+        'uid': uid,
+        'isRepeat': isRepeat,
+        'videoConference': videoConference,
+        'backgroundColor': backgroundColor?.value,
+        'outmeetingUid': outmeetingUid,
+        'leaveType': leaveType,
+        'category': category,
+        'days': days,
+        'members': jsonEncode(members),
+      };
+
+  factory Events.fromJson(Map<String, dynamic> json) {
+    return Events(
+      title: json['title'],
+      start: DateTime.parse(json['startDateTime']),
+      end: DateTime.parse(json['endDateTime']),
+      desc: json['description'],
+      status: json['status'],
+      isMeeting: (json['isMeeting'] as num) == 1 ? true : false,
+      location: json['location'],
+      createdBy: json['createdBy'],
+      imgName: json['imgName'],
+      createdAt: json['createdAt'],
+      uid: json['uid'],
+      isRepeat: json['isRepeat'],
+      videoConference: json['videoConference'],
+      backgroundColor: json['backgroundColor'] != null ? parseColorTime(json['backgroundColor']) : null,
+      outmeetingUid: json['outmeetingUid'],
+      leaveType: json['leaveType'],
+      category: json['category'],
+      days: (json['days'] as num?)?.toDouble(),
+      members: parseMembers(json['members']),
+    );
+  }
+
+  /// Returns formatted time for display
+  String get formattedTime => DateFormat.jm().format(start);
+
+  @override
+  String toString() => '$title ($status) from ${DateFormat.yMMMd().format(start)} to ${DateFormat.yMMMd().format(end)}';
+
+  static List<Map<String, dynamic>>? parseMembers(dynamic members) {
+    if (members == null || members == 'null') {
+      return null;
+    }
+    if (members is String) {
+      try {
+        // Parse the JSON string into a list of maps
+        final List<dynamic> decoded = jsonDecode(members);
+        return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+      } catch (e) {
+        // Handle invalid JSON strings gracefully
+        print('Error decoding members: $e');
+        return null;
+      }
+    } else if (members is List) {
+      // Directly return if it's already a list
+      return members.map((e) => Map<String, dynamic>.from(e)).toList();
+    }
+    return null;
+  }
 }
 
 class OverTimeEventsRow<T extends Object> {
-  final List<TimetableItem> events;
+  final List<Events> events;
   final DateTime start;
   final DateTime end;
   OverTimeEventsRow({
@@ -69,7 +155,7 @@ class OverTimeEventsRow<T extends Object> {
   });
 
   OverTimeEventsRow<T> copyWith({
-    List<TimetableItem>? events,
+    List<Events>? events,
     DateTime? start,
     DateTime? end,
   }) {
@@ -94,7 +180,7 @@ class OverTimeEventsRow<T extends Object> {
   int get hashCode => events.hashCode ^ start.hashCode ^ end.hashCode;
 }
 
-extension TimetableExtension on TimetableItem {
+extension TimetableExtension on Events {
   int get durationInMins => end.difference(start).inMinutes;
 
   int get timeGapFromZero => start.hour * 60 + start.minute;
@@ -116,7 +202,7 @@ extension TimetableExtension on TimetableItem {
   bool startAt(DateTime timePoint) => start.hour == timePoint.hour && timePoint.minute == start.minute;
   bool startAtHour(DateTime timePoint) => start.hour == timePoint.hour;
 
-  int compare(TimetableItem other) {
+  int compare(Events other) {
     return start.isBefore(other.start) ? -1 : 1;
   }
 }

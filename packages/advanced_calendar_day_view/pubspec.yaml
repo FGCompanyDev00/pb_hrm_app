@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   custom_refresh_indicator: ^4.0.1
+  intl: any
+
 
 
 dev_dependencies:

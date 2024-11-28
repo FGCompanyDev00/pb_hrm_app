@@ -32,7 +32,7 @@ List<Widget> buildMembersAvatars(
 }
 
 List<Widget> buildMembersAvatarsTimeTable(
-  TimetableItem<dynamic> event,
+  Events event,
   BuildContext context,
 ) {
   List<Widget> membersAvatar = [];

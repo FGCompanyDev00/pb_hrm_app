@@ -51,7 +51,7 @@ class TimeTableDayView extends StatefulWidget {
   final double heightPerMin;
 
   /// List of events to be display in the day view
-  final List<TimetableItem> events;
+  final List<Events> events;
 
   /// the date that this dayView is presenting
   final DateTime currentDate;

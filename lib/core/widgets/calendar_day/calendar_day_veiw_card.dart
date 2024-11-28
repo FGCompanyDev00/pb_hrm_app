@@ -11,7 +11,6 @@ import 'package:pb_hrsystem/core/widgets/avatar.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/events_utils.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
-import 'package:pb_hrsystem/models/event.dart';
 
 class CalendarDayWidgetCard extends HookWidget {
   const CalendarDayWidgetCard({
@@ -78,15 +77,15 @@ class CalendarDayWidgetCard extends HookWidget {
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          e.startDateTime.hour == 0 ? currentHour.value : e.startDateTime.hour,
-          e.startDateTime.minute,
+          e.start.hour == 0 ? currentHour.value : e.start.hour,
+          e.start.minute,
         );
         DateTime endTime = DateTime.utc(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          e.endDateTime.hour == 0 ? untilEnd.value : e.endDateTime.hour,
-          e.endDateTime.minute,
+          e.end.hour == 0 ? untilEnd.value : e.end.hour,
+          e.end.minute,
         );
 
         // if (slotEndTime.isBefore(startTime)) {
@@ -107,11 +106,11 @@ class CalendarDayWidgetCard extends HookWidget {
 
         currentEvents.value.add(AdvancedDayEvent(
           value: e.uid,
-          title: e.title,
-          desc: e.description,
+          title: e.title ?? '',
+          desc: e.desc ?? '',
           start: startTime,
           end: endTime,
-          category: e.category,
+          category: e.category ?? '',
           members: e.members,
           status: e.status,
         ));
@@ -221,7 +220,7 @@ class CalendarDayWidgetCard extends HookWidget {
                           builder: (context) => EventDetailView(
                             event: {
                               'title': event.title,
-                              'description': eventsCalendar[itemIndex].description,
+                              'description': eventsCalendar[itemIndex].desc,
                               'startDateTime': event.start.toString(),
                               'endDateTime': event.end.toString(),
                               'isMeeting': eventsCalendar[itemIndex].isMeeting,
@@ -276,7 +275,7 @@ class CalendarDayWidgetCard extends HookWidget {
                           builder: (context) => EventDetailView(
                             event: {
                               'title': event.title,
-                              'description': eventsCalendar[itemIndex].description,
+                              'description': eventsCalendar[itemIndex].desc,
                               'startDateTime': event.start.toString(),
                               'endDateTime': event.end.toString(),
                               'isMeeting': eventsCalendar[itemIndex].isMeeting,

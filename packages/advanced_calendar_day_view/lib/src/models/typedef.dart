@@ -16,7 +16,7 @@ typedef TimeViewItemBuilder<T extends Object> = Widget Function(
 
   ///index of the item in same row
   int itemIndex,
-  TimetableItem event,
+  Events event,
 );
 
 typedef DayViewTimeRowBuilder<T extends Object> = Widget Function(

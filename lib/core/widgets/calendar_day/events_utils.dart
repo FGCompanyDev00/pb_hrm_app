@@ -41,7 +41,7 @@ List<OverflowEventsRow<T>> processOverflowEvents<T extends Object>(
 }
 
 List<OverTimeEventsRow<T>> processOverTimeEvents<T extends Object>(
-  List<TimetableItem> sortedEvents, {
+  List<Events> sortedEvents, {
   required DateTime startOfDay,
   required DateTime endOfDay,
   bool cropBottomEvents = false,
