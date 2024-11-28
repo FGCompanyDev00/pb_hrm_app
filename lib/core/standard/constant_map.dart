@@ -24,12 +24,12 @@ final Map<String, Color> categoryColors = {
 };
 
 //Category icon mapping
-final Map<String, IconData> categoryIcon = {
-  'Add Meeting': Icons.connect_without_contact,
-  'Leave': Icons.work_off,
-  'Meeting Room Bookings': Icons.meeting_room,
-  'Booking Car': Icons.car_rental,
-  'Minutes Of Meeting': Icons.car_rental,
+final Map<String, String?> categoryIcon = {
+  'Add Meeting': 'assets/icons/video_camera_record.png',
+  'Leave': null,
+  'Meeting Room Bookings': 'assets/icons/video_camera_record.png',
+  'Booking Car': null,
+  'Minutes Of Meeting': null,
 };
 
 /// Retrieves the color associated with an event category

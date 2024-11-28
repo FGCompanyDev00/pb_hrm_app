@@ -84,6 +84,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/icons/
     - assets/background.png
     - assets/logo.png
     - assets/notification_image.png

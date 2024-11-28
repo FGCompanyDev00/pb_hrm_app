@@ -244,7 +244,7 @@ class CalendarDayWidget extends HookWidget {
                   time12: true,
                   overflowItemBuilder: (context, constraints, itemIndex, event) {
                     Color statusColor = categoryColors[event.category] ?? Colors.grey;
-                    IconData? iconCategory = categoryIcon[event.category];
+                    String? iconCategory = categoryIcon[event.category];
                     Widget child;
 
                     String eventCategory = '';
@@ -391,7 +391,7 @@ class CalendarDayWidget extends HookWidget {
                                                       children: [
                                                         Row(
                                                           children: [
-                                                            iconCategory != null ? Icon(iconCategory, size: 15) : const SizedBox.shrink(),
+                                                            iconCategory != null ? Image.asset(iconCategory, width: 15) : const SizedBox.shrink(),
                                                             const SizedBox(width: 5),
                                                             Text(event.desc, style: const TextStyle(fontSize: 10)),
                                                           ],
@@ -455,7 +455,7 @@ class CalendarDayWidget extends HookWidget {
                                                           children: [
                                                             Row(
                                                               children: [
-                                                                iconCategory != null ? Icon(iconCategory, size: 15) : const SizedBox.shrink(),
+                                                                iconCategory != null ? Image.asset(iconCategory, width: 15) : const SizedBox.shrink(),
                                                                 const SizedBox(width: 5),
                                                                 Text(event.desc, style: const TextStyle(fontSize: 10)),
                                                               ],

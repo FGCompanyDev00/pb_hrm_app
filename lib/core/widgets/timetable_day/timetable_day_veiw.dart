@@ -123,7 +123,7 @@ class TimeTableDayWidget extends HookWidget {
               timeViewItemBuilder: (context, constraints, itemIndex, event) {
                 Color statusColor;
                 Widget statusChild = const SizedBox.shrink();
-                IconData? iconCategory = categoryIcon[event.category];
+                String? iconCategory = categoryIcon[event.category];
 
                 debugPrint(event.category);
 
@@ -210,8 +210,8 @@ class TimeTableDayWidget extends HookWidget {
                           event: {
                             'title': event.title,
                             'description': eventsTimeTable[itemIndex].reason,
-                            'startDateTime': eventsTimeTable[itemIndex].start.toString(),
-                            'endDateTime': eventsTimeTable[itemIndex].end.toString(),
+                            'startDateTime': currentEvents.value[itemIndex].start.toString(),
+                            'endDateTime': currentEvents.value[itemIndex].end.toString(),
                             'isMeeting': true,
                             'createdBy': eventsTimeTable[itemIndex].requestorID,
                             'location': '',
@@ -252,7 +252,7 @@ class TimeTableDayWidget extends HookWidget {
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.window_rounded, size: 15),
+                                Image.asset('assets/icons/element_4.png', width: 20),
                                 const SizedBox(width: 5),
                                 Text(eventType),
                               ],
@@ -267,9 +267,26 @@ class TimeTableDayWidget extends HookWidget {
                                   children: [
                                     Row(
                                       children: [
-                                        iconCategory != null ? Icon(iconCategory, size: 15) : const SizedBox.shrink(),
-                                        const SizedBox(width: 5),
-                                        Text(event.desc ?? '', style: const TextStyle(fontSize: 10)),
+                                        iconCategory != null
+                                            ? Padding(
+                                                padding: const EdgeInsets.only(left: 10),
+                                                child: Image.asset(iconCategory, width: 15),
+                                              )
+                                            : const SizedBox.shrink(),
+                                        ConstrainedBox(
+                                          constraints: const BoxConstraints(maxWidth: 100),
+                                          child: ListTileTheme(
+                                            dense: true,
+                                            contentPadding: EdgeInsets.zero,
+                                            minVerticalPadding: 0,
+                                            minLeadingWidth: 0,
+                                            horizontalTitleGap: 0,
+                                            child: Text(
+                                              event.desc ?? '',
+                                              style: const TextStyle(fontSize: 10),
+                                            ),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                     const SizedBox(width: 20),
@@ -278,7 +295,7 @@ class TimeTableDayWidget extends HookWidget {
                                         const Icon(Icons.access_time, size: 15),
                                         const SizedBox(width: 5),
                                         Text(
-                                          '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
+                                          '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
                                           style: const TextStyle(fontSize: 10),
                                         ),
                                       ],
