@@ -5,6 +5,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/widgets/avatar.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/events_utils.dart';
@@ -225,117 +226,167 @@ class TimeTableDayWidget extends HookWidget {
                   default:
                 }
 
-                return GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  key: ValueKey(event.hashCode),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EventDetailView(
-                          event: {
-                            'title': event.title,
-                            'description': eventsTimeTable[itemIndex].reason,
-                            'startDateTime': currentEvents.value[itemIndex].start.toString(),
-                            'endDateTime': currentEvents.value[itemIndex].end.toString(),
-                            'isMeeting': true,
-                            'createdBy': eventsTimeTable[itemIndex].requestorID,
-                            'location': '',
-                            'status': event.status,
-                            'img_name': eventsTimeTable[itemIndex].imgName ?? '',
-                            'created_at': eventsTimeTable[itemIndex].createdAt ?? '',
-                            'is_repeat': '',
-                            'video_conference': '',
-                            'uid': eventsTimeTable[itemIndex].uid,
-                            'members': const [],
-                            'category': event.category,
-                            'leave_type': event.leaveType,
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                  // child: statusChild,
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 3, left: 3),
-                    padding: const EdgeInsets.all(8.0),
-                    height: constraints.maxHeight,
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.2),
-                      border: Border(
-                        left: BorderSide(color: statusColor, width: 4),
-                        right: BorderSide(color: statusColor),
-                        top: BorderSide(color: statusColor),
-                        bottom: BorderSide(color: statusColor),
-                      ),
-                      borderRadius: const BorderRadius.all(Radius.circular(10)),
-                    ),
-                    child: Row(
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Image.asset('assets/icons/element_4.png', width: 20),
-                                const SizedBox(width: 5),
-                                Text(eventType),
-                              ],
+                return event.category == 'Minutes Of Meeting'
+                    ? GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        key: ValueKey(event.hashCode),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EventDetailView(
+                                event: {
+                                  'title': event.title,
+                                  'description': eventsTimeTable[itemIndex].desc,
+                                  'startDateTime': event.start.toString(),
+                                  'endDateTime': event.end.toString(),
+                                  'isMeeting': eventsTimeTable[itemIndex].isMeeting,
+                                  'createdBy': eventsTimeTable[itemIndex].createdBy ?? '',
+                                  'location': eventsTimeTable[itemIndex].location ?? '',
+                                  'status': event.status,
+                                  'img_name': eventsTimeTable[itemIndex].imgName ?? '',
+                                  'created_at': eventsTimeTable[itemIndex].createdAt ?? '',
+                                  'is_repeat': eventsTimeTable[itemIndex].isRepeat ?? '',
+                                  'video_conference': eventsTimeTable[itemIndex].videoConference ?? '',
+                                  'uid': eventsTimeTable[itemIndex].uid,
+                                  'members': event.members ?? [],
+                                  'category': event.category,
+                                  'leave_type': eventsTimeTable[itemIndex].leaveType ?? '',
+                                },
+                              ),
                             ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(children: buildMembersAvatarsTimeTable(event, context)),
-                                const SizedBox(height: 20),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        iconCategory != null
-                                            ? Padding(
-                                                padding: const EdgeInsets.only(left: 10),
-                                                child: Image.asset(iconCategory, width: 15),
-                                              )
-                                            : const SizedBox.shrink(),
-                                        ConstrainedBox(
-                                          constraints: const BoxConstraints(maxWidth: 100),
-                                          child: ListTileTheme(
-                                            dense: true,
-                                            contentPadding: EdgeInsets.zero,
-                                            minVerticalPadding: 0,
-                                            minLeadingWidth: 0,
-                                            horizontalTitleGap: 0,
-                                            child: Text(
-                                              event.desc ?? '',
-                                              style: const TextStyle(fontSize: 10),
-                                            ),
+                          );
+                        },
+                        child: event.status == 'Cancelled'
+                            ? const SizedBox.shrink()
+                            : Container(
+                                alignment: Alignment.center,
+                                margin: const EdgeInsets.only(right: 3, left: 3),
+                                padding: const EdgeInsets.all(8.0),
+                                height: constraints.maxHeight,
+                                width: 80,
+                                decoration: BoxDecoration(
+                                  color: ColorStandardization().colorDarkGold,
+                                  borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                ),
+                                child: Text(
+                                  eventType,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                      )
+                    : GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        key: ValueKey(event.hashCode),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EventDetailView(
+                                event: {
+                                  'title': event.title,
+                                  'description': eventsTimeTable[itemIndex].reason,
+                                  'startDateTime': currentEvents.value[itemIndex].start.toString(),
+                                  'endDateTime': currentEvents.value[itemIndex].end.toString(),
+                                  'isMeeting': true,
+                                  'createdBy': eventsTimeTable[itemIndex].requestorID,
+                                  'location': '',
+                                  'status': event.status,
+                                  'img_name': eventsTimeTable[itemIndex].imgName ?? '',
+                                  'created_at': eventsTimeTable[itemIndex].createdAt ?? '',
+                                  'is_repeat': '',
+                                  'video_conference': '',
+                                  'uid': eventsTimeTable[itemIndex].uid,
+                                  'members': const [],
+                                  'category': event.category,
+                                  'leave_type': event.leaveType,
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                        // child: statusChild,
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 3, left: 3),
+                          padding: const EdgeInsets.all(8.0),
+                          height: constraints.maxHeight,
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.2),
+                            border: Border(
+                              left: BorderSide(color: statusColor, width: 4),
+                              right: BorderSide(color: statusColor),
+                              top: BorderSide(color: statusColor),
+                              bottom: BorderSide(color: statusColor),
+                            ),
+                            borderRadius: const BorderRadius.all(Radius.circular(10)),
+                          ),
+                          child: Row(
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Image.asset('assets/icons/element_4.png', width: 20),
+                                      const SizedBox(width: 5),
+                                      Text(eventType),
+                                    ],
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(children: buildMembersAvatarsTimeTable(event, context)),
+                                      const SizedBox(height: 20),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              iconCategory != null
+                                                  ? Padding(
+                                                      padding: const EdgeInsets.only(left: 10),
+                                                      child: Image.asset(iconCategory, width: 15),
+                                                    )
+                                                  : const SizedBox.shrink(),
+                                              ConstrainedBox(
+                                                constraints: const BoxConstraints(maxWidth: 100),
+                                                child: ListTileTheme(
+                                                  dense: true,
+                                                  contentPadding: EdgeInsets.zero,
+                                                  minVerticalPadding: 0,
+                                                  minLeadingWidth: 0,
+                                                  horizontalTitleGap: 0,
+                                                  child: Text(
+                                                    event.desc,
+                                                    style: const TextStyle(fontSize: 10),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 20),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.access_time, size: 15),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
-                                          style: const TextStyle(fontSize: 10),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                )
-                              ],
-                            ),
-                          ],
+                                          const SizedBox(width: 20),
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.access_time, size: 15),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
+                                                style: const TextStyle(fontSize: 10),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      )
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                  ),
-                );
+                      );
               },
             );
           },
