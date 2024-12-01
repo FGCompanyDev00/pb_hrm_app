@@ -36,6 +36,8 @@ class TimeTableDayWidget extends HookWidget {
         DateTime startTime;
         DateTime endTime;
 
+        if (e.start.isAfter(e.end)) return;
+
         if (e.start.hour == 0 && e.end.hour == 0) {
           startTime = DateTime.utc(
             selectedDay!.year,

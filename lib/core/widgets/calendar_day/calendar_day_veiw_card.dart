@@ -73,6 +73,8 @@ class CalendarDayWidgetCard extends HookWidget {
         //   untilEnd.value,
         //   0,
         // );
+        if (e.start.isAfter(e.end)) return;
+
         DateTime startTime = DateTime.utc(
           selectedDay!.year,
           selectedDay!.month,
