@@ -59,63 +59,71 @@ class CalendarDayWidgetCard extends HookWidget {
       currentEvents.value.clear();
       currentOverflowEventsRow.value.clear();
       for (var e in eventsCalendar) {
-        // DateTime slotStartTime = DateTime.utc(
-        //   selectedDay!.year,
-        //   selectedDay!.month,
-        //   selectedDay!.day,
-        //   currentHour.value,
-        //   0,
-        // );
-        // DateTime slotEndTime = DateTime.utc(
-        //   selectedDay!.year,
-        //   selectedDay!.month,
-        //   selectedDay!.day,
-        //   untilEnd.value,
-        //   0,
-        // );
-        if (e.start.isAfter(e.end)) return;
-
-        DateTime startTime = DateTime.utc(
+        DateTime slotStartTime = DateTime.utc(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          e.start.hour == 0 ? currentHour.value : e.start.hour,
+          e.start.hour,
           e.start.minute,
         );
-        DateTime endTime = DateTime.utc(
+        DateTime slotEndTime = DateTime.utc(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          e.end.hour == 0 ? untilEnd.value : e.end.hour,
+          e.end.hour,
           e.end.minute,
         );
 
-        // if (slotEndTime.isBefore(startTime)) {
-        // } else if (endTime.isBefore(slotStartTime)) {
-        // } else if (startTime.isAfter(endTime)) {
-        // } else if (startTime.isBefore(slotStartTime)) {
-        statusList.value.add(Container(
-          width: 5,
-          height: 5,
-          margin: const EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(
-            color: getEventColor(e),
-            shape: BoxShape.circle,
-          ),
-        ));
+        if (e.start.hour < 7 && e.end.hour < 19) {
+          debugPrint('invalid between 12AM and 6PM');
+        } else if (e.start.hour != 0 && e.end.hour != 0 && slotStartTime.isAtSameMomentAs(slotEndTime)) {
+          debugPrint('invalid same time');
+        } else if (e.end.hour < e.start.hour) {
+          debugPrint('wrong time');
+        } else {
+          DateTime startTime = DateTime.utc(
+            selectedDay!.year,
+            selectedDay!.month,
+            selectedDay!.day,
+            e.start.hour == 0 ? currentHour.value : e.start.hour,
+            e.start.minute,
+          );
+          DateTime endTime = DateTime.utc(
+            selectedDay!.year,
+            selectedDay!.month,
+            selectedDay!.day,
+            e.end.hour == 0 ? untilEnd.value : e.end.hour,
+            e.end.minute,
+          );
 
-        // }
+          // if (slotEndTime.isBefore(startTime)) {
+          // } else if (endTime.isBefore(slotStartTime)) {
+          // } else if (startTime.isAfter(endTime)) {
+          // } else if (startTime.isBefore(slotStartTime)) {
+          statusList.value.add(Container(
+            width: 5,
+            height: 5,
+            margin: const EdgeInsets.symmetric(horizontal: 1),
+            decoration: BoxDecoration(
+              color: getEventColor(e),
+              shape: BoxShape.circle,
+            ),
+          ));
 
-        currentEvents.value.add(AdvancedDayEvent(
-          value: e.uid,
-          title: e.title ?? '',
-          desc: e.desc ?? '',
-          start: startTime,
-          end: endTime,
-          category: e.category ?? '',
-          members: e.members,
-          status: e.status,
-        ));
+          // }
+
+          currentEvents.value.add(AdvancedDayEvent(
+            value: e.uid,
+            title: e.title,
+            desc: e.desc,
+            start: startTime,
+            end: endTime,
+            category: e.category,
+            members: e.members,
+            status: e.status,
+          ));
+        }
+
         // } else {
         //   statusList.value.add(Container(
         //     width: 5,

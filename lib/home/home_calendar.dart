@@ -509,9 +509,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           // Combine date and time properly
           DateTime outDate = DateTime.parse(dateOutStr);
           List<String> timeOutParts = timeOutStr.split(':');
+          if (timeOutParts.length == 3) timeOutParts.removeLast();
           if (timeOutParts.length != 2) {
             throw const FormatException('Invalid time_out format');
           }
+
           startDateTime = DateTime(
             outDate.year,
             outDate.month,
@@ -522,6 +524,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
           DateTime inDate = DateTime.parse(dateInStr);
           List<String> timeInParts = timeInStr.split(':');
+          if (timeOutParts.length == 3) timeOutParts.removeLast();
           if (timeInParts.length != 2) {
             throw const FormatException('Invalid time_in format');
           }

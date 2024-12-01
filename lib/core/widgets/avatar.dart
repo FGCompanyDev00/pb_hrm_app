@@ -82,7 +82,7 @@ Widget avatarUserList(String link, name) {
         const SizedBox(
           width: 20,
         ),
-        Text(name),
+        Text(name ?? ''),
       ],
     ),
   );
