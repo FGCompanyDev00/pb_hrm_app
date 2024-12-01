@@ -83,8 +83,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     connectivityResult.onConnectivityChanged.listen((source) async {
       if (source.contains(ConnectivityResult.none)) {
         eventsForDay = await offlineProvider.getCalendar();
-        addEventOffline(_selectedDay!, eventsForDay);
-        _eventsOffline();
+        if (events.value.isEmpty) addEventOffline(eventsForDay);
       }
     });
   }
@@ -118,23 +117,30 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     }
   }
 
-  void addEventOffline(DateTime date, List<Events> eventOffline) {
-    final detectDate = normalizeDate(date);
+  void addEventOffline(List<Events> eventOffline) {
     for (var i in eventOffline) {
-      if (events.value.containsKey(detectDate)) {
-        // If the date already has events, add to the list
-        if (events.value[detectDate]!.where((desc) => desc.desc == i.desc).isEmpty) {
-          events.value[detectDate]!.add(i);
+      final normalizedStartDay = normalizeDate(i.start);
+      final normalizedEndDay = normalizeDate(i.end);
+
+      for (var day = normalizedStartDay; !day.isAfter(normalizedEndDay); day = day.add(const Duration(days: 1))) {
+        final detectDate = normalizeDate(day);
+
+        if (events.value.containsKey(detectDate)) {
+          // If the date already has events, add to the list
+          if (events.value[detectDate]!.where((desc) => desc.desc == i.desc).isEmpty) {
+            events.value[detectDate]!.add(i);
+          } else {
+            i.members?.forEach(
+              (e) => events.value[detectDate]!.where((desc) => desc.desc == i.desc).first.members?.add(e),
+            );
+          }
         } else {
-          i.members?.forEach(
-            (e) => events.value[detectDate]!.where((desc) => desc.desc == i.desc).first.members?.add(e),
-          );
+          // Otherwise, create a new list with this event
+          events.value[detectDate] = [i];
         }
-      } else {
-        // Otherwise, create a new list with this event
-        events.value[detectDate] = [i];
       }
     }
+    _eventsOffline();
   }
 
   /// Fetches all required data concurrently
@@ -585,7 +591,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       if (e.contains(ConnectivityResult.none)) {
         eventsForDay = await offlineProvider.getCalendar();
         setState(() {
-          addEventOffline(_selectedDay!, eventsForDay);
+          addEventOffline(eventsForDay);
         });
       } else {
         await _fetchData();
@@ -673,6 +679,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     }
     setState(() {
       eventsForDay = dayEvents;
+      events.value;
     });
   }
 
