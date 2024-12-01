@@ -71,7 +71,7 @@ class TimetablePageState extends State<TimetablePage> {
         // 'Detail Calendar Event'
         centerTitle: true,
         title: Text(
-          AppLocalizations.of(context)!.detailCalendarEvent,
+          AppLocalizations.of(context)!.calendar,
           style: const TextStyle(
             color: Colors.black,
             fontSize: 24,
