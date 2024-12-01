@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'add_member_office_event.dart';
@@ -439,7 +438,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         content: Text(message),
         actions: [
           TextButton(
-            child: Text('OK'),
+            child: const Text('OK'),
             onPressed: () => Navigator.pop(context),
           ),
         ],
@@ -449,8 +448,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
   /// Shows date and time picker for selecting date and time
   Future<void> _selectDateTime(BuildContext context, bool isStartDateTime) async {
-    final int startMinutes = 8 * 60; // 8:00 AM
-    final int endMinutes = 17 * 60; // 5:00 PM
+    const int startMinutes = 8 * 60; // 8:00 AM
+    const int endMinutes = 17 * 60; // 5:00 PM
     final DateTime initialDate = isStartDateTime ? (_startDateTime ?? DateTime.now()) : (_endDateTime ?? DateTime.now());
     final DateTime? pickedDate = await showDatePicker(
       context: context,
