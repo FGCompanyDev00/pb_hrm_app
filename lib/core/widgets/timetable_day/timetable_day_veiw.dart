@@ -33,89 +33,91 @@ class TimeTableDayWidget extends HookWidget {
       currentEvents.value.clear();
       currentOverflowEventsRow.value.clear();
       for (var e in eventsTimeTable) {
+        DateTime slotStartTimeSession = DateTime.utc(
+          selectedDay!.year,
+          selectedDay!.month,
+          selectedDay!.day,
+          e.start.hour == 0 ? currentHour : e.start.hour,
+          e.start.minute,
+        );
+        DateTime slotStartTime = DateTime.utc(
+          selectedDay!.year,
+          selectedDay!.month,
+          selectedDay!.day,
+          e.start.hour,
+          e.start.minute,
+        );
+        DateTime slotEndTime = DateTime.utc(
+          selectedDay!.year,
+          selectedDay!.month,
+          selectedDay!.day,
+          e.end.hour,
+          e.end.minute,
+        );
         DateTime startTime;
         DateTime endTime;
 
-        if (e.start.isAfter(e.end)) return;
-
-        if (e.start.hour == 0 && e.end.hour == 0) {
-          startTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            8,
-            0,
-          );
-          endTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            17,
-            0,
-          );
-          currentEvents.value.add(Events(
-            uid: e.uid,
-            title: e.title ?? '',
-            desc: e.desc ?? '',
-            start: startTime,
-            end: endTime,
-            category: e.category ?? '',
-            members: e.members,
-            status: e.status,
-            leaveType: e.leaveType,
-          ));
-        } else if (e.start.hour > 7 && e.end.hour < 18) {
-          startTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            e.start.hour,
-            e.start.minute,
-          );
-          endTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            e.end.hour,
-            e.end.minute,
-          );
-          currentEvents.value.add(Events(
-            uid: e.uid,
-            title: e.title,
-            desc: e.desc,
-            start: startTime,
-            end: endTime,
-            category: e.category,
-            members: e.members,
-            status: e.status,
-            leaveType: e.leaveType,
-          ));
+        if ((e.start.hour > 0 && e.start.hour < 7) && e.end.hour < 19) {
+          debugPrint('invalid between 12AM and 6PM');
+        } else if (e.start.hour != 0 && e.end.hour != 0 && slotStartTime.isAtSameMomentAs(slotEndTime)) {
+          debugPrint('invalid same time');
+        } else if (e.end.hour < e.start.hour) {
+          debugPrint('wrong time');
+        } else if (slotEndTime.isBefore(slotStartTimeSession)) {
         } else {
-          startTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            e.start.hour,
-            e.start.minute,
-          );
-          endTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            e.end.hour,
-            e.end.minute,
-          );
-          currentEvents.value.add(Events(
-            uid: e.uid,
-            title: e.title,
-            desc: e.desc,
-            start: startTime,
-            end: endTime,
-            category: e.category,
-            members: e.members,
-            status: e.status,
-            leaveType: e.leaveType,
-          ));
+          if (e.start.hour == 0 && e.end.hour == 0) {
+            startTime = DateTime.utc(
+              selectedDay!.year,
+              selectedDay!.month,
+              selectedDay!.day,
+              8,
+              0,
+            );
+            endTime = DateTime.utc(
+              selectedDay!.year,
+              selectedDay!.month,
+              selectedDay!.day,
+              17,
+              0,
+            );
+            currentEvents.value.add(Events(
+              uid: e.uid,
+              title: e.title,
+              desc: e.desc,
+              start: startTime,
+              end: endTime,
+              category: e.category,
+              members: e.members,
+              status: e.status,
+              leaveType: e.leaveType,
+            ));
+          } else {
+            startTime = DateTime.utc(
+              selectedDay!.year,
+              selectedDay!.month,
+              selectedDay!.day,
+              e.start.hour < 9 ? 8 : e.start.hour,
+              e.start.minute,
+            );
+            endTime = DateTime.utc(
+              selectedDay!.year,
+              selectedDay!.month,
+              selectedDay!.day,
+              e.end.hour,
+              e.end.minute,
+            );
+            currentEvents.value.add(Events(
+              uid: e.uid,
+              title: e.title,
+              desc: e.desc,
+              start: startTime,
+              end: endTime,
+              category: e.category,
+              members: e.members,
+              status: e.status,
+              leaveType: e.leaveType,
+            ));
+          }
         }
       }
 

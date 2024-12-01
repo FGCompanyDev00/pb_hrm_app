@@ -81,7 +81,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     _fetchData();
 
     connectivityResult.onConnectivityChanged.listen((source) async {
-      if (source.contains(ConnectivityResult.none)) eventsForDay = await offlineProvider.getCalendar();
+      if (source.contains(ConnectivityResult.none)) {
+        eventsForDay = await offlineProvider.getCalendar();
+        addEventOffline(_selectedDay!, eventsForDay);
+        _eventsOffline();
+      }
     });
   }
 
@@ -653,8 +657,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     });
   }
 
-  void _eventsOffline() {
+  void _eventsOffline() async {
     if (_selectedDay == null) return;
+
     List<Events> dayEvents = _getEventsForDay(_selectedDay!);
     if (_selectedCategory != 'All') {
       dayEvents = dayEvents.where((event) => event.category == _selectedCategory).toList();

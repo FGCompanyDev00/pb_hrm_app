@@ -59,6 +59,13 @@ class CalendarDayWidgetCard extends HookWidget {
       currentEvents.value.clear();
       currentOverflowEventsRow.value.clear();
       for (var e in eventsCalendar) {
+        DateTime slotStartTimeSession = DateTime.utc(
+          selectedDay!.year,
+          selectedDay!.month,
+          selectedDay!.day,
+          e.start.hour == 0 ? currentHour.value : e.start.hour,
+          e.start.minute,
+        );
         DateTime slotStartTime = DateTime.utc(
           selectedDay!.year,
           selectedDay!.month,
@@ -74,12 +81,13 @@ class CalendarDayWidgetCard extends HookWidget {
           e.end.minute,
         );
 
-        if (e.start.hour < 7 && e.end.hour < 19) {
+        if ((e.start.hour > 0 && e.start.hour < 7) && e.end.hour < 19) {
           debugPrint('invalid between 12AM and 6PM');
         } else if (e.start.hour != 0 && e.end.hour != 0 && slotStartTime.isAtSameMomentAs(slotEndTime)) {
           debugPrint('invalid same time');
         } else if (e.end.hour < e.start.hour) {
           debugPrint('wrong time');
+        } else if (slotEndTime.isBefore(slotStartTimeSession)) {
         } else {
           DateTime startTime = DateTime.utc(
             selectedDay!.year,
