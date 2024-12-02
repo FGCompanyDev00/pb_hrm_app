@@ -59,13 +59,6 @@ class CalendarDayWidgetCard extends HookWidget {
       currentEvents.value.clear();
       currentOverflowEventsRow.value.clear();
       for (var e in eventsCalendar) {
-        DateTime slotStartTimeSession = DateTime.utc(
-          selectedDay!.year,
-          selectedDay!.month,
-          selectedDay!.day,
-          e.start.hour == 0 ? currentHour.value : e.start.hour,
-          e.start.minute,
-        );
         DateTime slotStartTime = DateTime.utc(
           selectedDay!.year,
           selectedDay!.month,
@@ -436,7 +429,7 @@ class CalendarDayWidgetCard extends HookWidget {
                                                       children: [
                                                         iconCategory != null
                                                             ? Padding(
-                                                                padding: const EdgeInsets.only(left: 10),
+                                                                padding: const EdgeInsets.only(right: 10),
                                                                 child: Image.asset(iconCategory, width: 15),
                                                               )
                                                             : const SizedBox.shrink(),
