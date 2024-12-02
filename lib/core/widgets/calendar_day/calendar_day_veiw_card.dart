@@ -87,7 +87,6 @@ class CalendarDayWidgetCard extends HookWidget {
           debugPrint('invalid same time');
         } else if (e.end.hour < e.start.hour) {
           debugPrint('wrong time');
-        } else if (slotEndTime.isBefore(slotStartTimeSession)) {
         } else {
           DateTime startTime = DateTime.utc(
             selectedDay!.year,

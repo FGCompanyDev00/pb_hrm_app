@@ -317,13 +317,12 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       return false;
     }
 
-    if (_titleController.text.isEmpty) {
-      _showErrorMessage('Please enter a title.');
-      return false;
-    }
-
     switch (_selectedBookingType) {
       case '1. Add Meeting':
+        if (_titleController.text.isEmpty) {
+          _showErrorMessage('Please enter a title.');
+          return false;
+        }
         if (_descriptionController.text.isEmpty) {
           _showErrorMessage('Please enter a description.');
           return false;
@@ -339,6 +338,10 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         break;
 
       case '2. Meeting and Booking Meeting Room':
+        if (_titleController.text.isEmpty) {
+          _showErrorMessage('Please enter a title.');
+          return false;
+        }
         if (_remarkController.text.isEmpty) {
           _showErrorMessage('Please enter a description.');
           return false;
