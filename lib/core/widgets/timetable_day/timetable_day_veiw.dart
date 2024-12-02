@@ -33,13 +33,6 @@ class TimeTableDayWidget extends HookWidget {
       currentEvents.value.clear();
       currentOverflowEventsRow.value.clear();
       for (var e in eventsTimeTable) {
-        DateTime slotStartTimeSession = DateTime.utc(
-          selectedDay!.year,
-          selectedDay!.month,
-          selectedDay!.day,
-          e.start.hour == 0 ? currentHour : e.start.hour,
-          e.start.minute,
-        );
         DateTime slotStartTime = DateTime.utc(
           selectedDay!.year,
           selectedDay!.month,
@@ -63,7 +56,6 @@ class TimeTableDayWidget extends HookWidget {
           debugPrint('invalid same time');
         } else if (e.end.hour < e.start.hour) {
           debugPrint('wrong time');
-        } else if (slotEndTime.isBefore(slotStartTimeSession)) {
         } else {
           if (e.start.hour == 0 && e.end.hour == 0) {
             startTime = DateTime.utc(
@@ -142,7 +134,7 @@ class TimeTableDayWidget extends HookWidget {
               overflowEvents: data,
               events: UnmodifiableListView(eventsTimeTable),
               dividerColor: Colors.black,
-              currentDate: selectedDay ?? DateTime.now(),
+              currentDate: selectedDay ?? DateTime.now().toUtc(),
               heightPerMin: 1.5,
               startOfDay: TimeOfDay(hour: currentHour, minute: 0),
               endOfDay: TimeOfDay(hour: untilEnd, minute: 0),
@@ -153,7 +145,6 @@ class TimeTableDayWidget extends HookWidget {
               time12: true,
               timeViewItemBuilder: (context, constraints, itemIndex, event) {
                 Color statusColor;
-                Widget statusChild = const SizedBox.shrink();
                 String? iconCategory = categoryIcon[event.category];
 
                 debugPrint(event.category);
@@ -177,7 +168,7 @@ class TimeTableDayWidget extends HookWidget {
 
                 switch (event.status) {
                   case 'Approved':
-                    statusChild = Container(
+                    Container(
                       margin: const EdgeInsets.only(right: 10),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 2,
@@ -202,7 +193,7 @@ class TimeTableDayWidget extends HookWidget {
                       ),
                     );
                   case 'Pending':
-                    statusChild = Container(
+                    Container(
                       margin: const EdgeInsets.only(right: 10),
                       height: constraints.maxHeight,
                       decoration: BoxDecoration(

@@ -150,6 +150,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           "description": _descriptionController.text.trim(),
           "fromdate": formatDateTime(_startDateTime),
           "todate": formatDateTime(_endDateTime),
+          "start_time": formatTime(_startDateTime),
+          "end_time": formatTime(_endDateTime),
           "location": _location ?? '',
           "status": status,
           "notification": _notification ?? 5,
@@ -287,6 +289,11 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     } else {
       return DateFormat('yyyy-MM-dd').format(dateTime);
     }
+  }
+
+  String formatTime(DateTime? dateTime) {
+    if (dateTime == null) return '';
+    return DateFormat('HH:mm:ss').format(dateTime);
   }
 
   /// Resets the form fields to default values
@@ -453,7 +460,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   Future<void> _selectDateTime(BuildContext context, bool isStartDateTime) async {
     const int startMinutes = 8 * 60; // 8:00 AM
     const int endMinutes = 17 * 60; // 5:00 PM
-    final DateTime initialDate = isStartDateTime ? (_startDateTime ?? DateTime.now()) : (_endDateTime ?? DateTime.now());
+    final currentDay = DateTime.now().toUtc();
+    final DateTime initialDate = isStartDateTime ? (_startDateTime ?? currentDay) : (_endDateTime ?? currentDay);
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: isStartDateTime ? initialDate : _beforeEndDateTime.value,
@@ -464,7 +472,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     if (pickedDate != null) {
       if (_selectedBookingType == '1. Add Meeting') {
         // For Type 1, also pick time
-        final TimeOfDay initialTime = TimeOfDay.fromDateTime(isStartDateTime ? initialDate : _beforeEndDateTime.value!);
+        DateTime currentTimeStart = pickedDate.day == initialDate.day ? initialDate : DateTime.utc(currentDay.year, currentDay.month, currentDay.day, 8, 0);
+        final TimeOfDay initialTime = TimeOfDay.fromDateTime(isStartDateTime ? currentTimeStart : _beforeEndDateTime.value!);
         final TimeOfDay? pickedTime = await showTimePicker(
           context: context,
           initialTime: initialTime,

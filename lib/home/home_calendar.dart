@@ -183,8 +183,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         // }
 
         // Adjusted field names to match API response
-        final DateTime startDate = item['take_leave_from'] != null ? normalizeDate(DateTime.parse(item['take_leave_from'])) : normalizeDate(DateTime.now());
-        final DateTime endDate = item['take_leave_to'] != null ? normalizeDate(DateTime.parse(item['take_leave_to'])) : normalizeDate(DateTime.now());
+        final DateTime startDate = item['take_leave_from'] != null ? normalizeDate(DateTime.parse(item['take_leave_from']).toUtc()) : normalizeDate(DateTime.now());
+        final DateTime endDate = item['take_leave_to'] != null ? normalizeDate(DateTime.parse(item['take_leave_to']).toUtc()) : normalizeDate(DateTime.now());
         final String uid = 'leave_${item['id']}';
         double days;
 
@@ -265,7 +265,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         DateTime endDateTime;
         try {
           // Parse 'from_date' and 'start_time' separately and combine
-          DateTime fromDate = DateTime.parse(item['from_date']);
+          DateTime fromDate = DateTime.parse(item['from_date']).toUtc();
           List<String> startTimeParts = item['start_time'] != "" ? item['start_time'].split(':') : ["00", "00"];
           if (startTimeParts.length == 3) startTimeParts.removeLast();
 
@@ -281,7 +281,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           );
 
           // Parse 'to_date' and 'end_time' separately and combine
-          DateTime toDate = DateTime.parse(item['to_date']);
+          DateTime toDate = DateTime.parse(item['to_date']).toUtc();
           List<String> endTimeParts = item['end_time'] != "" ? item['end_time'].split(':') : ["00", "00"];
           if (endTimeParts.length == 3) endTimeParts.removeLast();
           if (endTimeParts.length != 2) {
@@ -369,7 +369,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         try {
           // Combine date and time properly
-          DateTime fromDate = DateTime.parse(dateFrom);
+          DateTime fromDate = DateTime.parse(dateFrom).toUtc();
           List<String> timeOutParts = startTime.split(':');
           if (timeOutParts.length == 3) timeOutParts.removeLast();
           if (timeOutParts.length != 2) {
@@ -383,7 +383,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             int.parse(timeOutParts[1]),
           );
 
-          DateTime inDate = DateTime.parse(dateTo);
+          DateTime inDate = DateTime.parse(dateTo).toUtc();
           List<String> timeInParts = endTime.split(':');
           if (timeInParts.length == 3) timeInParts.removeLast();
           if (timeInParts.length != 2) {
@@ -449,8 +449,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final meetingRoomBookings = List<Map<String, dynamic>>.from(results);
 
       for (var item in meetingRoomBookings) {
-        final DateTime? startDateTime = item['from_date_time'] != null ? DateTime.parse(item['from_date_time']) : null;
-        final DateTime? endDateTime = item['to_date_time'] != null ? DateTime.parse(item['to_date_time']) : null;
+        final DateTime? startDateTime = item['from_date_time'] != null ? DateTime.parse(item['from_date_time']).toUtc() : null;
+        final DateTime? endDateTime = item['to_date_time'] != null ? DateTime.parse(item['to_date_time']).toUtc() : null;
 
         if (startDateTime == null || endDateTime == null) {
           showSnackBar('Missing from_date_time or to_date_time in meeting room booking.');
@@ -517,7 +517,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         try {
           // Combine date and time properly
-          DateTime outDate = DateTime.parse(dateOutStr);
+          DateTime outDate = DateTime.parse(dateOutStr).toUtc();
           List<String> timeOutParts = timeOutStr.split(':');
           if (timeOutParts.length == 3) timeOutParts.removeLast();
           if (timeOutParts.length != 2) {
@@ -532,7 +532,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             int.parse(timeOutParts[1]),
           );
 
-          DateTime inDate = DateTime.parse(dateInStr);
+          DateTime inDate = DateTime.parse(dateInStr).toUtc();
           List<String> timeInParts = timeInStr.split(':');
           if (timeOutParts.length == 3) timeOutParts.removeLast();
           if (timeInParts.length != 2) {
@@ -793,8 +793,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       if (newEvent != null) {
         _addEvent(
           title: newEvent['title'] ?? 'New Event',
-          startDateTime: DateTime.parse(newEvent['startDateTime']),
-          endDateTime: DateTime.parse(newEvent['endDateTime']),
+          startDateTime: DateTime.parse(newEvent['startDateTime']).toUtc(),
+          endDateTime: DateTime.parse(newEvent['endDateTime']).toUtc(),
           description: newEvent['description'] ?? '',
           status: 'Pending',
           isMeeting: true,
