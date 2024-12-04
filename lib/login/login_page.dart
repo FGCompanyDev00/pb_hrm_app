@@ -15,7 +15,7 @@ import 'package:http/http.dart' as http;
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:flutter/services.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:hive/hive.dart';

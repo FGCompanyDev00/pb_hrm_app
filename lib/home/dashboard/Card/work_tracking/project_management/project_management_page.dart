@@ -7,7 +7,7 @@ import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/chat_section.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
 
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 

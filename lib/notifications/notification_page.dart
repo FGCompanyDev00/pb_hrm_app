@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/notifications/notification_detail_page.dart';
 import 'package:pb_hrsystem/notifications/notification_meeting_section_detail_page.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;

@@ -162,7 +162,7 @@
   "office": "ອົງກອນ",
   "offsite": "ນອກອົງກອນ",
   "checkInNotAllowed": "ການເຂົ້າແລະອອກບໍ່ຖືກອະນຸຍາດ",
-  "checkInLateNotAllowed": "ຕາມເວລາເຂົ້າແລະອອກບໍ່ສາມາດຫວ່າງໄດ້ເຖິງ 13:00.",
+  "checkInLateNotAllowed": "ເວລາການເຂົາຫຼືເຂົາຫາບໍ່ສາມາດມາທີ່ເຫົາ 18:00 ແລະ ກ່ອນ 07:00 ເທົາ.",
   "biometricNotEnabled": "ການພິມນິ້ວມືບໍ່ຖືກເປີດໃຊ້",
   "enableBiometricFirst": "ກະລຸນາເປີດການພິມນິ້ວມືໃນການຕັ້ງຄ່າແລ້ວກ່ອນ.",
   "authenticationFailed": "ການຢືນຢັນລົ້ມເຫລວ",

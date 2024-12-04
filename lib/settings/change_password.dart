@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../theme/theme.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -143,10 +143,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 Container(
                   height: 80,
                   decoration: const BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage('assets/yellow_bg.png'),
-                      fit: BoxFit.cover,
-                    ),
                     borderRadius: BorderRadius.only(
                       bottomLeft: Radius.circular(40),
                       bottomRight: Radius.circular(40),
@@ -183,7 +179,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   radius: 46,
                   backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
                       ? NetworkImage(_profileImageUrl!)
-                      : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                      : const AssetImage('assets/avatar_placeholder.png') as ImageProvider,
                   backgroundColor: Colors.white,
                 ),
                 const SizedBox(height: 20),

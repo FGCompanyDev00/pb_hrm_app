@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
 
 class LeaveManagementPage extends HookWidget {
   const LeaveManagementPage({super.key});

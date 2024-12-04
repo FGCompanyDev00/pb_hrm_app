@@ -1,4 +1,4 @@
-// settings_page.dart
+// lib/settings/settings_page.dart
 
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -9,7 +9,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/home/notification_settings_page.dart';
 import 'package:pb_hrsystem/settings/change_password.dart';
 import 'package:pb_hrsystem/settings/edit_profile.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -27,7 +27,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final _storage = const FlutterSecureStorage();
   bool _biometricEnabled = false;
   late Future<UserProfile> futureUserProfile;
-  String _appVersion = 'PSBV Next Demo v1.0.31(31)';
+  String _appVersion = 'PSBV Next Demo v1.0.33(33)';
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -42,13 +42,13 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadAppVersion() async {
     setState(() {
-      _appVersion = 'PSBV Next Demo v1.0.31(31)';
+      _appVersion = 'PSBV Next Demo v1.0.33(33)';
       // _appVersion = 'PSBV Next v${packageInfo.version}';
     });
   }
 
   Future<void> _loadBiometricSetting() async {
-    bool? isEnabled = await _storage.read(key: 'biometricEnabled') == 'true';
+    bool isEnabled = (await _storage.read(key: 'biometricEnabled') ?? 'false') == 'true';
     setState(() {
       _biometricEnabled = isEnabled;
     });
@@ -213,19 +213,21 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
 
-    return PopScope(
-      onPopInvokedWithResult: (e, result) => _onWillPop,
+    return WillPopScope(
+      onWillPop: _onWillPop,
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: themeNotifier.isDarkMode ? Colors.black : Colors.white,
         extendBodyBehindAppBar: false,
         appBar: AppBar(
           flexibleSpace: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/background.png'),
+                image: AssetImage(
+                  themeNotifier.isDarkMode ? 'assets/darkbg.png' : 'assets/background.png',
+                ),
                 fit: BoxFit.cover,
               ),
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(30),
                 bottomRight: Radius.circular(30),
               ),
@@ -234,14 +236,18 @@ class _SettingsPageState extends State<SettingsPage> {
           centerTitle: true,
           title: Text(
             AppLocalizations.of(context)!.settings,
-            style: const TextStyle(
-              color: Colors.black,
+            style: TextStyle(
+              color: themeNotifier.isDarkMode ? Colors.white : Colors.black,
               fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
+            icon: Icon(
+              Icons.arrow_back_ios_new,
+              color: themeNotifier.isDarkMode ? Colors.white : Colors.black,
+              size: 20,
+            ),
             onPressed: () {
               Navigator.pop(context);
             },
@@ -271,7 +277,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           style: themeNotifier.textStyle.copyWith(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.grey,
+                            color: themeNotifier.isDarkMode ? Colors.grey[300] : Colors.grey,
                           ),
                         ),
                       ],
@@ -315,19 +321,21 @@ class _SettingsPageState extends State<SettingsPage> {
                           }
                         },
                         activeColor: const Color(0xFFDBB342),
+                        inactiveTrackColor: themeNotifier.isDarkMode ? Colors.grey[700] : Colors.grey[300],
                       ),
                     ),
                     // Enable Dark Mode Switch
                     _buildSettingsTile(
                       context,
                       title: 'Dark Mode',
-                      // trailing: Switch(
-                      //   value: themeNotifier.isDarkMode,
-                      //   onChanged: (bool value) {
-                      //     themeNotifier.toggleTheme();
-                      //   },
-                      //   activeColor: const Color(0xFFDBB342),
-                      // ),
+                      trailing: Switch(
+                        value: themeNotifier.isDarkMode,
+                        onChanged: (bool value) {
+                          themeNotifier.toggleTheme();
+                        },
+                        activeColor: const Color(0xFFDBB342),
+                        inactiveThumbColor: themeNotifier.isDarkMode ? Colors.grey[600] : Colors.grey,
+                      ),
                     ),
                     // Notification Tile
                     _buildSettingsTile(
@@ -346,7 +354,10 @@ class _SettingsPageState extends State<SettingsPage> {
                     Center(
                       child: Text(
                         _appVersion,
-                        style: themeNotifier.textStyle.copyWith(fontSize: 14, color: Colors.grey),
+                        style: themeNotifier.textStyle.copyWith(
+                          fontSize: 14,
+                          color: themeNotifier.isDarkMode ? Colors.grey[400] : Colors.grey,
+                        ),
                       ),
                     ),
                   ],
@@ -359,7 +370,13 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildSettingsTile(BuildContext context, {required String title, Widget? trailing, IconData? icon, void Function()? onTap}) {
+  Widget _buildSettingsTile(
+      BuildContext context, {
+        required String title,
+        Widget? trailing,
+        IconData? icon,
+        void Function()? onTap,
+      }) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
@@ -367,7 +384,7 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.symmetric(vertical: 5.0),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-        tileColor: isDarkMode ? Colors.black45 : Colors.white,
+        tileColor: isDarkMode ? Colors.grey[800] : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(15.0),
         ),

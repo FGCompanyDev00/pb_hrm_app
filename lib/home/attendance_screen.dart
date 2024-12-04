@@ -807,10 +807,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             : Colors.red;
 
     final now = DateTime.now();
-    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 8, 0);
-    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 13, 0);
+    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 7, 0);
+    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 18, 0);
     bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
-    bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 0) && _isCheckOutAvailable;
+    bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 6) && _isCheckOutAvailable;
 
     return GestureDetector(
       onTap: () async {
@@ -942,7 +942,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildTabContent(BuildContext context) {
-    return Container(); // Placeholder since all content is now on a single page
+    return Container();
   }
 
   Widget _buildWeeklyRecordsList() {
@@ -1159,7 +1159,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: PreferredSize(
-          preferredSize: const Size.fromHeight(100.0),
+          preferredSize: const Size.fromHeight(80.0),
           child: Container(
             decoration: const BoxDecoration(
               image: DecorationImage(

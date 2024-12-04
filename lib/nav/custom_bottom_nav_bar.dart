@@ -52,6 +52,9 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
 
   @override
   Widget build(BuildContext context) {
+    // Get the current theme (light or dark)
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     double iconSize = MediaQuery.of(context).size.width * 0.07;
     double homeIconSize = MediaQuery.of(context).size.width * 0.1;
     double navBarHeight = MediaQuery.of(context).size.height * 0.08;
@@ -62,7 +65,9 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
         TabItem(
           icon: Icon(
             Icons.fingerprint,
-            color: widget.currentIndex == 0 ? Colors.orangeAccent : Colors.grey,
+            color: widget.currentIndex == 0
+                ? (isDarkMode ? Colors.green : Colors.orangeAccent)
+                : (isDarkMode ? Colors.grey : Colors.grey),
             size: iconSize.clamp(28, 35),
           ),
         ),
@@ -70,6 +75,15 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
           icon: AnimatedBuilder(
             animation: _animationController,
             builder: (context, child) {
+              // Get current theme (light or dark)
+              bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+              // If it's dark mode, just use a fixed orange color
+              Color borderColor = isDarkMode ? Colors.orange : _colorAnimation.value!;
+              Color shadowColor = isDarkMode
+                  ? Colors.orange.withOpacity(0.7)
+                  : _colorAnimation.value!.withOpacity(0.7);
+
               return Container(
                 width: homeIconSize,
                 height: homeIconSize,
@@ -77,14 +91,14 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
                   shape: BoxShape.circle,
                   border: widget.currentIndex == 1
                       ? Border.all(
-                    color: _colorAnimation.value!,
+                    color: borderColor,
                     width: 3.0,
                   )
                       : null,
                   boxShadow: widget.currentIndex == 1
                       ? [
                     BoxShadow(
-                      color: _colorAnimation.value!.withOpacity(0.7),
+                      color: shadowColor,
                       blurRadius: 8.0,
                       spreadRadius: 2.0,
                     ),
@@ -100,23 +114,26 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
             },
           ),
         ),
+
         TabItem(
           icon: Icon(
             Icons.apps,
-            color: widget.currentIndex == 2 ? Colors.orangeAccent : Colors.grey,
+            color: widget.currentIndex == 2
+                ? (isDarkMode ? Colors.green : Colors.orangeAccent)
+                : (isDarkMode ? Colors.grey : Colors.grey),
             size: iconSize.clamp(28, 35),
           ),
         ),
       ],
       initialActiveIndex: widget.currentIndex,
       onTap: widget.onTap,
-      backgroundColor: Colors.white,
-      activeColor: Colors.orangeAccent,
-      color: const Color(0xFFDBB342),
+      backgroundColor: isDarkMode ? Colors.black87 : Colors.white,
+      activeColor: isDarkMode ? Colors.amber : Colors.orangeAccent,
+      color: isDarkMode ? Colors.grey[800]! : const Color(0xFFDBB342),
       height: navBarHeight.clamp(60, 80),
       curveSize: 90,
       top: -15,
-      shadowColor: Colors.black38.withOpacity(0.1),
+      shadowColor: isDarkMode ? Colors.black.withOpacity(0.5) : Colors.black38.withOpacity(0.1),
       elevation: 16,
     );
   }

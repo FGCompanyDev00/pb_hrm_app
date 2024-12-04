@@ -20,7 +20,7 @@ import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'theme/theme.dart';
+import 'settings/theme_notifier.dart';
 import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';

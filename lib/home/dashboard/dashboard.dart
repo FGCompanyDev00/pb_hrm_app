@@ -1,5 +1,3 @@
-// dashboard.dart
-
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
@@ -16,7 +14,7 @@ import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:pb_hrsystem/theme/theme.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
 
@@ -142,7 +140,6 @@ class _DashboardState extends State<Dashboard> {
         if (kDebugMode) {
           print("Error: Failed to fetch data. Status Code: ${response.statusCode}");
         }
-        // Removed the exception related to 'failedToLoadBanners'
         throw Exception(AppLocalizations.of(context)!.errorWithDetails('Status Code: ${response.statusCode}'));
       }
     } catch (e) {
@@ -226,7 +223,7 @@ class _DashboardState extends State<Dashboard> {
     return PopScope(
       onPopInvokedWithResult: (e, result) => false, // Disable back button
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(140.0),
           child: FutureBuilder<UserProfile>(
@@ -288,9 +285,11 @@ class _DashboardState extends State<Dashboard> {
       flexibleSpace: ClipRRect(
         borderRadius: BorderRadius.circular(15),
         child: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image: AssetImage(
+                isDarkMode ? 'assets/darkbg.png' : 'assets/background.png',
+              ),
               fit: BoxFit.cover,
             ),
           ),
@@ -301,7 +300,7 @@ class _DashboardState extends State<Dashboard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.settings, color: Colors.black, size: 40),
+                    icon: Icon(Icons.settings, color: isDarkMode ? Colors.white : Colors.black, size: 32),
                     onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const SettingsPage()),
@@ -317,7 +316,9 @@ class _DashboardState extends State<Dashboard> {
                       children: [
                         CircleAvatar(
                           radius: 28,
-                          backgroundImage: userProfile.imgName != 'default_avatar.jpg' ? NetworkImage(userProfile.imgName) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                          backgroundImage: userProfile.imgName != 'default_avatar.jpg'
+                              ? NetworkImage(userProfile.imgName)
+                              : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
                           backgroundColor: Colors.white,
                           onBackgroundImageError: (_, __) {
                             const AssetImage('assets/default_avatar.png');
@@ -326,14 +327,17 @@ class _DashboardState extends State<Dashboard> {
                         const SizedBox(height: 6),
                         Text(
                           AppLocalizations.of(context)!.greeting(userProfile.name),
-                          style: const TextStyle(color: Colors.black, fontSize: 22),
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black,
+                            fontSize: 22,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.power_settings_new, color: Colors.black, size: 40),
-                    onPressed: () => _showLogoutDialog(context),
+                    icon: Icon(Icons.power_settings_new, color: isDarkMode ? Colors.white : Colors.black, size: 32),
+                    onPressed: () => _showLogoutDialog(context, isDarkMode),
                   ),
                 ],
               ),
@@ -347,12 +351,7 @@ class _DashboardState extends State<Dashboard> {
   // Dark mode background
   Widget _buildDarkBackground() {
     return Container(
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/darkbg.png'),
-          fit: BoxFit.cover,
-        ),
-      ),
+      color: Colors.black,
     );
   }
 
@@ -360,9 +359,9 @@ class _DashboardState extends State<Dashboard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildBannerCarousel(),
+        _buildBannerCarousel(isDarkMode),
         const SizedBox(height: 10),
-        _buildActionMenuHeader(),
+        _buildActionMenuHeader(isDarkMode),
         const SizedBox(height: 6),
         // Use Expanded here to allow scrolling of the GridView
         _buildActionGrid(isDarkMode),
@@ -371,7 +370,7 @@ class _DashboardState extends State<Dashboard> {
   }
 
   // Banner Carousel
-  Widget _buildBannerCarousel() {
+  Widget _buildBannerCarousel(bool isDarkMode) {
     return SizedBox(
       height: 175.0,
       child: FutureBuilder<List<String>>(
@@ -403,6 +402,9 @@ class _DashboardState extends State<Dashboard> {
                     image: DecorationImage(
                       image: NetworkImage(bannerUrl),
                       fit: BoxFit.cover,
+                      colorFilter: isDarkMode
+                          ? ColorFilter.mode(Colors.black.withOpacity(0.5), BlendMode.darken)
+                          : null,
                     ),
                   ),
                 );
@@ -417,43 +419,42 @@ class _DashboardState extends State<Dashboard> {
   }
 
   // Action Menu Header
-  Widget _buildActionMenuHeader() {
+  Widget _buildActionMenuHeader(bool isDarkMode) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: SizedBox(
-        height: 50,
+        height: 43,
         child: Row(
           children: [
             Container(
               width: 4,
               height: 24,
-              color: Colors.green,
+              color: const Color(0xFFDBB342),
               margin: const EdgeInsets.only(right: 12),
             ),
             Text(
               AppLocalizations.of(context)!.actionMenu,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
             const Spacer(),
             Text(
               AppLocalizations.of(context)!.notification,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: Colors.black,
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
             Stack(
               children: [
                 IconButton(
-                  icon: Image.asset(
-                    'assets/notification-status.png',
-                    width: 24,
-                    height: 24,
-                    color: Colors.black,
+                  icon: Icon(
+                    Icons.notifications,
+                    color: isDarkMode ? Colors.white : Colors.orangeAccent,
+                    size: 27,
                   ),
                   onPressed: () {
                     Navigator.push(
@@ -473,7 +474,7 @@ class _DashboardState extends State<Dashboard> {
                     child: Container(
                       padding: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
-                        color: Colors.green,
+                        color: Colors.redAccent,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       constraints: const BoxConstraints(
@@ -580,14 +581,14 @@ class _DashboardState extends State<Dashboard> {
         fontSize = fontSize.clamp(12.0, 16.0);
 
         return Card(
-          color: isDarkMode ? Colors.black54 : Colors.white,
+          color: isDarkMode ? Colors.grey[850] : Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: Color(0xFFDBB342), width: 0.65),
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: const Color(0xFFDBB342), width: 0.8),
           ),
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             splashColor: Colors.blue.withAlpha(50),
             splashFactory: InkRipple.splashFactory,
             child: Padding(
@@ -600,6 +601,7 @@ class _DashboardState extends State<Dashboard> {
                     height: iconSize,
                     width: iconSize,
                     fit: BoxFit.contain,
+                    color: isDarkMode ? Colors.white : null,
                   ),
                   const SizedBox(height: 12),
                   Flexible(
@@ -623,11 +625,12 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  void _showLogoutDialog(BuildContext context) {
+  void _showLogoutDialog(BuildContext context, bool isDarkMode) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
+          backgroundColor: isDarkMode ? Colors.grey[850] : Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20.0),
           ),
@@ -637,27 +640,28 @@ class _DashboardState extends State<Dashboard> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset(
-                    'assets/lock-circle.png',
-                    height: 60,
+                  Icon(
+                    Icons.lock_outline,
+                    size: 60,
+                    color: isDarkMode ? Colors.white : const Color(0xFF9C640C),
                   ),
                   const SizedBox(height: 20),
                   Text(
                     AppLocalizations.of(context)!.logoutTitle,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF9C640C),
+                      color: isDarkMode ? Colors.white : const Color(0xFF9C640C),
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     AppLocalizations.of(context)!.logoutConfirmation,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: Colors.black87,
+                      color: isDarkMode ? Colors.grey[300] : Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -670,8 +674,8 @@ class _DashboardState extends State<Dashboard> {
                           Navigator.of(context).pop();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF5F1E0),
-                          foregroundColor: const Color(0xFFDBB342),
+                          backgroundColor: isDarkMode ? Colors.grey[700] : const Color(0xFFF5F1E0),
+                          foregroundColor: isDarkMode ? Colors.white : const Color(0xFFDBB342),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),
@@ -689,7 +693,7 @@ class _DashboardState extends State<Dashboard> {
                             MaterialPageRoute(
                               builder: (context) => const LoginPage(),
                             ),
-                            (Route<dynamic> route) => false,
+                                (Route<dynamic> route) => false,
                           );
                         },
                         style: ElevatedButton.styleFrom(

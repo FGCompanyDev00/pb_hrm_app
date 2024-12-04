@@ -162,7 +162,7 @@
   "office": "Office",
   "offsite": "Offsite",
   "checkInNotAllowed": "Check-In Not Allowed",
-  "checkInLateNotAllowed": "Check in time cannot be late by 13:00 and before 08:00.",
+  "checkInLateNotAllowed": "Check in time cannot be late by 18:00 and before 07:00.",
   "biometricNotEnabled": "Biometric Not Enabled",
   "enableBiometricFirst": "Please enable biometric authentication in the settings first.",
   "authenticationFailed": "Authentication Failed",
