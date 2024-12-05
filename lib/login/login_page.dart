@@ -161,14 +161,36 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               );
             }
           }
+        } else if (response.statusCode == 401) {
+          // Unauthorized (Incorrect Password)
+          _showCustomDialog(
+            AppLocalizations.of(context)!.loginFailed,
+            AppLocalizations.of(context)!.incorrectPassword,
+          );
+        } else if (response.statusCode == 500 || response.statusCode == 502 || response.statusCode == 403) {
+          // API Error
+          _showCustomDialog(
+            AppLocalizations.of(context)!.apiError,
+            AppLocalizations.of(context)!.apiErrorMessage,
+          );
         } else {
-          _showOfflineOptionModal('API Error', 'The API is currently unavailable.');
+          _showCustomDialog(
+            AppLocalizations.of(context)!.loginFailed,
+            AppLocalizations.of(context)!.unknownError,
+          );
         }
       } catch (e) {
-        _showOfflineOptionModal('API Error', 'There is an issue with the server.');
+        _showCustomDialog(
+          AppLocalizations.of(context)!.serverError,
+          AppLocalizations.of(context)!.serverErrorMessage,
+        );
       }
     } else {
-      _showOfflineOptionModal('No Internet', 'You are currently offline.');
+      // If offline, show offline option and allow offline login
+      _showOfflineOptionModal(
+        AppLocalizations.of(context)!.noInternet,
+        AppLocalizations.of(context)!.offlineMessage,
+      );
     }
   }
 
@@ -187,59 +209,90 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               borderRadius: BorderRadius.circular(15),
             ),
             padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                RotationTransition(
-                  turns: Tween(begin: -0.05, end: 0.05).animate(_animationController),
-                  child: const Icon(
-                    Icons.warning_amber_rounded,
-                    color: Colors.red,
-                    size: 80,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 18),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Do you want to use offline mode?',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Set text sizes based on screen width
+                double titleFontSize = constraints.maxWidth < 400 ? 18 : 24;
+                double messageFontSize = constraints.maxWidth < 400 ? 14 : 18;
+                double buttonFontSize = constraints.maxWidth < 400 ? 14 : 16;
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel', style: TextStyle(fontSize: 16)),
-                    ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await _offlineLogin();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                    RotationTransition(
+                      turns: Tween(begin: -0.05, end: 0.05).animate(_animationController),
+                      child: const Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.red,
+                        size: 70,
                       ),
-                      child: const Text("Okay", style: TextStyle(fontSize: 16)),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: titleFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: messageFontSize,
+                        color: Colors.blueGrey,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: buttonFontSize,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            Navigator.pop(context);
+                            if (title == AppLocalizations.of(context)!.noInternet) {
+                              // Allow offline login
+                              await _offlineLogin();
+                            } else {
+                              // Prevent offline login if unauthorized
+                              _showCustomDialog(
+                                AppLocalizations.of(context)!.unauthorizedError,
+                                AppLocalizations.of(context)!.offlineAccessDenied,
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            "Okay",
+                            style: TextStyle(
+                              fontSize: buttonFontSize,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ],
+                );
+              },
             ),
           ),
         );

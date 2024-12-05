@@ -359,5 +359,17 @@
     "credentialsNotFound": "CREDENTIAL NOT FOUND",
     "kpi": "KPI",
     "inventory": "Inventory",
-    "current": "Current"
+    "current": "Current",
+    "loginFailed":"Login Failed",
+    "emptyFieldsMessage":"Please fill in all fields.",
+    "incorrectPassword":"Incorrect password. Please try again.",
+    "apiError":"API Error",
+    "apiErrorMessage":"The API is currently unavailable. Please try again later.",
+    "unknownError":"An unknown error occurred.",
+    "serverError":"Server Error",
+    "serverErrorMessage":"There was an issue connecting to the server. Please try again later.",
+    "noInternet":"No Internet Connection",
+    "offlineMessage":"You are currently offline. Would you like to continue in offline mode?",
+    "unauthorizedError":"Unauthorized",
+    "offlineAccessDenied":"You cannot use offline mode without authorization."
 }

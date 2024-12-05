@@ -365,5 +365,17 @@
     "credentialsNotFound": "ບໍ່ພົບຂໍ້ມູນຂໍ້ມູນຂອງທ່ານ",
     "kpi": "ຄີພີໄອ",
     "inventory": "ສິນຄ້າຄົງເຫຼືອ",
-    "current": "ປັດຈຸບັນ"
+    "current": "ປັດຈຸບັນ",
+    "loginFailed": "ການລົງທະບຽນລົ່ມເຫົາ",
+    "emptyFieldsMessage": "ກະລຸນາກອກຫົວຂໍ້ທັງໝົດ.",
+    "incorrectPassword": "ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ. ກະລຸນາລອງອີກຄັ້ງ.",
+    "apiError": "ຄວາມຜິດພາດ API",
+    "apiErrorMessage": "API ກຳລັງບໍ່ມີຢູ່. ກະລຸນາລອງອີກຄັ້ງໃນຄວາມຫຼັບຫຼັບ.",
+    "unknownError": "ມີຜິດພາດທີ່ບໍ່ຮູ້ຈັກ.",
+    "serverError": "ຜິດພາດຂອງ Server",
+    "serverErrorMessage": "ມີປັນຫາການຕິດຕໍ່ກັບ Server. ກະລຸນາລອງອີກຄັ້ງ.",
+    "noInternet": "ບໍ່ມີການເຊື່ອມຕໍ່ອິນເຕີເນັດ",
+    "offlineMessage": "ທ່ານກຳລັງອອຟຟິນ. ທ່ານຢາກສົກຕໍ່ບໍ່ຢູ່ແນວອອຟຟິນບໍ?",
+    "unauthorizedError": "ບໍ່ອະນຸຍາດ",
+    "offlineAccessDenied": "ທ່ານບໍ່ສາມາດໃຊ້ລະບົບອອຟຟິນໄດ້ ບໍ່ມີການອະນຸຍາດ."
 }

@@ -398,5 +398,17 @@
   "credentialsNotFound": "凭据未找到",
   "kpi": "关键绩效指标",
   "inventory": "ສິນຄ້າຄົງເຫຼືອ",
-  "current": "当前"
+  "current": "当前",
+  "loginFailed": "登录失败",
+  "emptyFieldsMessage": "请填写所有字段。",
+  "incorrectPassword": "密码错误，请再试一次。",
+  "apiError": "API 错误",
+  "apiErrorMessage": "API 当前不可用，请稍后再试。",
+  "unknownError": "发生了一个未知错误。",
+  "serverError": "服务器错误",
+  "serverErrorMessage": "连接服务器时出现问题，请稍后再试。",
+  "noInternet": "没有互联网连接",
+  "offlineMessage": "您当前处于离线状态。是否要继续离线模式？",
+  "unauthorizedError": "未经授权",
+  "offlineAccessDenied": "没有授权，无法使用离线模式。"
 }
