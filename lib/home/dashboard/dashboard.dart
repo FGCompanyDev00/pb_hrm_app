@@ -395,6 +395,7 @@ class _DashboardState extends State<Dashboard> {
                 if (bannerUrl.isEmpty || Uri.tryParse(bannerUrl)?.hasAbsolutePath != true) {
                   return Center(child: Text(AppLocalizations.of(context)!.noBannersAvailable));
                 }
+
                 return Container(
                   margin: const EdgeInsets.symmetric(horizontal: 12.0),
                   decoration: BoxDecoration(
@@ -403,7 +404,7 @@ class _DashboardState extends State<Dashboard> {
                       image: NetworkImage(bannerUrl),
                       fit: BoxFit.cover,
                       colorFilter: isDarkMode
-                          ? ColorFilter.mode(Colors.black.withOpacity(0.5), BlendMode.darken)
+                          ? ColorFilter.mode(Colors.white.withOpacity(0.1), BlendMode.lighten)  // Brighter in dark mode
                           : null,
                     ),
                   ),
@@ -584,7 +585,7 @@ class _DashboardState extends State<Dashboard> {
           color: isDarkMode ? Colors.grey[850] : Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: const Color(0xFFDBB342), width: 0.8),
+            side: const BorderSide(color: Color(0xFFDBB342), width: 0.8),
           ),
           child: InkWell(
             onTap: onTap,

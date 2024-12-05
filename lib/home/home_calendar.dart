@@ -1069,7 +1069,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
       decoration: BoxDecoration(
-        color: isDarkMode ? Colors.black : Colors.white,
+        color: isDarkMode ? Colors.black38 : Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
