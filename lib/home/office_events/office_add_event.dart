@@ -2,8 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../settings/theme_notifier.dart';
 import 'add_member_office_event.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -603,16 +605,25 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     }
     await showModalBottomSheet(
       context: context,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.grey[900] // Dark mode background
+          : Colors.white, // Light mode background
       builder: (context) {
         return SizedBox(
           height: 400,
           child: Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
                 child: Text(
                   'Select a Room',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white // White text in dark mode
+                        : Colors.black, // Black text in light mode
+                  ),
                 ),
               ),
               Expanded(
@@ -621,7 +632,14 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   itemBuilder: (context, index) {
                     final room = _rooms[index];
                     return ListTile(
-                      title: Text('${index + 1}. ${room['room_name']}'),
+                      title: Text(
+                        '${index + 1}. ${room['room_name']}',
+                        style: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white70 // Slightly dimmed white text for dark mode
+                              : Colors.black87, // Darker black for light mode
+                        ),
+                      ),
                       onTap: () {
                         setState(() {
                           _roomId = room['room_id'];
@@ -669,6 +687,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       },
     );
   }
+
 
   /// Shows the location or meeting type dropdown based on booking type
   Widget _buildLocationDropdown() {
@@ -819,7 +838,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ElevatedButton(
                   onPressed: _showAddPeoplePage,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.orange  // Use orange in dark mode
+                        : Colors.green,  // Use green in light mode
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20.0),
                     ),
@@ -1016,17 +1037,33 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10.0),
-                  border: Border.all(color: Colors.grey),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white54 // Light border color in dark mode
+                        : Colors.grey,  // Normal border color in light mode
+                  ),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Debugging: Try a simple Text widget first
                     Text(
-                      _roomId != null ? '${_rooms.indexWhere((room) => room['room_id'] == _roomId) + 1}. $_roomName' : 'Select Room',
-                      style: const TextStyle(color: Colors.black),
+                      _roomId != null
+                          ? '${_rooms.indexWhere((room) => room['room_id'] == _roomId) + 1}. $_roomName'
+                          : 'Room Selection',  // Text should show when no room is selected
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white // White text for dark mode
+                            : Colors.black, // Black text for light mode
+                      ),
                     ),
-                    const Icon(Icons.menu),
+                    Icon(
+                      Icons.menu,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white // Icon color in dark mode
+                          : Colors.black, // Icon color in light mode
+                    ),
                   ],
                 ),
               ),
@@ -1042,7 +1079,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ElevatedButton(
                   onPressed: _showAddPeoplePage,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.orange  // Use orange in dark mode
+                        : Colors.green,  // Use green in light mode
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20.0),
                     ),
@@ -1220,7 +1259,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ElevatedButton(
                   onPressed: _showAddPeoplePage,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.orange  // Use orange in dark mode
+                        : Colors.green,  // Use green in light mode
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20.0),
                     ),
@@ -1278,34 +1319,45 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Adjust padding based on screen size
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     final double horizontalPadding = MediaQuery.of(context).size.width < 360 ? 16.0 : 14.0;
     final double verticalPadding = MediaQuery.of(context).size.height < 600 ? 10.0 : 16.0;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Add Office Event',
-          style: TextStyle(color: Colors.black),
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white // White text for dark mode
+                : Colors.black, // Black text for light mode
+          ),
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.8) // Dark background for dark mode
+            : Colors.transparent, // Transparent background for light mode
         elevation: 0,
         toolbarHeight: 80,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
             ),
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(30.0),
               bottomRight: Radius.circular(30.0),
             ),
           ),
         ),
-        iconTheme: const IconThemeData(color: Colors.black), // Back button color
+        iconTheme: IconThemeData(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white // White icon for dark mode
+              : Colors.black, // Black icon for light mode
+        ),
       ),
-      body: Stack(
+    body: Stack(
         children: [
           Padding(
             padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
@@ -1319,17 +1371,26 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                     child: ElevatedButton(
                       onPressed: _submitEvent,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE2AD30),
+                        backgroundColor: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.green // Use green for dark mode
+                            : const Color(0xFFE2AD30), // Default color for light mode
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20.0),
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 12.0),
                         elevation: 2.0,
-                        shadowColor: Colors.grey.withOpacity(0.5),
+                        shadowColor: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black.withOpacity(0.5) // Dark shadow for dark mode
+                            : Colors.grey.withOpacity(0.5), // Light shadow for light mode
                       ),
-                      child: const Text(
+                      child: Text(
                         '+ Add',
-                        style: TextStyle(color: Colors.black, fontSize: 16.0),
+                        style: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white // White text in dark mode
+                              : Colors.black, // Black text in light mode
+                          fontSize: 16.0,
+                        ),
                       ),
                     ),
                   ),

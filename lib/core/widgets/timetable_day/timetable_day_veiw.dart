@@ -324,7 +324,18 @@ class TimeTableDayWidget extends HookWidget {
                                 children: [
                                   Row(
                                     children: [
-                                      Image.asset('assets/icons/element_4.png', width: 20),
+                                      ColorFiltered(
+                                        colorFilter: ColorFilter.mode(
+                                          Theme.of(context).brightness == Brightness.dark
+                                              ? Colors.white
+                                              : Colors.black,
+                                          BlendMode.srcIn,
+                                        ),
+                                        child: Image.asset(
+                                          'assets/icons/element_4.png',
+                                          width: 20,
+                                        ),
+                                      ),
                                       const SizedBox(width: 5),
                                       Text(eventType),
                                     ],
@@ -364,7 +375,13 @@ class TimeTableDayWidget extends HookWidget {
                                           const SizedBox(width: 20),
                                           Row(
                                             children: [
-                                              const Icon(Icons.access_time, size: 15),
+                                              Icon(
+                                                Icons.access_time,
+                                                size: 15,
+                                                color: Theme.of(context).brightness == Brightness.dark
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                              ),
                                               const SizedBox(width: 5),
                                               Text(
                                                 '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
@@ -372,6 +389,7 @@ class TimeTableDayWidget extends HookWidget {
                                               ),
                                             ],
                                           ),
+
                                         ],
                                       )
                                     ],

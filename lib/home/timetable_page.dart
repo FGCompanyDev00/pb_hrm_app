@@ -53,35 +53,35 @@ class TimetablePageState extends State<TimetablePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
             ),
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),
           ),
         ),
-
-        // 'Detail Calendar Event'
         centerTitle: true,
         title: Text(
           AppLocalizations.of(context)!.calendar,
-          style: const TextStyle(
-            color: Colors.black,
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
             fontSize: 24,
             fontWeight: FontWeight.w500,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Colors.black,
+            color: isDarkMode ? Colors.white : Colors.black,
             size: 20,
           ),
           onPressed: () {
@@ -99,12 +99,13 @@ class TimetablePageState extends State<TimetablePage> {
               horizontal: 25,
             ),
             child: Text(
-              DateFormat.yMMMM(sl<UserPreferences>().getLocalizeSupport().languageCode).format(selectedDate),
+              DateFormat.yMMMM(sl<UserPreferences>().getLocalizeSupport().languageCode)
+                  .format(selectedDate),
               textAlign: TextAlign.left,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.black,
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
           ),
@@ -114,9 +115,13 @@ class TimetablePageState extends State<TimetablePage> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(7, (index) {
                 final day = selectedDate.add(Duration(days: index - 3));
-                final hasEvent = eventsForAll.any((event) => event.start.day == day.day && event.start.month == day.month && event.start.year == day.year);
+                final hasEvent = eventsForAll.any((event) =>
+                event.start.day == day.day &&
+                    event.start.month == day.month &&
+                    event.start.year == day.year);
                 return _buildDateItem(
-                  DateFormat.E(sl<UserPreferences>().getLocalizeSupport().languageCode).format(day),
+                  DateFormat.E(sl<UserPreferences>().getLocalizeSupport().languageCode)
+                      .format(day),
                   day.day,
                   isSelected: day.day == selectedDate.day,
                   hasEvent: hasEvent,
@@ -126,6 +131,7 @@ class TimetablePageState extends State<TimetablePage> {
                     });
                     await fetchData();
                   },
+                  isDarkMode: isDarkMode,
                 );
               }),
             ),
@@ -156,7 +162,7 @@ class TimetablePageState extends State<TimetablePage> {
     );
   }
 
-  Widget _buildDateItem(String day, int date, {bool isSelected = false, bool hasEvent = false, required VoidCallback onTap}) {
+  Widget _buildDateItem(String day, int date, {bool isSelected = false, bool hasEvent = false, required VoidCallback onTap, required bool isDarkMode}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -169,8 +175,10 @@ class TimetablePageState extends State<TimetablePage> {
           color: isSelected
               ? const Color(0xFFD4A017)
               : hasEvent
-                  ? Colors.green.withOpacity(0.5)
-                  : Colors.white,
+              ? Colors.green.withOpacity(0.5)
+              : isDarkMode
+              ? Colors.grey[700]
+              : Colors.white,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
@@ -179,7 +187,7 @@ class TimetablePageState extends State<TimetablePage> {
               day.toUpperCase(),
               style: TextStyle(
                 fontSize: 12,
-                color: isSelected ? Colors.white : Colors.grey,
+                color: isSelected ? Colors.white : (isDarkMode ? Colors.white : Colors.grey),
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -188,7 +196,7 @@ class TimetablePageState extends State<TimetablePage> {
               "$date",
               style: TextStyle(
                 fontSize: 16,
-                color: isSelected || hasEvent ? Colors.white : Colors.black,
+                color: isSelected || hasEvent ? Colors.white : (isDarkMode ? Colors.white : Colors.black),
               ),
             ),
           ],

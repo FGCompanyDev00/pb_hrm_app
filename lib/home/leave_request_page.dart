@@ -108,7 +108,8 @@ class LeaveManagementPage extends HookWidget {
                             title: Text(
                               leaveType['name'],
                               style: TextStyle(
-                                  color: isDarkMode ? Colors.white : Colors.black),
+                                color: isDarkMode ? Colors.white : Colors.black,
+                              ),
                             ),
                             onTap: () {
                               typeController.text = leaveType['name'];
@@ -290,30 +291,34 @@ class LeaveManagementPage extends HookWidget {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
             ),
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),
           ),
         ),
         centerTitle: true,
-        title: const Text(
+        title: Text(
           'Leave Request Form',
           style: TextStyle(
-            color: Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white  // Dark mode text color
+                : Colors.black, // Light mode text color
             fontSize: 22,
             fontWeight: FontWeight.w500,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white // White icon for dark mode
+                : Colors.black, // Black icon for light mode
             size: 20,
           ),
           onPressed: () {
@@ -330,7 +335,7 @@ class LeaveManagementPage extends HookWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 140),
+                  const SizedBox(height: 100),
                   Align(
                     alignment: Alignment.centerRight,
                     child: ElevatedButton.icon(
@@ -338,8 +343,12 @@ class LeaveManagementPage extends HookWidget {
                       icon: const Icon(Icons.send),
                       label: const Text("Submit"),
                       style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.orange,
+                        foregroundColor: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black // Dark mode text color
+                            : Colors.white, // Light mode text color
+                        backgroundColor: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.orange.shade700 // Dark mode background color
+                            : Colors.orange, // Light mode background color
                         disabledBackgroundColor: Colors.grey,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),

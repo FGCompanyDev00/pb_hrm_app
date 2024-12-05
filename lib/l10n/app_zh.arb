@@ -172,7 +172,7 @@
   "checkOutSuccess": "签退成功",
   "checkOutSuccessMessage": "您已成功签退。",
   "alreadyCheckedIn": "已签到",
-  "alreadyCheckedInMessage": "您已成功办理入住，请等待8小时后方可使用退房按钮",
+  "alreadyCheckedInMessage": "您已经签到。请等待至少 6 小时才能进行退房。",
   "deviceIdError": "Device ID is missing or invalid.",
   "noTokenFound": "未找到令牌。",
   "failedToLoadWeeklyRecords": "加载每周记录失败。",

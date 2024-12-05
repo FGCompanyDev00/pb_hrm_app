@@ -701,6 +701,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       context: context,
       barrierColor: Colors.transparent,
       builder: (BuildContext context) {
+        bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
         return Stack(
           children: [
             Positioned(
@@ -712,11 +714,13 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   width: 160,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDarkMode ? Colors.grey[850] : Colors.white, // Dark mode background
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
+                        color: isDarkMode
+                            ? Colors.black.withOpacity(0.6)
+                            : Colors.black.withOpacity(0.2), // Darker shadow for dark mode
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -732,6 +736,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                           Navigator.pop(context);
                           _navigateToAddEvent('Personal');
                         },
+                        isDarkMode: isDarkMode, // Passing dark mode flag
                       ),
                       const Divider(height: 1),
                       _buildPopupOption(
@@ -741,6 +746,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                           Navigator.pop(context);
                           _navigateToAddEvent('Office');
                         },
+                        isDarkMode: isDarkMode, // Passing dark mode flag
                       ),
                     ],
                   ),
@@ -758,6 +764,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    required bool isDarkMode,  // Added the 'isDarkMode' parameter here
   }) {
     return InkWell(
       onTap: onTap,
@@ -765,9 +772,21 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: Colors.black54, semanticLabel: label),
+            // Icon color changes based on dark mode
+            Icon(
+              icon,
+              size: 20,
+              color: isDarkMode ? Colors.white70 : Colors.black54,  // Dark mode: white, Light mode: black
+              semanticLabel: label,
+            ),
             const SizedBox(width: 12),
-            Text(label, style: const TextStyle(color: Colors.black87)),
+            // Text color changes based on dark mode
+            Text(
+              label,
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black87,  // Dark mode: white, Light mode: black
+              ),
+            ),
           ],
         ),
       ),
@@ -853,7 +872,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(130),
         child: _buildCalendarHeader(isDarkMode),

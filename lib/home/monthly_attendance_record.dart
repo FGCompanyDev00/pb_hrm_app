@@ -1,5 +1,3 @@
-// monthly_attendance_page.dart
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -25,7 +23,6 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
     _fetchAttendanceRecords();
   }
 
-  // Update to use POST request with month data
   Future<void> _fetchAttendanceRecords() async {
     String? token = await _getToken();
     if (token == null || token.isEmpty) {
@@ -37,7 +34,6 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
     const String url =
         'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offices/months/me';
 
-    // Format the current month as "yyyy-MM"
     String formattedMonth = DateFormat('yyyy-MM').format(_currentMonth);
 
     try {
@@ -48,7 +44,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          'month': formattedMonth, // Send the current or selected month
+          'month': formattedMonth,
         }),
       );
 
@@ -74,7 +70,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
                 ),
               ),
               'officeStatus':
-              item['office_status']?.toString() ?? 'office', // office, home, or offsite
+              item['office_status']?.toString() ?? 'office',
             };
           }).toList();
 
@@ -131,7 +127,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
                   Navigator.of(context).pop();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDAA520), // gold color
+                  backgroundColor: const Color(0xFFDAA520),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
@@ -161,15 +157,17 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
         iconColor = Colors.green;
     }
 
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Card(
-      color: Colors.white.withOpacity(0.8),
+      color: isDarkMode ? Colors.grey[800] : Colors.white.withOpacity(0.8),
       elevation: 1,
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         title: Center(
             child:
-            Text(record['date']!, style: const TextStyle(fontWeight: FontWeight.bold))),
+            Text(record['date']!, style: TextStyle(fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black))),
         subtitle: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
@@ -183,8 +181,9 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
     );
   }
 
-  Widget _buildAttendanceItem(
-      String title, String time, Color color) {
+  Widget _buildAttendanceItem(String title, String time, Color color) {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       children: [
         Text(
@@ -197,8 +196,8 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
         ),
         Text(
           title,
-          style: const TextStyle(
-            color: Colors.black,
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
       ],
@@ -206,11 +205,13 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
   }
 
   Widget _buildMonthNavigationHeader() {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(16.0),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.black : Colors.white,
+        borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(20),
           bottomRight: Radius.circular(20),
         ),
@@ -225,15 +226,16 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
                 onPressed: () {
                   setState(() {
                     _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
-                    _fetchAttendanceRecords(); // Fetch records for the previous month
+                    _fetchAttendanceRecords();
                   });
                 },
               ),
               Text(
                 DateFormat('MMMM yyyy').format(_currentMonth),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black,
                 ),
               ),
               IconButton(
@@ -244,7 +246,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
                     : () {
                   setState(() {
                     _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
-                    _fetchAttendanceRecords(); // Fetch records for the next month
+                    _fetchAttendanceRecords();
                   });
                 },
               ),
@@ -254,7 +256,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFDAA520), // Gold color
+              color: isDarkMode ? Colors.lightGreen : const Color(0xFFDAA520),
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [
                 BoxShadow(
@@ -311,10 +313,10 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
           _buildMonthNavigationHeader(),
           Expanded(
             child: _errorFetchingData
-                ? const Center(
+                ? Center(
               child: Text(
                 "No attendance record data for this month.",
-                style: TextStyle(color: Colors.black),
+                style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
               ),
             )
                 : ListView.builder(
@@ -330,32 +332,34 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return AppBar(
       flexibleSpace: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/background.png'),
+            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
             fit: BoxFit.cover,
           ),
-          borderRadius: BorderRadius.only(
+          borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(30),
             bottomRight: Radius.circular(30),
           ),
         ),
       ),
       centerTitle: true,
-      title: const Text(
+      title: Text(
         'Monthly Attendance',
         style: TextStyle(
-          color: Colors.black,
+          color: isDarkMode ? Colors.white : Colors.black,
           fontSize: 22,
           fontWeight: FontWeight.w700,
         ),
       ),
       leading: IconButton(
-        icon: const Icon(
+        icon: Icon(
           Icons.arrow_back_ios_new,
-          color: Colors.black,
+          color: isDarkMode ? Colors.white : Colors.black,
           size: 22,
         ),
         onPressed: () => Navigator.of(context).pop(),

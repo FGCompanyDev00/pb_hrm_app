@@ -172,7 +172,7 @@
   "checkOutSuccess": "Check-Out Success",
   "checkOutSuccessMessage": "You have successfully checked out.",
   "alreadyCheckedIn": "Already Checked In",
-  "alreadyCheckedInMessage": "You have already checked in.",
+  "alreadyCheckedInMessage": "You have already checked in. For check out, please wait at least 6 hours before you can do check-out",
   "deviceIdError": "Device ID is missing or invalid.",
   "noTokenFound": "No token found.",
   "failedToLoadWeeklyRecords": "Failed to load weekly records.",

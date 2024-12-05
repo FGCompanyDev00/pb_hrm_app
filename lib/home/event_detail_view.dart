@@ -5,8 +5,11 @@ import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+
+import '../settings/theme_notifier.dart';
 
 /// Entry point for the Event Detail View.
 class EventDetailView extends StatefulWidget {
@@ -285,20 +288,17 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     String title;
     String content;
     Color dialogColor;
-    IconData dialogIcon;
 
     switch (responseType) {
       case 'no':
         title = 'Reject Meeting';
         content = 'Are you sure you want to reject this meeting?';
         dialogColor = Colors.red;
-        dialogIcon = Icons.cancel;
         break;
       case 'maybe':
         title = 'Maybe Attend';
         content = 'Are you unsure about attending this meeting?';
         dialogColor = Colors.orange;
-        dialogIcon = Icons.help_outline;
         break;
       default:
         return true;
@@ -603,6 +603,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
 
   /// Builds the creator section for Meeting events.
   Widget _buildCreatorSection(Map<String, String> details) {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
         Padding(
@@ -644,9 +645,9 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
                 if (details['formattedCreatedAt']!.isNotEmpty)
                   Text(
                     '${AppLocalizations.of(context)!.submittedOn} ${details['formattedCreatedAt']}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey,
+                      color: isDarkMode ? Colors.white : Colors.grey, // Adjust text color
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -660,24 +661,27 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
 
   /// Builds the event type widget.
   Widget _buildEventType() {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(top: 5),
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.lightBlue.shade100,
+        color: isDarkMode ? Colors.greenAccent : Colors.lightBlue.shade100,
         borderRadius: BorderRadius.circular(20),
       ),
       width: double.maxFinite,
       child: Text(
         autoLanguageType,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 16,
-          color: Colors.black,
+          color: isDarkMode ? Colors.black : Colors.black,
         ),
         textAlign: TextAlign.center,
       ),
     );
   }
+
 
   /// Builds the list of event details.
   Widget _buildMinutesOfMeetingEventDetails() {
@@ -829,10 +833,13 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
   Widget build(BuildContext context) {
     double horizontalPadding = MediaQuery.of(context).size.width * 0.07;
     final isHiddenButton = (_eventType == 'Leave' || _eventType == 'Minutes Of Meeting') || eventStatus == 'Pending';
+    Provider.of<ThemeNotifier>(context);
+
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark; // Define the isDarkMode variable
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: _buildAppBar(),
+      backgroundColor: isDarkMode ? Colors.black : Colors.grey[50], // Adjust background color based on theme
+      appBar: _buildAppBar(isDarkMode),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -849,15 +856,15 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
   }
 
   /// Builds the AppBar with background.png.
-  AppBar _buildAppBar() {
+  AppBar _buildAppBar(bool isDarkMode) {
     return AppBar(
       flexibleSpace: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/background.png'),
+            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
             fit: BoxFit.cover,
           ),
-          borderRadius: BorderRadius.only(
+          borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(30),
             bottomRight: Radius.circular(30),
           ),
@@ -865,17 +872,16 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       ),
       centerTitle: true,
       title: Text(
-        autoLanguageType,
-        // 'Event Details',
-        style: const TextStyle(
-          color: Colors.black,
+        autoLanguageType, // 'Event Details' (localized)
+        style: TextStyle(
+          color: isDarkMode ? Colors.white : Colors.black,
           fontSize: 22,
         ),
       ),
       leading: IconButton(
-        icon: const Icon(
+        icon: Icon(
           Icons.arrow_back_ios_new,
-          color: Colors.black,
+          color: isDarkMode ? Colors.white : Colors.black,
           size: 20,
         ),
         onPressed: () {
@@ -887,6 +893,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       backgroundColor: Colors.transparent,
     );
   }
+
 
   /// Builds animated content with slide and fade transitions.
   Widget _buildAnimatedContent(Widget child) {

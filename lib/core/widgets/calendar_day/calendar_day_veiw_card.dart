@@ -370,14 +370,25 @@ class CalendarDayWidgetCard extends HookWidget {
                                                 const SizedBox(width: 20),
                                                 Row(
                                                   children: [
-                                                    Image.asset('assets/icons/time_circle.png', width: 15),
+                                                    Image.asset(
+                                                      'assets/icons/time_circle.png',
+                                                      width: 15,
+                                                      color: Theme.of(context).brightness == Brightness.dark
+                                                          ? Colors.white  // White icon in dark mode
+                                                          : Colors.black, // Black icon in light mode
+                                                    ),
                                                     const SizedBox(width: 5),
                                                     Text(
                                                       '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
-                                                      style: const TextStyle(fontSize: 10),
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        color: Theme.of(context).brightness == Brightness.dark
+                                                            ? Colors.white  // White text in dark mode
+                                                            : Colors.black, // Black text in light mode
+                                                      ),
                                                     ),
                                                   ],
-                                                ),
+                                                )
                                               ],
                                             )
                                           ],
