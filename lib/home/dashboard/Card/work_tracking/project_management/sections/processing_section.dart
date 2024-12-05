@@ -178,7 +178,9 @@ class _ProcessingSectionState extends State<ProcessingSection> {
       child: Container(
         margin: const EdgeInsets.only(top: 6.0, left: 8.0, right: 8.0, bottom: 16.0),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey[850]
+              : Colors.white,
           boxShadow: [
             BoxShadow(
               color: statusColor.withOpacity(0.4),
@@ -203,7 +205,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                       const Text(
                         'Status: ',
                         style: TextStyle(
-                          color: Colors.black,
+                          color: Colors.white, // Dark mode text color
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -287,6 +289,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
+                      color: Colors.white, // Dark mode text color
                     ),
                   ),
                   Expanded(
@@ -294,6 +297,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                       meeting['title'] ?? 'No Title',
                       style: const TextStyle(
                         fontSize: 14,
+                        color: Colors.white, // Dark mode text color
                       ),
                     ),
                   ),
@@ -314,11 +318,12 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white, // Dark mode text color
                         ),
                       ),
                       Text(
                         '${DateFormat('yyyy-MM-dd').format(fromDate)} ${meeting['start_time'] ?? ''}',
-                        style: const TextStyle(fontSize: 12),
+                        style: const TextStyle(fontSize: 12, color: Colors.white),
                       ),
                     ],
                   ),
@@ -338,11 +343,12 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white, // Dark mode text color
                         ),
                       ),
                       Text(
                         '${DateFormat('yyyy-MM-dd').format(toDate)} ${meeting['end_time'] ?? ''}',
-                        style: const TextStyle(fontSize: 12),
+                        style: const TextStyle(fontSize: 12, color: Colors.white),
                       ),
                     ],
                   ),
@@ -382,7 +388,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                         text: meeting['create_by'] ?? 'Unknown',
                         style: const TextStyle(
                           fontSize: 12,
-                          color: Colors.black,
+                          color: Colors.white, // Dark mode text color
                           fontStyle: FontStyle.normal,
                         ),
                       ),

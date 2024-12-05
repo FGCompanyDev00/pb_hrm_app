@@ -610,30 +610,30 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
               fit: BoxFit.cover,
             ),
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),
           ),
         ),
         centerTitle: true,
-        title: const Text(
-          'Edit Processing Item',
+        title: Text(
+          'Edit Processing',
           style: TextStyle(
-            color: Colors.black,
-            fontSize: 20,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic title color based on theme
+            fontSize: 22,
             fontWeight: FontWeight.w500,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic icon color based on theme
             size: 20,
           ),
           onPressed: () {
@@ -667,7 +667,9 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                           style: TextStyle(color: Colors.white),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey,
+                          backgroundColor: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[800] // Dark mode background color
+                              : Colors.grey,     // Light mode background color
                           padding: const EdgeInsets.symmetric(vertical: 10.0),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10.0),
@@ -679,13 +681,24 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: _isLoading ? null : _updateMeeting,
-                        icon: const Icon(Icons.check, color: Colors.white),
-                        label: const Text(
+                        icon: Icon(
+                          Icons.check,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.black
+                              : Colors.white, // Dark mode: white icon, light mode: black icon
+                        ),
+                        label: Text(
                           'Update',
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.black
+                                : Colors.white, // Dark mode: white text, light mode: black text
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFDBB342),
+                          backgroundColor: Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFFDBB342) // Dark mode background color
+                              : const Color(0xFFDBB342), // Light mode background color (same color for both)
                           padding: const EdgeInsets.symmetric(vertical: 10.0),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10.0),

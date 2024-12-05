@@ -217,25 +217,33 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Members'),
-        backgroundColor: Colors.transparent,
+        title: Text(
+          'Edit Members',
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black, // Title color based on theme
+          ),
+        ),
+        backgroundColor: Colors.transparent, // Transparent background for the AppBar
         elevation: 0,
         toolbarHeight: 90,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
               fit: BoxFit.cover,
             ),
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),
           ),
         ),
-        iconTheme: const IconThemeData(color: Colors.black),
+        iconTheme: IconThemeData(
+          color: isDarkMode ? Colors.white : Colors.black, // Icon color changes based on theme
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

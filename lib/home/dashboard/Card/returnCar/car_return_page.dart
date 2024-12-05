@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pb_hrsystem/home/dashboard/Card/returnCar/car_return_page_details.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -122,8 +124,13 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? Colors.black // Background for dark mode
+          : Colors.white, // Background for light mode
+
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(90.0),
         child: ClipRRect(
@@ -133,9 +140,9 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
           ),
           child: AppBar(
             flexibleSpace: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('assets/background.png'),
+                  image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -145,16 +152,23 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
             leading: Padding(
               padding: const EdgeInsets.only(top: 30.0),
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white // White icon for dark mode
+                      : Colors.black, // Black icon for light mode
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
-            title: const Padding(
-              padding: EdgeInsets.only(top: 40.0),
+            title: Padding(
+              padding: const EdgeInsets.only(top: 40.0),
               child: Text(
                 'Car Return',
                 style: TextStyle(
-                  color: Colors.black,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white // White text for dark mode
+                      : Colors.black, // Black text for light mode
                   fontWeight: FontWeight.bold,
                   fontSize: 24,
                 ),
@@ -169,19 +183,41 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
           : Column(
         children: [
           Container(
-            color: Colors.white,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.black
+                : Colors.white, // Background color based on theme
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: searchController,
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white // Text color in dark mode
+                          : Colors.black, // Text color in light mode
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Search',
-                      prefixIcon: const Icon(Icons.search),
+                      hintStyle: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white70 // Lighter hint color in dark mode
+                            : Colors.black54, // Lighter hint color in light mode
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white70 // Icon color in dark mode
+                            : Colors.black54, // Icon color in light mode
+                      ),
                       suffixIcon: DropdownButton<String>(
                         value: searchOption,
-                        icon: const Icon(Icons.arrow_drop_down),
+                        icon: Icon(
+                          Icons.arrow_drop_down,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white // Dropdown icon in dark mode
+                              : Colors.black, // Dropdown icon in light mode
+                        ),
                         onChanged: _onSearchOptionChanged,
                         items: const [
                           DropdownMenuItem<String>(
@@ -193,6 +229,9 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                             child: Text('License Plate'),
                           ),
                         ],
+                        dropdownColor: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black // Dropdown menu background in dark mode
+                            : Colors.white, // Dropdown menu background in light mode
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(60),
@@ -238,8 +277,14 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blueAccent),
-                          color: Colors.white,
+                          border: Border.all(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.blueGrey // Dark mode border color
+                                : Colors.blueAccent, // Light mode border color
+                          ),
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.black45 // Dark mode background color
+                              : Colors.white, // Light mode background color
                         ),
                         child: Padding(
                           padding: const EdgeInsets.all(8.0),
@@ -272,9 +317,12 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                                   children: [
                                     Text(
                                       event['requestor_name'] ?? '',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14,
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? Colors.white // Dark mode text color
+                                            : Colors.black, // Light mode text color
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -282,8 +330,9 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                                       'Date: ${event['date_out']} To ${event['date_in']}',
                                       style: TextStyle(
                                         fontSize: 12,
-
-                                        color: Colors.grey[600],
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? Colors.white70 // Lighter text in dark mode
+                                            : Colors.grey[600], // Grey text in light mode
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -291,29 +340,28 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                                       'Tel: ${event['license_plate']}',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        // Adjusted for better compactness
-                                        color: Colors.grey[600],
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? Colors.white70 // Lighter text in dark mode
+                                            : Colors.grey[600], // Grey text in light mode
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    // Reduced spacing
                                     Text(
                                       'Purpose: ${event['purpose']}',
                                       style: TextStyle(
                                         fontSize: 12,
-
-                                        color: Colors.grey[600],
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? Colors.white70 // Lighter text in dark mode
+                                            : Colors.grey[600], // Grey text in light mode
                                       ),
                                     ),
                                     const SizedBox(height: 6),
-                                    // Reduced spacing
                                     Row(
                                       children: [
                                         const Text(
                                           'Status: ',
                                           style: TextStyle(
                                             fontSize: 12,
-
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
@@ -321,10 +369,8 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 8, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color: _getStatusColor(
-                                                event['status'] ?? ''),
-                                            borderRadius: BorderRadius.circular(
-                                                8),
+                                            color: _getStatusColor(event['status'] ?? ''),
+                                            borderRadius: BorderRadius.circular(8),
                                           ),
                                           child: Text(
                                             event['status'] ?? '',

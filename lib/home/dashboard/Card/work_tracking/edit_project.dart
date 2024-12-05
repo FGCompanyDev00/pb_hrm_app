@@ -1,6 +1,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
+import 'package:provider/provider.dart';
+
+import '../../../../settings/theme_notifier.dart';
 
 class EditProjectPage extends StatefulWidget {
   final Map<String, dynamic> project;
@@ -156,6 +159,8 @@ class _EditProjectPageState extends State<EditProjectPage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80.0),
@@ -174,12 +179,12 @@ class _EditProjectPageState extends State<EditProjectPage> {
             child: Text('Edit Project'),
           ),
           flexibleSpace: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/ready_bg.png'),
+                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
                 fit: BoxFit.cover,
               ),
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 bottomLeft: Radius.circular(30),
                 bottomRight: Radius.circular(30),
               ),
@@ -198,11 +203,14 @@ class _EditProjectPageState extends State<EditProjectPage> {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _deleteProject,
-                      icon: const Icon(Icons.delete),
-                      label: const Text('Delete'),
+                      icon: Icon(Icons.delete, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+                      label: Text(
+                        'Delete',
+                        style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+                      ),
                       style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.grey,
+                        foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white,
+                        backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[700] : Colors.grey,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -213,11 +221,14 @@ class _EditProjectPageState extends State<EditProjectPage> {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: _updateProject,
-                      icon: const Icon(Icons.update),
-                      label: const Text('Update'),
+                      icon: Icon(Icons.update, color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white),
+                      label: Text(
+                        'Update',
+                        style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white),
+                      ),
                       style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.amber,
+                        foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                        backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.amber[700] : Colors.amber,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),

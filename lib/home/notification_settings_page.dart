@@ -3,7 +3,10 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../settings/theme_notifier.dart';
 
 class NotificationSettingsPage extends StatefulWidget {
   const NotificationSettingsPage({super.key});
@@ -250,21 +253,27 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
   /// Builds the AppBar with custom styling.
   PreferredSizeWidget _buildAppBar() {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     return AppBar(
       backgroundColor: Colors.transparent, // Ensures no duplicate backgroundColor
       centerTitle: true,
-      title: const Text(
+      title: Text(
         'Notification Settings',
         style: TextStyle(
-          color: Colors.black,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white // White text for dark mode
+              : Colors.black, // Black text for light mode
           fontSize: 22,
           fontWeight: FontWeight.w500,
         ),
       ),
       leading: IconButton(
-        icon: const Icon(
+        icon: Icon(
           Icons.arrow_back_ios_new,
-          color: Colors.black,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white // White icon for dark mode
+              : Colors.black, // Black icon for light mode
           size: 20,
         ),
         onPressed: () {
@@ -274,12 +283,12 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       toolbarHeight: 80,
       elevation: 0,
       flexibleSpace: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/background.png'),
+            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
-          borderRadius: BorderRadius.only(
+          borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(30),
             bottomRight: Radius.circular(30),
           ),

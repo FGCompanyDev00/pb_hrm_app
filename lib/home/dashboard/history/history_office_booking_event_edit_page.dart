@@ -839,13 +839,14 @@ class _OfficeBookingEventEditPageState
 
   /// Builds the submit button
   Widget _buildSubmitButton() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return ElevatedButton(
       onPressed: _isLoading ? null : _submitEdit,
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFFDBB342),
+        backgroundColor: isDarkMode ? Colors.green! : const Color(0xFFDBB342),
         padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 12.0),
-        shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
       ),
       child: _isLoading
           ? const SizedBox(
@@ -856,9 +857,12 @@ class _OfficeBookingEventEditPageState
           strokeWidth: 2.0,
         ),
       )
-          : const Text(
+          : Text(
         'Update',
-        style: TextStyle(color: Colors.black, fontSize: 15.0),
+        style: TextStyle(
+          color: isDarkMode ? Colors.white : Colors.black, // Text color adapts to dark mode
+          fontSize: 15.0,
+        ),
       ),
     );
   }
@@ -995,30 +999,32 @@ class _OfficeBookingEventEditPageState
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     // Determine form based on type
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Edit Office Event',
-          style: TextStyle(color: Colors.black),
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black, // Title color based on theme
+          ),
         ),
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.transparent, // Transparent background for the AppBar
         elevation: 0,
         toolbarHeight: 80,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
             ),
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(30.0),
               bottomRight: Radius.circular(30.0),
             ),
           ),
         ),
-        iconTheme:
-        const IconThemeData(color: Colors.black), // Back button color
+        iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black), // Back button color based on theme
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

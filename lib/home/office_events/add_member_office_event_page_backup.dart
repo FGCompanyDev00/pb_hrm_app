@@ -6,6 +6,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -207,6 +209,8 @@ class _AddMemberPageState extends State<AddMemberPage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.officeEventAddMembers),
@@ -214,12 +218,12 @@ class _AddMemberPageState extends State<AddMemberPage> {
         elevation: 0,
         toolbarHeight: 90,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
               fit: BoxFit.cover,
             ),
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),

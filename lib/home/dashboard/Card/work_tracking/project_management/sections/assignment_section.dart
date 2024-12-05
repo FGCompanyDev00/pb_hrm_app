@@ -190,10 +190,10 @@ class _AssignmentSectionState extends State<AssignmentSection> {
       child: Container(
         margin: const EdgeInsets.only(top: 6.0, left: 8.0, right: 8.0, bottom: 14.0),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.black87 : Colors.white,  // Dark mode background
           boxShadow: [
             BoxShadow(
-              color: statusColor.withOpacity(0.3),
+              color: statusColor.withOpacity(0.4),
               blurRadius: 6,
               spreadRadius: 1.5,
               offset: const Offset(1, 1),
@@ -212,10 +212,10 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                 children: [
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         'Status: ',
                         style: TextStyle(
-                          color: Colors.black,
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -294,18 +294,20 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                 children: [
                   Image.asset('assets/title.png', width: 16, height: 16, color: Colors.blue),
                   const SizedBox(width: 4),
-                  const Text(
+                  Text(
                     'Title: ',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
                     ),
                   ),
                   Expanded(
                     child: Text(
                       assignment['title'] ?? 'No Title',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
                       ),
                     ),
                   ),
@@ -321,16 +323,20 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Start Date:',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
                         ),
                       ),
                       Text(
                         DateFormat('yyyy-MM-dd').format(createdAt),
-                        style: const TextStyle(fontSize: 12),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
+                        ),
                       ),
                     ],
                   ),
@@ -345,16 +351,20 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Due Date:',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
                         ),
                       ),
                       Text(
                         DateFormat('yyyy-MM-dd').format(dueDate),
-                        style: const TextStyle(fontSize: 12),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
+                        ),
                       ),
                     ],
                   ),
@@ -392,10 +402,9 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                       ),
                       TextSpan(
                         text: assignment['create_by'] ?? 'Unknown',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Colors.black,
-                          fontStyle: FontStyle.normal,
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
                         ),
                       ),
                     ],

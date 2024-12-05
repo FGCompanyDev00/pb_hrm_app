@@ -195,6 +195,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _showOfflineOptionModal(String title, String message) async {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -202,8 +204,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           backgroundColor: Colors.transparent,
           child: Container(
             decoration: BoxDecoration(
-              image: const DecorationImage(
-                image: AssetImage('assets/background.png'),
+              image: DecorationImage(
+                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
                 fit: BoxFit.cover,
               ),
               borderRadius: BorderRadius.circular(15),
@@ -449,9 +451,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/background.png'),
+            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
         ),

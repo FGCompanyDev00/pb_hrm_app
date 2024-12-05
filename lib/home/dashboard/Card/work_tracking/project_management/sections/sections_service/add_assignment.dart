@@ -367,30 +367,30 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
               fit: BoxFit.cover,
             ),
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),
           ),
         ),
         centerTitle: true,
-        title: const Text(
+        title: Text(
           'Add Assignment',
           style: TextStyle(
-            color: Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic title color based on theme
             fontSize: 22,
             fontWeight: FontWeight.w500,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic icon color based on theme
             size: 20,
           ),
           onPressed: () {
@@ -568,21 +568,28 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
               right: 16,
               child: ElevatedButton.icon(
                 onPressed: _createAssignment,
-                icon: const Icon(Icons.add, color: Colors.white),
-                label: const Text(
+                icon: Icon(
+                  Icons.add,
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white, // Icon color based on theme
+                ),
+                label: Text(
                   'Add',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white, // Text color based on theme
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDBB342), // Hex #DBB342
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                  backgroundColor: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFFDBB342)
+                      : const Color(0xFFDBB342),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
               ),
             ),
+
           ],
         ),
       ),

@@ -378,32 +378,37 @@ class _DetailsPageState extends State<DetailsPage> {
 
   /// Build AppBar
   PreferredSizeWidget _buildAppBar(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return AppBar(
       flexibleSpace: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/background.png'),
+            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
             fit: BoxFit.cover,
           ),
-          borderRadius: BorderRadius.only(
+          borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(30),
             bottomRight: Radius.circular(30),
           ),
         ),
       ),
       centerTitle: true,
-      title: const Text(
+      title: Text(
         'History Details',
         style: TextStyle(
-          color: Colors.black,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white // White text in dark mode
+              : Colors.black, // Black text in light mode
           fontWeight: FontWeight.bold,
           fontSize: 22,
         ),
       ),
       leading: IconButton(
-        icon: const Icon(
+        icon: Icon(
           Icons.arrow_back_ios_new,
-          color: Colors.black,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white // White icon in dark mode
+              : Colors.black, // Black icon in light mode
           size: 20,
         ),
         onPressed: () {
@@ -420,21 +425,23 @@ class _DetailsPageState extends State<DetailsPage> {
   Widget _buildRequestorSection() {
     String requestorName = (data?['requestor_name'] ?? data?['employee_name']) ?? 'No Name';
     String submittedOn = formatDate(
-        data?['created_at'] ?? data?['date_create'],
-        includeTime: true
+      data?['created_at'] ?? data?['date_create'],
+      includeTime: true,
     );
     String requestorImageUrl = data?['img_name'] ?? data?['img_path'] ?? '';
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark; // Check for dark mode
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // Requestor Section Title
-        const Text(
+        Text(
           'Requestor',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: isDarkMode ? Colors.white : Colors.black, // Change text color for dark mode
           ),
         ),
         const SizedBox(height: 8), // Reduced spacing
@@ -463,10 +470,10 @@ class _DetailsPageState extends State<DetailsPage> {
                 children: [
                   Text(
                     requestorName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16, // Reduced font size
                       fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                      color: isDarkMode ? Colors.white : Colors.black, // Change name text color for dark mode
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis, // Handle overflow
@@ -474,10 +481,10 @@ class _DetailsPageState extends State<DetailsPage> {
                   const SizedBox(height: 2), // Reduced spacing
                   Text(
                     'Submitted on $submittedOn',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12, // Reduced font size
                       fontWeight: FontWeight.w500,
-                      color: Colors.black54,
+                      color: isDarkMode ? Colors.white70 : Colors.black54, // Change date text color for dark mode
                     ),
                   ),
                 ],
@@ -491,21 +498,23 @@ class _DetailsPageState extends State<DetailsPage> {
 
   /// Build Blue Section
   Widget _buildBlueSection() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark; // Check for dark mode
+
     return Container(
       width: 100, // Reduced width
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
       decoration: BoxDecoration(
-        color: Colors.lightBlue[100], // Light blue background color
+        color: isDarkMode ? Colors.blueGrey[700] : Colors.lightBlue[100], // Dark mode blue-grey and light mode light blue
         borderRadius: BorderRadius.circular(20),
       ),
       child: Center(
         child: Text(
           '${widget.types[0].toUpperCase()}${widget.types.substring(1).toLowerCase()}', // Capitalize first letter
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12, // Reduced font size
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: isDarkMode ? Colors.white : Colors.black, // Text color changes for dark mode
           ),
         ),
       ),
@@ -516,6 +525,7 @@ class _DetailsPageState extends State<DetailsPage> {
   Widget _buildDetailsSection() {
     final String type = widget.types.toLowerCase();
     final List<Map<String, dynamic>> details = [];
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     if (type == 'meeting') {
       details.addAll([
@@ -548,24 +558,37 @@ class _DetailsPageState extends State<DetailsPage> {
       children: details.map((detail) {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: _buildInfoRow(detail['icon'], detail['title'], detail['value'], detail['color']),
+          child: _buildInfoRow(
+              detail['icon'],
+              detail['title'],
+              detail['value'],
+              detail['color'],
+              isDarkMode
+          ),
         );
       }).toList(),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String title, String content, Color color) {
+  Widget _buildInfoRow(IconData icon, String title, String content, Color color, bool isDarkMode) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0), // Added padding to each row
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start, // Adjusted alignment
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: color), // Reduced icon size
-          const SizedBox(width: 6), // Reduced spacing
-          Expanded( // Added Expanded to adjust to screen size
+          Icon(
+            icon,
+            size: 18,
+            color: isDarkMode ? color.withOpacity(0.8) : color,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
             child: Text(
               '$title: $content',
-              style: const TextStyle(fontSize: 13, color: Colors.black), // Reduced font size
+              style: TextStyle(
+                fontSize: 13,
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
             ),
           ),
         ],
@@ -923,6 +946,8 @@ class _DetailsPageState extends State<DetailsPage> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark; // Check for dark mode
     final horizontalPadding = screenWidth < 360 ? 12.0 : 16.0; // Reduced padding for small screens
 
     return Scaffold(
@@ -935,23 +960,27 @@ class _DetailsPageState extends State<DetailsPage> {
           padding: const EdgeInsets.all(16.0),
           child: Text(
             _errorMessage!,
-            style: const TextStyle(fontSize: 16, color: Colors.red),
+            style: TextStyle(
+              fontSize: 16,
+              color: isDarkMode ? Colors.redAccent : Colors.red, // Error color for dark mode
+            ),
           ),
         ),
       )
           : RefreshIndicator(
         onRefresh: _handleRefresh, // Pull down to refresh
         child: data == null
-            ? const Center(
+            ? Center(
           child: Text(
             'No Data Available',
-            style:
-            TextStyle(fontSize: 16, color: Colors.red),
+            style: TextStyle(
+              fontSize: 16,
+              color: isDarkMode ? Colors.grey[400] : Colors.red, // Adapt color for dark mode
+            ),
           ),
         )
             : SingleChildScrollView(
-          physics:
-          const AlwaysScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           child: Center( // Wrapped content in Center widget
             child: Padding(
               padding: EdgeInsets.symmetric(
@@ -967,7 +996,7 @@ class _DetailsPageState extends State<DetailsPage> {
                   const SizedBox(height: 16),
                   _buildWorkflowSection(),
                   SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.02,
+                    height: screenHeight * 0.02,
                   ),
                   _buildActionButtons(context),
                 ],

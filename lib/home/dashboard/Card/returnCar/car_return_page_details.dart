@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -174,6 +176,8 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   }
 
   PreferredSizeWidget buildAppBar(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     return PreferredSize(
       preferredSize: const Size.fromHeight(80.0),
       child: ClipRRect(
@@ -183,9 +187,9 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
         ),
         child: AppBar(
           flexibleSpace: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/background.png'),
+                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
                 fit: BoxFit.cover,
               ),
             ),

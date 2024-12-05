@@ -454,7 +454,7 @@ class _DashboardState extends State<Dashboard> {
                 IconButton(
                   icon: Icon(
                     Icons.notifications,
-                    color: isDarkMode ? Colors.white : Colors.orangeAccent,
+                    color: isDarkMode ? Colors.blueAccent : Colors.orangeAccent,
                     size: 27,
                   ),
                   onPressed: () {

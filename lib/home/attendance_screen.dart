@@ -625,7 +625,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  backgroundColor: Colors.green,
+                  backgroundColor: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFFDBB342) // Dark mode background color (#DBB342)
+                      : Colors.green, // Light mode background color (green)
                   elevation: 4,
                 ),
                 icon: const Icon(Icons.view_agenda, color: Colors.white),

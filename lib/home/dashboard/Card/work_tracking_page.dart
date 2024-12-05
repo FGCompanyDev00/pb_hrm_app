@@ -166,7 +166,9 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
             // Add Project Button
             CircleAvatar(
               radius: 22,
-              backgroundColor: Colors.green,
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Color(0xFFDBB342) // Dark mode color
+                  : Colors.green, // Light mode color
               child: Transform.scale(
                 scale: 1.5,
                 child: IconButton(
@@ -186,7 +188,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                   tooltip: 'Add Project',
                 ),
               ),
-            ),
+            )
           ],
         ),
       ),
@@ -254,19 +256,19 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDarkMode ? Colors.grey[800] : Colors.white, // Background color changes based on dark mode
                 borderRadius: BorderRadius.circular(8.0),
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade300),
               ),
               child: TextField(
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Search name',
-                  hintStyle: TextStyle(color: Colors.grey),
+                  hintStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.grey), // Hint text color change
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-                  suffixIcon: Icon(Icons.search, color: Colors.grey),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+                  suffixIcon: Icon(Icons.search, color: isDarkMode ? Colors.white : Colors.grey), // Icon color change
                 ),
-                style: const TextStyle(color: Colors.black),
+                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black), // Text color change based on dark mode
                 onChanged: (value) {
                   setState(() {
                     _searchText = value;
@@ -280,17 +282,17 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDarkMode ? Colors.grey[800] : Colors.white, // Background color change
               borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade300),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _selectedStatus,
-                icon: const Icon(Icons.arrow_drop_down, color: Colors.grey),
+                icon: Icon(Icons.arrow_drop_down, color: isDarkMode ? Colors.white : Colors.grey), // Icon color change
                 iconSize: 24,
                 elevation: 16,
-                style: const TextStyle(color: Colors.black),
+                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black), // Text color change
                 onChanged: (String? newValue) {
                   setState(() {
                     _selectedStatus = newValue!;
@@ -438,7 +440,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDarkMode ? Colors.grey[850] : Colors.white, // Dark mode background color
             borderRadius: BorderRadius.circular(12.0),
             boxShadow: [
               BoxShadow(

@@ -472,6 +472,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
 
     // Determine screen size for responsiveness
     final Size screenSize = MediaQuery.of(context).size;
@@ -483,30 +484,30 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
               fit: BoxFit.cover,
             ),
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),
           ),
         ),
         centerTitle: true,
-        title: const Text(
+        title: Text(
           'Add Processing Item',
           style: TextStyle(
-            color: Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic text color based on theme
             fontSize: 22,
             fontWeight: FontWeight.w500,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic icon color based on theme
             size: 20,
           ),
           onPressed: () {

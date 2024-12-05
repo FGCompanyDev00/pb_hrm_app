@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -472,6 +474,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     final mediaQuery = MediaQuery.of(context);
     final double appBarHeight = mediaQuery.size.height * 0.16;
 
@@ -484,12 +488,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
         // Customized AppBar
         Container(
         height: appBarHeight,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/background.png'),
+            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
-          borderRadius: BorderRadius.only(
+          borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(20),
             bottomRight: Radius.circular(20),
           ),
@@ -500,7 +504,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.black),
+                  icon: Icon(
+                    Icons.arrow_back,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white // White icon for dark mode
+                        : Colors.black, // Black icon for light mode
+                  ),
                   onPressed: () {
                     Navigator.of(context).pop();
                   },
@@ -510,14 +519,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     child: Text(
                       'Edit Profile',
                       style: TextStyle(
-                        color: Colors.black,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 48), // To balance the back button
+                const SizedBox(width: 48),
               ],
             ),
           ),
@@ -633,17 +641,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ElevatedButton(
                   onPressed: _isLoading ? null : _saveProfile,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:const Color(0xFFDBB342),
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark
+                        ? const Color(0xFFDBB342) // Keep same color for dark mode
+                        : const Color(0xFFE3B200), // A different color for light mode if needed
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30.0),
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Update Profile',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black,
                     ),
                   ),
                 ),

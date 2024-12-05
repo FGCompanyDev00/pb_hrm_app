@@ -340,17 +340,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     Provider.of<ThemeNotifier>(context);
     final size = MediaQuery.of(context).size;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
             ),
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),
@@ -360,15 +361,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: Text(
           AppLocalizations.of(context)!.qrMyProfile,
           style: TextStyle(
-            color: Colors.black,
+            color: isDarkMode ? Colors.white : Colors.black,
             fontSize: size.width * 0.06,
             fontWeight: FontWeight.bold,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Colors.black,
+            color: isDarkMode ? Colors.white : Colors.black,
             size: 20,
           ),
           onPressed: () => Navigator.pop(context),
@@ -388,7 +389,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
             } else if (snapshot.hasData) {
               final data = snapshot.data!;
-
               final String vCardData = '''
 BEGIN:VCARD
 VERSION:3.0
@@ -490,10 +490,12 @@ END:VCARD
                                   Center(
                                     child: CircleAvatar(
                                       radius: size.width * 0.12,
-                                      backgroundColor: Colors.grey[200],
+                                      backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
                                       child: CircleAvatar(
                                           radius: size.width * 0.1,
-                                          backgroundImage: data['images'] != null && data['images'].isNotEmpty ? NetworkImage(data['images']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                                          backgroundImage: data['images'] != null && data['images'].isNotEmpty
+                                              ? NetworkImage(data['images'])
+                                              : const AssetImage('assets/default_avatar.png') as ImageProvider,
                                           onBackgroundImageError: (_, __) {
                                             const AssetImage('assets/default_avatar.png');
                                           }),
@@ -515,17 +517,17 @@ END:VCARD
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          const Icon(
+                                          Icon(
                                             Icons.arrow_forward_ios,
                                             size: 24,
-                                            color: Colors.black,
+                                            color: isDarkMode ? Colors.white : Colors.black,
                                           ),
                                           Text(
                                             AppLocalizations.of(context)!.more,
                                             style: TextStyle(
                                               fontSize: size.width * 0.04,
                                               fontWeight: FontWeight.w500,
-                                              color: Colors.black,
+                                              color: isDarkMode ? Colors.white : Colors.black,
                                             ),
                                           ),
                                         ],
@@ -537,9 +539,9 @@ END:VCARD
                               SizedBox(height: size.height * 0.02),
                               Text(
                                 AppLocalizations.of(context)!.greeting(data['employee_name']),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 18,
-                                  color: Colors.green,
+                                  color: isDarkMode ? Colors.green : Colors.green,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -549,7 +551,7 @@ END:VCARD
                                 child: Container(
                                   padding: EdgeInsets.all(size.width * 0.04),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFEAF9E5),
+                                    color: isDarkMode ? const Color(0xFF303030) : const Color(0xFFEAF9E5),
                                     boxShadow: const [
                                       BoxShadow(
                                         color: Colors.black26,
@@ -566,7 +568,7 @@ END:VCARD
                                         style: TextStyle(
                                           fontSize: size.width * 0.045,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
+                                          color: isDarkMode ? Colors.white : Colors.black87,
                                         ),
                                       ),
                                       SizedBox(height: size.height * 0.015),
@@ -614,98 +616,32 @@ END:VCARD
                                               version: QrVersions.auto,
                                               size: size.width * 0.5,
                                               gapless: false,
-                                              backgroundColor: const Color(0xFFEAF5E2),
-                                              eyeStyle: const QrEyeStyle(
+                                              backgroundColor: isDarkMode ? const Color(0xFF303030) : const Color(0xFFEAF9E5),
+                                              eyeStyle: QrEyeStyle(
                                                 eyeShape: QrEyeShape.circle,
-                                                color: Colors.black,
+                                                color: isDarkMode ? Colors.white : Colors.black,
                                               ),
-                                              dataModuleStyle: const QrDataModuleStyle(
-                                                dataModuleShape: QrDataModuleShape.circle,
-                                                color: Colors.black,
+                                              dataModuleStyle: QrDataModuleStyle(
+                                                dataModuleShape: QrDataModuleShape.square,
+                                                color: isDarkMode ? Colors.white : Colors.black,
                                               ),
                                             ),
                                           ),
                                         ),
                                       ),
-                                      SizedBox(height: size.height * 0.02),
                                     ],
                                   ),
                                 ),
                               ),
-                              SizedBox(height: size.height * 0.02),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: _shareQRCode,
-                                      icon: const Icon(
-                                        Icons.share_outlined,
-                                        color: Colors.white,
-                                        size: 18,
-                                      ),
-                                      label: const Text(
-                                        'Share',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.grey[800],
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 12.0,
-                                          horizontal: 18.0,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(16.0),
-                                        ),
-                                        elevation: 0,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8.0),
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: _downloadQRCode,
-                                      icon: const Icon(
-                                        Icons.download_outlined,
-                                        color: Colors.black,
-                                        size: 18,
-                                      ),
-                                      label: const Text(
-                                        'Download',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFFDAA520),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 12.0,
-                                          horizontal: 18.0,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(16.0),
-                                        ),
-                                        elevation: 0,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              )
                             ],
                           ),
                         ),
                       ),
                     ),
-                  )
+                  ),
               ]);
             } else {
-              return Center(child: Text(AppLocalizations.of(context)!.noDataAvailable));
+              return const Center(child: Text('No data available.'));
             }
           },
         ),

@@ -2,8 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../settings/theme_notifier.dart';
 
 class AddMemberPage extends StatefulWidget {
   const AddMemberPage({super.key});
@@ -380,6 +383,9 @@ class _AddMemberPageState extends State<AddMemberPage> {
     final double horizontalPadding = MediaQuery.of(context).size.width * 0.04;
     final double verticalPadding = MediaQuery.of(context).size.height * 0.01;
 
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Members', style: TextStyle(color: Colors.black)),
@@ -387,12 +393,12 @@ class _AddMemberPageState extends State<AddMemberPage> {
         elevation: 0,
         toolbarHeight: 80,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
               fit: BoxFit.cover,
             ),
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(20),
               bottomRight: Radius.circular(20),
             ),

@@ -77,11 +77,15 @@ class _MyProfilePageState extends State<MyProfilePage> {
   }
 
   Widget buildRolesSection(String roles) {
+    // If roles string is empty, show a localized message
     if (roles.trim().isEmpty) {
       roles = AppLocalizations.of(context)!.noRolesAvailable;
     }
 
+    // Split the roles string into a list
     List<String> roleList = roles.split(',');
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -90,7 +94,11 @@ class _MyProfilePageState extends State<MyProfilePage> {
         children: [
           Text(
             AppLocalizations.of(context)!.rolesLabel,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: isDarkMode ? Colors.white : Colors.black,  // Color based on theme
+            ),
           ),
           const SizedBox(height: 4),
           Wrap(
@@ -98,8 +106,13 @@ class _MyProfilePageState extends State<MyProfilePage> {
             runSpacing: 4.0,
             children: roleList.map((role) {
               return Chip(
-                label: Text(role.trim()),
-                backgroundColor: Colors.green[100],
+                label: Text(
+                  role.trim(),
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black,  // Text color based on theme
+                  ),
+                ),
+                backgroundColor: isDarkMode ? Colors.deepPurple : Colors.green[200],  // Background color based on theme
               );
             }).toList(),
           ),
@@ -110,15 +123,17 @@ class _MyProfilePageState extends State<MyProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage('assets/background.png'),
+              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
             ),
-            borderRadius: BorderRadius.only(
+            borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(30),
               bottomRight: Radius.circular(30),
             ),
@@ -126,13 +141,16 @@ class _MyProfilePageState extends State<MyProfilePage> {
         ),
         title: Text(
           AppLocalizations.of(context)!.myProfile,
-          style: const TextStyle(
-            color: Colors.black,
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(
+            Icons.arrow_back,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         shape: const RoundedRectangleBorder(
@@ -142,6 +160,8 @@ class _MyProfilePageState extends State<MyProfilePage> {
           ),
         ),
         toolbarHeight: 90,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: FutureBuilder<UserProfile>(
         future: futureUserProfile,
@@ -157,11 +177,13 @@ class _MyProfilePageState extends State<MyProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Profile Info Card
                     Card(
                       elevation: 2.0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16.0),
                       ),
+                      color: isDarkMode ? Colors.grey[850] : Colors.white,
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
@@ -171,59 +193,69 @@ class _MyProfilePageState extends State<MyProfilePage> {
                               icon: Icons.person,
                               label: AppLocalizations.of(context)!.gender,
                               value: snapshot.data!.gender.isNotEmpty ? snapshot.data!.gender : AppLocalizations.of(context)!.notAvailable,
+                              textColor: isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.badge,
                               label: AppLocalizations.of(context)!.nameAndSurname,
                               value: '${snapshot.data!.name} ${snapshot.data!.surname}',
+                              textColor: isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.date_range,
                               label: AppLocalizations.of(context)!.dateStartWork,
                               value: formatDate(snapshot.data!.createAt),
+                              textColor: isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.date_range,
                               label: AppLocalizations.of(context)!.probationEndDate,
                               value: formatDate(snapshot.data!.updateAt),
+                              textColor: isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.account_balance,
                               label: AppLocalizations.of(context)!.department,
                               value: snapshot.data!.departmentName.isNotEmpty ? snapshot.data!.departmentName : AppLocalizations.of(context)!.notAvailable,
+                              textColor: isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.location_on,
                               label: AppLocalizations.of(context)!.branch,
                               value: snapshot.data!.branchName.isNotEmpty ? snapshot.data!.branchName : AppLocalizations.of(context)!.notAvailable,
+                              textColor: isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.phone,
                               label: AppLocalizations.of(context)!.telephone,
                               value: snapshot.data!.tel.isNotEmpty ? snapshot.data!.tel : AppLocalizations.of(context)!.notAvailable,
+                              textColor: isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.email,
                               label: AppLocalizations.of(context)!.emails,
                               value: snapshot.data!.email.isNotEmpty ? snapshot.data!.email : AppLocalizations.of(context)!.notAvailable,
+                              textColor: isDarkMode ? Colors.white : Colors.black,
                             ),
                           ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 20.0),
+                    // Roles Info Card
                     Card(
                       elevation: 2.0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16.0),
                       ),
+                      color: isDarkMode ? Colors.grey[850] : Colors.white,
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: buildRolesSection(snapshot.data!.roles),
@@ -304,13 +336,9 @@ class ProfileInfoRow extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
+  final Color textColor;
 
-  const ProfileInfoRow({
-    super.key,
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  const ProfileInfoRow({super.key, required this.icon, required this.label, required this.value, required this.textColor});
 
   @override
   Widget build(BuildContext context) {
@@ -329,7 +357,7 @@ class ProfileInfoRow extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
-                Text(value),
+                Text(value, style: TextStyle(color: textColor)),
               ],
             ),
           ),

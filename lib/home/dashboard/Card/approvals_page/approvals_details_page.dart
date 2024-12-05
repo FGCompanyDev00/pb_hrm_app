@@ -216,6 +216,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     String status = (approvalData?['status']?.toString() ??
         approvalData?['is_approve']?.toString() ??
         'Pending')
@@ -231,12 +232,12 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(height: 10),
-            _buildRequestorSection(),
+            _buildRequestorSection(isDarkMode),
             const SizedBox(height: 20),
-            _buildBlueSection(),
+            _buildBlueSection(isDarkMode),
             const SizedBox(height: 5),
             _buildDetailsSection(),
-            const SizedBox(height: 30),
+            const SizedBox(height: 4),
             if (widget.type == 'leave' ||
                 widget.type == 'car' ||
                 widget.type == 'meeting') ...[
@@ -256,27 +257,34 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return AppBar(
       flexibleSpace: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage('assets/background.png'),
+            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
-          borderRadius: BorderRadius.only(
+          borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(30),
             bottomRight: Radius.circular(30),
           ),
         ),
       ),
       centerTitle: true,
-      title: const Text(
+      title: Text(
         'Approval Details',
-        style: TextStyle(color: Colors.black, fontSize: 24),
+        style: TextStyle(
+          color: isDarkMode ? Colors.white : Colors.black, // Title color for dark mode
+          fontSize: 24,
+        ),
       ),
       leading: IconButton(
-        icon:
-        const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 24),
+        icon: Icon(
+          Icons.arrow_back_ios_new,
+          color: isDarkMode ? Colors.white : Colors.black, // Icon color for dark mode
+          size: 24,
+        ),
         onPressed: () {
           Navigator.pop(context);
         },
@@ -287,7 +295,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     );
   }
 
-  Widget _buildRequestorSection() {
+  Widget _buildRequestorSection(bool isDarkMode) {
     String requestorName = approvalData?['employee_name'] ??
         approvalData?['requestor_name'] ??
         'No Name';
@@ -309,11 +317,14 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text('Requestor',
-            style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-                fontSize: 20)),
+        Text(
+          'Requestor',
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black, // Title color
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -321,9 +332,8 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
             CircleAvatar(
               backgroundImage: NetworkImage(profileImage),
               radius: 35,
-              backgroundColor: Colors.grey[300],
+              backgroundColor: isDarkMode ? Colors.grey[700] : Colors.grey[300], // Avatar background color
               onBackgroundImageError: (error, stackTrace) {
-                // Handle image load error
                 setState(() {
                   requestorImage = 'https://via.placeholder.com/150';
                 });
@@ -333,13 +343,21 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(requestorName,
-                    style: const TextStyle(
-                        color: Colors.black, fontSize: 18)),
+                Text(
+                  requestorName,
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black, // Name text color
+                    fontSize: 18,
+                  ),
+                ),
                 const SizedBox(height: 6),
-                Text('Submitted on $submittedOn',
-                    style:
-                    const TextStyle(fontSize: 16, color: Colors.black54)),
+                Text(
+                  'Submitted on $submittedOn',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isDarkMode ? Colors.white70 : Colors.black54, // Date text color
+                  ),
+                ),
               ],
             ),
           ],
@@ -348,18 +366,25 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     );
   }
 
-  Widget _buildBlueSection() {
+  Widget _buildBlueSection(bool isDarkMode) {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;  // Check if dark mode is active
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 30.0),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 25),
         decoration: BoxDecoration(
-          color: Colors.lightBlueAccent.withOpacity(0.4),
+          color: isDarkMode
+              ? Colors.blueGrey.withOpacity(0.4)  // Dark mode color
+              : Colors.lightBlueAccent.withOpacity(0.4),  // Light mode color
           borderRadius: BorderRadius.circular(25),
         ),
         child: Text(
           _getTypeHeader(),
-          style: const TextStyle(color: Colors.black, fontSize: 18),
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,  // Adjust text color
+            fontSize: 18,
+          ),
         ),
       ),
     );
@@ -378,6 +403,8 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   }
 
   Widget _buildDetailsSection() {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;  // Check if dark mode is active
+
     if (widget.type == 'leave') {
       return _buildLeaveDetails();
     } else if (widget.type == 'car') {
@@ -385,123 +412,207 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     } else if (widget.type == 'meeting') {
       return _buildMeetingDetails();
     } else {
-      return const Center(
+      return Center(
         child: Text(
           'Unknown Request Type',
-          style: TextStyle(fontSize: 18, color: Colors.red),
+          style: TextStyle(
+            fontSize: 18,
+            color: isDarkMode ? Colors.white : Colors.red,  // Adjust text color for dark mode
+          ),
         ),
       );
     }
   }
 
   Widget _buildLeaveDetails() {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark; // Check dark mode
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildInfoRow(
-            'Leave Request ID',
-            approvalData?['take_leave_request_id']?.toString() ?? 'N/A',
-            Icons.assignment,
-            Colors.green),
-        const SizedBox(height: 8), // Spacing between rows
-        _buildInfoRow('Leave Type', approvalData?['name'] ?? 'N/A',
-            Icons.person, Colors.purple),
-        const SizedBox(height: 8),
-        _buildInfoRow('Reason', approvalData?['take_leave_reason'] ?? 'N/A',
-            Icons.book, Colors.blue),
+          'Leave Request ID',
+          approvalData?['take_leave_request_id']?.toString() ?? 'N/A',
+          Icons.assignment,
+          Colors.green,
+          isDarkMode,
+        ),
         const SizedBox(height: 8),
         _buildInfoRow(
-            'From Date',
-            formatDate(approvalData?['take_leave_from'], includeDay: true),
-            Icons.calendar_today,
-            Colors.blue),
+          'Leave Type',
+          approvalData?['name'] ?? 'N/A',
+          Icons.person,
+          Colors.purple,
+          isDarkMode,
+        ),
         const SizedBox(height: 8),
         _buildInfoRow(
-            'Until Date',
-            formatDate(approvalData?['take_leave_to'], includeDay: true),
-            Icons.calendar_today,
-            Colors.blue),
+          'Reason',
+          approvalData?['take_leave_reason'] ?? 'N/A',
+          Icons.book,
+          Colors.blue,
+          isDarkMode,
+        ),
         const SizedBox(height: 8),
-        _buildInfoRow('Days', approvalData?['days']?.toString() ?? 'N/A',
-            Icons.today, Colors.orange),
+        _buildInfoRow(
+          'From Date',
+          formatDate(approvalData?['take_leave_from'], includeDay: true),
+          Icons.calendar_today,
+          Colors.blue,
+          isDarkMode,
+        ),
+        const SizedBox(height: 8),
+        _buildInfoRow(
+          'Until Date',
+          formatDate(approvalData?['take_leave_to'], includeDay: true),
+          Icons.calendar_today,
+          Colors.blue,
+          isDarkMode,
+        ),
+        const SizedBox(height: 8),
+        _buildInfoRow(
+          'Days',
+          approvalData?['days']?.toString() ?? 'N/A',
+          Icons.today,
+          Colors.orange,
+          isDarkMode,
+        ),
       ],
     );
   }
 
   Widget _buildCarDetails() {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInfoRow('Car Booking ID', approvalData?['id']?.toString() ?? 'N/A',
-            Icons.directions_car, Colors.green),
-        const SizedBox(height: 8),
-        _buildInfoRow('Purpose', approvalData?['purpose'] ?? 'N/A',
-            Icons.bookmark, Colors.green),
+        _buildInfoRow(
+          'Car Booking ID',
+          approvalData?['id']?.toString() ?? 'N/A',
+          Icons.directions_car,
+          Colors.green,
+          isDarkMode,
+        ),
         const SizedBox(height: 8),
         _buildInfoRow(
-            'Date Out',
-            formatDate(approvalData?['date_out'], includeDay: true),
-            Icons.calendar_today,
-            Colors.blue),
+          'Purpose',
+          approvalData?['purpose'] ?? 'N/A',
+          Icons.bookmark,
+          Colors.green,
+          isDarkMode,
+        ),
         const SizedBox(height: 8),
         _buildInfoRow(
-            'Date In',
-            formatDate(approvalData?['date_in'], includeDay: true),
-            Icons.calendar_today,
-            Colors.blue),
+          'Date Out',
+          formatDate(approvalData?['date_out'], includeDay: true),
+          Icons.calendar_today,
+          Colors.blue,
+          isDarkMode,
+        ),
         const SizedBox(height: 8),
-        _buildInfoRow('Place', approvalData?['place']?.toString() ?? 'N/A',
-            Icons.place, Colors.orange),
+        _buildInfoRow(
+          'Date In',
+          formatDate(approvalData?['date_in'], includeDay: true),
+          Icons.calendar_today,
+          Colors.blue,
+          isDarkMode,
+        ),
         const SizedBox(height: 8),
-        _buildInfoRow('Status', approvalData?['status']?.toString() ?? 'Pending',
-            Icons.stairs, Colors.red),
+        _buildInfoRow(
+          'Place',
+          approvalData?['place']?.toString() ?? 'N/A',
+          Icons.place,
+          Colors.orange,
+          isDarkMode,
+        ),
+        const SizedBox(height: 8),
+        _buildInfoRow(
+          'Status',
+          approvalData?['status']?.toString() ?? 'Pending',
+          Icons.stairs,
+          Colors.red,
+          isDarkMode,
+        ),
       ],
     );
   }
 
   Widget _buildMeetingDetails() {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildInfoRow(
-            'Meeting ID',
-            approvalData?['meeting_id']?.toString() ?? 'N/A',
-            Icons.meeting_room,
-            Colors.green),
-        const SizedBox(height: 8),
-        _buildInfoRow('Title', approvalData?['title'] ?? 'N/A', Icons.title,
-            Colors.blue),
-        const SizedBox(height: 8),
-        _buildInfoRow(
-            'From Date',
-            formatDate(approvalData?['from_date_time'], includeDay: true),
-            Icons.calendar_today,
-            Colors.blue),
+          'Meeting ID',
+          approvalData?['meeting_id']?.toString() ?? 'N/A',
+          Icons.meeting_room,
+          Colors.green,
+          isDarkMode,
+        ),
         const SizedBox(height: 8),
         _buildInfoRow(
-            'To Date',
-            formatDate(approvalData?['to_date_time'], includeDay: true),
-            Icons.calendar_today,
-            Colors.blue),
+          'Title',
+          approvalData?['title'] ?? 'N/A',
+          Icons.title,
+          Colors.blue,
+          isDarkMode,
+        ),
         const SizedBox(height: 8),
-        _buildInfoRow('Room Name', approvalData?['room_name']?.toString() ?? 'N/A',
-            Icons.room, Colors.orange),
+        _buildInfoRow(
+          'From Date',
+          formatDate(approvalData?['from_date_time'], includeDay: true),
+          Icons.calendar_today,
+          Colors.blue,
+          isDarkMode,
+        ),
         const SizedBox(height: 8),
-        _buildInfoRow('Status', approvalData?['status']?.toString() ?? 'Pending',
-            Icons.stairs, Colors.red),
+        _buildInfoRow(
+          'To Date',
+          formatDate(approvalData?['to_date_time'], includeDay: true),
+          Icons.calendar_today,
+          Colors.blue,
+          isDarkMode,
+        ),
+        const SizedBox(height: 8),
+        _buildInfoRow(
+          'Room Name',
+          approvalData?['room_name']?.toString() ?? 'N/A',
+          Icons.room,
+          Colors.orange,
+          isDarkMode,
+        ),
+        const SizedBox(height: 8),
+        _buildInfoRow(
+          'Status',
+          approvalData?['status']?.toString() ?? 'Pending',
+          Icons.stairs,
+          Colors.red,
+          isDarkMode,
+        ),
       ],
     );
   }
 
   Widget _buildInfoRow(
-      String title, String content, IconData icon, Color color) {
+      String title, String content, IconData icon, Color color, bool isDarkMode) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: color),
+        Icon(
+          icon,
+          size: 20,
+          color: color,
+        ),
         const SizedBox(width: 12),
         Expanded(
-          child: Text('$title: $content',
-              style: const TextStyle(fontSize: 16, color: Colors.black)),
+          child: Text(
+            '$title: $content',
+            style: TextStyle(
+              fontSize: 16,
+              color: isDarkMode ? Colors.white : Colors.black, // Text color change for dark mode
+            ),
+          ),
         ),
       ],
     );

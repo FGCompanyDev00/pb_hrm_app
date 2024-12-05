@@ -373,6 +373,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   /// Builds the tab bar for toggling between Pending and History
   Widget _buildTabBar(Size screenSize) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: screenSize.width * 0.03,
@@ -392,7 +393,9 @@ class _HistoryPageState extends State<HistoryPage> {
                   vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
-                  color: _isPendingSelected ? Colors.amber : Colors.grey[300],
+                  color: _isPendingSelected
+                      ? (isDarkMode ? Colors.amber[700] : Colors.amber)
+                      : (isDarkMode ? Colors.grey[800] : Colors.grey[300]),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -405,13 +408,17 @@ class _HistoryPageState extends State<HistoryPage> {
                       'assets/pending.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: _isPendingSelected ? Colors.white : Colors.grey[600],
+                      color: _isPendingSelected
+                          ? Colors.white
+                          : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Pending',
                       style: TextStyle(
-                        color: _isPendingSelected ? Colors.white : Colors.grey[600],
+                        color: _isPendingSelected
+                            ? Colors.white
+                            : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -434,7 +441,9 @@ class _HistoryPageState extends State<HistoryPage> {
                   vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
-                  color: !_isPendingSelected ? Colors.amber : Colors.grey[300],
+                  color: !_isPendingSelected
+                      ? (isDarkMode ? Colors.amber[700] : Colors.amber)
+                      : (isDarkMode ? Colors.grey[800] : Colors.grey[300]),
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(20.0),
                     bottomRight: Radius.circular(20.0),
@@ -447,13 +456,17 @@ class _HistoryPageState extends State<HistoryPage> {
                       'assets/history.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: !_isPendingSelected ? Colors.white : Colors.grey[600],
+                      color: !_isPendingSelected
+                          ? Colors.white
+                          : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'History',
                       style: TextStyle(
-                        color: !_isPendingSelected ? Colors.white : Colors.grey[600],
+                        color: !_isPendingSelected
+                            ? Colors.white
+                            : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -480,19 +493,17 @@ class _HistoryPageState extends State<HistoryPage> {
     String detailLabel;
     Color statusColor = _getStatusColor(item['status']);
     Color typeColor = _getTypeColor(type);
+
     String formatDate(String dateStr) {
       try {
         DateTime date;
-
         if (dateStr.contains('T')) {
           date = DateTime.parse(dateStr);
         } else {
-          // If the format is simpler, manually parse it
           date = DateFormat('yyyy-M-d').parse(dateStr);
         }
         return DateFormat('dd-MM-yyyy HH:mm').format(date);
       } catch (e) {
-        // If parsing fails, return a default or error string
         return 'Invalid Date';
       }
     }
@@ -539,7 +550,7 @@ class _HistoryPageState extends State<HistoryPage> {
         );
       },
       child: Card(
-        color: Colors.white,
+        color: isDarkMode ? Colors.grey[850] : Colors.white, // Card color changes based on theme
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(screenSize.width * 0.03),
           side: BorderSide(color: typeColor, width: screenSize.width * 0.001),
@@ -600,14 +611,14 @@ class _HistoryPageState extends State<HistoryPage> {
                         Text(
                           'Date: $startDate',
                           style: TextStyle(
-                            color: Colors.grey[700],
+                            color: isDarkMode ? Colors.white70 : Colors.grey[700],
                             fontSize: screenSize.width * 0.03,
                           ),
                         ),
                         Text(
                           'To: $endDate',
                           style: TextStyle(
-                            color: Colors.grey[700],
+                            color: isDarkMode ? Colors.white70 : Colors.grey[700],
                             fontSize: screenSize.width * 0.03,
                           ),
                         ),
@@ -627,6 +638,7 @@ class _HistoryPageState extends State<HistoryPage> {
                               style: TextStyle(
                                 fontSize: screenSize.width * 0.03,
                                 fontWeight: FontWeight.bold,
+                                color: isDarkMode ? Colors.white : Colors.black,
                               ),
                             ),
                             Container(
@@ -668,7 +680,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 child: CircleAvatar(
                   backgroundImage: NetworkImage(item['img_name']),
                   radius: screenSize.width * 0.06,
-                  backgroundColor: Colors.grey[300],
+                  backgroundColor: isDarkMode ? Colors.grey[700] : Colors.grey[300],
                 ),
               ),
             ),

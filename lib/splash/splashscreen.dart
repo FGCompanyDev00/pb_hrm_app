@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
 import 'package:pb_hrsystem/main.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/user_model.dart';
 
@@ -93,6 +94,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     final Size screenSize = MediaQuery.of(context).size;
     final double screenWidth = screenSize.width;
     final double screenHeight = screenSize.height;
@@ -109,9 +112,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         children: [
           // Background Image
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/background.png'),
+                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
                 fit: BoxFit.cover,
               ),
             ),

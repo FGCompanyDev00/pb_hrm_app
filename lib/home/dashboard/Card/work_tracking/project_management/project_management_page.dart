@@ -84,13 +84,14 @@ class _ProjectManagementPageState extends State<ProjectManagementPage>
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(90.0),
         child: AppBar(
           automaticallyImplyLeading: true,
-          backgroundColor: Colors.transparent,
+          backgroundColor: isDarkMode ? Colors.black : Colors.transparent, // Dark mode background
           elevation: 0,
           flexibleSpace: ClipRRect(
             borderRadius: const BorderRadius.only(
@@ -98,9 +99,9 @@ class _ProjectManagementPageState extends State<ProjectManagementPage>
               bottomRight: Radius.circular(20),
             ),
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('assets/background.png'),
+                  image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -109,27 +110,30 @@ class _ProjectManagementPageState extends State<ProjectManagementPage>
           leading: Padding(
             padding: const EdgeInsets.only(top: 25.0),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              icon: Icon(
+                Icons.arrow_back,
+                color: isDarkMode ? Colors.white : Colors.black, // Adjust color for dark mode
+              ),
               onPressed: () {
                 Navigator.pop(context);
               },
             ),
           ),
-          title: const Padding(
-            padding: EdgeInsets.only(top: 34.0),
+          title: Padding(
+            padding: const EdgeInsets.only(top: 34.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                Spacer(flex: 2),
+                const Spacer(flex: 2),
                 Text(
-                  'Work Tracking',
+                  'Project Management',
                   style: TextStyle(
-                    color: Colors.black,
+                    color: isDarkMode ? Colors.white : Colors.black, // Adjust text color for dark mode
                     fontWeight: FontWeight.bold,
                     fontSize: 24,
                   ),
                 ),
-                Spacer(flex: 4),
+                const Spacer(flex: 4),
               ],
             ),
           ),

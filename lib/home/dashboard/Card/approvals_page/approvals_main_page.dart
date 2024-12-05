@@ -299,7 +299,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
   /// Builds the header section with background image and title.
   Widget _buildHeader(bool isDarkMode, Size screenSize) {
     return Container(
-      height: screenSize.height * 0.18,
+      height: screenSize.height * 0.17,
       width: double.infinity,
       decoration: BoxDecoration(
         image: DecorationImage(
@@ -313,41 +313,43 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           bottomRight: Radius.circular(30),
         ),
       ),
-      child: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: screenSize.width * 0.04,
-            vertical: screenSize.height * 0.015,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.arrow_back,
-                  color: isDarkMode ? Colors.white : Colors.black,
-                  size: screenSize.width * 0.07,
+        child: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: screenSize.width * 0.04,
+              vertical: screenSize.height * 0.015,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.arrow_back,
+                    color: isDarkMode ? Colors.white : Colors.black, // Icon color based on theme
+                    size: screenSize.width * 0.07, // Icon size responsive to screen width
+                  ),
+                  onPressed: () => Navigator.maybePop(context),
                 ),
-                onPressed: () => Navigator.maybePop(context),
-              ),
-              Text(
-                'Approvals',
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white : Colors.black,
-                  fontSize: screenSize.width * 0.06,
-                  fontWeight: FontWeight.bold,
+                Text(
+                  'Approvals',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black, // Title color based on theme
+                    fontSize: screenSize.width * 0.06, // Font size responsive to screen width
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              SizedBox(width: screenSize.width * 0.12),
-            ],
+                SizedBox(width: screenSize.width * 0.12), // Flexible spacing
+              ],
+            ),
           ),
-        ),
-      ),
+        )
     );
   }
 
   /// Builds the tab bar for toggling between Approvals and History.
   Widget _buildTabBar(Size screenSize) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark; // Check if dark mode is enabled
+
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: screenSize.width * 0.02,
@@ -369,7 +371,9 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                   vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
-                  color: _isPendingSelected ? Colors.amber : Colors.grey.shade300,
+                  color: _isPendingSelected
+                      ? (isDarkMode ? Colors.orangeAccent : Colors.amber) // Adjust for dark mode
+                      : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -382,13 +386,17 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                       'assets/pending.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: _isPendingSelected ? Colors.white : Colors.grey.shade600,
+                      color: _isPendingSelected
+                          ? (isDarkMode ? Colors.white : Colors.white)
+                          : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Approvals',
                       style: TextStyle(
-                        color: _isPendingSelected ? Colors.white : Colors.grey.shade600,
+                        color: _isPendingSelected
+                            ? (isDarkMode ? Colors.white : Colors.white)
+                            : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -413,7 +421,9 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                   vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
-                  color: !_isPendingSelected ? Colors.amber : Colors.grey.shade300,
+                  color: !_isPendingSelected
+                      ? (isDarkMode ? Colors.orangeAccent : Colors.amber) // Adjust for dark mode
+                      : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(20.0),
                     bottomRight: Radius.circular(20.0),
@@ -426,13 +436,17 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                       'assets/history.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: !_isPendingSelected ? Colors.white : Colors.grey.shade600,
+                      color: !_isPendingSelected
+                          ? (isDarkMode ? Colors.white : Colors.white)
+                          : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'History',
                       style: TextStyle(
-                        color: !_isPendingSelected ? Colors.white : Colors.grey.shade600,
+                        color: !_isPendingSelected
+                            ? (isDarkMode ? Colors.white : Colors.white)
+                            : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -464,7 +478,6 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
     String id = item['uid']?.toString().trim() ?? '';
     String imgName = item['img_name']?.toString().trim() ?? '';
     String imgPath = item['img_path']?.toString().trim() ?? '';
-
 
     String employeeImage;
     if (imgPath.isNotEmpty && imgPath.startsWith('http')) {
@@ -545,7 +558,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         );
       },
       child: Card(
-        color: Colors.white,
+        color: isDarkMode ? Colors.grey.shade900 : Colors.white, // Card background color changes based on dark mode
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(screenSize.width * 0.03),
           side: BorderSide(color: typeColor, width: screenSize.width * 0.002),
@@ -598,7 +611,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                         Text(
                           title,
                           style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black,
+                            color: isDarkMode ? Colors.white : Colors.black, // Title color changes based on dark mode
                             fontSize: screenSize.width * 0.04,
                             fontWeight: FontWeight.w600,
                           ),
@@ -607,14 +620,14 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                         Text(
                           'Date: ${_formatDate(startDate)}',
                           style: TextStyle(
-                            color: Colors.grey.shade700,
+                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700, // Date text color in dark mode
                             fontSize: screenSize.width * 0.03,
                           ),
                         ),
                         Text(
                           'To: ${_formatDate(endDate)}',
                           style: TextStyle(
-                            color: Colors.grey.shade700,
+                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700, // Date text color in dark mode
                             fontSize: screenSize.width * 0.03,
                           ),
                         ),
@@ -622,7 +635,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                         Text(
                           '$detailLabel: $detailValue',
                           style: TextStyle(
-                            color: Colors.grey.shade700,
+                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700, // Detail label color in dark mode
                             fontSize: screenSize.width * 0.03,
                           ),
                         ),
@@ -632,7 +645,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                             Text(
                               'Status: ',
                               style: TextStyle(
-                                color: isDarkMode ? Colors.white : Colors.black,
+                                color: isDarkMode ? Colors.white : Colors.black, // Status label color changes based on dark mode
                                 fontWeight: FontWeight.bold,
                                 fontSize: screenSize.width * 0.03,
                               ),
@@ -675,7 +688,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                 ),
                 child: CircleAvatar(
                   radius: screenSize.width * 0.07,
-                  backgroundColor: Colors.grey.shade300,
+                  backgroundColor: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300, // Avatar background changes in dark mode
                   child: ClipOval(
                     child: Image.network(
                       employeeImage,

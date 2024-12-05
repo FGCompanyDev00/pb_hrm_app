@@ -130,9 +130,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       body: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage('assets/ready_bg.png'),
+                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
                 fit: BoxFit.cover,
               ),
             ),
@@ -154,19 +154,26 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.black),
+                          icon: Icon(
+                            Icons.arrow_back,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white // White icon for dark mode
+                                : Colors.black, // Black icon for light mode
+                          ),
                           onPressed: () {
                             Navigator.of(context).pop();
                           },
                         ),
-                        const Expanded(
+                        Expanded(
                           child: Center(
                             child: Text(
-                              'Change Password',
+                              'Password Change Page',
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.black,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white // White text for dark mode
+                                    : Colors.black, // Black text for light mode
                               ),
                             ),
                           ),
@@ -185,9 +192,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 const SizedBox(height: 20),
                 Expanded(
                   child: Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.black87  // Dark mode background color
+                          : Colors.white,   // Light mode background color
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
                     ),
                     padding: const EdgeInsets.all(20.0),
                     child: SingleChildScrollView(
@@ -247,12 +256,18 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                 ),
                               ),
                               child: _isLoading
-                                  ? const CircularProgressIndicator(color: Colors.white)
-                                  : const Text(
+                                  ? CircularProgressIndicator(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.black // Black for dark mode
+                                    : Colors.white, // White for light mode
+                              )
+                                  : Text(
                                 'Change Password',
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: Colors.black,
+                                  color: Theme.of(context).brightness == Brightness.dark
+                                      ? Colors.black
+                                      : Colors.white,
                                 ),
                               ),
                             ),
@@ -262,11 +277,13 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                 onPressed: () {
                                   Navigator.of(context).pop();
                                 },
-                                child: const Text(
+                                child: Text(
                                   'Cancel',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.green,
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? Colors.red // Green color for dark mode
+                                        : Colors.green, // Green color for light mode
                                   ),
                                 ),
                               ),
@@ -296,19 +313,29 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       obscureText: !isPasswordVisible,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.grey),
+        labelStyle: TextStyle(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white // Light text for dark mode
+              : Colors.grey, // Dark text for light mode
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFFE3B200),
+          borderSide: BorderSide(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white.withOpacity(0.5) // Lighter border for dark mode
+                : const Color(0xFFE3B200), // Dark border for light mode
           ),
         ),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[800] // Darker fill for dark mode
+            : Colors.white, // White fill for light mode
         suffixIcon: IconButton(
           icon: Icon(
             isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-            color: const Color(0xFF606060),
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white // White icon for dark mode
+                : const Color(0xFF606060), // Dark icon for light mode
           ),
           onPressed: onToggleVisibility,
         ),

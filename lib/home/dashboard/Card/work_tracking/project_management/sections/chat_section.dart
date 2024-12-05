@@ -270,11 +270,15 @@ class _ChatSectionState extends State<ChatSection> {
     final bool isSentByMe = message['created_by'] == _currentUserId;
     final String senderName = isSentByMe ? 'You' : message['createBy_name'] ?? 'Unknown';
 
+    // Determine the message bubble color
     final Color messageColor = isSentByMe
         ? Colors.blue.shade200 // Your own messages (light blue)
         : _assignChatBubbleColor(message['created_by']); // Different color for others
 
-    final Color textColor = isDarkMode ? Colors.white : Colors.black;
+    // Text color based on the dark mode theme
+    final Color textColor = isDarkMode ? Colors.black : Colors.white;
+
+    // Align the message to the right for sent messages, left for others
     final Alignment messageAlignment = isSentByMe ? Alignment.centerRight : Alignment.centerLeft;
 
     return Align(
