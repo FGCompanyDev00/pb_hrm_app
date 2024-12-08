@@ -16,7 +16,7 @@ OfflineProvider offlineProvider = Provider.of<OfflineProvider>(navigatorKey.curr
 FToast fToast = FToast();
 List<Events> eventsForDay = [];
 List<Events> eventsForAll = [];
-late final ValueNotifier<Map<DateTime, List<Events>>> events;
+final ValueNotifier<Map<DateTime, List<Events>>> events = ValueNotifier({});
 
 final Map<String, Color> categoryColors = {
   'Add Meeting': Colors.blue,

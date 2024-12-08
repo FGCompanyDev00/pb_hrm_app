@@ -68,7 +68,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    events = ValueNotifier({});
+
     eventsForDay = [];
     eventsForAll = [];
 
@@ -77,13 +77,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    // Fetch initial data
-    _fetchData();
 
     connectivityResult.onConnectivityChanged.listen((source) async {
       if (source.contains(ConnectivityResult.none)) {
         eventsForDay = await offlineProvider.getCalendar();
         if (events.value.isEmpty) addEventOffline(eventsForDay);
+      } else {
+        // Fetch initial data
+        _fetchData();
       }
     });
   }
