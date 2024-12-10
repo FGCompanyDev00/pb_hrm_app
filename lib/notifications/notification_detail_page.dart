@@ -55,7 +55,8 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
         apiUrl = '$baseUrl/api/leave_request/all/${widget.id}';
       } else if (widget.type == 'car') {
         apiUrl = '$baseUrl/api/office-administration/car_permit/${widget.id}';
-      } else {
+      }
+      else {
         throw Exception('Unknown type: ${widget.type}');
       }
 
@@ -257,13 +258,19 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
         ),
       ),
       centerTitle: true,
-      title: const Text(
+      title: Text(
         'Notification Details',
-        style: TextStyle(color: Colors.black, fontSize: 24),
+        style: TextStyle(
+          color: isDarkMode ? Colors.white : Colors.black,
+          fontSize: 24,
+        ),
       ),
       leading: IconButton(
-        icon:
-        const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 24),
+        icon: Icon(
+          Icons.arrow_back_ios_new,
+          color: isDarkMode ? Colors.white : Colors.black,
+          size: 24,
+        ),
         onPressed: () {
           Navigator.pop(context);
         },
@@ -292,14 +299,19 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
     String profileImage = requestorImage ??
         'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
 
+    final bool isDarkMode = Provider.of<ThemeNotifier>(context).isDarkMode;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text('Requestor',
-            style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-                fontSize: 20)),
+        Text(
+          'Requestor',
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -319,13 +331,21 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(requestorName,
-                    style: const TextStyle(
-                        color: Colors.black, fontSize: 18)),
+                Text(
+                  requestorName,
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black,
+                    fontSize: 18,
+                  ),
+                ),
                 const SizedBox(height: 6),
-                Text('Submitted on $submittedOn',
-                    style:
-                    const TextStyle(fontSize: 16, color: Colors.black54)),
+                Text(
+                  'Submitted on $submittedOn',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
               ],
             ),
           ],
@@ -335,17 +355,21 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
   }
 
   Widget _buildBlueSection() {
+    final bool isDarkMode = Provider.of<ThemeNotifier>(context).isDarkMode;
     return Padding(
       padding: const EdgeInsets.only(bottom: 30.0),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 25),
         decoration: BoxDecoration(
-          color: Colors.lightBlueAccent.withOpacity(0.4),
+          color: isDarkMode ? Colors.blueGrey.withOpacity(0.4) : Colors.lightBlueAccent.withOpacity(0.4),
           borderRadius: BorderRadius.circular(25),
         ),
         child: Text(
           _getTypeHeader(),
-          style: const TextStyle(color: Colors.black, fontSize: 18),
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
+            fontSize: 18,
+          ),
         ),
       ),
     );
@@ -444,57 +468,74 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
 
   Widget _buildInfoRow(
       String title, String content, IconData icon, Color color) {
+    final bool isDarkMode = Provider.of<ThemeNotifier>(context).isDarkMode;
     return Row(
       children: [
         Icon(icon, size: 20, color: color),
         const SizedBox(width: 12),
         Expanded(
           child: Text('$title: $content',
-              style:
-              const TextStyle(fontSize: 16, color: Colors.black)),
+              style: TextStyle(fontSize: 16, color: isDarkMode ? Colors.white : Colors.black)),
         ),
       ],
     );
   }
 
   Widget _buildCommentInputSection() {
+    final bool isDarkMode = Provider.of<ThemeNotifier>(context).isDarkMode;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Comments',
-            style: TextStyle(fontSize: 16, color: Colors.black)),
+        Text('Comments',
+            style: TextStyle(
+              fontSize: 16,
+              color: isDarkMode ? Colors.white : Colors.black,
+            )),
         const SizedBox(height: 8),
         TextField(
           controller: _descriptionController,
           decoration: InputDecoration(
-            border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
             hintText: 'Enter approval/rejection comments',
+            filled: true,
+            fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
           ),
           maxLines: 3,
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
         ),
       ],
     );
   }
 
   Widget _buildDenyReasonSection() {
+    final bool isDarkMode = Provider.of<ThemeNotifier>(context).isDarkMode;
     String denyReason =
         approvalData?['deny_reason']?.toString() ?? 'No reason provided.';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Deny Reason',
-            style: TextStyle(fontSize: 16, color: Colors.black)),
+        Text('Deny Reason',
+            style: TextStyle(
+              fontSize: 16,
+              color: isDarkMode ? Colors.white : Colors.black,
+            )),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(12.0),
           decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.1),
+            color: isDarkMode
+                ? Colors.red.withOpacity(0.1)
+                : Colors.red.withOpacity(0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
             denyReason,
-            style: const TextStyle(fontSize: 16, color: Colors.black),
+            style: TextStyle(
+              fontSize: 16,
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
           ),
         ),
       ],
@@ -502,19 +543,20 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
   }
 
   Widget _buildActionButtons() {
+    final bool isDarkMode = Provider.of<ThemeNotifier>(context).isDarkMode;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _buildStyledButton(
             label: 'Reject',
             icon: Icons.close,
-            backgroundColor: Colors.red,
+            backgroundColor: isDarkMode ? Colors.red[800]! : Colors.red,
             textColor: Colors.white,
             onPressed: isFinalized ? null : () => _handleReject()),
         _buildStyledButton(
             label: 'Approve',
             icon: Icons.check_circle_outline,
-            backgroundColor: Colors.green,
+            backgroundColor: isDarkMode ? Colors.green[800]! : Colors.green,
             textColor: Colors.white,
             onPressed: isFinalized ? null : () => _handleApprove()),
       ],

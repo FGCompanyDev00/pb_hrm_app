@@ -3,6 +3,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_details_page.dart';
 import 'package:pb_hrsystem/notifications/notification_detail_page.dart';
 import 'package:pb_hrsystem/notifications/notification_meeting_section_detail_page.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
@@ -692,7 +693,10 @@ class _NotificationPageState extends State<NotificationPage> {
             final result = await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => NotificationDetailPage(id: id, type: type),
+                builder: (context) => ApprovalsDetailsPage(
+                  id: id,
+                  type: type,
+                ),
               ),
             );
 
