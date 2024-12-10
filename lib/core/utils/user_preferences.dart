@@ -12,6 +12,7 @@ class UserPreferences {
   static const String _isLoggedIn = "LOGGED_IN";
   static const String _loginSession = "LOGIN_SESSION";
   static const String _defaultLang = "DEFAULT_LANGUAGE";
+  static const String _device = "DEVICE";
   static const String _defaultLocale = "DEFAULT_Locale";
   static const String _checkInTime = "CHECK_IN_TIME";
   static const String _checkOutTime = "CHECK_OUT_TIME";
@@ -45,6 +46,10 @@ class UserPreferences {
   //Store the default language
   Future<void> setDefaultLanguage(String lang) => prefs.setString(_defaultLang, lang);
   String? getDefaultLanguage() => prefs.getString(_defaultLang);
+
+  //Store the default language
+  Future<void> setDevice(String device) => prefs.setString(_device, device);
+  String? getDevice() => prefs.getString(_device);
 
   //Store the default locale
   Future<void> setLocalizeSupport(String langCode) => prefs.setString(_defaultLocale, langCode);

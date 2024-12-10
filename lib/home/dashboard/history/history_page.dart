@@ -169,7 +169,7 @@ class _HistoryPageState extends State<HistoryPage> {
         });
         break;
       case 'car':
-        print('Car Item Data: $item');
+        debugPrint('Car Item Data: $item');
 
         formattedItem.addAll({
           'title': item['purpose'] ?? 'No Purpose',
@@ -393,9 +393,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
-                  color: _isPendingSelected
-                      ? (isDarkMode ? Colors.amber[700] : Colors.amber)
-                      : (isDarkMode ? Colors.grey[800] : Colors.grey[300]),
+                  color: _isPendingSelected ? (isDarkMode ? Colors.amber[700] : Colors.amber) : (isDarkMode ? Colors.grey[800] : Colors.grey[300]),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -408,17 +406,13 @@ class _HistoryPageState extends State<HistoryPage> {
                       'assets/pending.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: _isPendingSelected
-                          ? Colors.white
-                          : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                      color: _isPendingSelected ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Pending',
                       style: TextStyle(
-                        color: _isPendingSelected
-                            ? Colors.white
-                            : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                        color: _isPendingSelected ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -441,9 +435,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
-                  color: !_isPendingSelected
-                      ? (isDarkMode ? Colors.amber[700] : Colors.amber)
-                      : (isDarkMode ? Colors.grey[800] : Colors.grey[300]),
+                  color: !_isPendingSelected ? (isDarkMode ? Colors.amber[700] : Colors.amber) : (isDarkMode ? Colors.grey[800] : Colors.grey[300]),
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(20.0),
                     bottomRight: Radius.circular(20.0),
@@ -456,17 +448,13 @@ class _HistoryPageState extends State<HistoryPage> {
                       'assets/history.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: !_isPendingSelected
-                          ? Colors.white
-                          : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                      color: !_isPendingSelected ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'History',
                       style: TextStyle(
-                        color: !_isPendingSelected
-                            ? Colors.white
-                            : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                        color: !_isPendingSelected ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),

@@ -71,6 +71,8 @@ dependencies:
   mime: any
   http_parser: any
   sqflite: ^2.4.1
+  flutter_background_service: ^5.0.10
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

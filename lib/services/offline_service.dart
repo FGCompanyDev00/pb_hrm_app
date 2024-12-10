@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart';
 class OfflineProvider extends ChangeNotifier {
   late Box<AttendanceRecord> _attendanceBox;
   LocalDatabaseService localDatabaseService = LocalDatabaseService();
+  final ValueNotifier<bool> isOfflineService = ValueNotifier<bool>(false);
 
   // late Box<CalendarEventsListRecord> _calendarEventsBox;
 
@@ -44,11 +45,16 @@ class OfflineProvider extends ChangeNotifier {
   //   return null;
   // }
 
+  Future<void> autoOffline(bool offline) async {
+    isOfflineService.value = offline;
+  }
+
   Future<void> addPendingAttendance(AttendanceRecord record) async {
     await _attendanceBox.add(record);
   }
 
   Future<void> syncPendingAttendance() async {
+    if (isOfflineService.value) return;
     if (_attendanceBox.isEmpty) return;
 
     List<int> keysToDelete = [];

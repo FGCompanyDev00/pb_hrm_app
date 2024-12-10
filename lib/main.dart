@@ -14,7 +14,6 @@ import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
 import 'package:pb_hrsystem/services/offline_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
-import 'package:pb_hrsystem/services/work_manager_notification.dart';
 import 'package:pb_hrsystem/splash/splashscreen.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
@@ -31,11 +30,6 @@ void main() async {
 
   await setupServiceLocator();
   await initializeHive();
-  // await initializeService();
-  // Initialize notifications
-  // await initializeNotifications();
-  // await scheduleBackgroundTask();
-  await cancelBackgroundTask();
   sl<OfflineProvider>().initializeCalendar();
 
   runApp(

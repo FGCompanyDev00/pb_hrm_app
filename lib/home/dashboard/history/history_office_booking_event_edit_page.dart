@@ -7,6 +7,7 @@ import 'history_office_edit_members_page.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class OfficeBookingEventEditPage extends StatefulWidget {
   final String id;
@@ -19,12 +20,10 @@ class OfficeBookingEventEditPage extends StatefulWidget {
   });
 
   @override
-  _OfficeBookingEventEditPageState createState() =>
-      _OfficeBookingEventEditPageState();
+  _OfficeBookingEventEditPageState createState() => _OfficeBookingEventEditPageState();
 }
 
-class _OfficeBookingEventEditPageState
-    extends State<OfficeBookingEventEditPage> {
+class _OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> {
   // Loading and Error States
   bool _isLoading = false;
   String? _errorMessage;
@@ -54,8 +53,7 @@ class _OfficeBookingEventEditPageState
   final TextEditingController _meetingFromController = TextEditingController();
   final TextEditingController _meetingToController = TextEditingController();
   final TextEditingController _meetingTelController = TextEditingController();
-  final TextEditingController _meetingRemarkController =
-  TextEditingController();
+  final TextEditingController _meetingRemarkController = TextEditingController();
 
   // Controllers for Car
   final TextEditingController _carEmployeeIDController = TextEditingController();
@@ -110,7 +108,7 @@ class _OfficeBookingEventEditPageState
   String formatDate(String? dateString) {
     // Check if the date is valid
     if (dateString == null || dateString == '0000-0-00' || dateString.isEmpty) {
-      return '';  // Return an empty string for invalid dates
+      return ''; // Return an empty string for invalid dates
     }
     try {
       // Try parsing the date and formatting it
@@ -146,8 +144,7 @@ class _OfficeBookingEventEditPageState
         final data = jsonDecode(response.body);
         if (data['statusCode'] == 200 && data['results'] is List) {
           setState(() {
-            _leaveTypes =
-            List<Map<String, dynamic>>.from(data['results']);
+            _leaveTypes = List<Map<String, dynamic>>.from(data['results']);
           });
         } else {
           throw Exception('Failed to fetch leave types');
@@ -220,16 +217,13 @@ class _OfficeBookingEventEditPageState
 
       switch (widget.type.toLowerCase()) {
         case 'leave':
-          url =
-          'https://demo-application-api.flexiflows.co/api/leave_request/${widget.id}';
+          url = 'https://demo-application-api.flexiflows.co/api/leave_request/${widget.id}';
           break;
         case 'meeting':
-          url =
-          'https://demo-application-api.flexiflows.co/api/office-administration/book_meeting_room/waiting/${widget.id}';
+          url = 'https://demo-application-api.flexiflows.co/api/office-administration/book_meeting_room/waiting/${widget.id}';
           break;
         case 'car':
-          url =
-          'https://demo-application-api.flexiflows.co/api/office-administration/car_permit/${widget.id}';
+          url = 'https://demo-application-api.flexiflows.co/api/office-administration/car_permit/${widget.id}';
           break;
         default:
           throw Exception('Invalid event type');
@@ -278,8 +272,7 @@ class _OfficeBookingEventEditPageState
           throw Exception('Unexpected data format received from API.');
         }
       } else {
-        throw Exception(
-            'Failed to load event details: ${response.statusCode}');
+        throw Exception('Failed to load event details: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
@@ -308,10 +301,7 @@ class _OfficeBookingEventEditPageState
   /// Populates leave request data into controllers
   void _populateLeaveData(Map<String, dynamic> data) {
     setState(() {
-      _selectedLeaveTypeId = data['take_leave_type_id']?.toString() ??
-          (_leaveTypes.isNotEmpty
-              ? _leaveTypes.first['leave_type_id'].toString()
-              : null);
+      _selectedLeaveTypeId = data['take_leave_type_id']?.toString() ?? (_leaveTypes.isNotEmpty ? _leaveTypes.first['leave_type_id'].toString() : null);
       _leaveFromController.text = data['take_leave_from'] ?? '';
       _leaveToController.text = data['take_leave_to'] ?? '';
       _leaveReasonController.text = data['take_leave_reason'] ?? '';
@@ -323,25 +313,18 @@ class _OfficeBookingEventEditPageState
   void _populateMeetingData(Map<String, dynamic> data) {
     setState(() {
       _meetingTitleController.text = data['title'] ?? '';
-      _meetingFromController.text = data['from_date_time'] != null
-          ? DateFormat('yyyy-MM-dd')
-          .format(DateTime.parse(data['from_date_time']))
-          : '';
-      _meetingToController.text = data['to_date_time'] != null
-          ? DateFormat('yyyy-MM-dd')
-          .format(DateTime.parse(data['to_date_time']))
-          : '';
+      _meetingFromController.text = data['from_date_time'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(data['from_date_time'])) : '';
+      _meetingToController.text = data['to_date_time'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(data['to_date_time'])) : '';
       _selectedRoomId = data['room_id']?.toString();
       _meetingTelController.text = data['employee_tel'] ?? '';
       _meetingRemarkController.text = data['remark'] ?? '';
 
-      _selectedMembers = List<Map<String, dynamic>>.from(
-          data['members']?.map((member) => {
-            'employee_id': member['employee_id'],
-            'employee_name': member['employee_name'],
-            'img_name': member['img_name'],
-          }) ??
-              []);
+      _selectedMembers = List<Map<String, dynamic>>.from(data['members']?.map((member) => {
+                'employee_id': member['employee_id'],
+                'employee_name': member['employee_name'],
+                'img_name': member['img_name'],
+              }) ??
+          []);
     });
   }
 
@@ -372,8 +355,7 @@ class _OfficeBookingEventEditPageState
           _showErrorMessage('Please select a leave type.');
           return false;
         }
-        if (_leaveFromController.text.isEmpty ||
-            _leaveToController.text.isEmpty) {
+        if (_leaveFromController.text.isEmpty || _leaveToController.text.isEmpty) {
           _showErrorMessage('Please select both From and To dates.');
           return false;
         }
@@ -387,8 +369,7 @@ class _OfficeBookingEventEditPageState
           _showErrorMessage('Please enter a title for the meeting.');
           return false;
         }
-        if (_meetingFromController.text.isEmpty ||
-            _meetingToController.text.isEmpty) {
+        if (_meetingFromController.text.isEmpty || _meetingToController.text.isEmpty) {
           _showErrorMessage('Please select both From and To dates.');
           return false;
         }
@@ -402,12 +383,8 @@ class _OfficeBookingEventEditPageState
         }
         break;
       case 'car':
-        if (_carPurposeController.text.isEmpty ||
-            _carPlaceController.text.isEmpty ||
-            _carDateInController.text.isEmpty ||
-            _carDateOutController.text.isEmpty) {
-          _showErrorMessage(
-              'Please fill all required fields for Car Booking.');
+        if (_carPurposeController.text.isEmpty || _carPlaceController.text.isEmpty || _carDateInController.text.isEmpty || _carDateOutController.text.isEmpty) {
+          _showErrorMessage('Please fill all required fields for Car Booking.');
           return false;
         }
         break;
@@ -457,7 +434,7 @@ class _OfficeBookingEventEditPageState
       setState(() {
         _selectedMembers = updatedMembers;
         if (kDebugMode) {
-          print('Updated Members: $_selectedMembers');
+          print('${AppLocalizations.of(context)!.updatedMembers}: $_selectedMembers');
         }
       });
     }
@@ -469,68 +446,58 @@ class _OfficeBookingEventEditPageState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Leave Type Label and Dropdown
-        const Text('Leave Type*'),
+        Text('${AppLocalizations.of(context)!.leaveType}*'),
         const SizedBox(height: 8.0),
         DropdownButtonFormField<String>(
+          isExpanded: true,
           decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(
-                vertical: 12.0, horizontal: 10.0),
-            border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
-          value: _leaveTypes.any((type) =>
-          type['leave_type_id'].toString() == _selectedLeaveTypeId)
-              ? _selectedLeaveTypeId
-              : null, // Ensure value is in the list
+          value: _leaveTypes.any((type) => type['leave_type_id'].toString() == _selectedLeaveTypeId) ? _selectedLeaveTypeId : null, // Ensure value is in the list
           items: _leaveTypes
               .map((leaveType) => DropdownMenuItem<String>(
-            value: leaveType['leave_type_id'].toString(),
-            child: Text(leaveType['name'] ?? 'Unknown Type'),
-          ))
+                    value: leaveType['leave_type_id'].toString(),
+                    child: Text(leaveType['name'] ?? AppLocalizations.of(context)!.unknownType),
+                  ))
               .toList(),
           onChanged: (String? newValue) {
             setState(() {
               _selectedLeaveTypeId = newValue;
             });
           },
-          validator: (value) =>
-          value == null ? 'Please select a leave type' : null,
+          validator: (value) => value == null ? AppLocalizations.of(context)!.pleaseSelectLeaveType : null,
         ),
         const SizedBox(height: 16.0),
         // From Date Label and Picker
-        const Text('From Date*'),
+        Text('${AppLocalizations.of(context)!.fromDateLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () =>
-              _selectDate(context, _leaveFromController, 'From Date'),
+          onTap: () => _selectDate(context, _leaveFromController, AppLocalizations.of(context)!.fromDateLabel),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _leaveFromController,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12.0, horizontal: 10.0),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
           ),
         ),
         const SizedBox(height: 16.0),
         // To Date Label and Picker
-        const Text('To Date*'),
+        Text('${AppLocalizations.of(context)!.toDateLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _leaveToController, 'To Date'),
+          onTap: () => _selectDate(context, _leaveToController, AppLocalizations.of(context)!.toDateLabel),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _leaveToController,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12.0, horizontal: 10.0),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
           ),
@@ -542,10 +509,8 @@ class _OfficeBookingEventEditPageState
         TextFormField(
           controller: _leaveReasonController,
           decoration: InputDecoration(
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
-            border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
           maxLines: 3,
         ),
@@ -556,13 +521,10 @@ class _OfficeBookingEventEditPageState
         TextFormField(
           controller: _leaveDaysController,
           decoration: InputDecoration(
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
-            border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
-          readOnly:
-          true, // Make editable if days can be manually adjusted
+          readOnly: true, // Make editable if days can be manually adjusted
         ),
       ],
     );
@@ -574,104 +536,88 @@ class _OfficeBookingEventEditPageState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Title Label and Input
-        const Text('Title*'),
+        Text('${AppLocalizations.of(context)!.title}*'),
         const SizedBox(height: 8.0),
         TextFormField(
           controller: _meetingTitleController,
           decoration: InputDecoration(
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
-            border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
         ),
         const SizedBox(height: 16.0),
         // From Date Label and Picker
-        const Text('From Date*'),
+        Text('${AppLocalizations.of(context)!.fromDateLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () =>
-              _selectDate(context, _meetingFromController, 'From Date'),
+          onTap: () => _selectDate(context, _meetingFromController, AppLocalizations.of(context)!.fromDateLabel),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _meetingFromController,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12.0, horizontal: 10.0),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
           ),
         ),
         const SizedBox(height: 16.0),
         // To Date Label and Picker
-        const Text('To Date*'),
+        Text('${AppLocalizations.of(context)!.toDateLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () =>
-              _selectDate(context, _meetingToController, 'To Date'),
+          onTap: () => _selectDate(context, _meetingToController, AppLocalizations.of(context)!.toDateLabel),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _meetingToController,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12.0, horizontal: 10.0),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
           ),
         ),
         const SizedBox(height: 16.0),
         // Room Label and Dropdown
-        const Text('Room*'),
+        Text('${AppLocalizations.of(context)!.room}*'),
         const SizedBox(height: 8.0),
         DropdownButtonFormField<String>(
           decoration: InputDecoration(
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
-            border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
-          value: _rooms.any((room) => room['room_id'].toString() == _selectedRoomId)
-              ? _selectedRoomId
-              : null, // Ensure _selectedRoomId is valid
+          value: _rooms.any((room) => room['room_id'].toString() == _selectedRoomId) ? _selectedRoomId : null, // Ensure _selectedRoomId is valid
           items: _getUniqueRoomItems(),
           onChanged: (String? newValue) {
             setState(() {
               _selectedRoomId = newValue;
             });
           },
-          validator: (value) => value == null ? 'Please select a room' : null,
+          validator: (value) => value == null ? AppLocalizations.of(context)!.pleaseSelectRoomLabel : null,
         ),
         const SizedBox(height: 16.0),
         // Employee Telephone Label and Input
-        const Text('Employee Telephone*'),
+        Text('${AppLocalizations.of(context)!.employeeTelephone}*'),
         const SizedBox(height: 8.0),
         TextFormField(
           controller: _meetingTelController,
           decoration: InputDecoration(
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
-            border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
           keyboardType: TextInputType.phone,
         ),
         const SizedBox(height: 16.0),
         // Remark Label and Input
-        const Text('Remark'),
+        Text(AppLocalizations.of(context)!.remarkLabel),
         const SizedBox(height: 8.0),
         TextFormField(
           controller: _meetingRemarkController,
           decoration: InputDecoration(
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
-            border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
           maxLines: 3,
         ),
@@ -732,7 +678,7 @@ class _OfficeBookingEventEditPageState
     }).map((room) {
       return DropdownMenuItem<String>(
         value: room['room_id'].toString(),
-        child: Text(room['room_name']?.isNotEmpty == true ? room['room_name'] : 'Unknown Room'),
+        child: Text(room['room_name']?.isNotEmpty == true ? room['room_name'] : AppLocalizations.of(context)!.unknownRoom),
       );
     }).toList();
   }
@@ -742,7 +688,7 @@ class _OfficeBookingEventEditPageState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Employee ID'),
+        Text(AppLocalizations.of(context)!.employeeId),
         const SizedBox(height: 8.0),
         TextFormField(
           controller: _carEmployeeIDController,
@@ -754,67 +700,57 @@ class _OfficeBookingEventEditPageState
         ),
         const SizedBox(height: 12.0),
         // Purpose Label and Input
-        const Text('Purpose*'),
+        Text('${AppLocalizations.of(context)!.placeLabel}*'),
         const SizedBox(height: 8.0),
         TextFormField(
           controller: _carPurposeController,
           decoration: InputDecoration(
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
-            border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
           maxLines: 3,
         ),
         const SizedBox(height: 16.0),
         // Place Label and Input
-        const Text('Place*'),
+        Text('${AppLocalizations.of(context)!.placeLabel}*'),
         const SizedBox(height: 8.0),
         TextFormField(
           controller: _carPlaceController,
           decoration: InputDecoration(
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
-            border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
+            contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
           ),
         ),
         const SizedBox(height: 16.0),
         // Date In Label and Picker
-        const Text('Date In*'),
+        Text('${AppLocalizations.of(context)!.dateInLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () =>
-              _selectDate(context, _carDateInController, 'Date In'),
+          onTap: () => _selectDate(context, _carDateInController, AppLocalizations.of(context)!.dateInLabel),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _carDateInController,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12.0, horizontal: 10.0),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
           ),
         ),
         const SizedBox(height: 16.0),
         // Date Out Label and Picker
-        const Text('Date Out*'),
+        Text('${AppLocalizations.of(context)!.dateOutLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () =>
-              _selectDate(context, _carDateOutController, 'Date Out'),
+          onTap: () => _selectDate(context, _carDateOutController, AppLocalizations.of(context)!.dateOutLabel),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _carDateOutController,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(
-                    vertical: 12.0, horizontal: 10.0),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10.0)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.0)),
               ),
             ),
           ),
@@ -833,7 +769,7 @@ class _OfficeBookingEventEditPageState
       case 'car':
         return _buildCarForm();
       default:
-        return const Center(child: Text('Unknown event type.'));
+        return Center(child: Text(AppLocalizations.of(context)!.unknownEventType));
     }
   }
 
@@ -850,20 +786,20 @@ class _OfficeBookingEventEditPageState
       ),
       child: _isLoading
           ? const SizedBox(
-        width: 24,
-        height: 24,
-        child: CircularProgressIndicator(
-          color: Colors.white,
-          strokeWidth: 2.0,
-        ),
-      )
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2.0,
+              ),
+            )
           : Text(
-        'Update',
-        style: TextStyle(
-          color: isDarkMode ? Colors.white : Colors.black, // Text color adapts to dark mode
-          fontSize: 15.0,
-        ),
-      ),
+              AppLocalizations.of(context)!.updateLabel,
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black, // Text color adapts to dark mode
+                fontSize: 15.0,
+              ),
+            ),
     );
   }
 
@@ -885,8 +821,7 @@ class _OfficeBookingEventEditPageState
 
       switch (widget.type.toLowerCase()) {
         case 'leave':
-          url =
-          'https://demo-application-api.flexiflows.co/api/leave_request/${widget.id}';
+          url = 'https://demo-application-api.flexiflows.co/api/leave_request/${widget.id}';
           body = {
             "take_leave_type_id": _selectedLeaveTypeId,
             "take_leave_from": _leaveFromController.text,
@@ -896,8 +831,7 @@ class _OfficeBookingEventEditPageState
           };
           break;
         case 'meeting':
-          url =
-          'https://demo-application-api.flexiflows.co/api/office-administration/book_meeting_room/${widget.id}';
+          url = 'https://demo-application-api.flexiflows.co/api/office-administration/book_meeting_room/${widget.id}';
           body = {
             "room_id": _selectedRoomId,
             "title": _meetingTitleController.text,
@@ -905,36 +839,19 @@ class _OfficeBookingEventEditPageState
             "to_date_time": _meetingToController.text,
             "employee_tel": _meetingTelController.text,
             "remark": _meetingRemarkController.text,
-            "members": _selectedMembers.isNotEmpty
-                ? _selectedMembers
-                .map((member) => {"employee_id": member['employee_id']})
-                .toList()
-                : [],
+            "members": _selectedMembers.isNotEmpty ? _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList() : [],
           };
           break;
         case 'car':
-          url =
-          'https://demo-application-api.flexiflows.co/api/office-administration/car_permit/${widget.id}';
+          url = 'https://demo-application-api.flexiflows.co/api/office-administration/car_permit/${widget.id}';
           body = {
             "employee_id": _employeeId,
-            "purpose": _carPurposeController.text.isNotEmpty
-                ? _carPurposeController.text
-                : null,
-            "place": _carPlaceController.text.isNotEmpty
-                ? _carPlaceController.text
-                : null,
-            "date_in": _carDateInController.text.isNotEmpty
-                ? _carDateInController.text
-                : null,
-            "date_out": _carDateOutController.text.isNotEmpty
-                ? _carDateOutController.text
-                : null,
+            "purpose": _carPurposeController.text.isNotEmpty ? _carPurposeController.text : null,
+            "place": _carPlaceController.text.isNotEmpty ? _carPlaceController.text : null,
+            "date_in": _carDateInController.text.isNotEmpty ? _carDateInController.text : null,
+            "date_out": _carDateOutController.text.isNotEmpty ? _carDateOutController.text : null,
             "permit_branch": "0", // Always send "0"
-            "members": _selectedMembers.isNotEmpty
-                ? _selectedMembers
-                .map((member) => {"employee_id": member['employee_id']})
-                .toList()
-                : [],
+            "members": _selectedMembers.isNotEmpty ? _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList() : [],
           };
           break;
         default:
@@ -976,9 +893,7 @@ class _OfficeBookingEventEditPageState
             final title = errorResponse['title'] ?? '';
             final message = errorResponse['message'] ?? 'Please try again.';
 
-            errorMsg = title.isNotEmpty
-                ? '$title\n$message'
-                : 'Failed to update event: $message';
+            errorMsg = title.isNotEmpty ? '$title\n$message' : 'Failed to update event: $message';
           } catch (_) {
             // If response is not JSON, keep the default error message
           }
@@ -1004,7 +919,7 @@ class _OfficeBookingEventEditPageState
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Edit Office Event',
+          AppLocalizations.of(context)!.editOfficeEvent,
           style: TextStyle(
             color: isDarkMode ? Colors.white : Colors.black, // Title color based on theme
           ),
@@ -1029,41 +944,38 @@ class _OfficeBookingEventEditPageState
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-          ? Center(
-        child: Text(
-          _errorMessage!,
-          style:
-          const TextStyle(color: Colors.red, fontSize: 16.0),
-        ),
-      )
-          : SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 16.0, vertical: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Align(
-                alignment: Alignment.topRight,
-                child: Container(
-                  child: _buildSubmitButton(),
+              ? Center(
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red, fontSize: 16.0),
+                  ),
+                )
+              : SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Align(
+                          alignment: Alignment.topRight,
+                          child: Container(
+                            child: _buildSubmitButton(),
+                          ),
+                        ),
+                        const SizedBox(height: 10.0),
+                        // Form Fields
+                        Form(
+                          child: _buildFormFields(),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10.0),
-              // Form Fields
-              Form(
-                child: _buildFormFields(),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
   /// Selects a date and updates the controller
-  Future<void> _selectDate(
-      BuildContext context, TextEditingController controller, String label) async {
+  Future<void> _selectDate(BuildContext context, TextEditingController controller, String label) async {
     DateTime initialDate = DateTime.now();
     if (controller.text.isNotEmpty) {
       try {
