@@ -844,7 +844,7 @@ class _OfficeBookingEventEditPageState
     return ElevatedButton(
       onPressed: _isLoading ? null : _submitEdit,
       style: ElevatedButton.styleFrom(
-        backgroundColor: isDarkMode ? Colors.green! : const Color(0xFFDBB342),
+        backgroundColor: isDarkMode ? Colors.green : const Color(0xFFDBB342),
         padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 12.0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
       ),

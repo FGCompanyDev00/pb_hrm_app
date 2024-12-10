@@ -167,7 +167,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
             CircleAvatar(
               radius: 22,
               backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Color(0xFFDBB342) // Dark mode color
+                  ? const Color(0xFFDBB342) // Dark mode color
                   : Colors.green, // Light mode color
               child: Transform.scale(
                 scale: 1.5,
