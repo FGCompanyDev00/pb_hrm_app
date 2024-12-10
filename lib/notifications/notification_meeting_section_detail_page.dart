@@ -127,8 +127,10 @@ class _NotificationMeetingDetailsPageState
 
   @override
   Widget build(BuildContext context) {
+    final bool isDarkMode = Provider.of<ThemeNotifier>(context).isDarkMode;
+
     return Scaffold(
-      appBar: _buildAppBar(context),
+      appBar: _buildAppBar(context, isDarkMode),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -137,11 +139,11 @@ class _NotificationMeetingDetailsPageState
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(height: 30),
-            _buildRequestorSection(),
+            _buildRequestorSection(isDarkMode),
             const SizedBox(height: 20),
-            _buildBlueSection(),
+            _buildBlueSection(isDarkMode),
             const SizedBox(height: 40),
-            _buildMeetingDetails(),
+            _buildMeetingDetails(isDarkMode),
             const SizedBox(height: 30),
             _buildMeetingActionButtons(),
           ],
@@ -150,7 +152,7 @@ class _NotificationMeetingDetailsPageState
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
+  PreferredSizeWidget _buildAppBar(BuildContext context, bool isDarkMode) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
     return AppBar(
@@ -167,13 +169,12 @@ class _NotificationMeetingDetailsPageState
         ),
       ),
       centerTitle: true,
-      title: const Text(
+      title: Text(
         'Meeting Details',
-        style: TextStyle(color: Colors.black, fontSize: 20),
+        style: TextStyle( color: isDarkMode ? Colors.white : Colors.black, fontSize: 20),
       ),
       leading: IconButton(
-        icon:
-        const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
+        icon: Icon(Icons.arrow_back_ios_new, color: isDarkMode ? Colors.white : Colors.black, size: 20),
         onPressed: () {
           Navigator.pop(context);
         },
@@ -184,22 +185,21 @@ class _NotificationMeetingDetailsPageState
     );
   }
 
-  Widget _buildRequestorSection() {
+  Widget _buildRequestorSection(bool isDarkMode) {
     String requestorName = meetingData?['employee_name'] ?? 'No Name';
-
     String submittedOn = formatDate(meetingData?['date_create']);
-
     String profileImage = requestorImage ??
         'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const Text('Organizer',
+        Text('Organizer',
             style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-                fontSize: 18)),
+              color: isDarkMode ? Colors.white : Colors.black,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            )),
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -215,13 +215,21 @@ class _NotificationMeetingDetailsPageState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(requestorName,
-                      style:
-                      const TextStyle(color: Colors.black, fontSize: 16)),
+                  Text(
+                    requestorName,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      fontSize: 16,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('Submitted on $submittedOn',
-                      style: const TextStyle(
-                          fontSize: 14, color: Colors.black54)),
+                  Text(
+                    'Submitted on $submittedOn',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -231,78 +239,117 @@ class _NotificationMeetingDetailsPageState
     );
   }
 
-  Widget _buildBlueSection() {
+  Widget _buildBlueSection(bool isDarkMode) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.lightBlueAccent.withOpacity(0.3),
+        color: isDarkMode ? Colors.blueGrey.withOpacity(0.3) : Colors.lightBlueAccent.withOpacity(0.3),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: const Text(
+      child: Text(
         'MEETING ROOM BOOKING REQUEST',
         textAlign: TextAlign.center,
-        style: TextStyle(color: Colors.black, fontSize: 16),
+        style: TextStyle(
+          color: isDarkMode ? Colors.white : Colors.black,
+          fontSize: 16,
+        ),
       ),
     );
   }
 
-  Widget _buildMeetingDetails() {
+  Widget _buildMeetingDetails(bool isDarkMode) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInfoRow('Meeting ID',
+        _buildInfoRow(
+            'Meeting ID',
             meetingData?['meeting_id']?.toString() ?? 'N/A',
-            Icons.meeting_room, Colors.green),
-        _buildInfoRow('Title', meetingData?['title'] ?? 'N/A', Icons.title,
-            Colors.blue),
-        _buildInfoRow('From Date', formatDate(meetingData?['from_date_time']),
-            Icons.calendar_today, Colors.blue),
-        _buildInfoRow('To Date', formatDate(meetingData?['to_date_time']),
-            Icons.calendar_today, Colors.blue),
-        _buildInfoRow('Room Name',
-            meetingData?['room_name']?.toString() ?? 'N/A', Icons.room,
-            Colors.orange),
-        _buildInfoRow('Floor',
-            meetingData?['room_floor']?.toString() ?? 'N/A', Icons.layers,
-            Colors.orange),
-        _buildInfoRow('Branch Name',
-            meetingData?['branch_name']?.toString() ?? 'N/A', Icons.business,
-            Colors.red),
-        _buildInfoRow('Status',
-            meetingData?['status']?.toString() ?? 'Pending', Icons.stairs,
-            Colors.red),
-        _buildMembersSection(),
+            Icons.meeting_room,
+            Colors.green,
+            isDarkMode),
+        _buildInfoRow(
+            'Title',
+            meetingData?['title'] ?? 'N/A',
+            Icons.title,
+            Colors.blue,
+            isDarkMode),
+        _buildInfoRow(
+            'From Date',
+            formatDate(meetingData?['from_date_time']),
+            Icons.calendar_today,
+            Colors.blue,
+            isDarkMode),
+        _buildInfoRow(
+            'To Date',
+            formatDate(meetingData?['to_date_time']),
+            Icons.calendar_today,
+            Colors.blue,
+            isDarkMode),
+        _buildInfoRow(
+            'Room Name',
+            meetingData?['room_name']?.toString() ?? 'N/A',
+            Icons.room,
+            Colors.orange,
+            isDarkMode),
+        _buildInfoRow(
+            'Floor',
+            meetingData?['room_floor']?.toString() ?? 'N/A',
+            Icons.layers,
+            Colors.orange,
+            isDarkMode),
+        _buildInfoRow(
+            'Branch Name',
+            meetingData?['branch_name']?.toString() ?? 'N/A',
+            Icons.business,
+            Colors.red,
+            isDarkMode),
+        _buildInfoRow(
+            'Status',
+            meetingData?['status']?.toString() ?? 'Pending',
+            Icons.stairs,
+            Colors.red,
+            isDarkMode),
+        _buildMembersSection(isDarkMode),
       ],
     );
   }
 
+
   Widget _buildInfoRow(
-      String title, String content, IconData icon, Color color) {
+      String title, String content, IconData icon, Color color, bool isDarkMode) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Icon color stays the same in both light and dark mode
           Icon(icon, size: 18, color: color),
           const SizedBox(width: 8),
           Expanded(
-            child: Text('$title: $content',
-                style: const TextStyle(fontSize: 14, color: Colors.black)),
+            child: Text(
+              '$title: $content',
+              style: TextStyle(
+                fontSize: 14,
+                color: isDarkMode ? Colors.white : Colors.black, // Text color changes based on dark mode
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMembersSection() {
+  Widget _buildMembersSection(bool isDarkMode) {
     List<dynamic> members = meetingData?['members'] ?? [];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
-        const Text('Members:',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        const Text(
+          'Members:',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 6),
         ...members.map((member) {
           String memberName = member['member_name'] ?? 'No Name';
@@ -315,18 +362,29 @@ class _NotificationMeetingDetailsPageState
             child: ListTile(
               leading: CircleAvatar(
                 backgroundImage: NetworkImage(memberImage),
-                backgroundColor: Colors.grey[300],
+                backgroundColor: isDarkMode ? Colors.grey[700] : Colors.grey[300], // Adjust avatar background color
                 radius: 20,
                 onBackgroundImageError: (error, stackTrace) {},
               ),
-              title: Text(memberName, style: const TextStyle(fontSize: 14)),
-              subtitle: Text('Status: $status',
-                  style: const TextStyle(fontSize: 12)),
+              title: Text(
+                memberName,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDarkMode ? Colors.white : Colors.black, // Text color for dark mode
+                ),
+              ),
+              subtitle: Text(
+                'Status: $status',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDarkMode ? Colors.white70 : Colors.black54, // Subtitle text color
+                ),
+              ),
               contentPadding: EdgeInsets.zero,
               dense: true,
             ),
           );
-        }),
+        }).toList(),
       ],
     );
   }

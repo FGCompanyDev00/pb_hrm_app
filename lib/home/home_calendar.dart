@@ -1009,6 +1009,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Builds the filter chips for event categories
   Widget _buildFilters() {
+    // Get the current theme brightness
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Wrap(
@@ -1035,9 +1038,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 uid: '',
               ),
             ),
-            checkmarkColor: Colors.white,
+            checkmarkColor: isDarkMode ? Colors.black : Colors.white,
             labelStyle: TextStyle(
-              color: _selectedCategory == category ? Colors.white : Colors.black,
+              color: _selectedCategory == category
+                  ? Colors.white
+                  : isDarkMode ? Colors.white70 : Colors.black87,  // Adjust text color for dark mode
             ),
           );
         }).toList(),
@@ -1047,13 +1052,36 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Builds the search bar for filtering events
   Widget _buildSearchBar() {
+    // Get the current theme brightness
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: TextField(
+        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),  // Dynamic text color
         decoration: InputDecoration(
           labelText: AppLocalizations.of(context)!.searchEvents,
+          labelStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),  // Label color in dark mode
           prefixIcon: const Icon(Icons.search),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.0)),
+          prefixIconColor: isDarkMode ? Colors.white : Colors.black,  // Icon color in dark mode
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: BorderSide(
+              color: isDarkMode ? Colors.white54 : Colors.black12,  // Border color
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: BorderSide(
+              color: isDarkMode ? Colors.white54 : Colors.black12,  // Border color when enabled
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: BorderSide(
+              color: isDarkMode ? Colors.blueAccent : Colors.blue,  // Focused border color
+            ),
+          ),
         ),
         onChanged: (value) {
           setState(() {

@@ -480,6 +480,9 @@ class _NotificationPageState extends State<NotificationPage> {
 
   /// Builds the tab bar for toggling between Meeting and Approval sections.
   Widget _buildTabBar(Size screenSize) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: screenSize.width * 0.04,
@@ -501,7 +504,9 @@ class _NotificationPageState extends State<NotificationPage> {
                   vertical: screenSize.height * 0.010,
                 ),
                 decoration: BoxDecoration(
-                  color: _isMeetingSelected ? Colors.amber : Colors.grey.shade300,
+                  color: _isMeetingSelected
+                      ? (isDarkMode ? Colors.amber.shade700 : Colors.amber)
+                      : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -513,13 +518,17 @@ class _NotificationPageState extends State<NotificationPage> {
                     Icon(
                       Icons.meeting_room,
                       size: screenSize.width * 0.07,
-                      color: _isMeetingSelected ? Colors.white : Colors.grey.shade600,
+                      color: _isMeetingSelected
+                          ? Colors.white
+                          : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Meeting',
                       style: TextStyle(
-                        color: _isMeetingSelected ? Colors.white : Colors.grey.shade600,
+                        color: _isMeetingSelected
+                            ? Colors.white
+                            : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -544,7 +553,9 @@ class _NotificationPageState extends State<NotificationPage> {
                   vertical: screenSize.height * 0.010,
                 ),
                 decoration: BoxDecoration(
-                  color: !_isMeetingSelected ? Colors.amber : Colors.grey.shade300,
+                  color: !_isMeetingSelected
+                      ? (isDarkMode ? Colors.amber.shade700 : Colors.amber)
+                      : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(20.0),
                     bottomRight: Radius.circular(20.0),
@@ -557,13 +568,17 @@ class _NotificationPageState extends State<NotificationPage> {
                       'assets/pending.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: !_isMeetingSelected ? Colors.white : Colors.grey.shade600,
+                      color: !_isMeetingSelected
+                          ? Colors.white
+                          : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Approval',
                       style: TextStyle(
-                        color: !_isMeetingSelected ? Colors.white : Colors.grey.shade600,
+                        color: !_isMeetingSelected
+                            ? Colors.white
+                            : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -658,18 +673,35 @@ class _NotificationPageState extends State<NotificationPage> {
           return;
         }
 
+        // Check if it is a meeting and determine whether it's from the Approval or Meeting section
         if (type == 'meeting') {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => NotificationMeetingDetailsPage(id: id),
-            ),
-          );
+          if (_isMeetingSelected) {
+            // If it's from the Meeting section, open NotificationMeetingDetailsPage
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => NotificationMeetingDetailsPage(id: id),
+              ),
+            );
 
-          if (result == true) {
-            _fetchInitialData();
+            if (result == true) {
+              _fetchInitialData();
+            }
+          } else {
+            // If it's from the Approval section, open NotificationDetailPage
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => NotificationDetailPage(id: id, type: type),
+              ),
+            );
+
+            if (result == true) {
+              _fetchInitialData();
+            }
           }
         } else {
+          // For other types like 'leave', 'car', etc., open NotificationDetailPage
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
@@ -683,7 +715,7 @@ class _NotificationPageState extends State<NotificationPage> {
         }
       },
       child: Card(
-        color: Colors.white,
+        color: isDarkMode ? Colors.grey[850] : Colors.white, // Dark mode card background
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(screenSize.width * 0.03),
           side: BorderSide(color: typeColor, width: screenSize.width * 0.002),
@@ -745,14 +777,14 @@ class _NotificationPageState extends State<NotificationPage> {
                         Text(
                           'Date: ${_formatDate(startDate)}',
                           style: TextStyle(
-                            color: Colors.grey.shade700,
+                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
                             fontSize: screenSize.width * 0.03,
                           ),
                         ),
                         Text(
                           'To: ${_formatDate(endDate)}',
                           style: TextStyle(
-                            color: Colors.grey.shade700,
+                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
                             fontSize: screenSize.width * 0.03,
                           ),
                         ),
@@ -760,7 +792,7 @@ class _NotificationPageState extends State<NotificationPage> {
                         Text(
                           '$detailLabel: $detailValue',
                           style: TextStyle(
-                            color: Colors.grey.shade700,
+                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
                             fontSize: screenSize.width * 0.03,
                           ),
                         ),
@@ -813,7 +845,7 @@ class _NotificationPageState extends State<NotificationPage> {
                 ),
                 child: CircleAvatar(
                   radius: screenSize.width * 0.07,
-                  backgroundColor: Colors.grey.shade300,
+                  backgroundColor: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
                   child: ClipOval(
                     child: Image.network(
                       employeeImage,
@@ -823,7 +855,7 @@ class _NotificationPageState extends State<NotificationPage> {
                       errorBuilder: (context, error, stackTrace) {
                         return Icon(
                           Icons.person,
-                          color: Colors.grey.shade600,
+                          color: isDarkMode ? Colors.white : Colors.grey.shade600,
                           size: screenSize.width * 0.07,
                         );
                       },

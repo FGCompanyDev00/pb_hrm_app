@@ -221,6 +221,9 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   }
 
   Widget buildBody(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
     return Padding(
       padding: const EdgeInsets.all(12.0),
       child: SingleChildScrollView(
@@ -236,10 +239,11 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                       ? DateFormat('MMMM dd, yyyy').format(
                       DateTime.parse(eventData!['created_date']).toLocal())
                       : '',
-                  style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black54),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.add_circle, color: Colors.green),
@@ -250,7 +254,7 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
             const SizedBox(height: 2),
             Container(
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
                 borderRadius: BorderRadius.circular(20),
               ),
               padding: const EdgeInsets.all(20),
@@ -291,40 +295,45 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                             });
                           }
                         },
-                        child: const Text('Choose File'),
+                        child: const Text('Select file'),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          selectedFile != null
-                              ? selectedFile!.name
-                              : 'No file chosen',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
+                      const SizedBox(width: 10),
+                      if (selectedFile != null) ...[
+                        Text(selectedFile!.name),
+                      ],
                     ],
                   ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Comment',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: commentController,
+                    decoration: InputDecoration(
+                      hintText: 'Type your comment here',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    minLines: 1,
+                    maxLines: 5,
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      confirmReturn();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Confirm Return'),
+                  ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 6),
-            Center(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDBB342),
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30)),
-                ),
-                onPressed: () => validateAndProceed(),
-                child: const Text(
-                  'Save',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16),
-                ),
               ),
             ),
           ],
@@ -333,202 +342,89 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
     );
   }
 
-  Widget buildTextField(String label, TextEditingController controller, {TextInputType keyboardType = TextInputType.text}) {
+  Widget buildTextField(
+      String label, TextEditingController controller,
+      {TextInputType keyboardType = TextInputType.text}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
           decoration: InputDecoration(
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: Colors.grey),
+              borderRadius: BorderRadius.circular(10),
             ),
+            filled: true,
+            fillColor: Colors.white,
           ),
         ),
       ],
     );
   }
 
-  Widget buildDateField(BuildContext context, String label,
-      TextEditingController controller) {
+  Widget buildDateField(
+      BuildContext context, String label, TextEditingController controller) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
-        GestureDetector(
-          onTap: () async {
-            DateTime initialDate = DateTime.now();
-            if (controller.text.isNotEmpty) {
-              try {
-                initialDate = DateTime.parse(controller.text);
-              } catch (e) {}
-            }
-
-            DateTime? pickedDate = await showDatePicker(
-              context: context,
-              initialDate: initialDate,
-              firstDate: DateTime(2000),
-              lastDate: DateTime(2101),
-            );
-
-            if (pickedDate != null) {
-              String formattedDate = DateFormat('yyyy-MM-dd').format(pickedDate);
-              controller.text = formattedDate;
-            }
-          },
-          child: AbsorbPointer(
-            child: TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                suffixIcon: const Icon(Icons.calendar_today, color: Colors.grey),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Colors.grey),
-                ),
-              ),
+        TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.calendar_today),
+              onPressed: () async {
+                DateTime? pickedDate = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2101),
+                );
+                if (pickedDate != null) {
+                  controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+                }
+              },
             ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            filled: true,
+            fillColor: Colors.white,
           ),
         ),
       ],
     );
   }
 
-  void validateAndProceed() {
-    if (recipientNameController.text.isEmpty ||
-        distanceController.text.isEmpty ||
-        departureDateController.text.isEmpty ||
-        returnDateController.text.isEmpty) {
-      // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in all required fields'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } else {
-      // Proceed to comment modal
-      showCommentModal(context);
-    }
-  }
-
-  void showCommentModal(BuildContext context) {
+  void showResponseModal(
+      BuildContext context, {
+        required bool success,
+        required String message,
+      }) {
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.5,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(success ? 'Success' : 'Error'),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Icon(Icons.chat_bubble,
-                      color: Color(0xFFE2BD30), size: 40),
-                  const SizedBox(height: 10),
-                  const Text('Comment',
-                      style:
-                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: commentController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      hintText: 'Please put your comment here',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE2BD30),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      confirmReturn();
-                    },
-                    child: const Text('Confirm'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void showResponseModal(BuildContext context, {required bool success, required String message}) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.4,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Icon(
-                    success ? Icons.check_circle : Icons.error,
-                    color: success ? const Color(0xFFE2BD30) : Colors.red,
-                    size: 40,
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    success ? 'SUCCESS' : 'ERROR',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    message,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                      success ? const Color(0xFFE2BD30) : Colors.red,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      if (success) {
-                        Navigator.pop(context); // Return to previous screen
-                      }
-                    },
-                    child: const Text('Okay'),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          ],
         );
       },
     );
@@ -536,24 +432,9 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: buildAppBar(context),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    } else if (eventData == null) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: buildAppBar(context),
-        body: const Center(child: Text('Failed to load data')),
-      );
-    } else {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: buildAppBar(context),
-        body: buildBody(context),
-      );
-    }
+    return Scaffold(
+      appBar: buildAppBar(context),
+      body: isLoading ? const Center(child: CircularProgressIndicator()) : buildBody(context),
+    );
   }
 }
