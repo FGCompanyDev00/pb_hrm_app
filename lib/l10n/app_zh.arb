@@ -429,5 +429,6 @@
   "noInternet": "没有互联网连接",
   "offlineMessage": "您当前处于离线状态。是否要继续离线模式？",
   "unauthorizedError": "未经授权",
-  "offlineAccessDenied": "没有授权，无法使用离线模式。"
+  "offlineAccessDenied": "没有授权，无法使用离线模式。",
+  "offline":"离线"
 }

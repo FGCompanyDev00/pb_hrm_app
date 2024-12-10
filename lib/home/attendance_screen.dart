@@ -69,6 +69,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
+    _retrieveSavedState();
     _fetchWeeklyRecords();
     _retrieveSavedState();
     _retrieveDeviceId();
@@ -281,9 +282,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       _startTimerForWorkingHours();
     });
 
-    userPreferences.storeCheckInTime(_checkInTime);
-    userPreferences.storeCheckOutTime(_checkOutTime);
+    // Store check-in time locally
+    await userPreferences.storeCheckInTime(_checkInTime);
 
+    // Remove any existing check-out time
+    await userPreferences.removeCheckOutTime();
+
+    // Create AttendanceRecord
     AttendanceRecord record = AttendanceRecord(
       deviceId: _deviceId,
       latitude: '',
@@ -293,20 +298,21 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       timestamp: now,
     );
 
+    // Get current position
     Position? currentPosition = await _getCurrentPosition();
     if (currentPosition != null) {
       record.latitude = currentPosition.latitude.toString();
       record.longitude = currentPosition.longitude.toString();
     }
 
-    await connectivityResult.checkConnectivity().then((e) async {
-      if (e.contains(ConnectivityResult.none)) {
-        await offlineProvider.addPendingAttendance(record);
-        await offlineProvider.autoOffline(true);
-      } else {
-        await _sendCheckInOutRequest(record);
-      }
-    });
+    // Check connectivity and send request or save offline
+    ConnectivityResult connectivityResult = (await Connectivity().checkConnectivity()) as ConnectivityResult;
+    if (connectivityResult == ConnectivityResult.none) {
+      await offlineProvider.addPendingAttendance(record);
+      await offlineProvider.autoOffline(true);
+    } else {
+      await _sendCheckInOutRequest(record);
+    }
   }
 
   Future<void> _performCheckOut(DateTime now) async {
@@ -324,9 +330,11 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       }
     });
 
-    userPreferences.storeCheckOutTime(_checkOutTime);
-    userPreferences.storeWorkingHours(_workingHours);
+    // Store check-out time and working hours
+    await userPreferences.storeCheckOutTime(_checkOutTime);
+    await userPreferences.storeWorkingHours(_workingHours);
 
+    // Create AttendanceRecord
     AttendanceRecord record = AttendanceRecord(
       deviceId: _deviceId,
       latitude: '',
@@ -336,19 +344,20 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       timestamp: now,
     );
 
+    // Get current position
     Position? currentPosition = await _getCurrentPosition();
     if (currentPosition != null) {
       record.latitude = currentPosition.latitude.toString();
       record.longitude = currentPosition.longitude.toString();
     }
 
-    await connectivityResult.checkConnectivity().then((e) async {
-      if (e.contains(ConnectivityResult.none)) {
-        await offlineProvider.addPendingAttendance(record);
-      } else {
-        await _sendCheckInOutRequest(record);
-      }
-    });
+    // Check connectivity and send request or save offline
+    ConnectivityResult connectivityResult = (await Connectivity().checkConnectivity()) as ConnectivityResult;
+    if (connectivityResult == ConnectivityResult.none) {
+      await offlineProvider.addPendingAttendance(record);
+    } else {
+      await _sendCheckInOutRequest(record);
+    }
   }
 
   Future<void> _sendCheckInOutRequest(AttendanceRecord record) async {
@@ -356,6 +365,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     String url = _isOffsite ? offsiteApiUrl : officeApiUrl;
     String? token = userPreferences.getToken();
+
     if (token == null) {
       if (mounted) {
         _showCustomDialog(
@@ -384,24 +394,35 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       if (response.statusCode == 201 || response.statusCode == 202) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
         if (mounted) {
-          _showCustomDialog(AppLocalizations.of(context)!.success, responseData['message'] ?? AppLocalizations.of(context)!.checkInOutSuccessful, isSuccess: true);
+          _showCustomDialog(
+            AppLocalizations.of(context)!.success,
+            responseData['message'] ?? AppLocalizations.of(context)!.checkInOutSuccessful,
+            isSuccess: true,
+          );
         }
       } else {
         throw Exception('Failed with status code ${response.statusCode}');
       }
     } catch (error) {
       if (mounted) {
+        // If sending fails, save to local storage
         await offlineProvider.addPendingAttendance(record);
-        if (mounted) {
-          _showCustomDialog(AppLocalizations.of(context)!.error, '${AppLocalizations.of(context)!.failedToCheckInOut}: $error', isSuccess: false);
-        }
+        _showCustomDialog(
+          AppLocalizations.of(context)!.error,
+          '${AppLocalizations.of(context)!.failedToCheckInOut}: $error',
+          isSuccess: false,
+        );
       }
     }
   }
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
     if (!_biometricEnabled) {
-      _showCustomDialog(AppLocalizations.of(context)!.biometricNotEnabled, AppLocalizations.of(context)!.enableBiometricFirst, isSuccess: false);
+      _showCustomDialog(
+        AppLocalizations.of(context)!.biometricNotEnabled,
+        AppLocalizations.of(context)!.enableBiometricFirst,
+        isSuccess: false,
+      );
       return;
     }
 
@@ -409,7 +430,11 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     if (!didAuthenticate) {
       if (context.mounted) {
-        _showCustomDialog(AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
+        _showCustomDialog(
+          AppLocalizations.of(context)!.authenticationFailed,
+          AppLocalizations.of(context)!.authenticateToContinue,
+          isSuccess: false,
+        );
       }
       return;
     }
@@ -420,6 +445,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       _performCheckOut(DateTime.now());
     }
   }
+
 
   Future<bool> _authenticateWithBiometrics() async {
     try {
@@ -942,40 +968,34 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     // bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 6) && _isCheckOutAvailable;
 
     return GestureDetector(
-      onTap: () async {
-        if (!_isCheckInActive) {
-          if (now.isBefore(checkInTimeAllowed) || now.isAfter(checkInDisabledTime)) {
-            _showCustomDialog(AppLocalizations.of(context)!.checkInNotAllowed, AppLocalizations.of(context)!.checkInLateNotAllowed, isSuccess: false);
-          } else if (isCheckInEnabled) {
-            bool isAuthenticated = await _authenticateWithBiometrics();
-            if (isAuthenticated) {
-              _performCheckIn(DateTime.now());
-              if (context.mounted) {
-                _showCustomDialog(AppLocalizations.of(context)!.checkInSuccess, AppLocalizations.of(context)!.checkInSuccessMessage, isSuccess: true);
-              }
-            } else {
-              if (context.mounted) {
-                _showCustomDialog(AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
-              }
+        onTap: () async {
+          final now = DateTime.now();
+          final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 3, 0);
+          final checkInDisabledTime = DateTime(now.year, now.month, now.day, 24, 0);
+          bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
+
+          if (!_isCheckInActive) {
+            if (now.isBefore(checkInTimeAllowed) || now.isAfter(checkInDisabledTime)) {
+              _showCustomDialog(
+                AppLocalizations.of(context)!.checkInNotAllowed,
+                AppLocalizations.of(context)!.checkInLateNotAllowed,
+                isSuccess: false,
+              );
+            } else if (isCheckInEnabled) {
+              await _authenticate(context, true); // Pass 'true' for check-in
             }
-          }
-        } else if (_isCheckInActive) {
-          bool isAuthenticated = await _authenticateWithBiometrics();
-          if (isAuthenticated) {
-            _performCheckOut(DateTime.now());
-            if (context.mounted) {
-              _showCustomDialog(AppLocalizations.of(context)!.checkOutSuccess, AppLocalizations.of(context)!.checkOutSuccessMessage, isSuccess: true);
-            }
+          } else if (_isCheckInActive) {
+            // Optionally, you can add additional checks here if needed
+            await _authenticate(context, false); // Pass 'false' for check-out
           } else {
-            if (context.mounted) {
-              _showCustomDialog(AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
-            }
+            _showCustomDialog(
+              AppLocalizations.of(context)!.alreadyCheckedIn,
+              AppLocalizations.of(context)!.alreadyCheckedInMessage,
+              isSuccess: false,
+            );
           }
-        } else if (_isCheckInActive) {
-          _showCustomDialog(AppLocalizations.of(context)!.alreadyCheckedIn, AppLocalizations.of(context)!.alreadyCheckedInMessage, isSuccess: false);
-        }
-      },
-      child: Container(
+        },
+        child: Container(
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           color: isDarkMode ? Colors.grey[850] : Colors.white,
@@ -1019,7 +1039,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              _isCheckInActive ? AppLocalizations.of(context)!.checkOut : AppLocalizations.of(context)!.checkIn,
+              _isCheckInActive
+                  ? AppLocalizations.of(context)!.checkOut
+                  : AppLocalizations.of(context)!.checkIn,
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,

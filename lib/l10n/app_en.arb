@@ -390,5 +390,6 @@
     "noInternet":"No Internet Connection",
     "offlineMessage":"You are currently offline. Would you like to continue in offline mode?",
     "unauthorizedError":"Unauthorized",
-    "offlineAccessDenied":"You cannot use offline mode without authorization."
+    "offlineAccessDenied":"You cannot use offline mode without authorization.",
+    "offline":"Offline"
 }

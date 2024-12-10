@@ -18,17 +18,17 @@ class UserPreferences {
   static const String _checkOutTime = "CHECK_OUT_TIME";
   static const String _workingHours = "WORKING_HOURS";
 
-  //Store the token
+  // Store the token
   Future<void> setToken(String token) => prefs.setString(_token, token);
   Future<void> removeToken() => prefs.remove(_token);
   String? getToken() => prefs.getString(_token);
 
-  //Is Logged In
+  // Is Logged In
   Future<void> setLoggedIn(bool isAccess) => prefs.setBool(_isLoggedIn, isAccess);
   Future<void> setLoggedOff() => prefs.remove(_isLoggedIn);
   bool? getLoggedIn() => prefs.getBool(_isLoggedIn);
 
-  //Login Session
+  // Login Session
   Future<void> setLoginSession(String loginTime) => prefs.setString(_loginSession, loginTime);
   Future<void> removeLoginSession() => prefs.remove(_loginSession);
   DateTime? getLoginSession() {
@@ -43,15 +43,15 @@ class UserPreferences {
     return DateTime.tryParse(sessionString);
   }
 
-  //Store the default language
+  // Store the default language
   Future<void> setDefaultLanguage(String lang) => prefs.setString(_defaultLang, lang);
   String? getDefaultLanguage() => prefs.getString(_defaultLang);
 
-  //Store the default language
+  // Store the device
   Future<void> setDevice(String device) => prefs.setString(_device, device);
   String? getDevice() => prefs.getString(_device);
 
-  //Store the default locale
+  // Store the default locale
   Future<void> setLocalizeSupport(String langCode) => prefs.setString(_defaultLocale, langCode);
   Locale getLocalizeSupport() {
     String getLocal = prefs.getString(_defaultLocale) ?? 'en';
@@ -62,18 +62,30 @@ class UserPreferences {
     }
   }
 
+  // Store Check-In Time
   Future<void> storeCheckInTime(String checkInTime) => prefs.setString(_checkInTime, checkInTime);
   String? getCheckInTime() => prefs.getString(_checkInTime);
 
+  // Store Check-Out Time
   Future<void> storeCheckOutTime(String checkOutTime) => prefs.setString(_checkOutTime, checkOutTime);
   String? getCheckOutTime() => prefs.getString(_checkOutTime);
 
+  // Remove Check-Out Time
+  Future<void> removeCheckOutTime() => prefs.remove(_checkOutTime);
+
+  // Store Working Hours
   Future<void> storeWorkingHours(Duration workingHours) => prefs.setString(_workingHours, workingHours.toString());
   Duration? getWorkingHours() {
     String? workingHoursStr = prefs.getString(_workingHours);
     if (workingHoursStr != null) {
       List<String> parts = workingHoursStr.split(':');
-      return Duration(hours: int.parse(parts[0]), minutes: int.parse(parts[1]), seconds: int.parse(parts[2]));
+      if (parts.length >= 3) {
+        return Duration(
+          hours: int.tryParse(parts[0]) ?? 0,
+          minutes: int.tryParse(parts[1]) ?? 0,
+          seconds: int.tryParse(parts[2]) ?? 0,
+        );
+      }
     }
     return null;
   }
