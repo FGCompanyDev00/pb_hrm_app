@@ -168,7 +168,7 @@
   "office": "办公室",
   "offsite": "外出",
   "checkInNotAllowed": "签到/签退不允许",
-  "checkInLateNotAllowed": "入住时间不能晚于18:00，且不能早于07:00。",
+  "checkInLateNotAllowed": "当前不允许办理入住。",
   "biometricNotEnabled": "生物识别未启用",
   "enableBiometricFirst": "请先在设置中启用生物识别身份验证。",
   "authenticationFailed": "身份验证失败",

@@ -384,7 +384,7 @@ class _NotificationMeetingDetailsPageState
               dense: true,
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }

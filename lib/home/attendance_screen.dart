@@ -35,75 +35,79 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   final LocalAuthentication auth = LocalAuthentication();
   final _storage = const FlutterSecureStorage();
   final userPreferences = sl<UserPreferences>();
-  int _selectedIndex = 0; // 0 for Home/Office, 1 for Offsite
+
+  bool _biometricEnabled = false;
+
   bool _isCheckInActive = false;
+  bool _isCheckOutAvailable = true;
   String _checkInTime = '--:--:--';
   String _checkOutTime = '--:--:--';
+  Duration _workingHours = Duration.zero;
   DateTime? _checkInDateTime;
   DateTime? _checkOutDateTime;
-  Duration _workingHours = Duration.zero;
-  Timer? _timer;
-  StreamSubscription<Position>? _positionStreamSubscription;
-  String _currentSection = 'Home';
-  String _detectedLocation = 'Home'; // New variable to store detected location
+
+  bool _isOffsite = false; // Only Offsite button toggle
+
   String _deviceId = '';
-  List<Map<String, String>> _weeklyRecords = [];
   bool _isLoading = true;
-  bool _biometricEnabled = false;
-  bool _isCheckOutAvailable = true;
-  static const String officeApiUrl = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/office';
-  static const String offsiteApiUrl = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offsite';
+
+  List<Map<String, String>> _weeklyRecords = [];
+  String _totalCheckInDelay = '--:--:--';
+  String _totalCheckOutDelay = '--:--:--';
+  String _totalWorkDuration = '--:--:--';
+
+  Timer? _timer;
+  Timer? _refreshTimer;
+  StreamSubscription<Position>? _positionStreamSubscription;
 
   static const double _officeRange = 500;
   static LatLng officeLocation = const LatLng(2.891589, 101.524822);
 
+  static const String officeApiUrl = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/office';
+  static const String offsiteApiUrl = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offsite';
+
   @override
   void initState() {
     super.initState();
-
+    _fetchWeeklyRecords();
     _retrieveSavedState();
     _retrieveDeviceId();
-    _fetchWeeklyRecords();
     _startLocationMonitoring();
     _startTimerForLiveTime();
     _determineAndShowLocationModal();
+
     connectivityResult.onConnectivityChanged.listen((source) {
       if (source.contains(ConnectivityResult.wifi) || source.contains(ConnectivityResult.mobile)) {
         offlineProvider.autoOffline(false);
         offlineProvider.syncPendingAttendance();
       }
     });
+
+    _refreshTimer = Timer.periodic(const Duration(hours: 1), (timer) {
+      _fetchWeeklyRecords();
+    });
   }
 
-  Future<void> _determineAndShowLocationModal() async {
-    setState(() {
-      _isLoading = true; // Show loading indicator
-    });
-
-    Position? currentPosition = await _getCurrentPosition();
-    if (currentPosition != null) {
-      _determineSectionFromPosition(currentPosition);
-    }
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    _showLocationModal(_detectedLocation);
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _refreshTimer?.cancel();
+    _positionStreamSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _retrieveSavedState() async {
     String? savedCheckInTime = userPreferences.getCheckInTime();
-    String? savedCheckOutTime = userPreferences.getCheckOutTime(); // Retrieve saved checkout time
+    String? savedCheckOutTime = userPreferences.getCheckOutTime();
     Duration? savedWorkingHours = userPreferences.getWorkingHours();
     String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
 
     setState(() {
       _checkInTime = savedCheckInTime ?? '--:--:--';
       _checkInDateTime = savedCheckInTime != null ? DateFormat('HH:mm:ss').parse(savedCheckInTime) : null;
-      _checkOutTime = savedCheckOutTime ?? '--:--:--'; // Restore checkout time
+      _checkOutTime = savedCheckOutTime ?? '--:--:--';
       _isCheckInActive = savedCheckInTime != null && savedCheckOutTime == null;
-      _isCheckOutAvailable = savedCheckOutTime == null; // Check if checkout is available
+      _isCheckOutAvailable = savedCheckOutTime == null;
       _workingHours = savedWorkingHours ?? Duration.zero;
       _biometricEnabled = biometricEnabled == 'true';
     });
@@ -111,13 +115,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     if (_isCheckInActive) {
       _startTimerForWorkingHours();
     }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _positionStreamSubscription?.cancel();
-    super.dispose();
   }
 
   Future<void> _retrieveDeviceId() async {
@@ -137,37 +134,165 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
+  Future<void> _fetchWeeklyRecords() async {
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    const String endpoint = '$baseUrl/api/attendance/checkin-checkout/offices/weekly/me';
+
+    try {
+      String? token = userPreferences.getToken();
+
+      if (token == null) {
+        if (mounted) {
+          throw Exception(AppLocalizations.of(context)!.noTokenFound);
+        }
+      }
+
+      final response = await http.get(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('Status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final monthlyData = data['TotalWorkDurationForMonth'];
+
+        setState(() {
+          _weeklyRecords = (data['weekly'] as List).map((item) {
+            return {
+              'date': item['check_in_date']?.toString() ?? '',
+              'checkIn': item['check_in_time']?.toString() ?? '--:--:--',
+              'checkInStatus': item['check_in_status']?.toString() ?? 'unknown',
+              'checkOut': item['check_out_time']?.toString() ?? '--:--:--',
+              'checkOutStatus': item['check_out_status']?.toString() ?? 'unknown',
+              'workingHours': item['workDuration']?.toString() ?? '--:--:--',
+            };
+          }).toList();
+
+          _totalCheckInDelay = monthlyData['totalCheckInDelay']?.toString() ?? '--:--:--';
+          _totalCheckOutDelay = monthlyData['totalCheckOutDelay']?.toString() ?? '--:--:--';
+          _totalWorkDuration = monthlyData['totalWorkDuration']?.toString() ?? '--:--:--';
+        });
+      } else {
+        if (mounted) {
+          throw Exception(AppLocalizations.of(context)!.failedToLoadWeeklyRecords);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching weekly records: $e');
+      }
+    }
+  }
+
+  Future<void> _determineAndShowLocationModal() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    Position? currentPosition = await _getCurrentPosition();
+    if (currentPosition != null) {
+      // We no longer set section based on position, offsite is toggled by user.
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    _showLocationModal(_isOffsite ? 'Offsite' : 'Office');
+  }
+
+  Future<Position?> _getCurrentPosition() async {
+    try {
+      return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error retrieving location: $e');
+      }
+      return null;
+    }
+  }
+
+  void _startLocationMonitoring() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      await Geolocator.openLocationSettings();
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return;
+    }
+
+    _positionStreamSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10,
+      ),
+    ).listen((Position position) {
+      if (kDebugMode) {
+        print('Position stream: (${position.latitude}, ${position.longitude})');
+      }
+    });
+  }
+
+  void _startTimerForLiveTime() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {});
+    });
+  }
+
+  void _startTimerForWorkingHours() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      if (_checkInDateTime != null && _checkOutDateTime == null) {
+        setState(() {
+          _workingHours = DateTime.now().difference(_checkInDateTime!);
+        });
+        userPreferences.storeWorkingHours(_workingHours);
+      }
+    });
+  }
+
   Future<void> _performCheckIn(DateTime now) async {
     await initializeService();
 
     setState(() {
       _checkInTime = DateFormat('HH:mm:ss').format(now);
-      _checkOutTime = '--:--:--'; // Reset check-out time to placeholder
+      _checkOutTime = '--:--:--';
       _checkInDateTime = now;
       _checkOutDateTime = null;
-      _workingHours = Duration.zero; // Reset working hours immediately on new check-in
+      _workingHours = Duration.zero;
       _isCheckInActive = true;
       _isCheckOutAvailable = true;
-      _startTimerForWorkingHours(); // Start tracking working hours
+      _startTimerForWorkingHours();
     });
 
-    // Store check-in time locally
-    userPreferences.storeCheckInTime(_checkInTime); // Save the new check-in time
-    userPreferences.storeCheckOutTime(_checkOutTime); // Reset stored check-out time to --:--:--
+    userPreferences.storeCheckInTime(_checkInTime);
+    userPreferences.storeCheckOutTime(_checkOutTime);
 
-    // Create AttendanceRecord
     AttendanceRecord record = AttendanceRecord(
       deviceId: _deviceId,
       latitude: '',
-      // Will be filled below
       longitude: '',
-      // Will be filled below
-      section: _currentSection,
+      section: _isOffsite ? 'Offsite' : 'Office',
       type: 'checkIn',
       timestamp: now,
     );
 
-    // Get current position
     Position? currentPosition = await _getCurrentPosition();
     if (currentPosition != null) {
       record.latitude = currentPosition.latitude.toString();
@@ -191,38 +316,32 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       _checkOutTime = DateFormat('HH:mm:ss').format(now);
       _checkOutDateTime = now;
       if (_checkInDateTime != null) {
-        _workingHours = now.difference(_checkInDateTime!); // Calculate working hours
+        _workingHours = now.difference(_checkInDateTime!);
         _isCheckInActive = false;
         _isCheckOutAvailable = false;
-        _timer?.cancel(); // Stop the working hours timer
-        _showWorkingHoursDialog(context); // Show the working hours summary
+        _timer?.cancel();
+        _showWorkingHoursDialog(context);
       }
     });
 
-    // Store check-out time and working hours locally
-    userPreferences.storeCheckOutTime(_checkOutTime); // Save the new check-out time
-    userPreferences.storeWorkingHours(_workingHours); // Save the total working hours
+    userPreferences.storeCheckOutTime(_checkOutTime);
+    userPreferences.storeWorkingHours(_workingHours);
 
-    // Create AttendanceRecord
     AttendanceRecord record = AttendanceRecord(
       deviceId: _deviceId,
       latitude: '',
-      // Will be filled below
       longitude: '',
-      // Will be filled below
-      section: _currentSection,
+      section: _isOffsite ? 'Offsite' : 'Office',
       type: 'checkOut',
       timestamp: now,
     );
 
-    // Get current position
     Position? currentPosition = await _getCurrentPosition();
     if (currentPosition != null) {
       record.latitude = currentPosition.latitude.toString();
       record.longitude = currentPosition.longitude.toString();
     }
 
-    // Check connectivity
     await connectivityResult.checkConnectivity().then((e) async {
       if (e.contains(ConnectivityResult.none)) {
         await offlineProvider.addPendingAttendance(record);
@@ -232,33 +351,11 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
-  Future<void> _resetSessionData() async {
-    setState(() {
-      _checkInTime = '--:--:--';
-      _checkOutTime = '--:--:--';
-      _workingHours = Duration.zero;
-      _checkInDateTime = null;
-      _checkOutDateTime = null;
-    });
-
-    // Reset stored values in SharedPreferences
-    userPreferences.storeCheckInTime(_checkInTime);
-    userPreferences.storeCheckOutTime(_checkOutTime);
-    userPreferences.storeWorkingHours(Duration.zero);
-  }
-
   Future<void> _sendCheckInOutRequest(AttendanceRecord record) async {
     if (sl<OfflineProvider>().isOfflineService.value) return;
 
-    String url;
-    if (record.section == 'Home' || record.section == 'Office') {
-      url = officeApiUrl;
-    } else {
-      url = offsiteApiUrl;
-    }
-
+    String url = _isOffsite ? offsiteApiUrl : officeApiUrl;
     String? token = userPreferences.getToken();
-
     if (token == null) {
       if (mounted) {
         _showCustomDialog(
@@ -294,135 +391,12 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       }
     } catch (error) {
       if (mounted) {
-        // If sending fails, save to local storage
         await offlineProvider.addPendingAttendance(record);
         if (mounted) {
           _showCustomDialog(AppLocalizations.of(context)!.error, '${AppLocalizations.of(context)!.failedToCheckInOut}: $error', isSuccess: false);
         }
       }
     }
-  }
-
-  Future<void> _fetchWeeklyRecords() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String endpoint = '$baseUrl/api/attendance/checkin-checkout/offices/weekly/me';
-
-    try {
-      String? token = userPreferences.getToken();
-
-      if (token == null) {
-        if (mounted) {
-          throw Exception(AppLocalizations.of(context)!.noTokenFound);
-        }
-      }
-
-      final response = await http.get(
-        Uri.parse(endpoint),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
-
-        setState(() {
-          _weeklyRecords = (data['weekly'] as List).map((item) {
-            return {
-              'date': item['check_in_date'].toString(),
-              'checkIn': item['check_in_time'].toString(),
-              'checkOut': item['check_out_time'].toString(),
-              'workingHours': item['workDuration'].toString(),
-            };
-          }).toList();
-        });
-      } else {
-        if (mounted) {
-          throw Exception(AppLocalizations.of(context)!.failedToLoadWeeklyRecords);
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error fetching weekly records: $e');
-      }
-      // Optionally, show a dialog or snackbar
-    }
-  }
-
-  void _startLocationMonitoring() async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      await Geolocator.openLocationSettings();
-      return;
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      return;
-    }
-
-    _positionStreamSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Notify if the user moves 10 meters or more
-      ),
-    ).listen((Position position) {
-      _determineSectionFromPosition(position);
-    });
-  }
-
-  void _determineSectionFromPosition(Position position) {
-    double distanceToOffice = Geolocator.distanceBetween(
-      position.latitude,
-      position.longitude,
-      officeLocation.latitude,
-      officeLocation.longitude,
-    );
-
-    if (kDebugMode) {
-      print('Current position: (${position.latitude}, ${position.longitude})');
-      print('Distance to office: $distanceToOffice meters');
-    }
-
-    setState(() {
-      if (distanceToOffice <= _officeRange) {
-        _detectedLocation = 'Office';
-        _currentSection = 'Office';
-        _selectedIndex = 0;
-      } else {
-        _detectedLocation = 'Home';
-        _currentSection = 'Home';
-        _selectedIndex = 0;
-      }
-    });
-  }
-
-  void _startTimerForLiveTime() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      setState(() {}); // Update the UI every second
-    });
-  }
-
-  void _startTimerForWorkingHours() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-      if (_checkInDateTime != null && _checkOutDateTime == null) {
-        setState(() {
-          _workingHours = DateTime.now().difference(_checkInDateTime!);
-        });
-
-        // Save the working hours in SharedPreferences
-        userPreferences.storeWorkingHours(_workingHours);
-      }
-    });
   }
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
@@ -464,20 +438,10 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  Future<Position?> _getCurrentPosition() async {
-    try {
-      return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error retrieving location: $e');
-      }
-      return null;
-    }
-  }
-
   void _showLocationModal(String location) {
-    final isHome = location == 'Home';
-    final primaryColor = isHome ? Colors.orange : Colors.green;
+    final isOffsite = location == 'Offsite';
+    final primaryColor = isOffsite ? Colors.red : Colors.green;
+    final icon = isOffsite ? Icons.location_on : Icons.apartment;
 
     showDialog(
       context: context,
@@ -505,9 +469,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Icon(
-                            isHome ? Icons.home : Icons.apartment,
+                            icon,
                             color: Colors.white,
-                            size: constraints.maxWidth < 400 ? 30 : 40, // Responsive icon size
+                            size: constraints.maxWidth < 400 ? 30 : 40,
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -515,7 +479,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                               AppLocalizations.of(context)!.locationDetected,
                               style: TextStyle(
                                 fontSize: constraints.maxWidth < 400 ? 18 : 20,
-                                // Responsive font size
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -528,12 +491,11 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                       padding: const EdgeInsets.all(16.0),
                       child: Text(
                         AppLocalizations.of(context)!.youAreCurrentlyAt(
-                          isHome ? AppLocalizations.of(context)!.home : AppLocalizations.of(context)!.office,
+                          isOffsite ? AppLocalizations.of(context)!.offsite : AppLocalizations.of(context)!.office,
                         ),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: constraints.maxWidth < 400 ? 14 : 16,
-                          // Responsive font size
                           fontWeight: FontWeight.w500,
                           color: Colors.black87,
                         ),
@@ -558,7 +520,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                           AppLocalizations.of(context)!.ok,
                           style: TextStyle(
                             fontSize: constraints.maxWidth < 400 ? 14 : 16,
-                            // Responsive font size
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -575,115 +536,105 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildPageContent(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _fetchWeeklyRecords,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          children: [
-            _buildSectionContainer(),
-            const SizedBox(height: 16),
-            _buildHeaderContent(context),
-            _buildWeeklyRecordsList(),
-            const SizedBox(height: 16),
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const MonthlyAttendanceReport()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  backgroundColor: Theme.of(context).brightness == Brightness.dark
-                      ? const Color(0xFFDBB342) // Dark mode background color (#DBB342)
-                      : Colors.green, // Light mode background color (green)
-                  elevation: 4,
-                ),
-                icon: const Icon(Icons.view_agenda, color: Colors.white),
-                label: Text(
-                  AppLocalizations.of(context)!.viewAll,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-              ),
-            ),
-            const SizedBox(height: 25),
-          ],
-        ),
-      ),
-    );
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase() ?? 'unknown') {
+      case 'office':
+        return Colors.green;
+      case 'offsite':
+        return Colors.red;
+      case 'home':
+        return Colors.orange;
+      default:
+        return Colors.green;
+    }
   }
 
   void _showCustomDialog(String title, String message, {bool isSuccess = true}) {
+    bool isCheckOutSuccess = message.toLowerCase().contains('out success');
+    Color tickColor = isSuccess
+        ? (isCheckOutSuccess ? Colors.red : Colors.green)
+        : Colors.red;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+        Color primaryTextColor = isDarkMode ? Colors.white : Colors.black;
+        Color secondaryTextColor = isDarkMode ? Colors.white70 : Colors.black87;
+        Color dialogBgColor = isDarkMode ? Colors.grey[900]! : Colors.white;
+
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SizedBox(
-                  width: constraints.maxWidth < 400 ? constraints.maxWidth * 0.9 : 400,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isSuccess ? Icons.check_circle_outline : Icons.error_outline,
-                        color: isSuccess ? Colors.green : Colors.red,
-                        size: constraints.maxWidth < 400 ? 40 : 50, // Responsive icon size
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: dialogBgColor,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top: Attendance icon + "Attendance"
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/attendance.png',
+                      width: 40,
+                      height: 40,
+                      // If you have a dark mode version of the icon, you can conditionally load it.
+                      // Otherwise, ensure your icon looks good on both backgrounds.
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Attendance',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: primaryTextColor,
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: constraints.maxWidth < 400 ? 18 : 20,
-                          // Responsive font size
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        message,
-                        style: TextStyle(
-                          fontSize: constraints.maxWidth < 400 ? 14 : 16, // Responsive font size
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isSuccess ? const Color(0xFFDAA520) : Colors.red,
-                          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                        ),
-                        child: Text(
-                          AppLocalizations.of(context)!.close,
-                          style: TextStyle(
-                            fontSize: constraints.maxWidth < 400 ? 14 : 16,
-                            // Responsive font size
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Tick icon (green for check-in success, red for check-out success)
+                Icon(
+                  Icons.check_circle,
+                  color: tickColor,
+                  size: 50,
+                ),
+                const SizedBox(height: 16),
+
+                // Message (e.g. "Check IN success!" or "Check OUT success!")
+                Text(
+                  message,
+                  style: TextStyle(fontSize: 16, color: primaryTextColor),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+
+                // Close button in gold color
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDAA520),
+                    padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    AppLocalizations.of(context)!.close,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-              );
-            },
+              ],
+            ),
           ),
         );
       },
@@ -722,7 +673,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                     Navigator.of(context).pop();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFDAA520), // gold color
+                    backgroundColor: const Color(0xFFDAA520),
                     padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8.0),
@@ -747,20 +698,50 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
   Widget _buildAttendanceRow(Map<String, String> record) {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final DateTime date = DateFormat('yyyy-MM-dd').parse(record['date']!);
-    final String day = DateFormat('EEEE').format(date); // Day part
-    final String datePart = DateFormat('yyyy-MM-dd').format(date); // Date part
+
+    // Safely parse the date
+    DateTime? date;
+    if (record['date'] != null && record['date']!.isNotEmpty) {
+      try {
+        date = DateFormat('yyyy-MM-dd').parse(record['date']!);
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error parsing date: ${record['date']}');
+        }
+        // Assign a default date or handle the error as needed
+        date = DateTime.now();
+      }
+    } else {
+      if (kDebugMode) {
+        print('Date is null or empty');
+      }
+      // Assign a default date or handle the error as needed
+      date = DateTime.now();
+    }
+
+    final String day = DateFormat('EEEE').format(date);
+    final String datePart = DateFormat('yyyy-MM-dd').format(date);
+
+    // Debugging: Log the record's statuses
+    if (kDebugMode) {
+      print('Building Attendance Row for date: $datePart');
+      print('Check In: ${record['checkIn']}');
+      print('Check In Status: ${record['checkInStatus']}');
+      print('Check Out: ${record['checkOut']}');
+      print('Check Out Status: ${record['checkOutStatus']}');
+      print('Working Hours: ${record['workingHours']}');
+    }
 
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      color: isDarkMode ? Colors.grey[800] : Colors.white, // Adjust background color based on theme
+      color: isDarkMode ? Colors.grey[800] : Colors.white,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         child: Column(
           children: [
-            // Centered Date Display
+            // Date Display
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -769,39 +750,50 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                   text: TextSpan(
                     children: [
                       TextSpan(
-                        text: day, // Weekday
+                        text: day,
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : const Color(0xFF003366), // Adjust text color for dark mode
+                          color: isDarkMode ? Colors.white : const Color(0xFF003366),
                         ),
                       ),
-                      const TextSpan(text: ', '), // Comma separator
+                      const TextSpan(text: ', '),
                       TextSpan(
-                        text: datePart, // Date part
+                        text: datePart,
                         style: TextStyle(
                           fontSize: 15,
-                          color: isDarkMode ? Colors.white70 : Colors.black, // Adjust text color for dark mode
+                          color: isDarkMode ? Colors.white70 : Colors.black,
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                // Optional Status Icon for Check-Out
-                _buildAttendanceStatusIcon(record['checkOut']!),
+                _buildAttendanceStatusIcon(record['checkOut'] ?? '--:--:--'),
               ],
             ),
             const SizedBox(height: 8),
-            Divider(color: isDarkMode ? Colors.white24 : Colors.grey.shade300), // Adjust divider color for dark mode
+            Divider(color: isDarkMode ? Colors.white24 : Colors.grey.shade300),
             const SizedBox(height: 8),
-            // Attendance Items Row
+            // Items Row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildAttendanceItem(AppLocalizations.of(context)!.checkIn, record['checkIn']!, Colors.orange),
-                _buildAttendanceItem(AppLocalizations.of(context)!.checkOut, record['checkOut']!, Colors.green),
-                _buildAttendanceItem(AppLocalizations.of(context)!.workingHours, record['workingHours']!, Colors.blue),
+                _buildAttendanceItem(
+                  AppLocalizations.of(context)!.checkIn,
+                  record['checkIn'] ?? '--:--:--',
+                  _getStatusColor(record['checkInStatus']),
+                ),
+                _buildAttendanceItem(
+                  AppLocalizations.of(context)!.checkOut,
+                  record['checkOut'] ?? '--:--:--',
+                  _getStatusColor(record['checkOutStatus']),
+                ),
+                _buildAttendanceItem(
+                  AppLocalizations.of(context)!.workingHours,
+                  record['workingHours'] ?? '--:--:--',
+                  Colors.blue,
+                ),
               ],
             ),
           ],
@@ -809,6 +801,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       ),
     );
   }
+
 
   Widget _buildAttendanceStatusIcon(String checkOutTime) {
     return Icon(
@@ -837,20 +830,116 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
+  Widget _buildWeeklyRecordsList() {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    if (_weeklyRecords.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        child: Text(
+          AppLocalizations.of(context)!.noWeeklyRecordsFound,
+          style: TextStyle(
+            color: isDarkMode ? Colors.white70 : Colors.black54,
+            fontSize: 16,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        // Header Row
+        Container(
+          margin: const EdgeInsets.only(top: 16, bottom: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          decoration: BoxDecoration(
+            color: isDarkMode ? Colors.green : const Color(0xFFD5AD32),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: isDarkMode ? Colors.black.withOpacity(0.5) : Colors.black.withOpacity(0.15),
+                blurRadius: 4,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              Expanded(
+                child: Center(
+                  child: Text(
+                    AppLocalizations.of(context)!.checkIn,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    AppLocalizations.of(context)!.checkOut,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    AppLocalizations.of(context)!.workingHours,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Weekly Records List
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _weeklyRecords.length,
+          itemBuilder: (context, index) {
+            return _buildAttendanceRow(_weeklyRecords[index]);
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildHeaderContent(BuildContext context) {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    final fingerprintBackgroundColor = _currentSection == 'Office'
-        ? Colors.green
-        : _currentSection == 'Home'
-            ? Colors.orange
-            : Colors.red;
+    // If offsite on => fingerprint is red
+    // If offsite off => gradient orange to green
+    BoxDecoration fingerprintDecoration;
+    if (_isOffsite) {
+      fingerprintDecoration = const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.red,
+      );
+    } else {
+      fingerprintDecoration = const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [Colors.orange, Colors.green],
+        ),
+      );
+    }
 
     final now = DateTime.now();
-    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 7, 0);
-    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 18, 0);
+    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 3, 0);
+    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 24, 0);
     bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
-    bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 6) && _isCheckOutAvailable;
+    // bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 6) && _isCheckOutAvailable;
 
     return GestureDetector(
       onTap: () async {
@@ -870,7 +959,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               }
             }
           }
-        } else if (_isCheckInActive && isCheckOutEnabled) {
+        } else if (_isCheckInActive) {
           bool isAuthenticated = await _authenticateWithBiometrics();
           if (isAuthenticated) {
             _performCheckOut(DateTime.now());
@@ -893,7 +982,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: isDarkMode ? Colors.black54 : Colors.black12, // Shadow color for dark mode
+              color: isDarkMode ? Colors.black54 : Colors.black12,
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -901,7 +990,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         ),
         child: Column(
           children: [
-            // Date and Time
             Text(
               DateFormat('EEEE, MMMM dd, yyyy').format(DateTime.now()),
               style: TextStyle(
@@ -919,22 +1007,10 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Fingerprint button with dynamic background color
             Container(
               width: 80,
               height: 80,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: fingerprintBackgroundColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: isDarkMode ? Colors.black45 : Colors.black26,
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
+              decoration: fingerprintDecoration,
               child: const Icon(
                 Icons.fingerprint,
                 size: 40,
@@ -942,8 +1018,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Check In/Check Out button text
             Text(
               _isCheckInActive ? AppLocalizations.of(context)!.checkOut : AppLocalizations.of(context)!.checkIn,
               style: TextStyle(
@@ -953,8 +1027,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               ),
             ),
             const SizedBox(height: 8),
-
-            // Register presence text
             Text(
               AppLocalizations.of(context)!.registerPresenceStartWork,
               style: TextStyle(
@@ -964,8 +1036,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Month and Year display (e.g., February - 2024)
             Text(
               DateFormat('MMMM - yyyy').format(DateTime.now()),
               style: TextStyle(
@@ -975,28 +1045,26 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Summary Row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildSummaryItem(
                   AppLocalizations.of(context)!.checkIn,
-                  _checkInTime,
+                  _totalCheckInDelay,
                   Icons.login,
                   Colors.green,
-                  isDarkMode: Theme.of(context).brightness == Brightness.dark,
+                  isDarkMode: isDarkMode,
                 ),
                 _buildSummaryItem(
                   AppLocalizations.of(context)!.checkOut,
-                  _checkOutTime,
+                  _totalCheckOutDelay,
                   Icons.logout,
                   Colors.red,
-                  isDarkMode: Theme.of(context).brightness == Brightness.dark,
+                  isDarkMode: isDarkMode,
                 ),
                 _buildSummaryItem(
                   AppLocalizations.of(context)!.workingHours,
-                  _workingHours.toString().split('.').first.padLeft(8, '0'),
+                  _totalWorkDuration,
                   Icons.timer,
                   Colors.blue,
                   isDarkMode: Theme.of(context).brightness == Brightness.dark,
@@ -1012,353 +1080,125 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildSummaryItem(String title, String time, IconData icon, Color color, {required bool isDarkMode}) {
     return Column(
       children: [
-        // Icon with dynamic color based on dark mode
         Icon(
           icon,
           color: color,
           size: 24,
         ),
         const SizedBox(height: 4),
-
-        // Time Text with dynamic color based on dark mode
         Text(
           time,
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : Colors.black, // Adjust time color
+            color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
-
-        // Title Text with dynamic color based on dark mode
         Text(
           title,
           style: TextStyle(
             fontSize: 12,
-            color: isDarkMode ? Colors.white70 : Colors.black87, // Adjust title color
+            color: isDarkMode ? Colors.white70 : Colors.black87,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildTabContent(BuildContext context) {
-    return Container();
-  }
-
-  Widget _buildWeeklyRecordsList() {
-    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    if (_weeklyRecords.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-        child: Text(
-          AppLocalizations.of(context)!.noWeeklyRecordsFound,
-          style: TextStyle(
-            color: isDarkMode ? Colors.white70 : Colors.black54, // Adjust text color for dark mode
-            fontSize: 16,
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        // Header Row
-        Container(
-          margin: const EdgeInsets.only(top: 16, bottom: 8),
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-          decoration: BoxDecoration(
-            color: isDarkMode ? Colors.grey[800] : const Color(0xFFD5AD32),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: isDarkMode ? Colors.black.withOpacity(0.5) : Colors.black.withOpacity(0.15),
-                blurRadius: 4,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Expanded(
-                child: Center(
-                  child: Text(
-                    AppLocalizations.of(context)!.checkIn,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : Colors.black, // Adjust text color for dark mode
-                    ),
+  Widget _buildPageContent(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: _fetchWeeklyRecords,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          children: [
+            const SizedBox(height: 16),
+            _buildHeaderContent(context),
+            _buildWeeklyRecordsList(),
+            const SizedBox(height: 16),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MonthlyAttendanceReport()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
                   ),
+                  backgroundColor: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFFDBB342)
+                      : Colors.green,
+                  elevation: 4,
+                ),
+                icon: const Icon(Icons.view_agenda, color: Colors.white),
+                label: Text(
+                  AppLocalizations.of(context)!.viewAll,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    AppLocalizations.of(context)!.checkOut,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : Colors.black, // Adjust text color for dark mode
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    AppLocalizations.of(context)!.workingHours,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : Colors.black, // Adjust text color for dark mode
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 25),
+          ],
         ),
-        // Weekly Records List
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _weeklyRecords.length,
-          itemBuilder: (context, index) {
-            return _buildAttendanceRow(_weeklyRecords[index]);
-          },
-        ),
-      ],
+      ),
     );
   }
 
   Widget _buildSectionContainer() {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Row(
-      children: [
-        Expanded(
-          flex: 2,
+    // Only Offsite button:
+    Color offsiteBgColor = _isOffsite
+        ? Colors.red
+        : (isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200);
+
+    Color offsiteIconColor = _isOffsite ? Colors.white : Colors.red;
+    Color offsiteTextColor = _isOffsite
+        ? Colors.white
+        : (isDarkMode ? Colors.white : Colors.black);
+
+    return Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: GestureDetector(
+          onTap: () {
+            setState(() {
+              _isOffsite = !_isOffsite;
+            });
+          },
           child: Container(
-            padding: const EdgeInsets.all(5.0),
             decoration: BoxDecoration(
-              color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300, // Adjust color for dark mode
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade400,
-                width: 2,
-              ),
+              color: offsiteBgColor,
+              borderRadius: BorderRadius.circular(12),
             ),
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // "Home" Section
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      if (_detectedLocation != 'Office' && _detectedLocation != 'Offsite') {
-                        setState(() {
-                          _selectedIndex = 0;
-                          _currentSection = 'Home';
-                        });
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: (_currentSection == 'Home' && _selectedIndex != 1)
-                            ? Colors.orange
-                            : isDarkMode
-                                ? Colors.grey.shade800
-                                : Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.home,
-                            color: (_currentSection == 'Home' && _selectedIndex != 1)
-                                ? Colors.white
-                                : isDarkMode
-                                    ? Colors.orange
-                                    : Colors.black,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            AppLocalizations.of(context)!.home,
-                            style: TextStyle(
-                              color: (_currentSection == 'Home' && _selectedIndex != 1)
-                                  ? Colors.white
-                                  : isDarkMode
-                                      ? Colors.white
-                                      : Colors.black,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                Image.asset(
+                  'assets/offsite.png',
+                  width: 18,
+                  height: 18,
+                  color: offsiteIconColor,
                 ),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2.0),
-                  color: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade500,
-                  width: 1,
-                  height: 20,
-                ),
-                // "Office" Section
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      if (_detectedLocation != 'Home') {
-                        setState(() {
-                          _selectedIndex = 0;
-                          _currentSection = 'Office';
-                        });
-                      }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: (_currentSection == 'Office' && _selectedIndex != 1)
-                            ? Colors.green
-                            : isDarkMode
-                                ? Colors.grey.shade800
-                                : Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.apartment,
-                            color: (_currentSection == 'Office' && _selectedIndex != 1)
-                                ? Colors.white
-                                : isDarkMode
-                                    ? Colors.green
-                                    : Colors.green,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            AppLocalizations.of(context)!.office,
-                            style: TextStyle(
-                              color: (_currentSection == 'Office' && _selectedIndex != 1)
-                                  ? Colors.white
-                                  : isDarkMode
-                                      ? Colors.white
-                                      : Colors.black,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                const SizedBox(width: 6),
+                Text(
+                  AppLocalizations.of(context)!.offsite,
+                  style: TextStyle(
+                    color: offsiteTextColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(width: 10),
-        // "Offsite" Section
-        Expanded(
-          flex: 1,
-          child: GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedIndex = 1;
-                _currentSection = 'Offsite';
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: _selectedIndex == 1
-                    ? Colors.red
-                    : isDarkMode
-                        ? Colors.grey.shade800
-                        : Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.location_on,
-                    color: _selectedIndex == 1
-                        ? Colors.white
-                        : isDarkMode
-                            ? Colors.red
-                            : Colors.red,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    AppLocalizations.of(context)!.offsite,
-                    style: TextStyle(
-                      color: _selectedIndex == 1
-                          ? Colors.white
-                          : isDarkMode
-                              ? Colors.white
-                              : Colors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
-
-    return Scaffold(
-      appBar: AppBar(
-        flexibleSpace: PreferredSize(
-          preferredSize: const Size.fromHeight(80.0),
-          child: Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-                fit: BoxFit.cover,
-              ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: Text(
-                    AppLocalizations.of(context)!.attendance,
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
-                      fontSize: 30,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        centerTitle: true,
-        toolbarHeight: 100,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
-      body: Stack(
-        children: [
-          _buildPageContent(context),
-          if (_isLoading) _buildLoadingIndicator(),
-        ],
       ),
     );
   }
@@ -1371,6 +1211,70 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            flexibleSpace: PreferredSize(
+              preferredSize: const Size.fromHeight(80.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+                    fit: BoxFit.cover,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(30),
+                    bottomRight: Radius.circular(30),
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 26),
+                      child: Text(
+                        AppLocalizations.of(context)!.attendance,
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black,
+                          fontSize: 30,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            centerTitle: true,
+            toolbarHeight: 100,
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+          ),
+          body: Stack(
+            children: [
+              _buildPageContent(context),
+              if (_isLoading) _buildLoadingIndicator(),
+            ],
+          ),
+        ),
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 84,
+          left: 200,
+          right: 0,
+          child: Center(
+            child: _buildSectionContainer(),
+          ),
+        ),
+      ],
     );
   }
 }
