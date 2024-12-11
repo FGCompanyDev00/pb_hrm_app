@@ -1,11 +1,11 @@
 // attendance_screen.dart
-// Wednesday, 11/12/2024 : 2.40AM
 
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
@@ -33,6 +33,8 @@ class AttendanceScreen extends StatefulWidget {
 }
 
 class AttendanceScreenState extends State<AttendanceScreen> {
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+  FlutterLocalNotificationsPlugin();
   final LocalAuthentication auth = LocalAuthentication();
   final _storage = const FlutterSecureStorage();
   final userPreferences = sl<UserPreferences>();
@@ -66,7 +68,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
-
+    _initializeNotifications();
     _fetchWeeklyRecords();
     _retrieveSavedState();
     _retrieveDeviceId();
@@ -85,6 +87,31 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     });
   }
 
+  Future<void> _initializeNotifications() async {
+    // Android initialization settings
+    const AndroidInitializationSettings initializationSettingsAndroid =
+    AndroidInitializationSettings('@mipmap/playstore'); // Set the app icon for Android
+
+    // iOS initialization settings
+    DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
+      onDidReceiveLocalNotification: onDidReceiveLocalNotification, // Handle when a notification is received on iOS
+    );
+
+    // Combine both Android and iOS settings
+    InitializationSettings initializationSettings = InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
+    );
+
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  }
+
+  Future<void> onDidReceiveLocalNotification(
+      int id, String? title, String? body, String? payload) async {
+    // Handle your notification when tapped (e.g., show a dialog)
+    print('iOS notification: $title, $body');
+  }
+
   Future<void> _determineAndShowLocationModal() async {
     setState(() {
       _isLoading = true; // Show loading indicator
@@ -100,6 +127,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     });
 
     // _showLocationModal(_isOffsite ? 'Offsite' : 'Office');
+  }
+
+  String _formatDuration(Duration duration) {
+    int hours = duration.inHours;
+    int minutes = duration.inMinutes % 60;
+    int seconds = duration.inSeconds % 60;
+    return '$hours:$minutes:$seconds';
   }
 
   Future<void> _retrieveSavedState() async {
@@ -192,6 +226,36 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         await _sendCheckInOutRequest(record);
       }
     });
+
+    _showCheckInNotification(_checkInTime);
+  }
+
+  Future<void> _showCheckInNotification(String checkInTime) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'attendance_channel_id', // ID for the channel
+      'Attendance Notifications', // Name of the channel
+      channelDescription: 'Notifications for check-in/check-out',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const NotificationDetails notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await flutterLocalNotificationsPlugin.show(
+      0, // Notification ID
+      'Check-in Successful', // Title
+      'Check-in Time: $checkInTime', // Body
+      notificationDetails,
+    );
   }
 
   Future<void> _performCheckOut(DateTime now) async {
@@ -240,6 +304,39 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         await _sendCheckInOutRequest(record);
       }
     });
+
+    await _showCheckOutNotification(_checkOutTime, _workingHours);
+  }
+
+  // Method to show notification for check-out
+  Future<void> _showCheckOutNotification(String checkOutTime, Duration workingHours) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'attendance_channel_id',
+      'Attendance Notifications',
+      channelDescription: 'Notifications for check-in/check-out',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const NotificationDetails notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    String workingHoursString = '${workingHours.inHours.toString().padLeft(2, '0')}:${(workingHours.inMinutes % 60).toString().padLeft(2, '0')}:${(workingHours.inSeconds % 60).toString().padLeft(2, '0')}';
+
+    await flutterLocalNotificationsPlugin.show(
+      1, // Notification ID
+      'Check-out Successful', // Title
+      'Check-out Time: $checkOutTime\nWorking Hours: $workingHoursString', // Body
+      notificationDetails,
+    );
   }
 
   Future<void> _resetSessionData() async {
@@ -340,6 +437,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               'checkIn': item['check_in_time'].toString(),
               'checkOut': item['check_out_time'].toString(),
               'workingHours': item['workDuration'].toString(),
+              'checkInStatus': item['check_in_status']?.toString() ?? 'unknown',
+              'checkOutStatus': item['check_out_status']?.toString() ?? 'unknown',
             };
           }).toList();
 
@@ -472,6 +571,19 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         print('Error using biometrics: $e');
       }
       return false;
+    }
+  }
+
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase() ?? 'unknown') {
+      case 'office':
+        return Colors.green;
+      case 'offsite':
+        return Colors.red;
+      case 'home':
+        return Colors.orange;
+      default:
+        return Colors.green;
     }
   }
 
@@ -783,7 +895,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : const Color(0xFF003366), // Adjust text color for dark mode
+                          color: isDarkMode ? Colors.white : const Color(0xFF003366),
                         ),
                       ),
                       const TextSpan(text: ', '), // Comma separator
@@ -791,7 +903,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                         text: datePart, // Date part
                         style: TextStyle(
                           fontSize: 15,
-                          color: isDarkMode ? Colors.white70 : Colors.black, // Adjust text color for dark mode
+                          color: isDarkMode ? Colors.white70 : Colors.black,
                         ),
                       ),
                     ],
@@ -803,14 +915,22 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Divider(color: isDarkMode ? Colors.white24 : Colors.grey.shade300), // Adjust divider color for dark mode
+            Divider(color: isDarkMode ? Colors.white24 : Colors.grey.shade300),
             const SizedBox(height: 8),
             // Attendance Items Row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildAttendanceItem(AppLocalizations.of(context)!.checkIn, record['checkIn']!, Colors.orange),
-                _buildAttendanceItem(AppLocalizations.of(context)!.checkOut, record['checkOut']!, Colors.green),
+                _buildAttendanceItem(
+                  AppLocalizations.of(context)!.checkIn,
+                  record['checkIn'] ?? '--:--:--',
+                  _getStatusColor(record['checkInStatus']),
+                ),
+                _buildAttendanceItem(
+                  AppLocalizations.of(context)!.checkOut,
+                  record['checkOut'] ?? '--:--:--',
+                  _getStatusColor(record['checkOutStatus']),
+                ),
                 _buildAttendanceItem(AppLocalizations.of(context)!.workingHours, record['workingHours']!, Colors.blue),
               ],
             ),
@@ -1066,7 +1186,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         child: Text(
           AppLocalizations.of(context)!.noWeeklyRecordsFound,
           style: TextStyle(
-            color: isDarkMode ? Colors.white70 : Colors.black54, // Adjust text color for dark mode
+            color: isDarkMode ? Colors.white70 : Colors.black54,
             fontSize: 16,
           ),
         ),
@@ -1099,7 +1219,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                     AppLocalizations.of(context)!.checkIn,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : Colors.black, // Adjust text color for dark mode
+                      color: isDarkMode ? Colors.white : Colors.black,
                     ),
                   ),
                 ),
@@ -1110,7 +1230,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                     AppLocalizations.of(context)!.checkOut,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : Colors.black, // Adjust text color for dark mode
+                      color: isDarkMode ? Colors.white : Colors.black,
                     ),
                   ),
                 ),
@@ -1121,7 +1241,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                     AppLocalizations.of(context)!.workingHours,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : Colors.black, // Adjust text color for dark mode
+                      color: isDarkMode ? Colors.white : Colors.black,
                     ),
                   ),
                 ),
