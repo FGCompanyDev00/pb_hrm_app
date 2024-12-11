@@ -69,6 +69,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
+    _loadBiometricSetting();
     _retrieveSavedState();
     _fetchWeeklyRecords();
     _retrieveSavedState();
@@ -95,6 +96,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     _refreshTimer?.cancel();
     _positionStreamSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadBiometricSetting() async {
+    bool isEnabled = (await _storage.read(key: 'biometricEnabled') ?? 'false') == 'true';
+    setState(() {
+      _biometricEnabled = isEnabled;
+    });
   }
 
   Future<void> _retrieveSavedState() async {
@@ -417,10 +425,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
+
+    await _loadBiometricSetting();
+
     if (!_biometricEnabled) {
       _showCustomDialog(
-        AppLocalizations.of(context)!.biometricNotEnabled,
-        AppLocalizations.of(context)!.enableBiometricFirst,
+        'Biometric not enabled',
+        'Please enable biometric authentication first.',
         isSuccess: false,
       );
       return;
@@ -431,8 +442,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     if (!didAuthenticate) {
       if (context.mounted) {
         _showCustomDialog(
-          AppLocalizations.of(context)!.authenticationFailed,
-          AppLocalizations.of(context)!.authenticateToContinue,
+          'Authentication failed',
+          'Please authenticate to continue.',
           isSuccess: false,
         );
       }
