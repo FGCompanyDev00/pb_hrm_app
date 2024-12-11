@@ -148,7 +148,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _performCheckIn(DateTime now) async {
-    await initializeService();
+    // await initializeService();
 
     setState(() {
       _checkInTime = DateFormat('HH:mm:ss').format(now);
@@ -195,7 +195,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _performCheckOut(DateTime now) async {
-    await stopBackgroundService();
+    // await stopBackgroundService();
 
     setState(() {
       _checkOutTime = DateFormat('HH:mm:ss').format(now);
