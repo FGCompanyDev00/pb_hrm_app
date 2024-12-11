@@ -2,12 +2,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
-import '../settings/theme_notifier.dart';
 
 class NotificationDetailPage extends StatefulWidget {
   final String id;
@@ -30,8 +28,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
   Map<String, dynamic>? approvalData;
   String? requestorImage;
 
-  final String _imageBaseUrl =
-      'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
+  final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
   @override
   void initState() {
@@ -46,8 +43,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
     try {
       final String? token = await _getToken();
       if (token == null) {
-        _showErrorDialog('Authentication Error',
-            'Token not found. Please log in again.');
+        _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
         return;
       }
 
@@ -55,8 +51,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
         apiUrl = '$baseUrl/api/leave_request/all/${widget.id}';
       } else if (widget.type == 'car') {
         apiUrl = '$baseUrl/api/office-administration/car_permit/${widget.id}';
-      }
-      else {
+      } else {
         throw Exception('Unknown type: ${widget.type}');
       }
 
@@ -70,12 +65,9 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if ((data['statusCode'] == 200 || data['statusCode'] == 201) &&
-            data['results'] != null) {
+        if ((data['statusCode'] == 200 || data['statusCode'] == 201) && data['results'] != null) {
           setState(() {
-            approvalData = widget.type == 'leave'
-                ? Map<String, dynamic>.from(data['results'][0])
-                : Map<String, dynamic>.from(data['results']);
+            approvalData = widget.type == 'leave' ? Map<String, dynamic>.from(data['results'][0]) : Map<String, dynamic>.from(data['results']);
 
             if (widget.type == 'leave') {
               String employeeId = approvalData?['employee_id'] ?? approvalData?['requestor_id'] ?? '';
@@ -141,8 +133,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['statusCode'] == 200 && data['results'] != null) {
-          return data['results']['images'] ??
-              'https://via.placeholder.com/150';
+          return data['results']['images'] ?? 'https://via.placeholder.com/150';
         } else {
           throw Exception(data['message'] ?? 'Failed to load profile image.');
         }
@@ -157,11 +148,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
   }
 
   bool isPendingStatus(String status) {
-    return status.toLowerCase() == 'waiting' ||
-        status.toLowerCase() == 'pending' ||
-        status.toLowerCase() == 'processing' ||
-        status.toLowerCase() == 'branch waiting' ||
-        status.toLowerCase() == 'branch processing';
+    return status.toLowerCase() == 'waiting' || status.toLowerCase() == 'pending' || status.toLowerCase() == 'processing' || status.toLowerCase() == 'branch waiting' || status.toLowerCase() == 'branch processing';
   }
 
   String formatDate(String? dateStr, {bool includeDay = false}) {
@@ -206,49 +193,42 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    String status = (approvalData?['status']?.toString() ??
-        approvalData?['is_approve']?.toString() ??
-        'Pending')
-        .trim();
+    String status = (approvalData?['status']?.toString() ?? approvalData?['is_approve']?.toString() ?? 'Pending').trim();
 
     return Scaffold(
       appBar: _buildAppBar(context),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 10),
-            _buildRequestorSection(),
-            const SizedBox(height: 20),
-            _buildBlueSection(),
-            const SizedBox(height: 5),
-            _buildDetailsSection(),
-            const SizedBox(height: 30),
-            if (isPendingStatus(status)) ...[
-              _buildCommentInputSection(),
-              const SizedBox(height: 22),
-              _buildActionButtons(),
-            ],
-            if (!isPendingStatus(status) &&
-                status.toLowerCase() == 'reject')
-              _buildDenyReasonSection(),
-          ],
-        ),
-      ),
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 10),
+                  _buildRequestorSection(),
+                  const SizedBox(height: 20),
+                  _buildBlueSection(),
+                  const SizedBox(height: 5),
+                  _buildDetailsSection(),
+                  const SizedBox(height: 30),
+                  if (isPendingStatus(status)) ...[
+                    _buildCommentInputSection(),
+                    const SizedBox(height: 22),
+                    _buildActionButtons(),
+                  ],
+                  if (!isPendingStatus(status) && status.toLowerCase() == 'reject') _buildDenyReasonSection(),
+                ],
+              ),
+            ),
     );
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
     return AppBar(
       flexibleSpace: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+            image: AssetImage(darkModeGlobal ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
           borderRadius: const BorderRadius.only(
@@ -261,14 +241,14 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
       title: Text(
         'Notification Details',
         style: TextStyle(
-          color: isDarkMode ? Colors.white : Colors.black,
+          color: darkModeGlobal ? Colors.white : Colors.black,
           fontSize: 24,
         ),
       ),
       leading: IconButton(
         icon: Icon(
           Icons.arrow_back_ios_new,
-          color: isDarkMode ? Colors.white : Colors.black,
+          color: darkModeGlobal ? Colors.white : Colors.black,
           size: 24,
         ),
         onPressed: () {
@@ -282,24 +262,16 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
   }
 
   Widget _buildRequestorSection() {
-    String requestorName = approvalData?['employee_name'] ??
-        approvalData?['requestor_name'] ??
-        'No Name';
+    String requestorName = approvalData?['employee_name'] ?? approvalData?['requestor_name'] ?? 'No Name';
 
     String submittedOn = 'N/A';
-    if (approvalData?['created_at'] != null &&
-        approvalData!['created_at'].toString().isNotEmpty) {
+    if (approvalData?['created_at'] != null && approvalData!['created_at'].toString().isNotEmpty) {
       submittedOn = formatDate(approvalData!['created_at']);
-    } else if (widget.type == 'car' &&
-        approvalData?['created_date'] != null &&
-        approvalData!['created_date'].toString().isNotEmpty) {
+    } else if (widget.type == 'car' && approvalData?['created_date'] != null && approvalData!['created_date'].toString().isNotEmpty) {
       submittedOn = formatDate(approvalData!['created_date']);
     }
 
-    String profileImage = requestorImage ??
-        'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
-
-    final bool isDarkMode = Provider.of<ThemeNotifier>(context).isDarkMode;
+    String profileImage = requestorImage ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -307,7 +279,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
         Text(
           'Requestor',
           style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black,
+            color: darkModeGlobal ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
@@ -334,7 +306,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
                 Text(
                   requestorName,
                   style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,
+                    color: darkModeGlobal ? Colors.white : Colors.black,
                     fontSize: 18,
                   ),
                 ),
@@ -343,7 +315,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
                   'Submitted on $submittedOn',
                   style: TextStyle(
                     fontSize: 16,
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                    color: darkModeGlobal ? Colors.white70 : Colors.black54,
                   ),
                 ),
               ],
@@ -355,19 +327,18 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
   }
 
   Widget _buildBlueSection() {
-    final bool isDarkMode = Provider.of<ThemeNotifier>(context).isDarkMode;
     return Padding(
       padding: const EdgeInsets.only(bottom: 30.0),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 25),
         decoration: BoxDecoration(
-          color: isDarkMode ? Colors.blueGrey.withOpacity(0.4) : Colors.lightBlueAccent.withOpacity(0.4),
+          color: darkModeGlobal ? Colors.blueGrey.withOpacity(0.4) : Colors.lightBlueAccent.withOpacity(0.4),
           borderRadius: BorderRadius.circular(25),
         ),
         child: Text(
           _getTypeHeader(),
           style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black,
+            color: darkModeGlobal ? Colors.white : Colors.black,
             fontSize: 18,
           ),
         ),
@@ -404,30 +375,17 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInfoRow('Leave Request ID',
-            approvalData?['take_leave_request_id']?.toString() ?? 'N/A',
-            Icons.assignment, Colors.green),
+        _buildInfoRow('Leave Request ID', approvalData?['take_leave_request_id']?.toString() ?? 'N/A', Icons.assignment, Colors.green),
         const SizedBox(height: 8),
-        _buildInfoRow('Leave Type', approvalData?['name'] ?? 'N/A',
-            Icons.person, Colors.purple),
+        _buildInfoRow('Leave Type', approvalData?['name'] ?? 'N/A', Icons.person, Colors.purple),
         const SizedBox(height: 8),
-        _buildInfoRow('Reason', approvalData?['take_leave_reason'] ?? 'N/A',
-            Icons.book, Colors.blue),
+        _buildInfoRow('Reason', approvalData?['take_leave_reason'] ?? 'N/A', Icons.book, Colors.blue),
         const SizedBox(height: 8),
-        _buildInfoRow(
-            'From Date',
-            formatDate(approvalData?['take_leave_from'], includeDay: true),
-            Icons.calendar_today,
-            Colors.blue),
+        _buildInfoRow('From Date', formatDate(approvalData?['take_leave_from'], includeDay: true), Icons.calendar_today, Colors.blue),
         const SizedBox(height: 8),
-        _buildInfoRow(
-            'Until Date',
-            formatDate(approvalData?['take_leave_to'], includeDay: true),
-            Icons.calendar_today,
-            Colors.blue),
+        _buildInfoRow('Until Date', formatDate(approvalData?['take_leave_to'], includeDay: true), Icons.calendar_today, Colors.blue),
         const SizedBox(height: 8),
-        _buildInfoRow('Days', approvalData?['days']?.toString() ?? 'N/A',
-            Icons.today, Colors.orange),
+        _buildInfoRow('Days', approvalData?['days']?.toString() ?? 'N/A', Icons.today, Colors.orange),
       ],
     );
   }
@@ -436,60 +394,41 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInfoRow('Car Booking ID',
-            approvalData?['id']?.toString() ?? 'N/A', Icons.directions_car,
-            Colors.green),
+        _buildInfoRow('Car Booking ID', approvalData?['id']?.toString() ?? 'N/A', Icons.directions_car, Colors.green),
         const SizedBox(height: 8),
-        _buildInfoRow('Purpose', approvalData?['purpose'] ?? 'N/A',
-            Icons.bookmark, Colors.green),
+        _buildInfoRow('Purpose', approvalData?['purpose'] ?? 'N/A', Icons.bookmark, Colors.green),
         const SizedBox(height: 8),
-        _buildInfoRow(
-            'Date Out',
-            formatDate(approvalData?['date_out'], includeDay: true),
-            Icons.calendar_today,
-            Colors.blue),
+        _buildInfoRow('Date Out', formatDate(approvalData?['date_out'], includeDay: true), Icons.calendar_today, Colors.blue),
         const SizedBox(height: 8),
-        _buildInfoRow(
-            'Date In',
-            formatDate(approvalData?['date_in'], includeDay: true),
-            Icons.calendar_today,
-            Colors.blue),
+        _buildInfoRow('Date In', formatDate(approvalData?['date_in'], includeDay: true), Icons.calendar_today, Colors.blue),
         const SizedBox(height: 8),
-        _buildInfoRow('Place',
-            approvalData?['place']?.toString() ?? 'N/A', Icons.place,
-            Colors.orange),
+        _buildInfoRow('Place', approvalData?['place']?.toString() ?? 'N/A', Icons.place, Colors.orange),
         const SizedBox(height: 8),
-        _buildInfoRow('Status',
-            approvalData?['status']?.toString() ?? 'Pending', Icons.stairs,
-            Colors.red),
+        _buildInfoRow('Status', approvalData?['status']?.toString() ?? 'Pending', Icons.stairs, Colors.red),
       ],
     );
   }
 
-  Widget _buildInfoRow(
-      String title, String content, IconData icon, Color color) {
-    final bool isDarkMode = Provider.of<ThemeNotifier>(context).isDarkMode;
+  Widget _buildInfoRow(String title, String content, IconData icon, Color color) {
     return Row(
       children: [
         Icon(icon, size: 20, color: color),
         const SizedBox(width: 12),
         Expanded(
-          child: Text('$title: $content',
-              style: TextStyle(fontSize: 16, color: isDarkMode ? Colors.white : Colors.black)),
+          child: Text('$title: $content', style: TextStyle(fontSize: 16, color: darkModeGlobal ? Colors.white : Colors.black)),
         ),
       ],
     );
   }
 
   Widget _buildCommentInputSection() {
-    final bool isDarkMode = Provider.of<ThemeNotifier>(context).isDarkMode;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Comments',
             style: TextStyle(
               fontSize: 16,
-              color: isDarkMode ? Colors.white : Colors.black,
+              color: darkModeGlobal ? Colors.white : Colors.black,
             )),
         const SizedBox(height: 8),
         TextField(
@@ -498,11 +437,11 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
             hintText: 'Enter approval/rejection comments',
             filled: true,
-            fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
+            fillColor: darkModeGlobal ? Colors.grey[800] : Colors.white,
           ),
           maxLines: 3,
           style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black,
+            color: darkModeGlobal ? Colors.white : Colors.black,
           ),
         ),
       ],
@@ -510,31 +449,27 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
   }
 
   Widget _buildDenyReasonSection() {
-    final bool isDarkMode = Provider.of<ThemeNotifier>(context).isDarkMode;
-    String denyReason =
-        approvalData?['deny_reason']?.toString() ?? 'No reason provided.';
+    String denyReason = approvalData?['deny_reason']?.toString() ?? 'No reason provided.';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Deny Reason',
             style: TextStyle(
               fontSize: 16,
-              color: isDarkMode ? Colors.white : Colors.black,
+              color: darkModeGlobal ? Colors.white : Colors.black,
             )),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(12.0),
           decoration: BoxDecoration(
-            color: isDarkMode
-                ? Colors.red.withOpacity(0.1)
-                : Colors.red.withOpacity(0.1),
+            color: darkModeGlobal ? Colors.red.withOpacity(0.1) : Colors.red.withOpacity(0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
             denyReason,
             style: TextStyle(
               fontSize: 16,
-              color: isDarkMode ? Colors.white : Colors.black,
+              color: darkModeGlobal ? Colors.white : Colors.black,
             ),
           ),
         ),
@@ -543,22 +478,11 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
   }
 
   Widget _buildActionButtons() {
-    final bool isDarkMode = Provider.of<ThemeNotifier>(context).isDarkMode;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _buildStyledButton(
-            label: 'Reject',
-            icon: Icons.close,
-            backgroundColor: isDarkMode ? Colors.red[800]! : Colors.red,
-            textColor: Colors.white,
-            onPressed: isFinalized ? null : () => _handleReject()),
-        _buildStyledButton(
-            label: 'Approve',
-            icon: Icons.check_circle_outline,
-            backgroundColor: isDarkMode ? Colors.green[800]! : Colors.green,
-            textColor: Colors.white,
-            onPressed: isFinalized ? null : () => _handleApprove()),
+        _buildStyledButton(label: 'Reject', icon: Icons.close, backgroundColor: darkModeGlobal ? Colors.red[800]! : Colors.red, textColor: Colors.white, onPressed: isFinalized ? null : () => _handleReject()),
+        _buildStyledButton(label: 'Approve', icon: Icons.check_circle_outline, backgroundColor: darkModeGlobal ? Colors.green[800]! : Colors.green, textColor: Colors.white, onPressed: isFinalized ? null : () => _handleApprove()),
       ],
     );
   }
@@ -574,17 +498,11 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor,
-        padding:
-        const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30)),
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
       ),
       icon: Icon(icon, color: textColor, size: 20),
-      label: Text(label,
-          style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: textColor)),
+      label: Text(label, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: textColor)),
     );
   }
 
@@ -604,8 +522,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String? token = await _getToken();
     if (token == null) {
-      _showErrorDialog('Authentication Error',
-          'Token not found. Please log in again.');
+      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
       setState(() {
         isFinalized = false;
       });
@@ -665,14 +582,12 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _showSuccessDialog(
-            'Success', 'Request has been $action successfully.');
+        _showSuccessDialog('Success', 'Request has been $action successfully.');
         await _fetchApprovalDetails();
         Navigator.of(context).pop(true);
       } else {
         final responseBody = jsonDecode(response.body);
-        String errorMessage =
-            responseBody['message'] ?? 'Failed to $action the request.';
+        String errorMessage = responseBody['message'] ?? 'Failed to $action the request.';
         _showErrorDialog('Error', errorMessage);
         setState(() {
           isFinalized = false;

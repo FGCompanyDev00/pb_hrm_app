@@ -6,6 +6,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:pb_hrsystem/services/offline_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -13,6 +14,8 @@ final mediaQuery = MediaQuery.of(navigatorKey.currentState!.context);
 final fullHeight = mediaQuery.size.height;
 final connectivityResult = sl<Connectivity>();
 OfflineProvider offlineProvider = Provider.of<OfflineProvider>(navigatorKey.currentState!.context, listen: false);
+final bool darkModeGlobal = Provider.of<ThemeNotifier>(navigatorKey.currentState!.context).isDarkMode;
+
 FToast fToast = FToast();
 List<Events> eventsForDay = [];
 List<Events> eventsForAll = [];
