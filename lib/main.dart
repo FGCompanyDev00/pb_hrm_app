@@ -28,7 +28,11 @@ import 'hive_helper/model/attendance_record.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await setupServiceLocator();
+  try {
+    await setupServiceLocator();
+  } catch (e) {
+    print("Error during service locator setup: $e");
+  }
   await initializeHive();
   sl<OfflineProvider>().initializeCalendar();
 

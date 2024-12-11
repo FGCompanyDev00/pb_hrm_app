@@ -9,9 +9,15 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 final GetIt sl = GetIt.instance;
 
 Future<void> setupServiceLocator() async {
-  final prefs = await SharedPreferences.getInstance();
+  try {
+    final prefs = await SharedPreferences.getInstance();
 
-  sl.registerLazySingleton<UserPreferences>(() => UserPreferences(prefs));
-  sl.registerLazySingleton<Connectivity>(() => Connectivity());
-  sl.registerLazySingleton<OfflineProvider>(() => OfflineProvider());
+    sl.registerLazySingleton<UserPreferences>(() => UserPreferences(prefs));
+    print('UserPreferences service registered');
+    sl.registerLazySingleton<Connectivity>(() => Connectivity());
+    sl.registerLazySingleton<OfflineProvider>(() => OfflineProvider());
+  } catch (e) {
+    print("Error during service locator setup: $e");
+  }
 }
+

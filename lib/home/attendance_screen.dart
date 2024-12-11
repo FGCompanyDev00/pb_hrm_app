@@ -33,8 +33,9 @@ class AttendanceScreen extends StatefulWidget {
 
 class AttendanceScreenState extends State<AttendanceScreen> {
   final LocalAuthentication auth = LocalAuthentication();
-  final _storage = const FlutterSecureStorage();
   final userPreferences = sl<UserPreferences>();
+  final _storage = const FlutterSecureStorage();
+
 
   bool _biometricEnabled = false;
 
@@ -277,8 +278,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _performCheckIn(DateTime now) async {
-    await initializeService();
+    await initializeService();  // Ensure services are set up
 
+    // Update UI to reflect check-in
     setState(() {
       _checkInTime = DateFormat('HH:mm:ss').format(now);
       _checkOutTime = '--:--:--';
@@ -290,13 +292,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       _startTimerForWorkingHours();
     });
 
-    // Store check-in time locally
+    // Store the check-in time locally using UserPreferences
     await userPreferences.storeCheckInTime(_checkInTime);
 
     // Remove any existing check-out time
     await userPreferences.removeCheckOutTime();
 
-    // Create AttendanceRecord
+    // Create AttendanceRecord object
     AttendanceRecord record = AttendanceRecord(
       deviceId: _deviceId,
       latitude: '',
