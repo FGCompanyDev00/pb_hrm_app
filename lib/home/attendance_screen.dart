@@ -371,8 +371,12 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   Future<void> _sendCheckInOutRequest(AttendanceRecord record) async {
     if (sl<OfflineProvider>().isOfflineService.value) return;
 
+    // Determine the URL based on offsite or office API
     String url = _isOffsite ? offsiteApiUrl : officeApiUrl;
     String? token = userPreferences.getToken();
+
+    // Print the URL being hit
+    print("Sending request to API endpoint: $url");
 
     if (token == null) {
       if (mounted) {
@@ -386,6 +390,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     }
 
     try {
+      // Sending the POST request
       final response = await http.post(
         Uri.parse(url),
         headers: {
@@ -399,8 +404,16 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         }),
       );
 
+      // Print the status code and response body
+      print("Response status: ${response.statusCode}");
+      print("Response body: ${response.body}");
+
       if (response.statusCode == 201 || response.statusCode == 202) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+        // Print success message and data
+        print("Check-in/out successful: ${responseData['message']}");
+
         if (mounted) {
           _showCustomDialog(
             AppLocalizations.of(context)!.success,
@@ -409,9 +422,14 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           );
         }
       } else {
+        // Print error status code and throw exception
+        print("Failed with status code ${response.statusCode}");
         throw Exception('Failed with status code ${response.statusCode}');
       }
     } catch (error) {
+      // Print error details
+      print("Error during check-in/out: $error");
+
       if (mounted) {
         // If sending fails, save to local storage
         await offlineProvider.addPendingAttendance(record);
@@ -425,28 +443,15 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
-
-    await _loadBiometricSetting();
-
     if (!_biometricEnabled) {
-      _showCustomDialog(
-        'Biometric not enabled',
-        'Please enable biometric authentication first.',
-        isSuccess: false,
-      );
+      _showCustomDialog(AppLocalizations.of(context)!.biometricNotEnabled, AppLocalizations.of(context)!.enableBiometricFirst, isSuccess: false);
       return;
     }
 
     bool didAuthenticate = await _authenticateWithBiometrics();
 
     if (!didAuthenticate) {
-      if (context.mounted) {
-        _showCustomDialog(
-          'Authentication failed',
-          'Please authenticate to continue.',
-          isSuccess: false,
-        );
-      }
+      if (context.mounted) _showCustomDialog(AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
       return;
     }
 
@@ -587,95 +592,80 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   void _showCustomDialog(String title, String message, {bool isSuccess = true}) {
+    print('Dialog triggered: $title, $message'); // Debug line
+
     bool isCheckOutSuccess = message.toLowerCase().contains('out success');
     Color tickColor = isSuccess
         ? (isCheckOutSuccess ? Colors.red : Colors.green)
         : Colors.red;
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          print('Building dialog...');
+          bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-        Color primaryTextColor = isDarkMode ? Colors.white : Colors.black;
-        Color secondaryTextColor = isDarkMode ? Colors.white70 : Colors.black87;
-        Color dialogBgColor = isDarkMode ? Colors.grey[900]! : Colors.white;
+          Color primaryTextColor = isDarkMode ? Colors.white : Colors.black;
+          Color secondaryTextColor = isDarkMode ? Colors.white70 : Colors.black87;
+          Color dialogBgColor = isDarkMode ? Colors.grey[900]! : Colors.white;
 
-        return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          backgroundColor: dialogBgColor,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Top: Attendance icon + "Attendance"
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset(
-                      'assets/attendance.png',
-                      width: 40,
-                      height: 40,
-                      // If you have a dark mode version of the icon, you can conditionally load it.
-                      // Otherwise, ensure your icon looks good on both backgrounds.
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Attendance',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: primaryTextColor,
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            backgroundColor: dialogBgColor,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/attendance.png',
+                        width: 40,
+                        height: 40,
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Tick icon (green for check-in success, red for check-out success)
-                Icon(
-                  Icons.check_circle,
-                  color: tickColor,
-                  size: 50,
-                ),
-                const SizedBox(height: 16),
-
-                // Message (e.g. "Check IN success!" or "Check OUT success!")
-                Text(
-                  message,
-                  style: TextStyle(fontSize: 16, color: primaryTextColor),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-
-                // Close button in gold color
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFDAA520),
-                    padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Attendance',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: primaryTextColor,
+                        ),
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    AppLocalizations.of(context)!.close,
-                    style: const TextStyle(
-                      fontSize: 16,
+                  const SizedBox(height: 16),
+                  Icon(
+                    Icons.check_circle,
+                    color: tickColor,
+                    size: 50,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: primaryTextColor,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    message,
+                    style: TextStyle(color: secondaryTextColor),
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
+    } else {
+      print('Context is not mounted, dialog cannot be shown');
+    }
   }
 
   void _showWorkingHoursDialog(BuildContext context) {
