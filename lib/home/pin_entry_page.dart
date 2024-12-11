@@ -15,7 +15,7 @@ class PinEntryPage extends StatefulWidget {
 class _PinEntryPageState extends State<PinEntryPage> {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   final TextEditingController _pinController = TextEditingController();
-  bool _obscurePin = true;
+  final bool _obscurePin = true;
   String _errorMessage = '';
 
   @override
@@ -144,10 +144,10 @@ class _PinEntryPageState extends State<PinEntryPage> {
             ElevatedButton(
               onPressed: _validatePin,
               style: ButtonStyle(
-                backgroundColor: MaterialStateProperty.all(
+                backgroundColor: WidgetStateProperty.all(
                   themeNotifier.isDarkMode ? Colors.greenAccent : Colors.green,
                 ),
-                padding: MaterialStateProperty.all(
+                padding: WidgetStateProperty.all(
                   const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                 ),
               ),

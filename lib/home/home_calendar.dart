@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
-import 'package:carousel_slider/carousel_slider.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
@@ -10,7 +9,6 @@ import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/standard/extension.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw.dart';
-import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw_card.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
