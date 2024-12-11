@@ -100,9 +100,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _loadBiometricSetting() async {
-    bool isEnabled = (await _storage.read(key: 'biometricEnabled') ?? 'false') == 'true';
+    String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
     setState(() {
-      _biometricEnabled = isEnabled;
+      _biometricEnabled = biometricEnabled == 'true';
     });
   }
 
@@ -445,25 +445,36 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
+    // Check if biometric authentication is enabled
     if (!_biometricEnabled) {
-      _showCustomDialog(AppLocalizations.of(context)!.biometricNotEnabled, AppLocalizations.of(context)!.enableBiometricFirst, isSuccess: false);
+      _showCustomDialog(
+        AppLocalizations.of(context)!.biometricNotEnabled,
+        AppLocalizations.of(context)!.enableBiometricFirst,
+        isSuccess: false,
+      );
       return;
     }
 
     bool didAuthenticate = await _authenticateWithBiometrics();
 
     if (!didAuthenticate) {
-      if (context.mounted) _showCustomDialog(AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
+      if (context.mounted) {
+        _showCustomDialog(
+          AppLocalizations.of(context)!.authenticationFailed,
+          AppLocalizations.of(context)!.authenticateToContinue,
+          isSuccess: false,
+        );
+      }
       return;
     }
 
+    // Proceed with check-in or check-out
     if (isCheckIn) {
       _performCheckIn(DateTime.now());
     } else {
       _performCheckOut(DateTime.now());
     }
   }
-
 
   Future<bool> _authenticateWithBiometrics() async {
     try {
