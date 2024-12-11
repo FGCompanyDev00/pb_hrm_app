@@ -1,3 +1,5 @@
+// calendar_day_veiw_card.dart
+
 import 'dart:collection';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
@@ -43,20 +45,20 @@ class CalendarDayWidgetCard extends HookWidget {
           currentHour.value = 7;
           untilEnd.value = 10;
           displayTime.value = '7AM-10AM';
+          break;
         case 2:
           currentHour.value = 10;
           untilEnd.value = 13;
-          displayTime.value = '10AM-2PM';
+          displayTime.value = '10AM-1PM';
+          break;
         case 3:
           currentHour.value = 13;
-          untilEnd.value = 17;
-          displayTime.value = '2PM-6PM';
-        default:
-          currentHour.value = 7;
-          untilEnd.value = 10;
+          untilEnd.value = 16;
+          displayTime.value = '1PM-4PM';
+          break;
       }
 
-      currentEvents.value.clear();
+    currentEvents.value.clear();
       currentOverflowEventsRow.value.clear();
       for (var e in eventsCalendar) {
         DateTime slotStartTime = DateTime.utc(
