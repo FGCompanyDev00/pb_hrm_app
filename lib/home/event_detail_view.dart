@@ -138,7 +138,6 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
   Future<void> _respondToMeeting(String responseType) async {
     if (_hasResponded) return;
 
-    // Show confirmation dialog for "Reject" and "Maybe"
     if (responseType == 'no' || responseType == 'maybe') {
       bool confirmed = await _showConfirmationDialog(responseType);
       if (!confirmed) return;
