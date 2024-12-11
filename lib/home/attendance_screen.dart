@@ -979,34 +979,34 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     // bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 6) && _isCheckOutAvailable;
 
     return GestureDetector(
-        onTap: () async {
-          final now = DateTime.now();
-          final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 3, 0);
-          final checkInDisabledTime = DateTime(now.year, now.month, now.day, 24, 0);
-          bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
+      onTap: () async {
+        final now = DateTime.now();
+        final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 3, 0);
+        final checkInDisabledTime = DateTime(now.year, now.month, now.day, 24, 0);
+        bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
 
-          if (!_isCheckInActive) {
-            if (now.isBefore(checkInTimeAllowed) || now.isAfter(checkInDisabledTime)) {
-              _showCustomDialog(
-                AppLocalizations.of(context)!.checkInNotAllowed,
-                AppLocalizations.of(context)!.checkInLateNotAllowed,
-                isSuccess: false,
-              );
-            } else if (isCheckInEnabled) {
-              await _authenticate(context, true); // Pass 'true' for check-in
-            }
-          } else if (_isCheckInActive) {
-            // Optionally, you can add additional checks here if needed
-            await _authenticate(context, false); // Pass 'false' for check-out
-          } else {
+        if (!_isCheckInActive) {
+          if (now.isBefore(checkInTimeAllowed) || now.isAfter(checkInDisabledTime)) {
             _showCustomDialog(
-              AppLocalizations.of(context)!.alreadyCheckedIn,
-              AppLocalizations.of(context)!.alreadyCheckedInMessage,
+              AppLocalizations.of(context)!.checkInNotAllowed,
+              AppLocalizations.of(context)!.checkInLateNotAllowed,
               isSuccess: false,
             );
+          } else if (isCheckInEnabled) {
+            await _authenticate(context, true); // Pass 'true' for check-in
           }
-        },
-        child: Container(
+        } else if (_isCheckInActive) {
+          // Optionally, you can add additional checks here if needed
+          await _authenticate(context, false); // Pass 'false' for check-out
+        } else {
+          _showCustomDialog(
+            AppLocalizations.of(context)!.alreadyCheckedIn,
+            AppLocalizations.of(context)!.alreadyCheckedInMessage,
+            isSuccess: false,
+          );
+        }
+      },
+      child: Container(
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           color: isDarkMode ? Colors.grey[850] : Colors.white,
