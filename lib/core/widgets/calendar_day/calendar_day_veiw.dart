@@ -12,7 +12,6 @@ import 'package:pb_hrsystem/core/widgets/scroll_controller/check_mark_indicator.
 import 'package:pb_hrsystem/core/widgets/scroll_controller/fetch_more_indicator.dart';
 import 'package:pb_hrsystem/home/event_detail_view.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
-import 'package:pb_hrsystem/hive_helper/model/event_record.dart';
 
 class CalendarDayWidget extends HookWidget {
   const CalendarDayWidget({
@@ -22,15 +21,15 @@ class CalendarDayWidget extends HookWidget {
     this.selectedSlotTime,
   });
 
-  final List<EventRecord> eventsCalendar;
+  final List<Events> eventsCalendar;
   final DateTime? selectedDay;
   final int? selectedSlotTime;
 
   @override
   Widget build(BuildContext context) {
     final currentHour = useState(7);
-    final untilEnd = useState(11);
-    final displayTime = useState('7AM-10AM');
+    final untilEnd = useState(18);
+    final displayTime = useState('7AM-6PM');
     final switchTime = useState(1);
     final ValueNotifier<List<AdvancedDayEvent<String>>> currentEvents = useState([]);
     final ValueNotifier<List<OverflowEventsRow<String>>> currentOverflowEventsRow = useState([]);
@@ -57,15 +56,15 @@ class CalendarDayWidget extends HookWidget {
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          e.startDateTime.hour == 0 ? currentHour.value : e.startDateTime.hour,
-          e.startDateTime.minute,
+          e.start.hour == 0 ? currentHour.value : e.start.hour,
+          e.start.minute,
         );
         DateTime endTime = DateTime.utc(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          e.endDateTime.hour == 0 ? untilEnd.value : e.endDateTime.hour,
-          e.endDateTime.minute,
+          e.end.hour == 0 ? untilEnd.value : e.end.hour,
+          e.end.minute,
         );
 
         if (slotEndTime.isBefore(startTime)) {
@@ -104,7 +103,7 @@ class CalendarDayWidget extends HookWidget {
           currentEvents.value.add(AdvancedDayEvent(
             value: e.uid,
             title: e.title,
-            desc: e.description,
+            desc: e.desc,
             start: startTime,
             end: endTime,
             category: e.category,
@@ -150,7 +149,7 @@ class CalendarDayWidget extends HookWidget {
           currentEvents.value.add(AdvancedDayEvent(
             value: e.uid,
             title: e.title,
-            desc: e.description,
+            desc: e.desc,
             start: startTime,
             end: endTime,
             category: e.category,
@@ -281,9 +280,9 @@ class CalendarDayWidget extends HookWidget {
                                   builder: (context) => EventDetailView(
                                     event: {
                                       'title': event.title,
-                                      'description': eventsCalendar[itemIndex].description,
-                                      'startDateTime': eventsCalendar[itemIndex].startDateTime.toString(),
-                                      'endDateTime': eventsCalendar[itemIndex].endDateTime.toString(),
+                                      'description': eventsCalendar[itemIndex].desc,
+                                      'startDateTime': eventsCalendar[itemIndex].start.toString(),
+                                      'endDateTime': eventsCalendar[itemIndex].end.toString(),
                                       'isMeeting': eventsCalendar[itemIndex].isMeeting,
                                       'createdBy': eventsCalendar[itemIndex].createdBy ?? '',
                                       'location': eventsCalendar[itemIndex].location ?? '',
@@ -331,9 +330,9 @@ class CalendarDayWidget extends HookWidget {
                                   builder: (context) => EventDetailView(
                                     event: {
                                       'title': event.title,
-                                      'description': eventsCalendar[itemIndex].description,
-                                      'startDateTime': eventsCalendar[itemIndex].startDateTime.toString(),
-                                      'endDateTime': eventsCalendar[itemIndex].endDateTime.toString(),
+                                      'description': eventsCalendar[itemIndex].desc,
+                                      'startDateTime': eventsCalendar[itemIndex].start.toString(),
+                                      'endDateTime': eventsCalendar[itemIndex].end.toString(),
                                       'isMeeting': eventsCalendar[itemIndex].isMeeting,
                                       'createdBy': eventsCalendar[itemIndex].createdBy ?? '',
                                       'location': eventsCalendar[itemIndex].location ?? '',

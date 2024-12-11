@@ -9,6 +9,7 @@ import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/standard/extension.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
+import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw_card.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
@@ -719,9 +720,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: isDarkMode
-                            ? Colors.black.withOpacity(0.6)
-                            : Colors.black.withOpacity(0.2), // Darker shadow for dark mode
+                        color: isDarkMode ? Colors.black.withOpacity(0.6) : Colors.black.withOpacity(0.2), // Darker shadow for dark mode
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -765,7 +764,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     required IconData icon,
     required String label,
     required VoidCallback onTap,
-    required bool isDarkMode,  // Added the 'isDarkMode' parameter here
+    required bool isDarkMode, // Added the 'isDarkMode' parameter here
   }) {
     return InkWell(
       onTap: onTap,
@@ -777,7 +776,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             Icon(
               icon,
               size: 20,
-              color: isDarkMode ? Colors.white70 : Colors.black54,  // Dark mode: white, Light mode: black
+              color: isDarkMode ? Colors.white70 : Colors.black54, // Dark mode: white, Light mode: black
               semanticLabel: label,
             ),
             const SizedBox(width: 12),
@@ -785,7 +784,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             Text(
               label,
               style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black87,  // Dark mode: white, Light mode: black
+                color: isDarkMode ? Colors.white : Colors.black87, // Dark mode: white, Light mode: black
               ),
             ),
           ],
@@ -906,36 +905,41 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                         ),
                       ),
                     )
-                  : CarouselSlider(
-                      options: CarouselOptions(
-                        autoPlay: false,
-                        viewportFraction: 1,
-                        initialPage: liveHour(),
-                        scrollDirection: Axis.vertical,
-                        height: fullHeight * 0.46,
-                        aspectRatio: 0,
-                      ),
-                      items: [
-                        CalendarDayWidgetCard(
-                          selectedDay: _selectedDay,
-                          eventsCalendar: eventsForDay,
-                          selectedSlotTime: 1,
-                          heightTime: (fullHeight * 0.25) / 160,
-                        ),
-                        CalendarDayWidgetCard(
-                          selectedDay: _selectedDay,
-                          eventsCalendar: eventsForDay,
-                          selectedSlotTime: 2,
-                          heightTime: (fullHeight * 0.25) / 160,
-                        ),
-                        CalendarDayWidgetCard(
-                          selectedDay: _selectedDay,
-                          eventsCalendar: eventsForDay,
-                          selectedSlotTime: 3,
-                          heightTime: (fullHeight * 0.25) / 180,
-                        ),
-                      ],
+                  : CalendarDayWidget(
+                      selectedDay: _selectedDay,
+                      eventsCalendar: eventsForDay,
+                      selectedSlotTime: 1,
                     ),
+              // : CarouselSlider(
+              //     options: CarouselOptions(
+              //       autoPlay: false,
+              //       viewportFraction: 1,
+              //       initialPage: liveHour(),
+              //       scrollDirection: Axis.vertical,
+              //       height: fullHeight * 0.46,
+              //       aspectRatio: 0,
+              //     ),
+              //     items: [
+              //       CalendarDayWidgetCard(
+              //         selectedDay: _selectedDay,
+              //         eventsCalendar: eventsForDay,
+              //         selectedSlotTime: 1,
+              //         heightTime: (fullHeight * 0.25) / 160,
+              //       ),
+              //       CalendarDayWidgetCard(
+              //         selectedDay: _selectedDay,
+              //         eventsCalendar: eventsForDay,
+              //         selectedSlotTime: 2,
+              //         heightTime: (fullHeight * 0.25) / 160,
+              //       ),
+              //       CalendarDayWidgetCard(
+              //         selectedDay: _selectedDay,
+              //         eventsCalendar: eventsForDay,
+              //         selectedSlotTime: 3,
+              //         heightTime: (fullHeight * 0.25) / 180,
+              //       ),
+              //     ],
+              //   ),
             ],
           ),
         ),
@@ -1042,7 +1046,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             labelStyle: TextStyle(
               color: _selectedCategory == category
                   ? Colors.white
-                  : isDarkMode ? Colors.white70 : Colors.black87,  // Adjust text color for dark mode
+                  : isDarkMode
+                      ? Colors.white70
+                      : Colors.black87, // Adjust text color for dark mode
             ),
           );
         }).toList(),
@@ -1058,28 +1064,28 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: TextField(
-        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),  // Dynamic text color
+        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black), // Dynamic text color
         decoration: InputDecoration(
           labelText: AppLocalizations.of(context)!.searchEvents,
-          labelStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54),  // Label color in dark mode
+          labelStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54), // Label color in dark mode
           prefixIcon: const Icon(Icons.search),
-          prefixIconColor: isDarkMode ? Colors.white : Colors.black,  // Icon color in dark mode
+          prefixIconColor: isDarkMode ? Colors.white : Colors.black, // Icon color in dark mode
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8.0),
             borderSide: BorderSide(
-              color: isDarkMode ? Colors.white54 : Colors.black12,  // Border color
+              color: isDarkMode ? Colors.white54 : Colors.black12, // Border color
             ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8.0),
             borderSide: BorderSide(
-              color: isDarkMode ? Colors.white54 : Colors.black12,  // Border color when enabled
+              color: isDarkMode ? Colors.white54 : Colors.black12, // Border color when enabled
             ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8.0),
             borderSide: BorderSide(
-              color: isDarkMode ? Colors.blueAccent : Colors.blue,  // Focused border color
+              color: isDarkMode ? Colors.blueAccent : Colors.blue, // Focused border color
             ),
           ),
         ),
