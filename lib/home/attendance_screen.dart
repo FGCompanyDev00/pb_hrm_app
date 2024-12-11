@@ -99,7 +99,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       _isLoading = false;
     });
 
-    _showLocationModal(_isOffsite ? 'Offsite' : 'Office');
+    // _showLocationModal(_isOffsite ? 'Offsite' : 'Office');
   }
 
   Future<void> _retrieveSavedState() async {
@@ -486,105 +486,105 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  void _showLocationModal(String location) {
-    final isHome = location == 'Home';
-    final primaryColor = isHome ? Colors.orange : Colors.green;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          elevation: 10,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SizedBox(
-                width: constraints.maxWidth < 400 ? constraints.maxWidth * 0.9 : 400,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16.0),
-                      decoration: BoxDecoration(
-                        color: primaryColor,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Icon(
-                            isHome ? Icons.home : Icons.apartment,
-                            color: Colors.white,
-                            size: constraints.maxWidth < 400 ? 30 : 40, // Responsive icon size
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              AppLocalizations.of(context)!.locationDetected,
-                              style: TextStyle(
-                                fontSize: constraints.maxWidth < 400 ? 18 : 20,
-                                // Responsive font size
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        AppLocalizations.of(context)!.youAreCurrentlyAt(
-                          isHome ? AppLocalizations.of(context)!.home : AppLocalizations.of(context)!.office,
-                        ),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: constraints.maxWidth < 400 ? 14 : 16,
-                          // Responsive font size
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          shadowColor: Colors.black.withOpacity(0.25),
-                          elevation: 5,
-                        ),
-                        child: Text(
-                          AppLocalizations.of(context)!.ok,
-                          style: TextStyle(
-                            fontSize: constraints.maxWidth < 400 ? 14 : 16,
-                            // Responsive font size
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
+  // void _showLocationModal(String location) {
+  //   final isHome = location == 'Home';
+  //   final primaryColor = isHome ? Colors.orange : Colors.green;
+  //
+  //   showDialog(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (BuildContext context) {
+  //       return Dialog(
+  //         shape: RoundedRectangleBorder(
+  //           borderRadius: BorderRadius.circular(20),
+  //         ),
+  //         elevation: 10,
+  //         child: LayoutBuilder(
+  //           builder: (context, constraints) {
+  //             return SizedBox(
+  //               width: constraints.maxWidth < 400 ? constraints.maxWidth * 0.9 : 400,
+  //               child: Column(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 children: [
+  //                   Container(
+  //                     padding: const EdgeInsets.all(16.0),
+  //                     decoration: BoxDecoration(
+  //                       color: primaryColor,
+  //                       borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+  //                     ),
+  //                     child: Row(
+  //                       crossAxisAlignment: CrossAxisAlignment.center,
+  //                       children: [
+  //                         Icon(
+  //                           isHome ? Icons.home : Icons.apartment,
+  //                           color: Colors.white,
+  //                           size: constraints.maxWidth < 400 ? 30 : 40, // Responsive icon size
+  //                         ),
+  //                         const SizedBox(width: 16),
+  //                         Expanded(
+  //                           child: Text(
+  //                             AppLocalizations.of(context)!.locationDetected,
+  //                             style: TextStyle(
+  //                               fontSize: constraints.maxWidth < 400 ? 18 : 20,
+  //                               // Responsive font size
+  //                               fontWeight: FontWeight.bold,
+  //                               color: Colors.white,
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   ),
+  //                   Padding(
+  //                     padding: const EdgeInsets.all(16.0),
+  //                     child: Text(
+  //                       AppLocalizations.of(context)!.youAreCurrentlyAt(
+  //                         isHome ? AppLocalizations.of(context)!.home : AppLocalizations.of(context)!.office,
+  //                       ),
+  //                       textAlign: TextAlign.center,
+  //                       style: TextStyle(
+  //                         fontSize: constraints.maxWidth < 400 ? 14 : 16,
+  //                         // Responsive font size
+  //                         fontWeight: FontWeight.w500,
+  //                         color: Colors.black87,
+  //                       ),
+  //                     ),
+  //                   ),
+  //                   Padding(
+  //                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+  //                     child: ElevatedButton(
+  //                       onPressed: () {
+  //                         Navigator.of(context).pop();
+  //                       },
+  //                       style: ElevatedButton.styleFrom(
+  //                         backgroundColor: primaryColor,
+  //                         padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 24.0),
+  //                         shape: RoundedRectangleBorder(
+  //                           borderRadius: BorderRadius.circular(20),
+  //                         ),
+  //                         shadowColor: Colors.black.withOpacity(0.25),
+  //                         elevation: 5,
+  //                       ),
+  //                       child: Text(
+  //                         AppLocalizations.of(context)!.ok,
+  //                         style: TextStyle(
+  //                           fontSize: constraints.maxWidth < 400 ? 14 : 16,
+  //                           // Responsive font size
+  //                           fontWeight: FontWeight.bold,
+  //                           color: Colors.white,
+  //                         ),
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             );
+  //           },
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
 
   Widget _buildPageContent(BuildContext context) {
     return RefreshIndicator(
@@ -1080,7 +1080,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           margin: const EdgeInsets.only(top: 16, bottom: 8),
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
           decoration: BoxDecoration(
-            color: isDarkMode ? Colors.grey[800] : const Color(0xFFD5AD32),
+            color: isDarkMode ? Colors.green : const Color(0xFFD5AD32),
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
