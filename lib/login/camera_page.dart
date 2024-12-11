@@ -1,4 +1,4 @@
-// camera_page.dart
+// lib/login/camera_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -6,45 +6,61 @@ import 'package:pb_hrsystem/login/ready_page.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
-import '../theme/theme.dart';
+import '../settings/theme_notifier.dart'; // Correct import for ThemeNotifier
 
 class CameraPage extends StatelessWidget {
   const CameraPage({super.key});
 
+  /// Requests camera permission from the user.
   Future<void> _requestCameraPermission(BuildContext context) async {
+    // Check the current status of the camera permission.
     PermissionStatus status = await Permission.camera.status;
 
     if (status.isGranted) {
-      Navigator.push(context, MaterialPageRoute(builder: (context) => const ReadyPage()));
+      // If permission is already granted, navigate to ReadyPage.
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ReadyPage()),
+      );
     } else if (status.isRestricted || status.isPermanentlyDenied) {
-      // Handle restricted or permanently denied status
+      // Handle cases where permission is restricted or permanently denied.
       _showPermissionDeniedDialog(context, isPermanentlyDenied: true);
     } else if (status.isDenied) {
-      // Request camera permission again if previously denied
+      // Request camera permission if it's denied but not permanently.
       PermissionStatus newStatus = await Permission.camera.request();
       if (newStatus.isGranted) {
-        Navigator.push(context, MaterialPageRoute(builder: (context) => const ReadyPage()));
+        // If the user grants permission after the request, navigate to ReadyPage.
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ReadyPage()),
+        );
       } else {
-        // Show dialog if denied again
+        // If the user denies permission again, show a denial dialog.
         _showPermissionDeniedDialog(context, isPermanentlyDenied: false);
       }
     }
   }
 
+  /// Displays a dialog informing the user that camera permission was denied.
   void _showPermissionDeniedDialog(BuildContext context, {required bool isPermanentlyDenied}) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text(AppLocalizations.of(context)!.permissionDenied),
-          content: Text(isPermanentlyDenied ? AppLocalizations.of(context)!.cameraAccessPermanentlyDenied : AppLocalizations.of(context)!.cameraPermissionRequired),
+          content: Text(
+            isPermanentlyDenied
+                ? AppLocalizations.of(context)!.cameraAccessPermanentlyDenied
+                : AppLocalizations.of(context)!.cameraPermissionRequired,
+          ),
           actions: [
             TextButton(
               onPressed: () {
                 if (isPermanentlyDenied) {
-                  openAppSettings(); // Open the app settings for the user to manually change permission
+                  // If permission is permanently denied, open app settings.
+                  openAppSettings();
                 }
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Close the dialog.
               },
               child: Text(AppLocalizations.of(context)!.ok),
             ),
@@ -56,12 +72,15 @@ class CameraPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    // Access the ThemeNotifier using context.watch to listen for theme changes.
+    final ThemeNotifier themeNotifier = context.watch<ThemeNotifier>();
     final bool isDarkMode = themeNotifier.isDarkMode;
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
+            // Use different background images based on the current theme.
             image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
@@ -84,10 +103,10 @@ class CameraPage extends StatelessWidget {
               Center(
                 child: Text(
                   AppLocalizations.of(context)!.cameraAndPhoto,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: isDarkMode ? Colors.white : Colors.black, // Adjust text color based on theme.
                   ),
                 ),
               ),
@@ -96,9 +115,9 @@ class CameraPage extends StatelessWidget {
                 child: Text(
                   AppLocalizations.of(context)!.manyFunctions,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
-                    color: Colors.black,
+                    color: isDarkMode ? Colors.white70 : Colors.black54, // Adjust text color based on theme.
                   ),
                 ),
               ),
@@ -113,7 +132,10 @@ class CameraPage extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8.0),
                     ),
                   ),
-                  child: Text(AppLocalizations.of(context)!.next, style: const TextStyle(fontSize: 18)),
+                  child: Text(
+                    AppLocalizations.of(context)!.next,
+                    style: const TextStyle(fontSize: 18),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -121,9 +143,9 @@ class CameraPage extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildPageIndicator(context, isActive: false),
-                    _buildPageIndicator(context, isActive: false),
-                    _buildPageIndicator(context, isActive: true),
+                    _buildPageIndicator(isActive: false),
+                    _buildPageIndicator(isActive: false),
+                    _buildPageIndicator(isActive: true),
                   ],
                 ),
               ),
@@ -131,7 +153,10 @@ class CameraPage extends StatelessWidget {
               Center(
                 child: Text(
                   AppLocalizations.of(context)!.pageIndicator3of3,
-                  style: const TextStyle(fontSize: 16, color: Colors.black),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isDarkMode ? Colors.white70 : Colors.black54, // Adjust text color based on theme.
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -142,7 +167,8 @@ class CameraPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPageIndicator(BuildContext context, {required bool isActive}) {
+  /// Builds a single page indicator dot.
+  Widget _buildPageIndicator({required bool isActive}) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4.0),
       width: isActive ? 12.0 : 8.0,

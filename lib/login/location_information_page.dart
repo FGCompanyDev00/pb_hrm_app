@@ -16,7 +16,14 @@ class LocationInformationPage extends StatelessWidget {
 
     if (status.isGranted || status.isLimited) {
       // Permission is granted (limited status is iOS-specific)
-      Navigator.push(context, MaterialPageRoute(builder: (context) => const CameraPage()));
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) {
+            return const CameraPage();
+          },
+        ),
+      );
       return;
     }
 
@@ -25,7 +32,14 @@ class LocationInformationPage extends StatelessWidget {
 
     if (newStatus.isGranted || newStatus.isLimited) {
       // Permission granted (or limited)
-      Navigator.push(context, MaterialPageRoute(builder: (context) => const CameraPage()));
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) {
+            return const CameraPage();
+          },
+        ),
+      );
     } else if (newStatus.isDenied) {
       // Permission denied but not permanently
       _showPermissionDeniedDialog(context, false);
