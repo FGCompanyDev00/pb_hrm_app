@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_main_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/returnCar/car_return_page.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_page.dart';
@@ -22,10 +23,10 @@ class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
 
   @override
-  _DashboardState createState() => _DashboardState();
+  DashboardState createState() => DashboardState();
 }
 
-class _DashboardState extends State<Dashboard> {
+class DashboardState extends State<Dashboard> {
   bool _hasUnreadNotifications = true;
   late Future<UserProfile> futureUserProfile;
   late Future<List<String>> futureBanners;
@@ -46,9 +47,7 @@ class _DashboardState extends State<Dashboard> {
     _initializeHiveBoxes();
 
     // Fetch user data and banners
-    Provider.of<UserProvider>(context, listen: false).fetchAndUpdateUser();
-    futureUserProfile = fetchUserProfile();
-    futureBanners = fetchBanners();
+    refreshData();
 
     // Initialize PageController
     _pageController = PageController(initialPage: _currentPage);
@@ -70,6 +69,14 @@ class _DashboardState extends State<Dashboard> {
       await Hive.openBox<List<String>>('bannersBox');
     }
     bannersBox = Hive.box<List<String>>('bannersBox');
+  }
+
+  void refreshData() {
+    // Fetch user data and banners
+    Provider.of<UserProvider>(context, listen: false).fetchAndUpdateUser();
+    futureUserProfile = fetchUserProfile();
+    futureBanners = fetchBanners();
+    debugPrint('dashboard');
   }
 
   // Start the carousel auto-swipe timer
@@ -246,8 +253,13 @@ class _DashboardState extends State<Dashboard> {
           children: [
             if (isDarkMode) _buildDarkBackground(),
             // Make the body scrollable
-            SingleChildScrollView(
-              child: _buildMainContent(context, isDarkMode),
+            RefreshIndicator(
+              onRefresh: () async {
+                refreshData();
+              },
+              child: SingleChildScrollView(
+                child: _buildMainContent(context, isDarkMode),
+              ),
             ),
             if (_isLoading) _buildLoadingIndicator(),
           ],
@@ -316,9 +328,7 @@ class _DashboardState extends State<Dashboard> {
                       children: [
                         CircleAvatar(
                           radius: 28,
-                          backgroundImage: userProfile.imgName != 'default_avatar.jpg'
-                              ? NetworkImage(userProfile.imgName)
-                              : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                          backgroundImage: userProfile.imgName != 'default_avatar.jpg' ? NetworkImage(userProfile.imgName) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
                           backgroundColor: Colors.white,
                           onBackgroundImageError: (_, __) {
                             const AssetImage('assets/default_avatar.png');
@@ -356,16 +366,19 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Widget _buildMainContent(BuildContext context, bool isDarkMode) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildBannerCarousel(isDarkMode),
-        const SizedBox(height: 10),
-        _buildActionMenuHeader(isDarkMode),
-        const SizedBox(height: 6),
-        // Use Expanded here to allow scrolling of the GridView
-        _buildActionGrid(isDarkMode),
-      ],
+    return Container(
+      constraints: BoxConstraints(minHeight: sizeScreen(context).height * 0.8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildBannerCarousel(isDarkMode),
+          const SizedBox(height: 10),
+          _buildActionMenuHeader(isDarkMode),
+          const SizedBox(height: 6),
+          // Use Expanded here to allow scrolling of the GridView
+          _buildActionGrid(isDarkMode),
+        ],
+      ),
     );
   }
 
@@ -404,7 +417,7 @@ class _DashboardState extends State<Dashboard> {
                       image: NetworkImage(bannerUrl),
                       fit: BoxFit.cover,
                       colorFilter: isDarkMode
-                          ? ColorFilter.mode(Colors.white.withOpacity(0.1), BlendMode.lighten)  // Brighter in dark mode
+                          ? ColorFilter.mode(Colors.white.withOpacity(0.1), BlendMode.lighten) // Brighter in dark mode
                           : null,
                     ),
                   ),
@@ -517,33 +530,33 @@ class _DashboardState extends State<Dashboard> {
               'icon': 'assets/data-2.png',
               'label': AppLocalizations.of(context)!.history,
               'onTap': () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const HistoryPage()),
-              ),
+                    context,
+                    MaterialPageRoute(builder: (context) => const HistoryPage()),
+                  ),
             },
             {
               'icon': 'assets/people.png',
               'label': AppLocalizations.of(context)!.approvals,
               'onTap': () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
-              ),
+                    context,
+                    MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
+                  ),
             },
             {
               'icon': 'assets/status-up.png',
               'label': AppLocalizations.of(context)!.workTracking,
               'onTap': () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
-              ),
+                    context,
+                    MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
+                  ),
             },
             {
               'icon': 'assets/car_return.png',
               'label': AppLocalizations.of(context)!.carReturn,
               'onTap': () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ReturnCarPage()),
-              ),
+                    context,
+                    MaterialPageRoute(builder: (context) => const ReturnCarPage()),
+                  ),
             },
             {
               'icon': 'assets/KPI.png',
@@ -694,7 +707,7 @@ class _DashboardState extends State<Dashboard> {
                             MaterialPageRoute(
                               builder: (context) => const LoginPage(),
                             ),
-                                (Route<dynamic> route) => false,
+                            (Route<dynamic> route) => false,
                           );
                         },
                         style: ElevatedButton.styleFrom(

@@ -175,6 +175,9 @@ class MainScreenState extends State<MainScreen> {
       setState(() {
         _selectedIndex = index;
       });
+      if (index == 2) {
+        
+      }
     } else {
       _navigatorKeys[index].currentState?.popUntil((route) => route.isFirst);
     }

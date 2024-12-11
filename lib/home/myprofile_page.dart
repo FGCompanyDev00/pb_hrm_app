@@ -97,7 +97,7 @@ class _MyProfilePageState extends State<MyProfilePage> {
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 16,
-              color: isDarkMode ? Colors.white : Colors.black,  // Color based on theme
+              color: isDarkMode ? Colors.white : Colors.black, // Color based on theme
             ),
           ),
           const SizedBox(height: 4),
@@ -109,10 +109,10 @@ class _MyProfilePageState extends State<MyProfilePage> {
                 label: Text(
                   role.trim(),
                   style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black,  // Text color based on theme
+                    color: isDarkMode ? Colors.white : Colors.black, // Text color based on theme
                   ),
                 ),
-                backgroundColor: isDarkMode ? Colors.deepPurple : Colors.green[200],  // Background color based on theme
+                backgroundColor: isDarkMode ? Colors.deepPurple : Colors.green[200], // Background color based on theme
               );
             }).toList(),
           ),
