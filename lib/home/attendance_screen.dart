@@ -445,11 +445,12 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
-    // Check if biometric authentication is enabled
+    await _loadBiometricSetting();
+
     if (!_biometricEnabled) {
       _showCustomDialog(
-        AppLocalizations.of(context)!.biometricNotEnabled,
-        AppLocalizations.of(context)!.enableBiometricFirst,
+        'Biometric not enabled',
+        'Please enable biometric authentication first.',
         isSuccess: false,
       );
       return;
@@ -460,15 +461,14 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     if (!didAuthenticate) {
       if (context.mounted) {
         _showCustomDialog(
-          AppLocalizations.of(context)!.authenticationFailed,
-          AppLocalizations.of(context)!.authenticateToContinue,
+          'Authentication failed',
+          'Please authenticate to continue.',
           isSuccess: false,
         );
       }
       return;
     }
 
-    // Proceed with check-in or check-out
     if (isCheckIn) {
       _performCheckIn(DateTime.now());
     } else {
