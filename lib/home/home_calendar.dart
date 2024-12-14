@@ -8,7 +8,8 @@ import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/standard/extension.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
-import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_veiw.dart';
+import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_switch_view.dart';
+import 'package:pb_hrsystem/core/widgets/scroll_controller/fetch_more_indicator.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
@@ -37,6 +38,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   // ValueNotifier to hold events mapped by date
   final selectedSlot = ValueNotifier(1);
+  final switchTime = ValueNotifier(false);
 
   // Calendar properties
   CalendarFormat _calendarFormat = CalendarFormat.month;
@@ -67,6 +69,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
+    switchTime.value = (_focusedDay.hour > 18 && _focusedDay.hour < 6) ? false : true;
 
     eventsForDay = [];
     eventsForAll = [];
@@ -877,68 +880,78 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       ),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (_showFiltersAndSearchBar) _buildFilters(),
-              if (_showFiltersAndSearchBar) _buildSearchBar(),
-              _buildCalendar(context, isDarkMode),
-              const SizedBox(height: 2),
-              _buildSectionSeparator(),
-              eventsForDay.isEmpty
-                  ? SizedBox(
-                      height: sizeScreen(context).height * 0.20,
-                      child: Center(
-                        child: Text(
-                          AppLocalizations.of(context)!.noEventsForThisDay,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w500,
+        child: FetchMoreIndicator(
+          onAction: () async {
+            setState(() {
+              switchTime.value = !switchTime.value;
+            });
+
+            // if (switchTime.value < 4) switchTime.value += 1;
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.max,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (_showFiltersAndSearchBar) _buildFilters(),
+                if (_showFiltersAndSearchBar) _buildSearchBar(),
+                _buildCalendar(context, isDarkMode),
+                const SizedBox(height: 2),
+                _buildSectionSeparator(),
+                eventsForDay.isEmpty
+                    ? SizedBox(
+                        height: sizeScreen(context).height * 0.20,
+                        child: Center(
+                          child: Text(
+                            AppLocalizations.of(context)!.noEventsForThisDay,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
                         ),
+                      )
+                    : CalendarDaySwitchView(
+                        selectedDay: _selectedDay,
+                        eventsCalendar: eventsForDay,
+                        passDefaultCurrentHour: switchTime.value ? 0 : 7,
+                        passDefaultEndHour: switchTime.value ? 25 : 18,
                       ),
-                    )
-                  : CalendarDayWidget(
-                      selectedDay: _selectedDay,
-                      eventsCalendar: eventsForDay,
-                      selectedSlotTime: 1,
-                    ),
-              // : CarouselSlider(
-              //     options: CarouselOptions(
-              //       autoPlay: false,
-              //       viewportFraction: 1,
-              //       initialPage: liveHour(),
-              //       scrollDirection: Axis.vertical,
-              //       height: fullHeight * 0.46,
-              //       aspectRatio: 0,
-              //     ),
-              //     items: [
-              //       CalendarDayWidgetCard(
-              //         selectedDay: _selectedDay,
-              //         eventsCalendar: eventsForDay,
-              //         selectedSlotTime: 1,
-              //         heightTime: (fullHeight * 0.25) / 160,
-              //       ),
-              //       CalendarDayWidgetCard(
-              //         selectedDay: _selectedDay,
-              //         eventsCalendar: eventsForDay,
-              //         selectedSlotTime: 2,
-              //         heightTime: (fullHeight * 0.25) / 160,
-              //       ),
-              //       CalendarDayWidgetCard(
-              //         selectedDay: _selectedDay,
-              //         eventsCalendar: eventsForDay,
-              //         selectedSlotTime: 3,
-              //         heightTime: (fullHeight * 0.25) / 180,
-              //       ),
-              //     ],
-              //   ),
-            ],
+                // : CarouselSlider(
+                //     options: CarouselOptions(
+                //       autoPlay: false,
+                //       viewportFraction: 1,
+                //       initialPage: liveHour(),
+                //       scrollDirection: Axis.vertical,
+                //       height: fullHeight * 0.46,
+                //       aspectRatio: 0,
+                //     ),
+                //     items: [
+                //       CalendarDayWidgetCard(
+                //         selectedDay: _selectedDay,
+                //         eventsCalendar: eventsForDay,
+                //         selectedSlotTime: 1,
+                //         heightTime: (fullHeight * 0.25) / 160,
+                //       ),
+                //       CalendarDayWidgetCard(
+                //         selectedDay: _selectedDay,
+                //         eventsCalendar: eventsForDay,
+                //         selectedSlotTime: 2,
+                //         heightTime: (fullHeight * 0.25) / 160,
+                //       ),
+                //       CalendarDayWidgetCard(
+                //         selectedDay: _selectedDay,
+                //         eventsCalendar: eventsForDay,
+                //         selectedSlotTime: 3,
+                //         heightTime: (fullHeight * 0.25) / 180,
+                //       ),
+                //     ],
+                //   ),
+              ],
+            ),
           ),
         ),
       ),
