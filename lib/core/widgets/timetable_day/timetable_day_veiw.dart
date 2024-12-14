@@ -54,6 +54,31 @@ class TimeTableDayWidget extends HookWidget {
           debugPrint('invalid between 12AM and 6PM');
         } else if (e.start.hour != 0 && e.end.hour != 0 && slotStartTime.isAtSameMomentAs(slotEndTime)) {
           debugPrint('invalid same time');
+          startTime = DateTime.utc(
+            selectedDay!.year,
+            selectedDay!.month,
+            selectedDay!.day,
+            8,
+            0,
+          );
+          endTime = DateTime.utc(
+            selectedDay!.year,
+            selectedDay!.month,
+            selectedDay!.day,
+            17,
+            0,
+          );
+          currentEvents.value.add(Events(
+            uid: e.uid,
+            title: e.title,
+            desc: e.desc,
+            start: startTime,
+            end: endTime,
+            category: e.category,
+            members: e.members,
+            status: e.status,
+            leaveType: e.leaveType,
+          ));
         } else if (e.end.hour < e.start.hour) {
           debugPrint('wrong time');
         } else {
@@ -326,9 +351,7 @@ class TimeTableDayWidget extends HookWidget {
                                     children: [
                                       ColorFiltered(
                                         colorFilter: ColorFilter.mode(
-                                          Theme.of(context).brightness == Brightness.dark
-                                              ? Colors.white
-                                              : Colors.black,
+                                          Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                                           BlendMode.srcIn,
                                         ),
                                         child: Image.asset(
@@ -378,9 +401,7 @@ class TimeTableDayWidget extends HookWidget {
                                               Icon(
                                                 Icons.access_time,
                                                 size: 15,
-                                                color: Theme.of(context).brightness == Brightness.dark
-                                                    ? Colors.white
-                                                    : Colors.black,
+                                                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                                               ),
                                               const SizedBox(width: 5),
                                               Text(
@@ -389,7 +410,6 @@ class TimeTableDayWidget extends HookWidget {
                                               ),
                                             ],
                                           ),
-
                                         ],
                                       )
                                     ],

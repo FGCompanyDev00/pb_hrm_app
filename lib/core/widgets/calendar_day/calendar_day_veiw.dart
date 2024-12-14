@@ -331,8 +331,8 @@ class CalendarDayWidget extends HookWidget {
                                     event: {
                                       'title': event.title,
                                       'description': eventsCalendar[itemIndex].desc,
-                                      'startDateTime': eventsCalendar[itemIndex].start.toString(),
-                                      'endDateTime': eventsCalendar[itemIndex].end.toString(),
+                                      'startDateTime': event.start.toString(),
+                                      'endDateTime': event.end.toString(),
                                       'isMeeting': eventsCalendar[itemIndex].isMeeting,
                                       'createdBy': eventsCalendar[itemIndex].createdBy ?? '',
                                       'location': eventsCalendar[itemIndex].location ?? '',
