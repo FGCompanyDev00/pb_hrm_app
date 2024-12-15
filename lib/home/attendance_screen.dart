@@ -32,8 +32,7 @@ class AttendanceScreen extends StatefulWidget {
 }
 
 class AttendanceScreenState extends State<AttendanceScreen> {
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-  FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   final LocalAuthentication auth = LocalAuthentication();
   final _storage = const FlutterSecureStorage();
   final userPreferences = sl<UserPreferences>();
@@ -51,6 +50,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   String _deviceId = '';
   List<Map<String, String>> _weeklyRecords = [];
   bool _isLoading = true;
+  ValueNotifier<bool> _isLoadingCheck = ValueNotifier(false);
   Timer? _refreshTimer;
   bool _biometricEnabled = false;
   bool _isOffsite = false;
@@ -88,8 +88,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _initializeNotifications() async {
     // Android initialization settings
-    const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/playstore'); // Set the app icon for Android
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore'); // Set the app icon for Android
 
     // iOS initialization settings
     DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
@@ -105,8 +104,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
-  Future<void> onDidReceiveLocalNotification(
-      int id, String? title, String? body, String? payload) async {
+  Future<void> onDidReceiveLocalNotification(int id, String? title, String? body, String? payload) async {
     // Handle your notification when tapped (e.g., show a dialog)
     print('iOS notification: $title, $body');
   }
@@ -191,6 +189,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       _workingHours = Duration.zero; // Reset working hours immediately on new check-in
       _isCheckInActive = true;
       _isCheckOutAvailable = true;
+      _isLoadingCheck.value = true;
       _startTimerForWorkingHours(); // Start tracking working hours
     });
 
@@ -222,7 +221,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         await offlineProvider.addPendingAttendance(record);
         await offlineProvider.autoOffline(true);
       } else {
-        await _sendCheckInOutRequest(record);
+        await _sendCheckInOutRequest(record, true).whenComplete(() => _isLoadingCheck.value = false);
       }
     });
 
@@ -267,6 +266,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         _workingHours = now.difference(_checkInDateTime!); // Calculate working hours
         _isCheckInActive = false;
         _isCheckOutAvailable = false;
+        _isLoadingCheck.value = true;
         _timer?.cancel(); // Stop the working hours timer
         _showWorkingHoursDialog(context); // Show the working hours summary
       }
@@ -300,7 +300,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       if (e.contains(ConnectivityResult.none)) {
         await offlineProvider.addPendingAttendance(record);
       } else {
-        await _sendCheckInOutRequest(record);
+        await _sendCheckInOutRequest(record, false).whenComplete(() => _isLoadingCheck.value = false);
       }
     });
 
@@ -353,7 +353,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     userPreferences.storeWorkingHours(Duration.zero);
   }
 
-  Future<void> _sendCheckInOutRequest(AttendanceRecord record) async {
+  Future<void> _sendCheckInOutRequest(AttendanceRecord record, bool isCheckIn) async {
     if (sl<OfflineProvider>().isOfflineService.value) return;
 
     String url = _isOffsite ? offsiteApiUrl : officeApiUrl;
@@ -388,8 +388,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       if (response.statusCode == 201 || response.statusCode == 202) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
         if (mounted) {
-          _showCustomDialog(AppLocalizations.of(context)!.success, responseData['message'] ?? AppLocalizations.of(context)!.checkInOutSuccessful, isSuccess: true);
+          _showCustomDialog("${isCheckIn ? AppLocalizations.of(context)!.checkIn.toUpperCase() : AppLocalizations.of(context)!.checkOut.toUpperCase()}  ${AppLocalizations.of(context)!.success}", responseData['message'] ?? AppLocalizations.of(context)!.checkInOutSuccessful, isSuccess: true);
         }
+        return;
       } else {
         throw Exception('Failed with status code ${response.statusCode}');
       }
@@ -756,28 +757,63 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        isSuccess ? Icons.check_circle_outline : Icons.error_outline,
-                        color: isSuccess ? Colors.green : Colors.red,
-                        size: constraints.maxWidth < 400 ? 40 : 50, // Responsive icon size
-                      ),
+                      isSuccess
+                          ? Row(
+                              children: [
+                                Image.asset('assets/attendance.png', width: 40),
+                                const SizedBox(width: 20),
+                                Text(
+                                  AppLocalizations.of(context)!.attendance,
+                                  style: TextStyle(
+                                    fontSize: constraints.maxWidth < 400 ? 18 : 20,
+                                    // Responsive font size
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                )
+                              ],
+                            )
+                          : Icon(
+                              isSuccess ? Icons.check_circle_outline : Icons.error_outline,
+                              color: isSuccess ? Colors.green : Colors.red,
+                              size: constraints.maxWidth < 400 ? 40 : 50, // Responsive icon size
+                            ),
                       const SizedBox(height: 16),
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: constraints.maxWidth < 400 ? 18 : 20,
-                          // Responsive font size
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isSuccess ? Icons.check_circle_outline : Icons.error_outline,
+                            color: isSuccess ? Colors.green : Colors.red,
+                            size: constraints.maxWidth < 400 ? 40 : 50, // Responsive icon size
+                          ),
+                          const SizedBox(width: 20),
+                          Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: constraints.maxWidth < 400 ? 18 : 20,
+                              // Responsive font size
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        message,
-                        style: TextStyle(
-                          fontSize: constraints.maxWidth < 400 ? 14 : 16, // Responsive font size
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                      // Text(
+                      //   title,
+                      //   style: TextStyle(
+                      //     fontSize: constraints.maxWidth < 400 ? 18 : 20,
+                      //     // Responsive font size
+                      //     fontWeight: FontWeight.bold,
+                      //   ),
+                      // ),
+                      // const SizedBox(height: 16),
+                      // Text(
+                      //   message,
+                      //   style: TextStyle(
+                      //     fontSize: constraints.maxWidth < 400 ? 14 : 16, // Responsive font size
+                      //   ),
+                      //   textAlign: TextAlign.center,
+                      // ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: () {
@@ -1001,9 +1037,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
             bool isAuthenticated = await _authenticateWithBiometrics();
             if (isAuthenticated) {
               _performCheckIn(DateTime.now());
-              if (context.mounted) {
-                _showCustomDialog(AppLocalizations.of(context)!.checkInSuccess, AppLocalizations.of(context)!.checkInSuccessMessage, isSuccess: true);
-              }
             } else {
               if (context.mounted) {
                 _showCustomDialog(AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
@@ -1014,16 +1047,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           bool isAuthenticated = await _authenticateWithBiometrics();
           if (isAuthenticated) {
             _performCheckOut(DateTime.now());
-            if (context.mounted) {
-              _showCustomDialog(AppLocalizations.of(context)!.checkOutSuccess, AppLocalizations.of(context)!.checkOutSuccessMessage, isSuccess: true);
-            }
           } else {
             if (context.mounted) {
               _showCustomDialog(AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
             }
           }
         } else if (_isCheckInActive) {
-          _showCustomDialog(AppLocalizations.of(context)!.alreadyCheckedIn, AppLocalizations.of(context)!.alreadyCheckedInMessage, isSuccess: false);
+          // _showCustomDialog(AppLocalizations.of(context)!.alreadyCheckedIn, AppLocalizations.of(context)!.alreadyCheckedInMessage, isSuccess: false);
         }
       },
       child: Container(
@@ -1265,14 +1295,10 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     // Only Offsite button:
-    Color offsiteBgColor = _isOffsite
-        ? Colors.red
-        : (isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200);
+    Color offsiteBgColor = _isOffsite ? Colors.red : (isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200);
 
     Color offsiteIconColor = _isOffsite ? Colors.white : Colors.red;
-    Color offsiteTextColor = _isOffsite
-        ? Colors.white
-        : (isDarkMode ? Colors.white : Colors.black);
+    Color offsiteTextColor = _isOffsite ? Colors.white : (isDarkMode ? Colors.white : Colors.black);
 
     return Center(
       child: FittedBox(
@@ -1320,64 +1346,70 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    return Stack(
-      children: [
-        Scaffold(
-          appBar: AppBar(
-            flexibleSpace: PreferredSize(
-              preferredSize: const Size.fromHeight(80.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-                    fit: BoxFit.cover,
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(30),
-                    bottomRight: Radius.circular(30),
-                  ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
+    return ValueListenableBuilder(
+        valueListenable: _isLoadingCheck,
+        builder: (context, isProgress, child) {
+          return isProgress
+              ? const Center(child: CircularProgressIndicator())
+              : Stack(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 26),
-                      child: Text(
-                        AppLocalizations.of(context)!.attendance,
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black,
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
+                    Scaffold(
+                      appBar: AppBar(
+                        flexibleSpace: PreferredSize(
+                          preferredSize: const Size.fromHeight(80.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              image: DecorationImage(
+                                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+                                fit: BoxFit.cover,
+                              ),
+                              borderRadius: const BorderRadius.only(
+                                bottomLeft: Radius.circular(30),
+                                bottomRight: Radius.circular(30),
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 26),
+                                  child: Text(
+                                    AppLocalizations.of(context)!.attendance,
+                                    style: TextStyle(
+                                      color: isDarkMode ? Colors.white : Colors.black,
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
+                        centerTitle: true,
+                        toolbarHeight: 100,
+                        elevation: 0,
+                        backgroundColor: Colors.transparent,
+                      ),
+                      body: Stack(
+                        children: [
+                          _buildPageContent(context),
+                          if (_isLoading) _buildLoadingIndicator(),
+                        ],
+                      ),
+                    ),
+                    // Positioned container above the AppBar area
+                    Positioned(
+                      top: MediaQuery.of(context).padding.top + 84,
+                      left: 200,
+                      right: 0,
+                      child: Center(
+                        child: _buildSectionContainer(),
                       ),
                     ),
                   ],
-                ),
-              ),
-            ),
-            centerTitle: true,
-            toolbarHeight: 100,
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-          ),
-          body: Stack(
-            children: [
-              _buildPageContent(context),
-              if (_isLoading) _buildLoadingIndicator(),
-            ],
-          ),
-        ),
-        // Positioned container above the AppBar area
-        Positioned(
-          top: MediaQuery.of(context).padding.top + 84,
-          left: 200,
-          right: 0,
-          child: Center(
-            child: _buildSectionContainer(),
-          ),
-        ),
-      ],
-    );
+                );
+        });
   }
 
   Widget _buildLoadingIndicator() {
