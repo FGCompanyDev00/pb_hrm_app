@@ -69,7 +69,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
-    switchTime.value = (_focusedDay.hour > 18 && _focusedDay.hour < 6) ? false : true;
+    switchTime.value = (_focusedDay.hour < 18 && _focusedDay.hour > 6) ? false : true;
 
     eventsForDay = [];
     eventsForAll = [];
