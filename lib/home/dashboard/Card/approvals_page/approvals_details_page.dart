@@ -241,6 +241,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
             if (widget.type == 'leave' ||
                 widget.type == 'car' ||
                 widget.type == 'meeting') ...[
+              const SizedBox(height: 10),
               if (isPendingStatus(status)) ...[
                 _buildCommentInputSection(),
                 const SizedBox(height: 22),
