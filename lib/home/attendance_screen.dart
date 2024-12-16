@@ -103,6 +103,15 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     );
 
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+    // Request iOS permissions
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
   }
 
   Future<void> onDidReceiveLocalNotification(
@@ -745,6 +754,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -752,7 +763,11 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              color: Colors.white,
+              color: isDarkMode ? Colors.grey[900] : Colors.white, // Dark mode color support
+              border: Border.all(
+                color: isDarkMode ? Colors.white24 : Colors.black12,
+                width: 1,
+              ),
             ),
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -767,13 +782,18 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Image.asset('assets/attendance.png', width: 40),
+                            Image.asset(
+                              'assets/attendance.png',
+                              width: 40,
+                              color: isDarkMode ? const Color(0xFFDBB342) : null,
+                            ),
                             const SizedBox(width: 12),
                             Text(
                               AppLocalizations.of(context)!.attendance,
                               style: TextStyle(
                                 fontSize: constraints.maxWidth < 400 ? 18 : 20,
                                 fontWeight: FontWeight.bold,
+                                color: isDarkMode ? Colors.white : Colors.black,
                               ),
                             ),
                           ],
@@ -784,8 +804,10 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Icons.check_circle_outline,
-                              color: Colors.green,
+                              isSuccess ? Icons.check_circle_outline : Icons.error_outline,
+                              color: isSuccess
+                                  ? (isDarkMode ? Colors.greenAccent : Colors.green)
+                                  : (isDarkMode ? Colors.redAccent : Colors.red),
                               size: constraints.maxWidth < 400 ? 40 : 50,
                             ),
                             const SizedBox(width: 12),
@@ -794,6 +816,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                               style: TextStyle(
                                 fontSize: constraints.maxWidth < 400 ? 18 : 20,
                                 fontWeight: FontWeight.bold,
+                                color: isDarkMode ? Colors.white : Colors.black,
                               ),
                             ),
                           ],
@@ -807,7 +830,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                               Navigator.of(context).pop();
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFDBB342), // Gold color
+                              backgroundColor: const Color(0xFFDBB342), // Gold color for button
                               padding: const EdgeInsets.symmetric(vertical: 12.0),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14.0),
