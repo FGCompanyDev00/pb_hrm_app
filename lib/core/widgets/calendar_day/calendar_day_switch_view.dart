@@ -424,8 +424,24 @@ class CalendarDaySwitchView extends HookWidget {
                                                         const SizedBox(width: 5),
                                                         Text(eventCategory),
                                                       ],
-                                                    ),
-                                                    const SizedBox(height: 20),
+                                                    ), const SizedBox(height: 5),
+                                                    Row(
+                                                      children: [
+                                                        const Icon(Icons.title, size: 15, color: Colors.blueGrey),
+                                                        const SizedBox(width: 5),
+                                                        Align(
+                                                          alignment: Alignment.bottomCenter,
+                                                          child: Text(
+                                                            event.title,
+                                                            textAlign: TextAlign.start,
+                                                            style: const TextStyle(
+                                                              fontSize: 12,
+                                                              color: Colors.blueGrey,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    )
                                                   ],
                                                 ),
                                                 Column(
@@ -439,15 +455,6 @@ class CalendarDaySwitchView extends HookWidget {
                                                         //     ? Image.asset(iconCategory, width: 15)
                                                         //     : const SizedBox.shrink(),
                                                         const SizedBox(width: 5),
-                                                        const Icon(Icons.event, size: 15),
-                                                        const SizedBox(width: 5),
-                                                        Text(
-                                                          event.title,
-                                                          textAlign: TextAlign.start,
-                                                          style: const TextStyle(
-                                                            fontSize: 12,
-                                                          ),
-                                                        ),
                                                         const SizedBox(width: 10),
                                                         const Icon(Icons.access_time, size: 15),
                                                         const SizedBox(width: 5),

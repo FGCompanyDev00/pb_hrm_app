@@ -588,7 +588,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item['title'] ?? 'No Title',
+                          item['employee_name'] ?? 'No Name',
                           style: TextStyle(
                             color: titleColor,
                             fontSize: screenSize.width * 0.038,

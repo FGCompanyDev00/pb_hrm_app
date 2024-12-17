@@ -345,29 +345,62 @@ class TimeTableDayWidget extends HookWidget {
                             children: [
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    children: [
-                                      ColorFiltered(
-                                        colorFilter: ColorFilter.mode(
-                                          Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-                                          BlendMode.srcIn,
-                                        ),
-                                        child: Image.asset(
-                                          'assets/icons/element_4.png',
-                                          width: 20,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Text(eventType),
-                                    ],
-                                  ),
+                                  // First column for eventType and event.desc
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
+                                      // Row for icon and eventType
+                                      Row(
+                                        children: [
+                                          ColorFiltered(
+                                            colorFilter: ColorFilter.mode(
+                                              Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                              BlendMode.srcIn,
+                                            ),
+                                            child: Image.asset(
+                                              'assets/icons/element_4.png',
+                                              width: 20,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Text(eventType),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+
+                                      // Row for event.desc
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.title_sharp, size: 18, color: Colors.blueGrey),
+                                          const SizedBox(width: 5),
+                                          Align(
+                                            alignment: Alignment.bottomCenter,
+                                            child: Text(
+                                              event.desc,
+                                              textAlign: TextAlign.start,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.blueGrey,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+
+                                  const Spacer(),  // Pushes the next content to the bottom
+
+                                  // Second column for additional content like members, time, and other info
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Row for avatars
                                       Row(children: buildMembersAvatarsTimeTable(event, context)),
                                       const SizedBox(height: 20),
+
+                                      // Row for time and additional details
                                       Row(
                                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
@@ -375,24 +408,10 @@ class TimeTableDayWidget extends HookWidget {
                                             children: [
                                               iconCategory != null
                                                   ? Padding(
-                                                      padding: const EdgeInsets.only(left: 10),
-                                                      child: Image.asset(iconCategory, width: 15),
-                                                    )
+                                                padding: const EdgeInsets.only(left: 10),
+                                                child: Image.asset(iconCategory, width: 15),
+                                              )
                                                   : const SizedBox.shrink(),
-                                              ConstrainedBox(
-                                                constraints: const BoxConstraints(maxWidth: 100),
-                                                child: ListTileTheme(
-                                                  dense: true,
-                                                  contentPadding: EdgeInsets.zero,
-                                                  minVerticalPadding: 0,
-                                                  minLeadingWidth: 0,
-                                                  horizontalTitleGap: 0,
-                                                  child: Text(
-                                                    event.desc,
-                                                    style: const TextStyle(fontSize: 10),
-                                                  ),
-                                                ),
-                                              ),
                                             ],
                                           ),
                                           const SizedBox(width: 20),
@@ -411,11 +430,12 @@ class TimeTableDayWidget extends HookWidget {
                                             ],
                                           ),
                                         ],
-                                      )
+                                      ),
                                     ],
                                   ),
                                 ],
-                              ),
+                              )
+
                             ],
                           ),
                         ),

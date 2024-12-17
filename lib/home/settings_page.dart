@@ -42,7 +42,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadAppVersion() async {
     setState(() {
-      _appVersion = 'PSBV Next Demo v1.0.38(38)';
+      _appVersion = 'PSBV Next Demo v1.0.39(39)';
       // _appVersion = 'PSBV Next v${packageInfo.version}';
     });
   }

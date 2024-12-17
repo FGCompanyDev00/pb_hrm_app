@@ -102,7 +102,12 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       iOS: initializationSettingsIOS,
     );
 
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        // Handle notification tap if needed
+      },
+    );
 
     // Request iOS permissions
     await flutterLocalNotificationsPlugin
@@ -112,6 +117,22 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       badge: true,
       sound: true,
     );
+
+    // Create Android Notification Channel
+    await _createNotificationChannel();
+  }
+
+  Future<void> _createNotificationChannel() async {
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'attendance_channel_id',
+      'Attendance',
+      description: 'Notifications for check-in/check-out',
+      importance: Importance.high,
+    );
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
   }
 
   Future<void> onDidReceiveLocalNotification(
@@ -230,8 +251,15 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       if (e.contains(ConnectivityResult.none)) {
         await offlineProvider.addPendingAttendance(record);
         await offlineProvider.autoOffline(true);
+        print('No internet connection. Check-in stored locally.');
       } else {
-        await _sendCheckInOutRequest(record);
+        try {
+          await _sendCheckInOutRequest(record);
+          print('Check-in request sent successfully.');
+          await _showCheckInNotification(_checkInTime);
+        } catch (error) {
+          print('Error during Check-in process: $error');
+        }
       }
     });
 
@@ -239,31 +267,41 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _showCheckInNotification(String checkInTime) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'attendance_channel_id', // ID for the channel
-      'Attendance Notifications', // Name of the channel
-      channelDescription: 'Notifications for check-in/check-out',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
+    print('Attempting to show Check-in notification with time: $checkInTime');
 
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
+    try {
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'attendance_channel_id',
+        'Attendance Notifications',
+        channelDescription: 'Notifications for check-in/check-out',
+        importance: Importance.high,
+        priority: Priority.high,
+        ticker: 'ticker',
+      );
 
-    const NotificationDetails notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
 
-    await flutterLocalNotificationsPlugin.show(
-      0, // Notification ID
-      'Check-in Successful', // Title
-      'Check-in Time: $checkInTime', // Body
-      notificationDetails,
-    );
+      const NotificationDetails notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await flutterLocalNotificationsPlugin.show(
+        0, // Notification ID
+        'Check-in Successful', // Title
+        'Check-in Time: $checkInTime', // Body
+        notificationDetails,
+        payload: 'check_in', // Optional payload
+      );
+
+      print('Check-in notification displayed successfully.');
+    } catch (e) {
+      print('Error displaying Check-in notification: $e');
+    }
   }
 
   Future<void> _performCheckOut(DateTime now) async {
@@ -308,8 +346,15 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     await connectivityResult.checkConnectivity().then((e) async {
       if (e.contains(ConnectivityResult.none)) {
         await offlineProvider.addPendingAttendance(record);
+        print('No internet connection. Check-out stored locally.');
       } else {
-        await _sendCheckInOutRequest(record);
+        try {
+          await _sendCheckInOutRequest(record);
+          print('Check-out request sent successfully.');
+          await _showCheckOutNotification(_checkOutTime, _workingHours);
+        } catch (error) {
+          print('Error during Check-out process: $error');
+        }
       }
     });
 
@@ -318,33 +363,44 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
   // Method to show notification for check-out
   Future<void> _showCheckOutNotification(String checkOutTime, Duration workingHours) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'attendance_channel_id',
-      'Attendance Notifications',
-      channelDescription: 'Notifications for check-in/check-out',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
+    print('Attempting to show Check-out notification with time: $checkOutTime and working hours: $workingHours');
 
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
+    try {
+      const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        'attendance_channel_id',
+        'Attendance Notifications',
+        channelDescription: 'Notifications for check-in/check-out',
+        importance: Importance.high,
+        priority: Priority.high,
+        ticker: 'ticker',
+      );
 
-    const NotificationDetails notificationDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+      const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
 
-    String workingHoursString = '${workingHours.inHours.toString().padLeft(2, '0')}:${(workingHours.inMinutes % 60).toString().padLeft(2, '0')}:${(workingHours.inSeconds % 60).toString().padLeft(2, '0')}';
+      const NotificationDetails notificationDetails = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
 
-    await flutterLocalNotificationsPlugin.show(
-      1, // Notification ID
-      'Check-out Successful', // Title
-      'Check-out Time: $checkOutTime\nWorking Hours: $workingHoursString', // Body
-      notificationDetails,
-    );
+      String workingHoursString =
+          '${workingHours.inHours.toString().padLeft(2, '0')}:${(workingHours.inMinutes % 60).toString().padLeft(2, '0')}:${(workingHours.inSeconds % 60).toString().padLeft(2, '0')}';
+
+      await flutterLocalNotificationsPlugin.show(
+        1, // Notification ID
+        'Check-out Successful', // Title
+        'Check-out Time: $checkOutTime\nWorking Hours: $workingHoursString', // Body
+        notificationDetails,
+        payload: 'check_out', // Optional payload
+      );
+
+      print('Check-out notification displayed successfully.');
+    } catch (e) {
+      print('Error displaying Check-out notification: $e');
+    }
   }
 
   Future<void> _resetSessionData() async {
@@ -1034,8 +1090,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     }
 
     final now = DateTime.now();
-    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 4, 0);
-    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 24, 0);
+    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 3, 0);
+    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 23, 0);
     bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
     // bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 6) && _isCheckOutAvailable;
 
