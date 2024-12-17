@@ -37,10 +37,12 @@ class CalendarDaySwitchView extends HookWidget {
     final ValueNotifier<List<OverflowEventsRow<String>>> currentOverflowEventsRow = useState([]);
 
     autoEventsSlot() {
+      final liveDay = DateTime.now();
       currentHourDefault.value = passDefaultCurrentHour;
       untilEndDefault.value = passDefaultEndHour;
       currentEvents.value.clear();
       currentOverflowEventsRow.value.clear();
+      currentHour.value = liveDay.hour < 18 ? liveDay.hour : 7;
       for (var e in eventsCalendar) {
         DateTime slotStartTime = DateTime.utc(
           selectedDay!.year,
@@ -424,7 +426,6 @@ class CalendarDaySwitchView extends HookWidget {
                                                       ],
                                                     ),
                                                     const SizedBox(height: 20),
-
                                                   ],
                                                 ),
                                                 Column(

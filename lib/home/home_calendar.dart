@@ -917,7 +917,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                     : CalendarDaySwitchView(
                         selectedDay: _selectedDay,
                         eventsCalendar: eventsForDay,
-                        passDefaultCurrentHour: switchTime.value ? 0 : 7,
+                        passDefaultCurrentHour: switchTime.value
+                            ? 0
+                            : _focusedDay.hour < 18
+                                ? _focusedDay.hour
+                                : 7,
                         passDefaultEndHour: switchTime.value ? 25 : 18,
                       ),
                 // : CarouselSlider(
