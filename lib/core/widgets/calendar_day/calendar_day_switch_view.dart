@@ -337,7 +337,7 @@ class CalendarDaySwitchView extends HookWidget {
                                     child: Row(
                                       children: [
                                         Column(
-                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
                                             Column(
@@ -350,23 +350,32 @@ class CalendarDaySwitchView extends HookWidget {
                                                   ],
                                                 ),
                                                 const SizedBox(height: 20),
-                                                Row(
-                                                  children: [
-                                                    iconCategory != null ? Image.asset(iconCategory, width: 15) : const SizedBox.shrink(),
-                                                    const SizedBox(width: 5),
-                                                    Text(event.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                                  ],
-                                                ),
-                                                Text(event.desc, style: const TextStyle(fontSize: 10)),
                                               ],
                                             ),
                                             Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
-                                                Row(children: _buildMembersAvatars(event, context)),
+                                                // Avatars Row
+                                                Row(
+                                                  children: _buildMembersAvatars(event, context),
+                                                ),
                                                 const SizedBox(height: 20),
+                                                // Combined Time and Title Row
                                                 Row(
                                                   children: [
+                                                    // Category Icon and Title Text
+                                                    if (iconCategory != null) ...[
+                                                      Image.asset(iconCategory, width: 15),
+                                                      const SizedBox(width: 5),
+                                                    ],
+                                                    Text(
+                                                      event.title,
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 15),
+                                                    // Time Icon and Text
                                                     const Icon(Icons.access_time, size: 15),
                                                     const SizedBox(width: 5),
                                                     Text(
@@ -374,7 +383,7 @@ class CalendarDaySwitchView extends HookWidget {
                                                       style: const TextStyle(fontSize: 10),
                                                     ),
                                                   ],
-                                                )
+                                                ),
                                               ],
                                             ),
                                           ],
@@ -401,7 +410,7 @@ class CalendarDaySwitchView extends HookWidget {
                                         child: Row(
                                           children: [
                                             Column(
-                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                              crossAxisAlignment: CrossAxisAlignment.start,
                                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                               children: [
                                                 Column(
@@ -415,21 +424,7 @@ class CalendarDaySwitchView extends HookWidget {
                                                       ],
                                                     ),
                                                     const SizedBox(height: 20),
-                                                    Row(
-                                                      children: [
-                                                        iconCategory != null ? Image.asset(iconCategory, width: 15) : const SizedBox.shrink(),
-                                                        const SizedBox(width: 5),
-                                                        Text(
-                                                          event.title,
-                                                          textAlign: TextAlign.center,
-                                                          style: const TextStyle(
-                                                            fontSize: 12,
-                                                            fontWeight: FontWeight.bold,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    Text(event.desc, style: const TextStyle(fontSize: 10)),
+
                                                   ],
                                                 ),
                                                 Column(
@@ -439,6 +434,20 @@ class CalendarDaySwitchView extends HookWidget {
                                                     const SizedBox(height: 20),
                                                     Row(
                                                       children: [
+                                                        // iconCategory != null
+                                                        //     ? Image.asset(iconCategory, width: 15)
+                                                        //     : const SizedBox.shrink(),
+                                                        const SizedBox(width: 5),
+                                                        const Icon(Icons.event, size: 15),
+                                                        const SizedBox(width: 5),
+                                                        Text(
+                                                          event.title,
+                                                          textAlign: TextAlign.start,
+                                                          style: const TextStyle(
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
+                                                        const SizedBox(width: 10),
                                                         const Icon(Icons.access_time, size: 15),
                                                         const SizedBox(width: 5),
                                                         Text(
@@ -446,7 +455,7 @@ class CalendarDaySwitchView extends HookWidget {
                                                           style: const TextStyle(fontSize: 10),
                                                         ),
                                                       ],
-                                                    )
+                                                    ),
                                                   ],
                                                 ),
                                               ],
