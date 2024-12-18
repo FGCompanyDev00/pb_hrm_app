@@ -92,7 +92,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     AndroidInitializationSettings('@mipmap/playstore');
 
     // iOS initialization settings
-    DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
+    DarwinInitializationSettings initializationSettingsIOS =
+    DarwinInitializationSettings(
       onDidReceiveLocalNotification: onDidReceiveLocalNotification,
     );
 
@@ -109,17 +110,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       },
     );
 
-    // Request iOS permissions
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
     // Create Android Notification Channel
     await _createNotificationChannel();
+
+    // Optional: Verify initialization
+    if (kDebugMode) {
+      print('FlutterLocalNotificationsPlugin initialized.');
+    }
   }
 
   Future<void> _createNotificationChannel() async {
@@ -131,14 +128,21 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     );
 
     await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
+
+    if (kDebugMode) {
+      print('Notification channel created: ${channel.id}');
+    }
   }
 
   Future<void> onDidReceiveLocalNotification(
       int id, String? title, String? body, String? payload) async {
     // Handle your notification when tapped (e.g., show a dialog)
-    print('iOS notification: $title, $body');
+    if (kDebugMode) {
+      print('iOS Notification Received: $title, $body');
+    }
   }
 
   Future<void> _determineAndShowLocationModal() async {
@@ -162,7 +166,10 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     int hours = duration.inHours;
     int minutes = duration.inMinutes % 60;
     int seconds = duration.inSeconds % 60;
-    return '$hours:$minutes:$seconds';
+    String hoursStr = hours.toString().padLeft(2, '0');
+    String minutesStr = minutes.toString().padLeft(2, '0');
+    String secondsStr = seconds.toString().padLeft(2, '0');
+    return '$hoursStr:$minutesStr:$secondsStr';
   }
 
   Future<void> _retrieveSavedState() async {
@@ -190,6 +197,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   void dispose() {
     _timer?.cancel();
     _positionStreamSubscription?.cancel();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
@@ -221,7 +229,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       _workingHours = Duration.zero; // Reset working hours immediately on new check-in
       _isCheckInActive = true;
       _isCheckOutAvailable = true;
-      _startTimerForWorkingHours(); // Start tracking working hours
     });
 
     // Store check-in time locally
@@ -263,11 +270,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       }
     });
 
-    _showCheckInNotification(_checkInTime);
+    await _showCheckInNotification(_checkInTime);
   }
 
   Future<void> _showCheckInNotification(String checkInTime) async {
-    print('Attempting to show Check-in notification with time: $checkInTime');
+    if (kDebugMode) {
+      print('Attempting to show Check-in notification with time: $checkInTime');
+    }
 
     try {
       const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
@@ -291,16 +300,20 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       );
 
       await flutterLocalNotificationsPlugin.show(
-        0, // Notification ID
+        100, // Unique Notification ID for Check-in
         'Check-in Successful', // Title
         'Check-in Time: $checkInTime', // Body
         notificationDetails,
         payload: 'check_in', // Optional payload
       );
 
-      print('Check-in notification displayed successfully.');
+      if (kDebugMode) {
+        print('Check-in notification displayed successfully.');
+      }
     } catch (e) {
-      print('Error displaying Check-in notification: $e');
+      if (kDebugMode) {
+        print('Error displaying Check-in notification: $e');
+      }
     }
   }
 
@@ -362,8 +375,12 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   // Method to show notification for check-out
-  Future<void> _showCheckOutNotification(String checkOutTime, Duration workingHours) async {
-    print('Attempting to show Check-out notification with time: $checkOutTime and working hours: $workingHours');
+  Future<void> _showCheckOutNotification(
+      String checkOutTime, Duration workingHours) async {
+    if (kDebugMode) {
+      print(
+          'Attempting to show Check-out notification with time: $checkOutTime and working hours: $workingHours');
+    }
 
     try {
       const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
@@ -386,20 +403,23 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         iOS: iosDetails,
       );
 
-      String workingHoursString =
-          '${workingHours.inHours.toString().padLeft(2, '0')}:${(workingHours.inMinutes % 60).toString().padLeft(2, '0')}:${(workingHours.inSeconds % 60).toString().padLeft(2, '0')}';
+      String workingHoursString = _formatDuration(workingHours);
 
       await flutterLocalNotificationsPlugin.show(
-        1, // Notification ID
+        101, // Unique Notification ID for Check-out
         'Check-out Successful', // Title
         'Check-out Time: $checkOutTime\nWorking Hours: $workingHoursString', // Body
         notificationDetails,
         payload: 'check_out', // Optional payload
       );
 
-      print('Check-out notification displayed successfully.');
+      if (kDebugMode) {
+        print('Check-out notification displayed successfully.');
+      }
     } catch (e) {
-      print('Error displaying Check-out notification: $e');
+      if (kDebugMode) {
+        print('Error displaying Check-out notification: $e');
+      }
     }
   }
 
@@ -900,7 +920,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                           style: TextStyle(
                             fontSize: constraints.maxWidth < 400 ? 14 : 16,
                             fontWeight: FontWeight.w500,
-                            color: isDarkMode ? Colors.grey : Colors.black,
+                            color: isDarkMode ? Colors.grey : Colors.grey,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -1116,7 +1136,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     }
 
     final now = DateTime.now();
-    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 3, 0);
+    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 1, 0);
     final checkInDisabledTime = DateTime(now.year, now.month, now.day, 23, 0);
     bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
     // bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 6) && _isCheckOutAvailable;
