@@ -23,10 +23,14 @@ class TimetablePage extends StatefulWidget {
 
 class TimetablePageState extends State<TimetablePage> {
   late DateTime selectedDate = widget.date;
+  final switchTime = ValueNotifier(false);
+  final liveDay = DateTime.now();
 
   @override
   void initState() {
     super.initState();
+    switchTime.value = (liveDay.hour < 18 && liveDay.hour > 6) ? false : true;
+
     fetchData();
   }
 
@@ -90,74 +94,82 @@ class TimetablePageState extends State<TimetablePage> {
         ),
         toolbarHeight: 80,
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              vertical: 10.0,
-              horizontal: 25,
-            ),
-            child: Text(
-              DateFormat.yMMMM(sl<UserPreferences>().getLocalizeSupport().languageCode)
-                  .format(selectedDate),
-              textAlign: TextAlign.left,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : Colors.black,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          setState(() {
+            switchTime.value = !switchTime.value;
+          });
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: 10.0,
+                horizontal: 25,
+              ),
+              child: Text(
+                DateFormat.yMMMM(sl<UserPreferences>().getLocalizeSupport().languageCode).format(selectedDate),
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(7, (index) {
-                final day = selectedDate.add(Duration(days: index - 3));
-                final hasEvent = eventsForAll.any((event) =>
-                event.start.day == day.day &&
-                    event.start.month == day.month &&
-                    event.start.year == day.year);
-                return _buildDateItem(
-                  DateFormat.E(sl<UserPreferences>().getLocalizeSupport().languageCode)
-                      .format(day),
-                  day.day,
-                  isSelected: day.day == selectedDate.day,
-                  hasEvent: hasEvent,
-                  onTap: () async {
-                    setState(() {
-                      selectedDate = day;
-                    });
-                    await fetchData();
-                  },
-                  isDarkMode: isDarkMode,
-                );
-              }),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(7, (index) {
+                  final day = selectedDate.add(Duration(days: index - 3));
+                  final hasEvent = eventsForAll.any((event) => event.start.day == day.day && event.start.month == day.month && event.start.year == day.year);
+                  return _buildDateItem(
+                    DateFormat.E(sl<UserPreferences>().getLocalizeSupport().languageCode).format(day),
+                    day.day,
+                    isSelected: day.day == selectedDate.day,
+                    hasEvent: hasEvent,
+                    onTap: () async {
+                      setState(() {
+                        selectedDate = day;
+                      });
+                      await fetchData();
+                    },
+                    isDarkMode: isDarkMode,
+                  );
+                }),
+              ),
             ),
-          ),
-          Container(
-            height: 8,
-            margin: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: ColorStandardization().colorDarkGold,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.grey,
-                  spreadRadius: 1.0,
-                  blurRadius: 5.0,
-                  offset: Offset(0, 2),
-                ),
-              ],
+            Container(
+              height: 8,
+              margin: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: ColorStandardization().colorDarkGold,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.grey,
+                    spreadRadius: 1.0,
+                    blurRadius: 5.0,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          TimeTableDayWidget(
-            eventsTimeTable: eventsForDay,
-            selectedDay: selectedDate,
-          ),
-        ],
+            const SizedBox(height: 10),
+            TimeTableDayWidget(
+              eventsTimeTable: eventsForDay,
+              selectedDay: selectedDate,
+              passDefaultCurrentHour: switchTime.value
+                  ? 0
+                  : liveDay.hour < 18
+                      ? liveDay.hour
+                      : 7,
+              passDefaultEndHour: switchTime.value ? 25 : 18,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -175,10 +187,10 @@ class TimetablePageState extends State<TimetablePage> {
           color: isSelected
               ? const Color(0xFFD4A017)
               : hasEvent
-              ? Colors.green.withOpacity(0.5)
-              : isDarkMode
-              ? Colors.grey[700]
-              : Colors.white,
+                  ? Colors.green.withOpacity(0.5)
+                  : isDarkMode
+                      ? Colors.grey[700]
+                      : Colors.white,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(

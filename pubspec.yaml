@@ -65,13 +65,11 @@ dependencies:
     path: "packages/advanced_calendar_day_view"
   auto_route: ^9.2.2
   custom_refresh_indicator: ^4.0.1
-  flutter_background_service_android: ^6.2.7
   package_info_plus: ^8.1.1
   workmanager: ^0.5.2
   mime: any
   http_parser: any
   sqflite: ^2.4.1
-  flutter_background_service: ^5.0.10
 
 dev_dependencies:
   flutter_test:

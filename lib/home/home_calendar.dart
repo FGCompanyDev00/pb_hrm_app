@@ -871,6 +871,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
+    final liveDay = DateTime.now();
 
     return Scaffold(
       backgroundColor: isDarkMode ? Colors.black : Colors.white,
@@ -919,8 +920,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                         eventsCalendar: eventsForDay,
                         passDefaultCurrentHour: switchTime.value
                             ? 0
-                            : _focusedDay.hour < 18
-                                ? _focusedDay.hour
+                            : liveDay.hour < 18
+                                ? liveDay.hour
                                 : 7,
                         passDefaultEndHour: switchTime.value ? 25 : 18,
                       ),

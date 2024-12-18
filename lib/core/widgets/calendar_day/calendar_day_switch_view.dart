@@ -424,7 +424,8 @@ class CalendarDaySwitchView extends HookWidget {
                                                         const SizedBox(width: 5),
                                                         Text(eventCategory),
                                                       ],
-                                                    ), const SizedBox(height: 5),
+                                                    ),
+                                                    const SizedBox(height: 5),
                                                     Row(
                                                       children: [
                                                         const Icon(Icons.title, size: 15, color: Colors.blueGrey),

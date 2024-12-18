@@ -16,35 +16,47 @@ class TimeTableDayWidget extends HookWidget {
     super.key,
     required this.eventsTimeTable,
     this.selectedDay,
+    required this.passDefaultCurrentHour,
+    required this.passDefaultEndHour,
   });
 
   final List<Events> eventsTimeTable;
   final DateTime? selectedDay;
+  final int passDefaultCurrentHour;
+  final int passDefaultEndHour;
 
   @override
   Widget build(BuildContext context) {
     final ValueNotifier<List<Events>> currentEvents = useState([]);
     final ValueNotifier<List<OverTimeEventsRow<String>>> currentOverflowEventsRow = useState([]);
-    int currentHour = 8;
+    final currentHourDefault = useState(passDefaultCurrentHour);
+    final untilEndDefault = useState(passDefaultEndHour);
+    final ValueNotifier<int> currentHour = useState(8);
     int untilEnd = 18;
     late String eventType;
 
     autoEventsSlot() {
+      final liveDay = DateTime.now();
+
       currentEvents.value.clear();
       currentOverflowEventsRow.value.clear();
+      currentHourDefault.value = passDefaultCurrentHour;
+      untilEndDefault.value = passDefaultEndHour;
+      currentHour.value = liveDay.hour < 18 ? liveDay.hour : 7;
+
       for (var e in eventsTimeTable) {
         DateTime slotStartTime = DateTime.utc(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          e.start.hour,
+          currentHour.value,
           e.start.minute,
         );
         DateTime slotEndTime = DateTime.utc(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          e.end.hour,
+          untilEnd,
           e.end.minute,
         );
         DateTime startTime;
@@ -58,7 +70,7 @@ class TimeTableDayWidget extends HookWidget {
             selectedDay!.year,
             selectedDay!.month,
             selectedDay!.day,
-            8,
+            currentHour.value,
             0,
           );
           endTime = DateTime.utc(
@@ -87,7 +99,7 @@ class TimeTableDayWidget extends HookWidget {
               selectedDay!.year,
               selectedDay!.month,
               selectedDay!.day,
-              8,
+              currentHour.value,
               0,
             );
             endTime = DateTime.utc(
@@ -140,7 +152,7 @@ class TimeTableDayWidget extends HookWidget {
 
       currentOverflowEventsRow.value = processOverTimeEvents(
         [...currentEvents.value]..sort((a, b) => a.compare(b)),
-        startOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: currentHour, minute: 0)),
+        startOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: currentHour.value, minute: 0)),
         endOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: untilEnd, minute: 0)),
         cropBottomEvents: true,
       );
@@ -149,90 +161,67 @@ class TimeTableDayWidget extends HookWidget {
     useEffect(() => autoEventsSlot());
 
     return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.only(top: 30),
-        child: ValueListenableBuilder(
-          valueListenable: currentOverflowEventsRow,
-          builder: (context, data, child) {
-            return TimeTableDayView(
-              onTimeTap: (s) {},
-              overflowEvents: data,
-              events: UnmodifiableListView(eventsTimeTable),
-              dividerColor: Colors.black,
-              currentDate: selectedDay ?? DateTime.now().toUtc(),
-              heightPerMin: 1.5,
-              startOfDay: const TimeOfDay(hour: 0, minute: 0),
-              endOfDay: const TimeOfDay(hour: 25, minute: 0),
-              renderRowAsListView: true,
-              cropBottomEvents: true,
-              showMoreOnRowButton: true,
-              timeTitleColumnWidth: 40,
-              time12: true,
-              timeViewItemBuilder: (context, constraints, itemIndex, event) {
-                Color statusColor;
-                String? iconCategory = categoryIcon[event.category];
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 30),
+          child: ValueListenableBuilder(
+            valueListenable: currentOverflowEventsRow,
+            builder: (context, data, child) {
+              return TimeTableDayView(
+                onTimeTap: (s) {},
+                overflowEvents: data,
+                events: UnmodifiableListView(eventsTimeTable),
+                dividerColor: Colors.black,
+                currentDate: selectedDay ?? DateTime.now().toUtc(),
+                heightPerMin: 1.5,
+                startOfDay: TimeOfDay(hour: currentHourDefault.value, minute: 0),
+                endOfDay: TimeOfDay(hour: untilEndDefault.value, minute: 0),
+                renderRowAsListView: true,
+                cropBottomEvents: true,
+                showMoreOnRowButton: true,
+                timeTitleColumnWidth: 40,
+                time12: true,
+                timeViewItemBuilder: (context, constraints, itemIndex, event) {
+                  Color statusColor;
+                  String? iconCategory = categoryIcon[event.category];
 
-                debugPrint(event.category);
+                  debugPrint(event.category);
 
-                statusColor = categoryColors[event.category] ?? Colors.orange;
+                  statusColor = categoryColors[event.category] ?? Colors.orange;
 
-                switch (event.category) {
-                  case 'Add Meeting':
-                    eventType = AppLocalizations.of(context)!.meetingTitle;
-                  case 'Leave':
-                    eventType = AppLocalizations.of(context)!.leave;
-                  case 'Meeting Room Bookings':
-                    eventType = AppLocalizations.of(context)!.meetingRoomBookings;
-                  case 'Booking Car':
-                    eventType = AppLocalizations.of(context)!.bookingCar;
-                  case 'Minutes Of Meeting':
-                    eventType = AppLocalizations.of(context)!.minutesOfMeeting;
-                  default:
-                    eventType = AppLocalizations.of(context)!.other;
-                }
+                  switch (event.category) {
+                    case 'Add Meeting':
+                      eventType = AppLocalizations.of(context)!.meetingTitle;
+                    case 'Leave':
+                      eventType = AppLocalizations.of(context)!.leave;
+                    case 'Meeting Room Bookings':
+                      eventType = AppLocalizations.of(context)!.meetingRoomBookings;
+                    case 'Booking Car':
+                      eventType = AppLocalizations.of(context)!.bookingCar;
+                    case 'Minutes Of Meeting':
+                      eventType = AppLocalizations.of(context)!.minutesOfMeeting;
+                    default:
+                      eventType = AppLocalizations.of(context)!.other;
+                  }
 
-                switch (event.status) {
-                  case 'Approved':
-                    Container(
-                      margin: const EdgeInsets.only(right: 10),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 2,
-                        vertical: 10,
-                      ),
-                      height: constraints.maxHeight,
-                      width: 60,
-                      decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.2),
-                          borderRadius: const BorderRadius.all(Radius.circular(10)),
-                          border: Border.all(
-                            color: statusColor,
-                            width: 3,
-                          )),
-                      child: Text(
-                        eventType,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                  switch (event.status) {
+                    case 'Approved':
+                      Container(
+                        margin: const EdgeInsets.only(right: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 2,
+                          vertical: 10,
                         ),
-                      ),
-                    );
-                  case 'Pending':
-                    Container(
-                      margin: const EdgeInsets.only(right: 10),
-                      height: constraints.maxHeight,
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.2),
-                        borderRadius: const BorderRadius.all(Radius.circular(10)),
-                      ),
-                      width: 60,
-                      child: DottedBorder(
-                        color: statusColor,
-                        strokeWidth: 3,
-                        dashPattern: const <double>[5, 5],
-                        borderType: BorderType.RRect,
-                        radius: const Radius.circular(12),
-                        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
+                        height: constraints.maxHeight,
+                        width: 60,
+                        decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.2),
+                            borderRadius: const BorderRadius.all(Radius.circular(10)),
+                            border: Border.all(
+                              color: statusColor,
+                              width: 3,
+                            )),
                         child: Text(
                           eventType,
                           textAlign: TextAlign.center,
@@ -241,208 +230,233 @@ class TimeTableDayWidget extends HookWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                    );
-                  default:
-                }
-
-                return event.category == 'Minutes Of Meeting'
-                    ? GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        key: ValueKey(event.hashCode),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EventDetailView(
-                                event: {
-                                  'title': event.title,
-                                  'description': eventsTimeTable[itemIndex].desc,
-                                  'startDateTime': event.start.toString(),
-                                  'endDateTime': event.end.toString(),
-                                  'isMeeting': eventsTimeTable[itemIndex].isMeeting,
-                                  'createdBy': eventsTimeTable[itemIndex].createdBy ?? '',
-                                  'location': eventsTimeTable[itemIndex].location ?? '',
-                                  'status': event.status,
-                                  'img_name': eventsTimeTable[itemIndex].imgName ?? '',
-                                  'created_at': eventsTimeTable[itemIndex].createdAt ?? '',
-                                  'is_repeat': eventsTimeTable[itemIndex].isRepeat ?? '',
-                                  'video_conference': eventsTimeTable[itemIndex].videoConference ?? '',
-                                  'uid': eventsTimeTable[itemIndex].uid,
-                                  'members': event.members ?? [],
-                                  'category': event.category,
-                                  'leave_type': eventsTimeTable[itemIndex].leaveType ?? '',
-                                },
-                              ),
+                      );
+                    case 'Pending':
+                      Container(
+                        margin: const EdgeInsets.only(right: 10),
+                        height: constraints.maxHeight,
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.2),
+                          borderRadius: const BorderRadius.all(Radius.circular(10)),
+                        ),
+                        width: 60,
+                        child: DottedBorder(
+                          color: statusColor,
+                          strokeWidth: 3,
+                          dashPattern: const <double>[5, 5],
+                          borderType: BorderType.RRect,
+                          radius: const Radius.circular(12),
+                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
+                          child: Text(
+                            eventType,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
                             ),
-                          );
-                        },
-                        child: event.status == 'Cancelled'
-                            ? const SizedBox.shrink()
-                            : Container(
-                                alignment: Alignment.center,
-                                margin: const EdgeInsets.only(right: 3, left: 3),
-                                padding: const EdgeInsets.all(8.0),
-                                height: constraints.maxHeight,
-                                width: 80,
-                                decoration: BoxDecoration(
-                                  color: ColorStandardization().colorDarkGold,
-                                  borderRadius: const BorderRadius.all(Radius.circular(10)),
-                                ),
-                                child: Text(
-                                  eventType,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                      )
-                    : GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        key: ValueKey(event.hashCode),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EventDetailView(
-                                event: {
-                                  'title': event.title,
-                                  'description': eventsTimeTable[itemIndex].reason,
-                                  'startDateTime': currentEvents.value[itemIndex].start.toString(),
-                                  'endDateTime': currentEvents.value[itemIndex].end.toString(),
-                                  'isMeeting': true,
-                                  'createdBy': eventsTimeTable[itemIndex].requestorID,
-                                  'location': '',
-                                  'status': event.status,
-                                  'img_name': eventsTimeTable[itemIndex].imgName ?? '',
-                                  'created_at': eventsTimeTable[itemIndex].createdAt ?? '',
-                                  'is_repeat': '',
-                                  'video_conference': '',
-                                  'uid': eventsTimeTable[itemIndex].uid,
-                                  'members': const [],
-                                  'category': event.category,
-                                  'leave_type': event.leaveType,
-                                },
-                              ),
-                            ),
-                          );
-                        },
-                        // child: statusChild,
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 3, left: 3),
-                          padding: const EdgeInsets.all(8.0),
-                          height: constraints.maxHeight,
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.2),
-                            border: Border(
-                              left: BorderSide(color: statusColor, width: 4),
-                              right: BorderSide(color: statusColor),
-                              top: BorderSide(color: statusColor),
-                              bottom: BorderSide(color: statusColor),
-                            ),
-                            borderRadius: const BorderRadius.all(Radius.circular(10)),
-                          ),
-                          child: Row(
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // First column for eventType and event.desc
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Row for icon and eventType
-                                      Row(
-                                        children: [
-                                          ColorFiltered(
-                                            colorFilter: ColorFilter.mode(
-                                              Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-                                              BlendMode.srcIn,
-                                            ),
-                                            child: Image.asset(
-                                              'assets/icons/element_4.png',
-                                              width: 20,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 5),
-                                          Text(eventType),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-
-                                      // Row for event.desc
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.title_sharp, size: 18, color: Colors.blueGrey),
-                                          const SizedBox(width: 5),
-                                          Align(
-                                            alignment: Alignment.bottomCenter,
-                                            child: Text(
-                                              event.desc,
-                                              textAlign: TextAlign.start,
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                color: Colors.blueGrey,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-
-                                  const Spacer(),  // Pushes the next content to the bottom
-
-                                  // Second column for additional content like members, time, and other info
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Row for avatars
-                                      Row(children: buildMembersAvatarsTimeTable(event, context)),
-                                      const SizedBox(height: 20),
-
-                                      // Row for time and additional details
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              iconCategory != null
-                                                  ? Padding(
-                                                padding: const EdgeInsets.only(left: 10),
-                                                child: Image.asset(iconCategory, width: 15),
-                                              )
-                                                  : const SizedBox.shrink(),
-                                            ],
-                                          ),
-                                          const SizedBox(width: 20),
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.access_time,
-                                                size: 15,
-                                                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-                                              ),
-                                              const SizedBox(width: 5),
-                                              Text(
-                                                '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
-                                                style: const TextStyle(fontSize: 10),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              )
-
-                            ],
                           ),
                         ),
                       );
-              },
-            );
-          },
+                    default:
+                  }
+
+                  return event.category == 'Minutes Of Meeting'
+                      ? GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          key: ValueKey(event.hashCode),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EventDetailView(
+                                  event: {
+                                    'title': event.title,
+                                    'description': eventsTimeTable[itemIndex].desc,
+                                    'startDateTime': event.start.toString(),
+                                    'endDateTime': event.end.toString(),
+                                    'isMeeting': eventsTimeTable[itemIndex].isMeeting,
+                                    'createdBy': eventsTimeTable[itemIndex].createdBy ?? '',
+                                    'location': eventsTimeTable[itemIndex].location ?? '',
+                                    'status': event.status,
+                                    'img_name': eventsTimeTable[itemIndex].imgName ?? '',
+                                    'created_at': eventsTimeTable[itemIndex].createdAt ?? '',
+                                    'is_repeat': eventsTimeTable[itemIndex].isRepeat ?? '',
+                                    'video_conference': eventsTimeTable[itemIndex].videoConference ?? '',
+                                    'uid': eventsTimeTable[itemIndex].uid,
+                                    'members': event.members ?? [],
+                                    'category': event.category,
+                                    'leave_type': eventsTimeTable[itemIndex].leaveType ?? '',
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                          child: event.status == 'Cancelled'
+                              ? const SizedBox.shrink()
+                              : Container(
+                                  alignment: Alignment.center,
+                                  margin: const EdgeInsets.only(right: 3, left: 3),
+                                  padding: const EdgeInsets.all(8.0),
+                                  height: constraints.maxHeight,
+                                  width: 80,
+                                  decoration: BoxDecoration(
+                                    color: ColorStandardization().colorDarkGold,
+                                    borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                  ),
+                                  child: Text(
+                                    eventType,
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                        )
+                      : GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          key: ValueKey(event.hashCode),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EventDetailView(
+                                  event: {
+                                    'title': event.title,
+                                    'description': eventsTimeTable[itemIndex].reason,
+                                    'startDateTime': currentEvents.value[itemIndex].start.toString(),
+                                    'endDateTime': currentEvents.value[itemIndex].end.toString(),
+                                    'isMeeting': true,
+                                    'createdBy': eventsTimeTable[itemIndex].requestorID,
+                                    'location': '',
+                                    'status': event.status,
+                                    'img_name': eventsTimeTable[itemIndex].imgName ?? '',
+                                    'created_at': eventsTimeTable[itemIndex].createdAt ?? '',
+                                    'is_repeat': '',
+                                    'video_conference': '',
+                                    'uid': eventsTimeTable[itemIndex].uid,
+                                    'members': const [],
+                                    'category': event.category,
+                                    'leave_type': event.leaveType,
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                          // child: statusChild,
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 3, left: 3),
+                            padding: const EdgeInsets.all(8.0),
+                            height: constraints.maxHeight,
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.2),
+                              border: Border(
+                                left: BorderSide(color: statusColor, width: 4),
+                                right: BorderSide(color: statusColor),
+                                top: BorderSide(color: statusColor),
+                                bottom: BorderSide(color: statusColor),
+                              ),
+                              borderRadius: const BorderRadius.all(Radius.circular(10)),
+                            ),
+                            child: Row(
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // First column for eventType and event.desc
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Row for icon and eventType
+                                        Row(
+                                          children: [
+                                            ColorFiltered(
+                                              colorFilter: ColorFilter.mode(
+                                                Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                                BlendMode.srcIn,
+                                              ),
+                                              child: Image.asset(
+                                                'assets/icons/element_4.png',
+                                                width: 20,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(eventType),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+
+                                        // Row for event.desc
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.title_sharp, size: 18, color: Colors.blueGrey),
+                                            const SizedBox(width: 5),
+                                            Align(
+                                              alignment: Alignment.bottomCenter,
+                                              child: Text(
+                                                event.desc,
+                                                textAlign: TextAlign.start,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.blueGrey,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+
+                                    const Spacer(), // Pushes the next content to the bottom
+
+                                    // Second column for additional content like members, time, and other info
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Row for avatars
+                                        Row(children: buildMembersAvatarsTimeTable(event, context)),
+                                        const SizedBox(height: 20),
+
+                                        // Row for time and additional details
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                iconCategory != null
+                                                    ? Padding(
+                                                        padding: const EdgeInsets.only(left: 10),
+                                                        child: Image.asset(iconCategory, width: 15),
+                                                      )
+                                                    : const SizedBox.shrink(),
+                                              ],
+                                            ),
+                                            const SizedBox(width: 20),
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.access_time,
+                                                  size: 15,
+                                                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
+                                                  style: const TextStyle(fontSize: 10),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                )
+                              ],
+                            ),
+                          ),
+                        );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
