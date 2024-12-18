@@ -17,18 +17,25 @@ class LeaveManagementPage extends HookWidget {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
+    // Form Key for Validation
+    final _formKey = useMemoized(() => GlobalKey<FormState>());
+
+    // Controllers
     final typeController = useTextEditingController();
     final descriptionController = useTextEditingController();
     final startDateController = useTextEditingController();
     final endDateController = useTextEditingController();
     final daysController = useTextEditingController(text: '0');
-    final leaveTypeId = useState<int?>(null);
     final searchController = useTextEditingController();
+
+    // State Variables
+    final leaveTypeId = useState<int?>(null);
     final allLeaveTypes = useState<List<Map<String, dynamic>>>([]);
     final filteredLeaveTypes = useState<List<Map<String, dynamic>>>([]);
     final isLoadingLeaveTypes = useState<bool>(false);
     final isSubmitting = useState<bool>(false);
 
+    // Helper Method to Show Dialog
     void showCustomDialog(BuildContext context, String title, String content) {
       showDialog(
         context: context,
@@ -41,6 +48,7 @@ class LeaveManagementPage extends HookWidget {
                 child: const Text('Close'),
                 onPressed: () {
                   if (title == 'Success') {
+                    _formKey.currentState?.reset();
                     typeController.clear();
                     descriptionController.clear();
                     startDateController.clear();
@@ -57,6 +65,7 @@ class LeaveManagementPage extends HookWidget {
       );
     }
 
+    // Helper Method to Show Leave Type Bottom Sheet
     void showLeaveTypeBottomSheet(BuildContext context) {
       showModalBottomSheet(
         context: context,
@@ -65,11 +74,14 @@ class LeaveManagementPage extends HookWidget {
         builder: (BuildContext context) {
           return DraggableScrollableSheet(
             expand: false,
+            initialChildSize: 0.6,
+            minChildSize: 0.4,
+            maxChildSize: 0.9,
             builder: (context, scrollController) {
               return Container(
                 padding: const EdgeInsets.all(16.0),
                 decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.black : Colors.white,
+                  color: isDarkMode ? Colors.grey[900] : Colors.white,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     topRight: Radius.circular(20.0),
@@ -77,6 +89,7 @@ class LeaveManagementPage extends HookWidget {
                 ),
                 child: Column(
                   children: [
+                    // Search Field
                     TextField(
                       controller: searchController,
                       decoration: InputDecoration(
@@ -94,6 +107,7 @@ class LeaveManagementPage extends HookWidget {
                       },
                     ),
                     const SizedBox(height: 10),
+                    // Leave Types List
                     Expanded(
                       child: isLoadingLeaveTypes.value
                           ? const Center(child: CircularProgressIndicator())
@@ -129,6 +143,7 @@ class LeaveManagementPage extends HookWidget {
       );
     }
 
+    // Fetch Leave Types from API
     Future<List<Map<String, dynamic>>> fetchLeaveTypes() async {
       isLoadingLeaveTypes.value = true;
       final prefs = await SharedPreferences.getInstance();
@@ -140,34 +155,46 @@ class LeaveManagementPage extends HookWidget {
         return [];
       }
 
-      final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/leave-types'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+      try {
+        final response = await http.get(
+          Uri.parse('https://demo-application-api.flexiflows.co/api/leave-types'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = jsonDecode(response.body);
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> data = jsonDecode(response.body);
 
-        if (data.containsKey('results')) {
-          List<Map<String, dynamic>> types =
-          List<Map<String, dynamic>>.from(data['results']);
+          if (data.containsKey('results')) {
+            List<Map<String, dynamic>> types =
+            List<Map<String, dynamic>>.from(data['results']);
+            isLoadingLeaveTypes.value = false;
+            return types;
+          } else {
+            showCustomDialog(context, 'Error', 'Unexpected API response structure.');
+            isLoadingLeaveTypes.value = false;
+            return [];
+          }
+        } else if (response.statusCode == 401) {
+          showCustomDialog(
+              context, 'Unauthorized', 'Your session has expired. Please log in again.');
           isLoadingLeaveTypes.value = false;
-          return types;
+          return [];
         } else {
-          showCustomDialog(context, 'Error', 'Unexpected API response structure.');
+          showCustomDialog(context, 'Error', 'Failed to load leave types');
           isLoadingLeaveTypes.value = false;
           return [];
         }
-      } else {
-        showCustomDialog(context, 'Error', 'Failed to load leave types');
+      } catch (e) {
+        showCustomDialog(context, 'Error', 'An error occurred: $e');
         isLoadingLeaveTypes.value = false;
         return [];
       }
     }
 
+    // Fetch Leave Types on Init
     useEffect(() {
       fetchLeaveTypes().then((types) {
         allLeaveTypes.value = types;
@@ -176,6 +203,7 @@ class LeaveManagementPage extends HookWidget {
       return null;
     }, []);
 
+    // Date Picker Method
     Future<void> pickDate(BuildContext context, TextEditingController controller,
         bool isStartDate) async {
       DateTime initialDate = DateTime.now();
@@ -187,6 +215,28 @@ class LeaveManagementPage extends HookWidget {
         initialDate: initialDate,
         firstDate: firstDate,
         lastDate: lastDate,
+        builder: (BuildContext context, Widget? child) {
+          return Theme(
+            data: isDarkMode
+                ? ThemeData.dark().copyWith(
+              colorScheme: ColorScheme.dark(
+                primary: Colors.orange,
+                onPrimary: Colors.white,
+                surface: Colors.grey[800]!,
+                onSurface: Colors.white,
+              ),
+            )
+                : ThemeData.light().copyWith(
+              colorScheme: ColorScheme.light(
+                primary: Colors.orange,
+                onPrimary: Colors.white,
+                surface: Colors.white,
+                onSurface: Colors.black,
+              ),
+            ),
+            child: child!,
+          );
+        },
       );
 
       if (pickedDate != null) {
@@ -222,13 +272,9 @@ class LeaveManagementPage extends HookWidget {
       }
     }
 
+    // Save Data Method
     Future<void> saveData() async {
-      if (typeController.text.isNotEmpty &&
-          descriptionController.text.isNotEmpty &&
-          startDateController.text.isNotEmpty &&
-          endDateController.text.isNotEmpty &&
-          daysController.text.isNotEmpty &&
-          leaveTypeId.value != null) {
+      if (_formKey.currentState?.validate() ?? false) {
         try {
           isSubmitting.value = true;
           final prefs = await SharedPreferences.getInstance();
@@ -283,235 +329,273 @@ class LeaveManagementPage extends HookWidget {
         }
       } else {
         showCustomDialog(context, 'Error',
-            'Please fill in all fields to submit your leave request.');
+            'Please fill in all required fields to submit your leave request.');
       }
     }
 
+    // Widget Builder for Text Fields
+    Widget buildTextField({
+      required String label,
+      required TextEditingController controller,
+      bool readOnly = false,
+      Widget? prefixIcon,
+      Widget? suffixIcon,
+      int maxLines = 1,
+      String? Function(String?)? validator,
+      VoidCallback? onTap,
+      TextInputType keyboardType = TextInputType.text,
+    }) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 16)),
+          const SizedBox(height: 5),
+          TextFormField(
+            controller: controller,
+            readOnly: readOnly,
+            maxLines: maxLines,
+            keyboardType: keyboardType,
+            decoration: InputDecoration(
+              contentPadding:
+              const EdgeInsets.symmetric(vertical: 15.0, horizontal: 10.0),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              prefixIcon: prefixIcon,
+              suffixIcon: suffixIcon,
+            ),
+            validator: validator,
+            onTap: onTap,
+          ),
+        ],
+      );
+    }
+
+    // Responsive Layout Builder
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-              fit: BoxFit.cover,
-            ),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
-            ),
-          ),
-        ),
-        centerTitle: true,
         title: Text(
           'Leave Request Form',
           style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white  // Dark mode text color
-                : Colors.black, // Light mode text color
-            fontSize: 22,
-            fontWeight: FontWeight.w500,
+            color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white // White icon for dark mode
-                : Colors.black, // Black icon for light mode
-            size: 20,
-          ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
+        backgroundColor: isDarkMode
+            ? Colors.black.withOpacity(0.8)
+            : Colors.transparent,
+        elevation: 0,
         toolbarHeight: 80,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image:
+              AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+              fit: BoxFit.cover,
+            ),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(30.0),
+              bottomRight: Radius.circular(30.0),
+            ),
+          ),
+        ),
+        iconTheme: IconThemeData(
+          color: isDarkMode ? Colors.white : Colors.black,
+        ),
       ),
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 100),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: ElevatedButton.icon(
-                      onPressed: isSubmitting.value ? null : saveData,
-                      icon: const Icon(Icons.send),
-                      label: const Text("Submit"),
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.black // Dark mode text color
-                            : Colors.white, // Light mode text color
-                        backgroundColor: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.orange.shade700 // Dark mode background color
-                            : Colors.orange, // Light mode background color
-                        disabledBackgroundColor: Colors.grey,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(), // Dismiss keyboard
+            child: Stack(
+              children: [
+                SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: 20.0, vertical: constraints.maxWidth < 600 ? 120 : 60),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Submit Button
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ElevatedButton.icon(
+                            onPressed: isSubmitting.value ? null : saveData,
+                            icon: const Icon(Icons.send),
+                            label: const Text("Submit"),
+                            style: ElevatedButton.styleFrom(
+                              foregroundColor: isDarkMode
+                                  ? Colors.black
+                                  : Colors.white,
+                              backgroundColor: isDarkMode
+                                  ? Colors.orange.shade700
+                                  : Colors.orange,
+                              disabledBackgroundColor: Colors.grey,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 15.0, horizontal: 30.0),
+                            ),
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 15.0, horizontal: 30.0),
-                      ),
+                        const SizedBox(height: 20),
+                        // Type Field
+                        buildTextField(
+                          label: "Type*",
+                          controller: typeController,
+                          readOnly: true,
+                          suffixIcon: const Icon(Icons.list),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please select a leave type';
+                            }
+                            return null;
+                          },
+                          onTap: () => showLeaveTypeBottomSheet(context),
+                        ),
+                        const SizedBox(height: 20),
+                        // Description Field
+                        buildTextField(
+                          label: "Description*",
+                          controller: descriptionController,
+                          maxLines: 3,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter a description';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        // Date Fields
+                        Row(
+                          children: [
+                            Expanded(
+                              child: buildTextField(
+                                label: "Start Date*",
+                                controller: startDateController,
+                                readOnly: true,
+                                prefixIcon: const Icon(Icons.calendar_today),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please select a start date';
+                                  }
+                                  return null;
+                                },
+                                onTap: () =>
+                                    pickDate(context, startDateController, true),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: buildTextField(
+                                label: "End Date*",
+                                controller: endDateController,
+                                readOnly: true,
+                                prefixIcon: const Icon(Icons.calendar_today),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please select an end date';
+                                  }
+                                  return null;
+                                },
+                                onTap: () =>
+                                    pickDate(context, endDateController, false),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        // Days Field (Enhanced)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("Days*", style: TextStyle(fontSize: 16)),
+                            const SizedBox(height: 5),
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.grey.shade400,
+                                  width: 1.0,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  // Decrement Button
+                                  IconButton(
+                                    onPressed: () {
+                                      int currentDays =
+                                          int.tryParse(daysController.text) ?? 0;
+                                      if (currentDays > 1) {
+                                        daysController.text =
+                                            (currentDays - 1).toString();
+                                      }
+                                    },
+                                    icon: const Icon(Icons.remove),
+                                    tooltip: 'Decrease days',
+                                  ),
+                                  // Days Text Field
+                                  Expanded(
+                                    child: TextFormField(
+                                      controller: daysController,
+                                      readOnly: true,
+                                      textAlign: TextAlign.center,
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.symmetric(
+                                            vertical: 16.0, horizontal: 12.0),
+                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Days cannot be empty';
+                                        }
+                                        if (int.tryParse(value) == null ||
+                                            int.parse(value) <= 0) {
+                                          return 'Invalid number of days';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ),
+                                  // Increment Button
+                                  IconButton(
+                                    onPressed: () {
+                                      int currentDays =
+                                          int.tryParse(daysController.text) ?? 0;
+                                      daysController.text =
+                                          (currentDays + 1).toString();
+                                    },
+                                    icon: const Icon(Icons.add),
+                                    tooltip: 'Increase days',
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Display Validation Error if any
+                            // Positioned below the container for better UX
+                            // Only show if there is an error
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Type*"),
-                      const SizedBox(height: 5),
-                      TextField(
-                        controller: typeController,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(
-                              vertical: 15.0, horizontal: 10.0),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          suffixIcon: const Icon(Icons.list),
-                        ),
-                        onTap: () => showLeaveTypeBottomSheet(context),
-                      ),
-                    ],
+                ),
+                // Loading Indicator
+                if (isSubmitting.value)
+                  Container(
+                    color: Colors.black.withOpacity(0.5),
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Description*"),
-                      const SizedBox(height: 5),
-                      TextField(
-                        controller: descriptionController,
-                        maxLines: 3,
-                        decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(
-                              vertical: 15.0, horizontal: 10.0),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("Start Date*"),
-                            const SizedBox(height: 5),
-                            TextField(
-                              controller: startDateController,
-                              readOnly: true,
-                              decoration: InputDecoration(
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 15.0, horizontal: 10.0),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                prefixIcon: const Icon(Icons.calendar_today),
-                              ),
-                              onTap: () =>
-                                  pickDate(context, startDateController, true),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("End Date*"),
-                            const SizedBox(height: 5),
-                            TextField(
-                              controller: endDateController,
-                              readOnly: true,
-                              decoration: InputDecoration(
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 15.0, horizontal: 10.0),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                prefixIcon: const Icon(Icons.calendar_today),
-                              ),
-                              onTap: () =>
-                                  pickDate(context, endDateController, false),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Days*"),
-                      const SizedBox(height: 5),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: daysController,
-                              readOnly: true,
-                              decoration: InputDecoration(
-                                contentPadding: const EdgeInsets.symmetric(
-                                    vertical: 15.0, horizontal: 10.0),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Column(
-                            children: [
-                              IconButton(
-                                onPressed: () {
-                                  int currentDays =
-                                      int.tryParse(daysController.text) ?? 0;
-                                  daysController.text =
-                                      (currentDays + 1).toString();
-                                },
-                                icon: const Icon(Icons.add),
-                              ),
-                              IconButton(
-                                onPressed: () {
-                                  int currentDays =
-                                      int.tryParse(daysController.text) ?? 0;
-                                  if (currentDays > 1) {
-                                    daysController.text =
-                                        (currentDays - 1).toString();
-                                  }
-                                },
-                                icon: const Icon(Icons.remove),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+              ],
             ),
-          ),
-          if (isSubmitting.value)
-            Container(
-              color: Colors.black.withOpacity(0.5),
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
-        ],
+          );
+        },
       ),
     );
   }

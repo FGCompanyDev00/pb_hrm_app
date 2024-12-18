@@ -388,7 +388,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Members', style: TextStyle(color: Colors.black)),
+        title: Text('Add Members', style: TextStyle(color: isDarkMode ? Colors.white : Colors.black,)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         toolbarHeight: 80,
@@ -405,7 +405,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
           ),
         ),
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black),
+        iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black,),
       ),
       body: Padding(
         padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),

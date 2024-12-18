@@ -147,6 +147,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
   }
 
   Widget _buildProcessingTaskCard(Map<String, dynamic> meeting) {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final fromDate = meeting['from_date'] != null
         ? DateTime.parse(meeting['from_date'])
         : DateTime.now();
@@ -202,10 +203,10 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                 children: [
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         'Status: ',
                         style: TextStyle(
-                          color: Colors.white, // Dark mode text color
+                          color: isDarkMode ? Colors.white : Colors.black,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -284,20 +285,20 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                 children: [
                   Image.asset('assets/title.png', width: 16, height: 16, color: Colors.blue),
                   const SizedBox(width: 4),
-                  const Text(
+                  Text(
                     'Title: ',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white, // Dark mode text color
+                      color: isDarkMode ? Colors.white : Colors.black,
                     ),
                   ),
                   Expanded(
                     child: Text(
                       meeting['title'] ?? 'No Title',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: Colors.white, // Dark mode text color
+                        color: isDarkMode ? Colors.white : Colors.black,
                       ),
                     ),
                   ),
@@ -313,17 +314,17 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Start Date:',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white, // Dark mode text color
+                          color: isDarkMode ? Colors.white : Colors.black,
                         ),
                       ),
                       Text(
                         '${DateFormat('yyyy-MM-dd').format(fromDate)} ${meeting['start_time'] ?? ''}',
-                        style: const TextStyle(fontSize: 12, color: Colors.white),
+                        style: TextStyle(fontSize: 12,  color: isDarkMode ? Colors.white : Colors.black,),
                       ),
                     ],
                   ),
@@ -338,17 +339,17 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'End Date:',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white, // Dark mode text color
+                          color: isDarkMode ? Colors.white : Colors.black,
                         ),
                       ),
                       Text(
                         '${DateFormat('yyyy-MM-dd').format(toDate)} ${meeting['end_time'] ?? ''}',
-                        style: const TextStyle(fontSize: 12, color: Colors.white),
+                        style: TextStyle(fontSize: 12,  color: isDarkMode ? Colors.white : Colors.black,),
                       ),
                     ],
                   ),
@@ -386,9 +387,9 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                       ),
                       TextSpan(
                         text: meeting['create_by'] ?? 'Unknown',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Colors.white, // Dark mode text color
+                          color: isDarkMode ? Colors.white : Colors.black,
                           fontStyle: FontStyle.normal,
                         ),
                       ),

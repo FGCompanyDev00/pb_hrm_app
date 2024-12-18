@@ -276,7 +276,7 @@ class _ChatSectionState extends State<ChatSection> {
         : _assignChatBubbleColor(message['created_by']); // Different color for others
 
     // Text color based on the dark mode theme
-    final Color textColor = isDarkMode ? Colors.black : Colors.white;
+    final Color textColor = isDarkMode ? Colors.white : Colors.black;
 
     // Align the message to the right for sent messages, left for others
     final Alignment messageAlignment = isSentByMe ? Alignment.centerRight : Alignment.centerLeft;

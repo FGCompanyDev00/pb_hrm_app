@@ -185,7 +185,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         //   leaveType = resultType.firstOrNull['name'];
         // }
 
-        // Adjusted field names to match API response
         final DateTime startDate = item['take_leave_from'] != null ? normalizeDate(DateTime.parse(item['take_leave_from']).toUtc()) : normalizeDate(DateTime.now());
         final DateTime endDate = item['take_leave_to'] != null ? normalizeDate(DateTime.parse(item['take_leave_to']).toUtc()) : normalizeDate(DateTime.now());
         final String uid = 'leave_${item['id']}';
@@ -949,7 +948,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       children: [
         Container(
           width: double.infinity,
-          height: 120,
+          height: 128,
           decoration: BoxDecoration(
             image: DecorationImage(
               image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
