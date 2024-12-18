@@ -460,8 +460,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
   /// Shows date and time picker for selecting date and time
   Future<void> _selectDateTime(BuildContext context, bool isStartDateTime) async {
-    const int startMinutes = 8 * 60; // 8:00 AM
-    const int endMinutes = 17 * 60; // 5:00 PM
+    const int startMinutes = 0 * 60; // 8:00 AM
+    const int endMinutes = 24 * 60; // 5:00 PM
     final currentDay = DateTime.now().toUtc();
     final DateTime initialDate = isStartDateTime ? (_startDateTime ?? currentDay) : (_endDateTime ?? currentDay);
     final DateTime? pickedDate = await showDatePicker(
@@ -688,7 +688,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     );
   }
 
-
   /// Shows the location or meeting type dropdown based on booking type
   Widget _buildLocationDropdown() {
     final List<DropdownMenuItem<String>> numberedOptions = _locationOptions
@@ -839,8 +838,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   onPressed: _showAddPeoplePage,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.orange  // Use orange in dark mode
-                        : Colors.green,  // Use green in light mode
+                        ? Colors.orange // Use orange in dark mode
+                        : Colors.green, // Use green in light mode
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20.0),
                     ),
@@ -1040,7 +1039,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   border: Border.all(
                     color: Theme.of(context).brightness == Brightness.dark
                         ? Colors.white54 // Light border color in dark mode
-                        : Colors.grey,  // Normal border color in light mode
+                        : Colors.grey, // Normal border color in light mode
                   ),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
@@ -1049,9 +1048,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   children: [
                     // Debugging: Try a simple Text widget first
                     Text(
-                      _roomId != null
-                          ? '${_rooms.indexWhere((room) => room['room_id'] == _roomId) + 1}. $_roomName'
-                          : 'Room Selection',  // Text should show when no room is selected
+                      _roomId != null ? '${_rooms.indexWhere((room) => room['room_id'] == _roomId) + 1}. $_roomName' : 'Room Selection', // Text should show when no room is selected
                       style: TextStyle(
                         color: Theme.of(context).brightness == Brightness.dark
                             ? Colors.white // White text for dark mode
@@ -1080,8 +1077,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   onPressed: _showAddPeoplePage,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.orange  // Use orange in dark mode
-                        : Colors.green,  // Use green in light mode
+                        ? Colors.orange // Use orange in dark mode
+                        : Colors.green, // Use green in light mode
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20.0),
                     ),
@@ -1260,8 +1257,8 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   onPressed: _showAddPeoplePage,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.orange  // Use orange in dark mode
-                        : Colors.green,  // Use green in light mode
+                        ? Colors.orange // Use orange in dark mode
+                        : Colors.green, // Use green in light mode
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20.0),
                     ),
@@ -1357,7 +1354,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               : Colors.black, // Black icon for light mode
         ),
       ),
-    body: Stack(
+      body: Stack(
         children: [
           Padding(
             padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
