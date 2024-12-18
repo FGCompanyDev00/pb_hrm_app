@@ -1,7 +1,7 @@
 {
   "@@locale": "lo",
-  "appTitle": "PSBV Next",
-  "welcomeToPSBV": "ຍິນດີຕ້ອນຮັບສູ່ PSBV Next",
+  "appTitle": "PSVB Next",
+  "welcomeToPSBV": "ຍິນດີຕ້ອນຮັບສູ່ PSVB Next",
   "welcomeSubtitle1": "ທ່ານບໍ່ແມ່ນເພີ່ມຂຶ້ນມາພຽງແຕ່ລູກຄ້າອື່ນໆ.",
   "welcomeSubtitle2": "ພວກເຮົາບໍ່ແມ່ນພຽງແຕ່ທະນາຄານອື່ນໆ...",
   "emptyCredentialsMessage": "ກະລຸນາປ້ອນຊື່ຜູ້ໃຊ້ແລະລະຫັດຜ່ານຂອງທ່ານ.",
@@ -397,5 +397,9 @@
     "offlineMessage": "ທ່ານກຳລັງອອຟຟິນ. ທ່ານຢາກສົກຕໍ່ບໍ່ຢູ່ແນວອອຟຟິນບໍ?",
     "unauthorizedError": "ບໍ່ອະນຸຍາດ",
     "offlineAccessDenied": "ທ່ານບໍ່ສາມາດໃຊ້ລະບົບອອຟຟິນໄດ້ ບໍ່ມີການອະນຸຍາດ.",
-    "offline":"ອອບລາຍ"
+    "offline":"ອອບລາຍ",
+    "offsiteModeTitle": "ໂມດເສັ້ນອອກ",
+    "offsiteModeMessage": "ທ່ານກຳລັງໃນໂມດເສັ້ນອອກການຮ່ວມງານ.",
+    "officeModeTitle": "ໂມດສຳນັກງານ/ບ້ານ",
+    "officeModeMessage": "ທ່ານກຳລັງໃນໂມດສຳນັກງານ/ໂມດບ້ານການຮ່ວມງານ."
 }

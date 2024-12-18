@@ -884,6 +884,21 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           setState(() {
             switchTime.value = !switchTime.value;
           });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Your calendar data has been refresh and updated successfully",
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.white,
+                  fontSize: 13,
+                ),
+              ),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: isDarkMode ? Colors.orange : Colors.green,
+              margin: const EdgeInsets.all(20),
+              duration: const Duration(seconds: 4),
+            ),
+          );
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -898,59 +913,29 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               _buildSectionSeparator(),
               eventsForDay.isEmpty
                   ? SizedBox(
-                      height: sizeScreen(context).height * 0.20,
-                      child: Center(
-                        child: Text(
-                          AppLocalizations.of(context)!.noEventsForThisDay,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    )
-                  : CalendarDaySwitchView(
-                      selectedDay: _selectedDay,
-                      eventsCalendar: eventsForDay,
-                      passDefaultCurrentHour: switchTime.value
-                          ? 0
-                          : liveDay.hour < 18
-                              ? liveDay.hour
-                              : 7,
-                      passDefaultEndHour: switchTime.value ? 25 : 18,
+                height: sizeScreen(context).height * 0.20,
+                child: Center(
+                  child: Text(
+                    AppLocalizations.of(context)!.noEventsForThisDay,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
                     ),
-              // : CarouselSlider(
-              //     options: CarouselOptions(
-              //       autoPlay: false,
-              //       viewportFraction: 1,
-              //       initialPage: liveHour(),
-              //       scrollDirection: Axis.vertical,
-              //       height: fullHeight * 0.46,
-              //       aspectRatio: 0,
-              //     ),
-              //     items: [
-              //       CalendarDayWidgetCard(
-              //         selectedDay: _selectedDay,
-              //         eventsCalendar: eventsForDay,
-              //         selectedSlotTime: 1,
-              //         heightTime: (fullHeight * 0.25) / 160,
-              //       ),
-              //       CalendarDayWidgetCard(
-              //         selectedDay: _selectedDay,
-              //         eventsCalendar: eventsForDay,
-              //         selectedSlotTime: 2,
-              //         heightTime: (fullHeight * 0.25) / 160,
-              //       ),
-              //       CalendarDayWidgetCard(
-              //         selectedDay: _selectedDay,
-              //         eventsCalendar: eventsForDay,
-              //         selectedSlotTime: 3,
-              //         heightTime: (fullHeight * 0.25) / 180,
-              //       ),
-              //     ],
-              //   ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              )
+                  : CalendarDaySwitchView(
+                selectedDay: _selectedDay,
+                eventsCalendar: eventsForDay,
+                passDefaultCurrentHour: switchTime.value
+                    ? 0
+                    : liveDay.hour < 18
+                    ? liveDay.hour
+                    : 7,
+                passDefaultEndHour: switchTime.value ? 25 : 18,
+              ),
             ],
           ),
         ),

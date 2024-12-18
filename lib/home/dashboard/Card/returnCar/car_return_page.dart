@@ -337,7 +337,7 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Tel: ${event['license_plate']}',
+                                      'Res ID: ${event['id']}',
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: Theme.of(context).brightness == Brightness.dark
@@ -345,9 +345,9 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                                             : Colors.grey[600], // Grey text in light mode
                                       ),
                                     ),
-                                    const SizedBox(height: 6),
+                                    const SizedBox(height: 4),
                                     Text(
-                                      'Purpose: ${event['purpose']}',
+                                      'Tel: ${event['license_plate']}',
                                       style: TextStyle(
                                         fontSize: 12,
                                         color: Theme.of(context).brightness == Brightness.dark

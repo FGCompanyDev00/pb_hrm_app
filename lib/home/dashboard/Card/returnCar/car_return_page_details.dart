@@ -1,3 +1,5 @@
+// lib/return_car_page_details.dart
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -178,6 +180,7 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   PreferredSizeWidget buildAppBar(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
+
     return PreferredSize(
       preferredSize: const Size.fromHeight(80.0),
       child: ClipRRect(
@@ -199,16 +202,19 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
           leading: Padding(
             padding: const EdgeInsets.only(top: 24.0),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              icon: Icon(
+                Icons.arrow_back,
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          title: const Padding(
-            padding: EdgeInsets.only(top: 30.0),
+          title: Padding(
+            padding: const EdgeInsets.only(top: 30.0),
             child: Text(
               'Return',
               style: TextStyle(
-                color: Colors.black,
+                color: isDarkMode ? Colors.white : Colors.black,
                 fontWeight: FontWeight.bold,
                 fontSize: 24,
               ),
@@ -223,6 +229,7 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   Widget buildBody(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
+    final ColorScheme colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
       padding: const EdgeInsets.all(12.0),
@@ -246,7 +253,10 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.add_circle, color: Colors.green),
+                  icon: const Icon(
+                    Icons.add_circle,
+                    color: Colors.green,
+                  ),
                   onPressed: () {},
                 ),
               ],
@@ -261,26 +271,41 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  buildTextField('Recipient Name *', recipientNameController),
+                  buildTextField(
+                    'Recipient Name *',
+                    recipientNameController,
+                    isDarkMode: isDarkMode,
+                  ),
                   const SizedBox(height: 12),
-                  buildTextField('Distance *', distanceController, keyboardType: TextInputType.number),
+                  buildTextField(
+                    'Distance *',
+                    distanceController,
+                    keyboardType: TextInputType.number,
+                    isDarkMode: isDarkMode,
+                  ),
                   const SizedBox(height: 12),
                   buildDateField(
-                      context, 'Departure Date *', departureDateController),
+                      context, 'Departure Date *', departureDateController, isDarkMode),
                   const SizedBox(height: 12),
                   buildDateField(
-                      context, 'Return Date *', returnDateController),
+                      context, 'Return Date *', returnDateController, isDarkMode),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'File',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE2AD30),
+                          backgroundColor: isDarkMode
+                              ? Colors.green
+                              : Colors.blue,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -295,26 +320,68 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                             });
                           }
                         },
-                        child: const Text('Select file'),
+                        child: Text(
+                          'Select file',
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.black : Colors.white,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 10),
                       if (selectedFile != null) ...[
-                        Text(selectedFile!.name),
+                        Expanded(
+                          child: Text(
+                            selectedFile!.name,
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ],
                   ),
                   const SizedBox(height: 20),
-                  const Text(
+                  Text(
                     'Comment',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: commentController,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Type your comment here',
+                      hintStyle: TextStyle(
+                        color: isDarkMode ? Colors.white54 : Colors.black54,
+                      ),
+                      fillColor: isDarkMode ? Colors.grey[700] : Colors.white,
+                      filled: true,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: isDarkMode ? Colors.grey : Colors.grey,
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: isDarkMode ? Colors.grey : Colors.grey,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(
+                          color: isDarkMode
+                              ? Colors.orangeAccent
+                              : const Color(0xFFE2AD30),
+                        ),
                       ),
                     ),
                     minLines: 1,
@@ -326,12 +393,22 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                       confirmReturn();
                     },
                     style: ElevatedButton.styleFrom(
+                      backgroundColor: isDarkMode
+                          ? Colors.orangeAccent
+                          : const Color(0xFFE2AD30),
                       minimumSize: const Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text('Confirm Return'),
+                    child: Text(
+                      'Confirm Return',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.black : Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -343,25 +420,56 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   }
 
   Widget buildTextField(
-      String label, TextEditingController controller,
-      {TextInputType keyboardType = TextInputType.text}) {
+      String label,
+      TextEditingController controller, {
+        TextInputType keyboardType = TextInputType.text,
+        required bool isDarkMode,
+      }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
           decoration: InputDecoration(
+            hintText: label,
+            hintStyle: TextStyle(
+              color: isDarkMode ? Colors.white54 : Colors.black54,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.grey : Colors.grey,
+              ),
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: isDarkMode ? Colors.grey[700] : Colors.white,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.grey : Colors.grey,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: isDarkMode
+                    ? Colors.orangeAccent
+                    : const Color(0xFFE2AD30),
+              ),
+            ),
           ),
         ),
       ],
@@ -369,26 +477,54 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   }
 
   Widget buildDateField(
-      BuildContext context, String label, TextEditingController controller) {
+      BuildContext context, String label, TextEditingController controller, bool isDarkMode) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
+          readOnly: true,
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
           decoration: InputDecoration(
             suffixIcon: IconButton(
-              icon: const Icon(Icons.calendar_today),
+              icon: Icon(
+                Icons.calendar_today,
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
               onPressed: () async {
                 DateTime? pickedDate = await showDatePicker(
                   context: context,
-                  initialDate: DateTime.now(),
+                  initialDate: controller.text.isNotEmpty
+                      ? DateTime.parse(controller.text)
+                      : DateTime.now(),
                   firstDate: DateTime(2000),
                   lastDate: DateTime(2101),
+                  builder: (context, child) {
+                    return Theme(
+                      data: isDarkMode
+                          ? ThemeData.dark().copyWith(
+                        colorScheme: ColorScheme.dark(
+                          primary: Colors.orangeAccent,
+                          onPrimary: Colors.black,
+                          surface: Colors.grey[800]!,
+                          onSurface: Colors.white,
+                        ),
+                      )
+                          : ThemeData.light(),
+                      child: child!,
+                    );
+                  },
                 );
                 if (pickedDate != null) {
                   controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
@@ -397,9 +533,26 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.grey : Colors.grey,
+              ),
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: isDarkMode ? Colors.grey[700] : Colors.white,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.grey : Colors.grey,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: isDarkMode
+                    ? Colors.orangeAccent
+                    : const Color(0xFFE2AD30),
+              ),
+            ),
           ),
         ),
       ],
@@ -411,15 +564,34 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
         required bool success,
         required String message,
       }) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text(success ? 'Success' : 'Error'),
-          content: Text(message),
+          backgroundColor: isDarkMode ? Colors.grey[800] : Colors.white,
+          title: Text(
+            success ? 'Success' : 'Error',
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+          ),
+          content: Text(
+            message,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white70 : Colors.black87,
+            ),
+          ),
           actions: <Widget>[
             TextButton(
-              child: const Text('OK'),
+              child: Text(
+                'OK',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.orangeAccent : Colors.blue,
+                ),
+              ),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -432,9 +604,19 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
 
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
     return Scaffold(
       appBar: buildAppBar(context),
-      body: isLoading ? const Center(child: CircularProgressIndicator()) : buildBody(context),
+      body: isLoading
+          ? Center(
+        child: CircularProgressIndicator(
+          color: isDarkMode ? Colors.orangeAccent : Colors.blue,
+        ),
+      )
+          : buildBody(context),
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
     );
   }
 }

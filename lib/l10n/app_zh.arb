@@ -1,7 +1,7 @@
 {
   "@@locale": "zh",
-  "appTitle": "PSBV Next",
-  "welcomeToPSBV": "欢迎来到 PSBV Next",
+  "appTitle": "PSVB Next",
+  "welcomeToPSBV": "欢迎来到 PSVB Next",
   "welcomeSubtitle1": "您不仅仅是另一个客户.",
   "welcomeSubtitle2": "我们不仅仅是另一家银行...",
   "emptyCredentialsMessage": "请输入您的用户名和密码。",
@@ -430,5 +430,9 @@
   "offlineMessage": "您当前处于离线状态。是否要继续离线模式？",
   "unauthorizedError": "未经授权",
   "offlineAccessDenied": "没有授权，无法使用离线模式。",
-  "offline":"离线"
+  "offline":"离线",
+  "offsiteModeTitle": "外勤模式",
+  "offsiteModeMessage": "您已进入外勤出勤模式。",
+   "officeModeTitle": "办公室/家庭模式",
+  "officeModeMessage": "您已进入办公室/家庭出勤模式。"
 }

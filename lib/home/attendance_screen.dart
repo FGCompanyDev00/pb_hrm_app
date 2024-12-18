@@ -452,9 +452,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
       if (response.statusCode == 201 || response.statusCode == 202) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
-        // if (mounted) {
-        //   _showCustomDialog(AppLocalizations.of(context)!.success, responseData['message'] ?? AppLocalizations.of(context)!.checkInOutSuccessful, isSuccess: true);
-        // }
+        // Optionally handle success response
       } else {
         throw Exception('Failed with status code ${response.statusCode}');
       }
@@ -463,7 +461,11 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         // If sending fails, save to local storage
         await offlineProvider.addPendingAttendance(record);
         if (mounted) {
-          _showCustomDialog(AppLocalizations.of(context)!.error, '${AppLocalizations.of(context)!.failedToCheckInOut}: $error', isSuccess: false);
+          _showCustomDialog(
+            AppLocalizations.of(context)!.error,
+            '${AppLocalizations.of(context)!.failedToCheckInOut}: $error',
+            isSuccess: false,
+          );
         }
       }
     }
@@ -764,7 +766,21 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
   Widget _buildPageContent(BuildContext context) {
     return RefreshIndicator(
-      onRefresh: _fetchWeeklyRecords,
+      onRefresh: () async {
+        await _fetchWeeklyRecords();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Your attendance data has been refreshed successfully",
+              style: TextStyle(fontSize: 13, color: Colors.white),
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green,
+            margin: EdgeInsets.all(20),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      },
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         physics: const AlwaysScrollableScrollPhysics(),
@@ -871,11 +887,21 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                               title, // Example: 'Check IN success!'
                               style: TextStyle(
                                 fontSize: constraints.maxWidth < 400 ? 18 : 20,
-                                fontWeight: FontWeight.bold,
                                 color: isDarkMode ? Colors.white : Colors.black,
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Message text
+                        Text(
+                          message,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: constraints.maxWidth < 400 ? 14 : 16,
+                            fontWeight: FontWeight.w500,
+                            color: isDarkMode ? Colors.grey : Colors.black,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         // Close button
@@ -973,7 +999,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final DateTime date = DateFormat('yyyy-MM-dd').parse(record['date']!);
     final String day = DateFormat('EEEE').format(date); // Day part
-    final String datePart = DateFormat('yyyy-MM-dd').format(date); // Date part
+    final String datePart = DateFormat('dd-MM-yyyy').format(date); // Date part
 
     return Card(
       elevation: 2,
@@ -1381,10 +1407,25 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: GestureDetector(
-          onTap: () {
+          onTap: () async {
             setState(() {
               _isOffsite = !_isOffsite;
             });
+
+            // Show dialog based on the new state
+            if (_isOffsite) {
+              _showCustomDialog(
+                AppLocalizations.of(context)!.offsiteModeTitle, // e.g., "Offsite Mode"
+                AppLocalizations.of(context)!.offsiteModeMessage, // e.g., "You're in offsite attendance mode."
+                isSuccess: true,
+              );
+            } else {
+              _showCustomDialog(
+                AppLocalizations.of(context)!.officeModeTitle, // e.g., "Office Mode"
+                AppLocalizations.of(context)!.officeModeMessage, // e.g., "You're in office/home attendance mode."
+                isSuccess: true,
+              );
+            }
           },
           child: Container(
             decoration: BoxDecoration(
@@ -1403,7 +1444,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  AppLocalizations.of(context)!.offsite,
+                  AppLocalizations.of(context)!.offsite, // Ensure this localization key exists
                   style: TextStyle(
                     color: offsiteTextColor,
                     fontWeight: FontWeight.bold,

@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
-  "appTitle": "PSBV Next",
-  "welcomeToPSBV": "Welcome to PSBV Next",
+  "appTitle": "PSVB Next",
+  "welcomeToPSBV": "Welcome to PSVB Next",
   "welcomeSubtitle1": "You're not just another customer.",
   "welcomeSubtitle2": "We're not just another Bank...",
   "emptyCredentialsMessage": "Please enter your username and password.",
@@ -391,5 +391,9 @@
     "offlineMessage":"You are currently offline. Would you like to continue in offline mode?",
     "unauthorizedError":"Unauthorized",
     "offlineAccessDenied":"You cannot use offline mode without authorization.",
-    "offline":"Offline"
+    "offline":"Offline",
+    "offsiteModeTitle": "Offsite Mode",
+    "offsiteModeMessage": "You're in offsite attendance mode.",
+    "officeModeTitle": "Office/Home Mode",
+    "officeModeMessage": "You're in office/home attendance mode."
 }
