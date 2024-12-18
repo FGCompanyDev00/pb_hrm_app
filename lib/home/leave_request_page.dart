@@ -411,7 +411,7 @@ class LeaveManagementPage extends HookWidget {
               children: [
                 SingleChildScrollView(
                   padding: EdgeInsets.symmetric(
-                      horizontal: 20.0, vertical: constraints.maxWidth < 600 ? 120 : 60),
+                      horizontal: 20.0, vertical: constraints.maxWidth < 600 ? 140 : 60),
                   child: Form(
                     key: _formKey,
                     child: Column(
