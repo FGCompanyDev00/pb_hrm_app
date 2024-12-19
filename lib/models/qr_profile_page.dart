@@ -58,4 +58,36 @@ class UserProfileRecord extends HiveObject {
       roles: json['roles'] ?? 'No roles available',
     );
   }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'employee_id': employeeId,
+      'employee_name': name,
+      'employee_surname': surname,
+      'images': images,
+      'employee_tel': employeeTel,
+      'employee_email': employeeEmail,
+      'roles': roles,
+      'gender': gender,
+    };
+  }
+
+  Map<String, dynamic> userProfileRecordToJson(UserProfileRecord? instance) => <String, dynamic>{};
+}
+
+@HiveType(typeId: 2)
+class QRRecord extends HiveObject {
+  @HiveField(0)
+  String data;
+
+  QRRecord({
+    required this.data,
+  });
+
+  factory QRRecord.fromJson(Map<String, dynamic> json) {
+    return QRRecord(
+      data: json['data'] ?? '',
+    );
+  }
 }

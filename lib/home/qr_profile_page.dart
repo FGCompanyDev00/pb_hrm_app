@@ -6,6 +6,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
+import 'package:pb_hrsystem/models/qr_profile_page.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -172,37 +174,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<Map<String, dynamic>> _fetchDisplayData() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? token = prefs.getString('token');
+    if (offlineProvider.isOfflineService.value) {
+      final offlineProfile = offlineProvider.getProfile();
+      return offlineProfile!.userProfileRecordToJson(offlineProfile);
+    } else {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final String? token = prefs.getString('token');
 
-      if (token == null || token.isEmpty) {
-        throw Exception(AppLocalizations.of(context)!.noTokenFound);
-      }
-
-      final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final responseBody = jsonDecode(response.body);
-        if (responseBody.containsKey('results') && responseBody['results'] is List<dynamic> && responseBody['results'].isNotEmpty) {
-          return responseBody['results'][0];
-        } else {
-          throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
+        if (token == null || token.isEmpty) {
+          throw Exception(AppLocalizations.of(context)!.noTokenFound);
         }
-      } else {
-        debugPrint('Failed to load display data - Status Code: ${response.statusCode}');
-        debugPrint('Response Body: ${response.body}');
+
+        final response = await http.get(
+          Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final responseBody = jsonDecode(response.body);
+          if (responseBody.containsKey('results') && responseBody['results'] is List<dynamic> && responseBody['results'].isNotEmpty) {
+            final record = UserProfileRecord.fromJson(responseBody['results'][0]);
+
+            if (offlineProvider.isExistedProfile()) {
+              await offlineProvider.updateProfile(record);
+            } else {
+              await offlineProvider.addProfile(record);
+            }
+
+            return responseBody['results'][0];
+          } else {
+            throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
+          }
+        } else {
+          debugPrint('Failed to load display data - Status Code: ${response.statusCode}');
+          debugPrint('Response Body: ${response.body}');
+          throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
+        }
+      } catch (e) {
+        debugPrint('Error in _fetchDisplayData: $e');
         throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
       }
-    } catch (e) {
-      debugPrint('Error in _fetchDisplayData: $e');
-      throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
     }
   }
 
@@ -385,11 +400,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
-            } else if (snapshot.hasData) {
-              final data = snapshot.data!;
-              final String vCardData = '''
+            }
+            // else if (snapshot.hasError) {
+            //   return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
+            // }
+            else if (snapshot.hasData) {
+              Map<String, dynamic> data = {};
+              String vCardData = '';
+              if (offlineProvider.isOfflineService.value) {
+                if (offlineProvider.isExistedQR()) {
+                  vCardData = offlineProvider.getQR();
+                }
+              } else {
+                data = snapshot.data!;
+                vCardData = '''
 BEGIN:VCARD
 VERSION:3.0
 N:${data['employee_surname'] ?? ''};${data['employee_name'] ?? ''};;;
@@ -399,8 +423,13 @@ TEL:${data['employee_tel'] ?? ''}
 ${data['images'] != null && data['images'].isNotEmpty ? 'PHOTO;TYPE=JPEG;VALUE=URI:${data['images']}' : ''}
 END:VCARD
 ''';
-
-              debugPrint(vCardData);
+                if (offlineProvider.isExistedQR()) {
+                  offlineProvider.updateQR(QRRecord(data: vCardData));
+                } else {
+                  offlineProvider.addQR(QRRecord(data: vCardData));
+                }
+                debugPrint(vCardData);
+              }
 
               return Stack(children: [
                 if (_isQRCodeFullScreen)
@@ -493,9 +522,7 @@ END:VCARD
                                       backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
                                       child: CircleAvatar(
                                           radius: size.width * 0.1,
-                                          backgroundImage: data['images'] != null && data['images'].isNotEmpty
-                                              ? NetworkImage(data['images'])
-                                              : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                                          backgroundImage: data['images'] != null && data['images'].isNotEmpty ? NetworkImage(data['images']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
                                           onBackgroundImageError: (_, __) {
                                             const AssetImage('assets/default_avatar.png');
                                           }),
@@ -641,7 +668,253 @@ END:VCARD
                   ),
               ]);
             } else {
-              return const Center(child: Text('No data available.'));
+              Map<String, dynamic> data = {};
+              String vCardData = '';
+
+              if (offlineProvider.isExistedQR()) {
+                vCardData = offlineProvider.getQR();
+              }
+
+              if (offlineProvider.isExistedProfile()) {
+                data = offlineProvider.getProfile()!.toMap();
+              }
+              return Stack(children: [
+                if (_isQRCodeFullScreen)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isQRCodeFullScreen = false;
+                      });
+                    },
+                    onLongPress: () async {
+                      final shouldSave = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text(AppLocalizations.of(context)!.saveImageTitle),
+                          content: Text(AppLocalizations.of(context)!.saveImageConfirmation),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: Text(AppLocalizations.of(context)!.cancel),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: Text(AppLocalizations.of(context)!.save),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (shouldSave ?? false) {
+                        _saveQRCodeToGallery();
+                      }
+                    },
+                    child: Container(
+                      color: Colors.black.withOpacity(0.9),
+                      child: Center(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12.0),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.5),
+                                blurRadius: 10.0,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
+                          ),
+                          child: RepaintBoundary(
+                            key: qrFullScreenKey,
+                            child: QrImageView(
+                              data: vCardData,
+                              version: QrVersions.auto,
+                              size: size.width * 0.8,
+                              gapless: false,
+                              embeddedImage: const AssetImage('assets/playstore.png'),
+                              embeddedImageStyle: const QrEmbeddedImageStyle(
+                                size: Size(40, 40),
+                              ),
+                              backgroundColor: Colors.white,
+                              eyeStyle: const QrEyeStyle(
+                                eyeShape: QrEyeShape.circle,
+                                color: Colors.black,
+                              ),
+                              dataModuleStyle: const QrDataModuleStyle(
+                                dataModuleShape: QrDataModuleShape.square,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
+                      child: SingleChildScrollView(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxHeight: size.height * 0.8),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Center(
+                                    child: CircleAvatar(
+                                      radius: size.width * 0.12,
+                                      backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                                      child: CircleAvatar(
+                                          radius: size.width * 0.1,
+                                          backgroundImage: data['images'] != null && data['images'].isNotEmpty ? NetworkImage(data['images']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                                          onBackgroundImageError: (_, __) {
+                                            const AssetImage('assets/default_avatar.png');
+                                          }),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    bottom: 0,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => const MyProfilePage(),
+                                          ),
+                                        );
+                                      },
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.arrow_forward_ios,
+                                            size: 24,
+                                            color: isDarkMode ? Colors.white : Colors.black,
+                                          ),
+                                          Text(
+                                            AppLocalizations.of(context)!.more,
+                                            style: TextStyle(
+                                              fontSize: size.width * 0.04,
+                                              fontWeight: FontWeight.w500,
+                                              color: isDarkMode ? Colors.white : Colors.black,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: size.height * 0.02),
+                              Text(
+                                AppLocalizations.of(context)!.greeting(data['employee_name']),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: isDarkMode ? Colors.green : Colors.green,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(height: size.height * 0.02),
+                              ClipPath(
+                                clipper: TicketShapeClipper(),
+                                child: Container(
+                                  padding: EdgeInsets.all(size.width * 0.04),
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode ? const Color(0xFF303030) : const Color(0xFFEAF9E5),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 8,
+                                        offset: Offset(0, 4),
+                                      ),
+                                    ],
+                                    borderRadius: BorderRadius.circular(12.0),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        AppLocalizations.of(context)!.scanToSaveContact,
+                                        style: TextStyle(
+                                          fontSize: size.width * 0.045,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDarkMode ? Colors.white : Colors.black87,
+                                        ),
+                                      ),
+                                      SizedBox(height: size.height * 0.015),
+                                      Row(
+                                        children: [
+                                          ClipOval(
+                                            child: Container(
+                                              width: size.width * 0.04,
+                                              height: size.height * 0.02,
+                                              color: Colors.yellow,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: DashedLine(
+                                              dashWidth: size.width * 0.02,
+                                              dashHeight: size.height * 0.002,
+                                              color: Colors.yellow,
+                                            ),
+                                          ),
+                                          ClipOval(
+                                            child: Container(
+                                              width: size.width * 0.04,
+                                              height: size.height * 0.02,
+                                              color: Colors.yellow,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      SizedBox(height: size.height * 0.018),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(10.0),
+                                        ),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _isQRCodeFullScreen = true;
+                                            });
+                                          },
+                                          child: RepaintBoundary(
+                                            key: qrKey,
+                                            child: QrImageView(
+                                              data: vCardData,
+                                              version: QrVersions.auto,
+                                              size: size.width * 0.5,
+                                              gapless: false,
+                                              backgroundColor: isDarkMode ? const Color(0xFF303030) : const Color(0xFFEAF9E5),
+                                              eyeStyle: QrEyeStyle(
+                                                eyeShape: QrEyeShape.circle,
+                                                color: isDarkMode ? Colors.white : Colors.black,
+                                              ),
+                                              dataModuleStyle: QrDataModuleStyle(
+                                                dataModuleShape: QrDataModuleShape.square,
+                                                color: isDarkMode ? Colors.white : Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ]);
+              // return const Center(child: Text('No data available.'));
             }
           },
         ),

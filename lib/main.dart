@@ -11,6 +11,8 @@ import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
+import 'package:pb_hrsystem/models/qr_profile_page.dart';
+import 'package:pb_hrsystem/models/user_profile.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
 import 'package:pb_hrsystem/services/offline_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
@@ -160,12 +162,21 @@ class MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     offlineProvider.initialize();
-    connectivityResult.onConnectivityChanged.listen((source) {
+    connectivityResult.onConnectivityChanged.listen((source) async {
       Future.delayed(const Duration(seconds: 20)).whenComplete(() => _enableConnection = true);
       if (_enableConnection) {
-        if (source.contains(ConnectivityResult.none)) showToast('No internet', Colors.red, Icons.mobiledata_off_rounded);
-        if (source.contains(ConnectivityResult.wifi)) showToast('WiFi', Colors.green, Icons.wifi);
-        if (source.contains(ConnectivityResult.mobile)) showToast('Internet', Colors.green, Icons.wifi);
+        if (source.contains(ConnectivityResult.none)) {
+          showToast('No internet', Colors.red, Icons.mobiledata_off_rounded);
+          await offlineProvider.autoOffline(true);
+        }
+        if (source.contains(ConnectivityResult.wifi)) {
+          showToast('WiFi', Colors.green, Icons.wifi);
+          await offlineProvider.autoOffline(false);
+        }
+        if (source.contains(ConnectivityResult.mobile)) {
+          showToast('Internet', Colors.green, Icons.wifi);
+          await offlineProvider.autoOffline(false);
+        }
       }
     });
   }
@@ -175,9 +186,7 @@ class MainScreenState extends State<MainScreen> {
       setState(() {
         _selectedIndex = index;
       });
-      if (index == 2) {
-        
-      }
+      if (index == 2) {}
     } else {
       _navigatorKeys[index].currentState?.popUntil((route) => route.isFirst);
     }
@@ -221,15 +230,15 @@ class MainScreenState extends State<MainScreen> {
 Future<void> initializeHive() async {
   await Hive.initFlutter();
   Hive.registerAdapter(AttendanceRecordAdapter());
-  // Hive.registerAdapter(CalendarEventsListRecordAdapter());
-  // Hive.registerAdapter(EventRecordAdapter());
+  Hive.registerAdapter(UserProfileRecordAdapter());
+  Hive.registerAdapter(QRRecordAdapter());
   // Hive.registerAdapter(MaterialColorAdapter());
 
   await Hive.openBox<AttendanceRecord>('pending_attendance');
-  // await Hive.openBox<CalendarEventsListRecord>('store_events_calendar');
+  await Hive.openBox<UserProfileRecord>('user_profile');
+  await Hive.openBox<QRRecord>('qr_profile');
   await Hive.openBox<String>('userProfileBox');
   await Hive.openBox<List<String>>('bannersBox');
   await Hive.openBox('loginBox');
   // await Hive.openBox('calendarEventsRecordBox');
-  await Hive.openBox('UserProfileRecordBox');
 }

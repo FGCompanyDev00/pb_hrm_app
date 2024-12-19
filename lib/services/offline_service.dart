@@ -6,6 +6,7 @@ import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
+import 'package:pb_hrsystem/models/qr_profile_page.dart';
 import 'package:pb_hrsystem/services/local_database_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import '../hive_helper/model/attendance_record.dart';
@@ -13,6 +14,8 @@ import 'package:flutter/foundation.dart';
 
 class OfflineProvider extends ChangeNotifier {
   late Box<AttendanceRecord> _attendanceBox;
+  late Box<UserProfileRecord> _profileBox;
+  late Box<QRRecord> _qrBox;
   LocalDatabaseService localDatabaseService = LocalDatabaseService();
   final ValueNotifier<bool> isOfflineService = ValueNotifier<bool>(false);
 
@@ -32,6 +35,8 @@ class OfflineProvider extends ChangeNotifier {
 
   void initialize() async {
     _attendanceBox = Hive.box<AttendanceRecord>('pending_attendance');
+    _profileBox = Hive.box<UserProfileRecord>('user_profile');
+    _qrBox = Hive.box<QRRecord>('qr_profile');
     // _calendarEventsBox = Hive.box<CalendarEventsListRecord>('store_events_calendar');
   }
 
@@ -51,6 +56,40 @@ class OfflineProvider extends ChangeNotifier {
 
   Future<void> addPendingAttendance(AttendanceRecord record) async {
     await _attendanceBox.add(record);
+  }
+
+  bool isExistedProfile() {
+    return _profileBox.isNotEmpty;
+  }
+
+  Future<void> addProfile(UserProfileRecord record) async {
+    final data = await _profileBox.add(record);
+    debugPrint(data.toString());
+  }
+
+  Future<void> updateProfile(UserProfileRecord record) async {
+    await _profileBox.put(1, record);
+  }
+
+  UserProfileRecord? getProfile() {
+    return _profileBox.get(1);
+  }
+
+  bool isExistedQR() {
+    return _qrBox.isNotEmpty;
+  }
+
+  Future<void> addQR(QRRecord record) async {
+    final data = await _qrBox.add(record);
+    debugPrint(data.toString());
+  }
+
+  Future<void> updateQR(QRRecord record) async {
+    await _qrBox.put(1, record);
+  }
+
+  String getQR() {
+    return _qrBox.get(1).toString();
   }
 
   Future<void> syncPendingAttendance() async {
