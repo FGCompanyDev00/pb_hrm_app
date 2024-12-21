@@ -86,7 +86,7 @@ Future<void> _initializeLocalNotifications() async {
   );
 
   // Combine settings
-  final InitializationSettings initializationSettings = InitializationSettings(
+  const InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
     iOS: initializationSettingsIOS,
   );
