@@ -16,6 +16,8 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
   late Animation<double> _slideAnimation;
   late Animation<double> _arrowAnimation;
   double _slidePosition = 0.0;
+
+  // You can adjust this for how “far” the slider handle travels horizontally.
   final double _maxSlideDistance = 250.0;
 
   @override
@@ -32,24 +34,21 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
     _slideAnimation = Tween<double>(
       begin: 0.0,
       end: _maxSlideDistance,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    ))
-      ..addListener(() {
-        setState(() {
-          _slidePosition = _slideAnimation.value;
-        });
+    ).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    )..addListener(() {
+      setState(() {
+        _slidePosition = _slideAnimation.value;
       });
+    });
 
-    // Define the arrow animation
+    // Define the arrow animation (used for the logo bounce, if desired)
     _arrowAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.elasticOut,
-    ));
+    ).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    );
 
     // Navigate to the main screen when the animation completes
     _controller.addStatusListener((status) {
@@ -75,9 +74,11 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
   }
 
   void _handleSlideEnd(BuildContext context) {
+    // If user has slid at least halfway, animate the rest
     if (_slidePosition >= _maxSlideDistance / 2) {
       _controller.forward(from: _slidePosition / _maxSlideDistance);
     } else {
+      // Otherwise, snap back
       setState(() {
         _slidePosition = 0.0;
       });
@@ -86,8 +87,7 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    // Use a ScrollController to customize the scrollbar
-    final ScrollController scrollController = ScrollController();
+    final scrollController = ScrollController();
 
     return Scaffold(
       body: Stack(
@@ -105,7 +105,7 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
               ),
             ),
           ),
-          // Main content with smooth scrolling
+          // Main scrollable content
           Scrollbar(
             controller: scrollController,
             thumbVisibility: true,
@@ -121,7 +121,8 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 60),
-                    // Logo with a bounce animation
+
+                    // Logo with a gentle bounce
                     Center(
                       child: AnimatedBuilder(
                         animation: _arrowAnimation,
@@ -139,7 +140,8 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // "Ready to Go" text with a fade-in animation
+
+                    // "Ready to Go" text with fade-in
                     FadeInText(
                       text: AppLocalizations.of(context)!.readyToGo,
                       style: const TextStyle(
@@ -150,18 +152,19 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
                       delay: 500,
                     ),
                     const SizedBox(height: 40),
-                    // Sliding button with arrow animation
+
+                    // Sliding button with improved layout & triple chevron arrow
                     Center(
                       child: SlidingButton(
                         slidePosition: _slidePosition,
                         maxSlideDistance: _maxSlideDistance,
                         onSlideUpdate: _updateSlidePosition,
                         onSlideEnd: () => _handleSlideEnd(context),
-                        arrowAnimation: _arrowAnimation,
                       ),
                     ),
                     const SizedBox(height: 40),
-                    // Ready image with a slide-in animation
+
+                    // A "Ready image" with slide-in animation
                     const SlideInImage(
                       imagePath: 'assets/ready_image.png',
                       width: 220,
@@ -180,12 +183,14 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
   }
 }
 
-class SlidingButton extends StatelessWidget {
+// -----------------------------------------------------------------------------
+// SlidingButton: Rectangular handle with triple "chevron_right" arrows.
+// -----------------------------------------------------------------------------
+class SlidingButton extends StatefulWidget {
   final double slidePosition;
   final double maxSlideDistance;
   final ValueChanged<double> onSlideUpdate;
   final VoidCallback onSlideEnd;
-  final Animation<double> arrowAnimation;
 
   const SlidingButton({
     super.key,
@@ -193,79 +198,126 @@ class SlidingButton extends StatelessWidget {
     required this.maxSlideDistance,
     required this.onSlideUpdate,
     required this.onSlideEnd,
-    required this.arrowAnimation,
   });
+
+  @override
+  State<SlidingButton> createState() => _SlidingButtonState();
+}
+
+class _SlidingButtonState extends State<SlidingButton> with SingleTickerProviderStateMixin {
+  late AnimationController _arrowController;
+  late Animation<Offset> _arrowOffsetAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    // This controller gently moves the triple arrows left-right
+    _arrowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+
+    // Shifts the arrow about 4% of its width to the right, then back
+    _arrowOffsetAnimation = Tween<Offset>(
+      begin: Offset.zero,
+      end: const Offset(0.04, 0.0),
+    ).animate(CurvedAnimation(
+      parent: _arrowController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _arrowController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      // Make the slider more sensitive: multiply delta by 1.5
       onPanUpdate: (details) {
-        double newPosition = slidePosition + details.delta.dx;
+        double newPosition = widget.slidePosition + details.delta.dx * 1.5;
         if (newPosition < 0) newPosition = 0;
-        if (newPosition > maxSlideDistance) newPosition = maxSlideDistance;
-        onSlideUpdate(newPosition);
+        if (newPosition > widget.maxSlideDistance) {
+          newPosition = widget.maxSlideDistance;
+        }
+        widget.onSlideUpdate(newPosition);
       },
-      onPanEnd: (details) {
-        onSlideEnd();
-      },
-      child: Stack(
-        children: [
-          // Background track
-          Container(
-            width: maxSlideDistance + 60,
-            height: 70,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(35),
-              border: Border.all(color: Colors.green, width: 2),
-            ),
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 80.0),
-              child: Text(
-                AppLocalizations.of(context)!.getStarted,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+      onPanEnd: (details) => widget.onSlideEnd(),
+      child: SizedBox(
+        // The total width is the track (white) + space for the handle on the far right
+        width: widget.maxSlideDistance + 20,
+        // More compact height to match your Figma style
+        height: 60,
+        child: Stack(
+          children: [
+            // Background track (white, pill-shaped, "Get Started" text on the right)
+            Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(color: Colors.green, width: 2),
+              ),
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 50.0),
+                child: Text(
+                  AppLocalizations.of(context)!.getStarted,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
               ),
             ),
-          ),
-          // Sliding button with arrow animation
-          Positioned(
-            left: slidePosition,
-            child: Transform.rotate(
-              angle: arrowAnimation.value * 0.5,
-              child: Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(35),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.green.withOpacity(0.5),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.arrow_forward,
-                  color: Colors.white,
-                  size: 30,
+
+            // Rectangular handle with triple "chevron_right" arrows
+            Positioned(
+              left: widget.slidePosition,
+              child: SlideTransition(
+                position: _arrowOffsetAnimation,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 20,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.green.withOpacity(0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.chevron_right, color: Colors.white, size: 20),
+                      Icon(Icons.chevron_right, color: Colors.white, size: 20),
+                      Icon(Icons.chevron_right, color: Colors.white, size: 20),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-// Custom widget for fade-in text animation
+// -----------------------------------------------------------------------------
+// FadeInText: Custom fade-in animation for text
+// -----------------------------------------------------------------------------
 class FadeInText extends StatefulWidget {
   final String text;
   final TextStyle style;
@@ -294,13 +346,11 @@ class _FadeInTextState extends State<FadeInText> with SingleTickerProviderStateM
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(_fadeController);
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_fadeController);
 
+    // Start fade after a delay
     Future.delayed(Duration(milliseconds: widget.delay), () {
-      _fadeController.forward();
+      if (mounted) _fadeController.forward();
     });
   }
 
@@ -323,7 +373,9 @@ class _FadeInTextState extends State<FadeInText> with SingleTickerProviderStateM
   }
 }
 
-// Custom widget for slide-in image animation
+// -----------------------------------------------------------------------------
+// SlideInImage: Custom slide-in animation for an image
+// -----------------------------------------------------------------------------
 class SlideInImage extends StatefulWidget {
   final String imagePath;
   final double width;
@@ -355,7 +407,7 @@ class _SlideInImageState extends State<SlideInImage> with SingleTickerProviderSt
     );
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0.0, 1.0),
+      begin: const Offset(0.0, 1.0), // Start from below the screen
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _slideController,
@@ -363,7 +415,7 @@ class _SlideInImageState extends State<SlideInImage> with SingleTickerProviderSt
     ));
 
     Future.delayed(Duration(milliseconds: widget.delay), () {
-      _slideController.forward();
+      if (mounted) _slideController.forward();
     });
   }
 
