@@ -905,8 +905,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             mainAxisSize: MainAxisSize.max,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (_showFiltersAndSearchBar) _buildFilters(),
-              if (_showFiltersAndSearchBar) _buildSearchBar(),
               _buildCalendar(context, isDarkMode),
               const SizedBox(height: 2),
               _buildSectionSeparator(),
@@ -930,10 +928,10 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 eventsCalendar: eventsForDay,
                 passDefaultCurrentHour: switchTime.value
                     ? 0
-                    : liveDay.hour < 18
-                    ? liveDay.hour
-                    : 7,
-                passDefaultEndHour: switchTime.value ? 25 : 18,
+                    : ((liveDay.hour - 1) < 0 ? 0 : liveDay.hour - 1),
+                passDefaultEndHour: switchTime.value
+                    ? 24
+                    : ((liveDay.hour + 3) > 24 ? 24 : liveDay.hour + 3),
               ),
             ],
           ),
