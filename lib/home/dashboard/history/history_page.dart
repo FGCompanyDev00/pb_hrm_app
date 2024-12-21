@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_details_page.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -248,7 +249,16 @@ class _HistoryPageState extends State<HistoryPage> {
     final bool isDarkMode = themeNotifier.isDarkMode;
     final Size screenSize = MediaQuery.of(context).size;
 
-    return Scaffold(
+    return WillPopScope(
+        onWillPop: () async {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const Dashboard()),
+            (route) => false,
+      );
+      return false;
+    },
+    child: Scaffold(
       backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
       body: Column(
         children: [
@@ -318,7 +328,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 ),
         ],
       ),
-    );
+    ));
   }
 
   /// Builds the header section with background image and title

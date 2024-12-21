@@ -561,12 +561,12 @@ class DashboardState extends State<Dashboard> {
             {
               'icon': 'assets/KPI.png',
               'label': AppLocalizations.of(context)!.kpi,
-              'onTap': () {}, // Add functionality if needed
+              'onTap': () {},
             },
             {
               'icon': 'assets/inventory.png',
               'label': AppLocalizations.of(context)!.inventory,
-              'onTap': () {}, // Add functionality if needed
+              'onTap': () {},
             },
           ];
 

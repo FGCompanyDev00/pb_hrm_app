@@ -18,7 +18,7 @@ class LeaveManagementPage extends HookWidget {
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     // Form Key for Validation
-    final _formKey = useMemoized(() => GlobalKey<FormState>());
+    final formKey = useMemoized(() => GlobalKey<FormState>());
 
     // Controllers
     final typeController = useTextEditingController();
@@ -48,7 +48,7 @@ class LeaveManagementPage extends HookWidget {
                 child: const Text('Close'),
                 onPressed: () {
                   if (title == 'Success') {
-                    _formKey.currentState?.reset();
+                    formKey.currentState?.reset();
                     typeController.clear();
                     descriptionController.clear();
                     startDateController.clear();
@@ -227,7 +227,7 @@ class LeaveManagementPage extends HookWidget {
               ),
             )
                 : ThemeData.light().copyWith(
-              colorScheme: ColorScheme.light(
+              colorScheme: const ColorScheme.light(
                 primary: Colors.orange,
                 onPrimary: Colors.white,
                 surface: Colors.white,
@@ -274,7 +274,7 @@ class LeaveManagementPage extends HookWidget {
 
     // Save Data Method
     Future<void> saveData() async {
-      if (_formKey.currentState?.validate() ?? false) {
+      if (formKey.currentState?.validate() ?? false) {
         try {
           isSubmitting.value = true;
           final prefs = await SharedPreferences.getInstance();
@@ -406,14 +406,14 @@ class LeaveManagementPage extends HookWidget {
       body: LayoutBuilder(
         builder: (context, constraints) {
           return GestureDetector(
-            onTap: () => FocusScope.of(context).unfocus(), // Dismiss keyboard
+            onTap: () => FocusScope.of(context).unfocus(),
             child: Stack(
               children: [
                 SingleChildScrollView(
                   padding: EdgeInsets.symmetric(
-                      horizontal: 20.0, vertical: constraints.maxWidth < 600 ? 140 : 60),
+                      horizontal: 20.0, vertical: constraints.maxWidth < 600 ? 150 : 60),
                   child: Form(
-                    key: _formKey,
+                    key: formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -430,17 +430,17 @@ class LeaveManagementPage extends HookWidget {
                                   : Colors.white,
                               backgroundColor: isDarkMode
                                   ? Colors.orange.shade700
-                                  : Colors.orange,
+                                  : const Color(0xFFDBB342),
                               disabledBackgroundColor: Colors.grey,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               padding: const EdgeInsets.symmetric(
-                                  vertical: 15.0, horizontal: 30.0),
+                                  vertical: 15.0, horizontal: 32.0),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
                         // Type Field
                         buildTextField(
                           label: "Type*",

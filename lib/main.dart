@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // <--- ADDED
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
@@ -12,7 +13,6 @@ import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/models/qr_profile_page.dart';
-import 'package:pb_hrsystem/models/user_profile.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
 import 'package:pb_hrsystem/services/offline_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
@@ -27,6 +27,12 @@ import 'home/attendance_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'hive_helper/model/attendance_record.dart';
 
+/// ------------------------------------------------------------
+/// 1) Global instance of FlutterLocalNotificationsPlugin
+/// ------------------------------------------------------------
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+FlutterLocalNotificationsPlugin();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -37,6 +43,16 @@ void main() async {
   }
   await initializeHive();
   sl<OfflineProvider>().initializeCalendar();
+
+  /// ----------------------------------------------
+  /// 2) Initialize local notifications
+  /// ----------------------------------------------
+  await _initializeLocalNotifications();
+
+  final ios = flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+      IOSFlutterLocalNotificationsPlugin>();
+  await ios?.requestPermissions(alert: true, badge: true, sound: true);
 
   runApp(
     MultiProvider(
@@ -50,6 +66,65 @@ void main() async {
       child: const MyApp(),
     ),
   );
+}
+
+/// ------------------------------------------
+/// 3) A private method for plugin initialization
+/// ------------------------------------------
+Future<void> _initializeLocalNotifications() async {
+  // For Android
+  const AndroidInitializationSettings initializationSettingsAndroid =
+  AndroidInitializationSettings('@mipmap/playstore');
+
+  // For iOS
+  const DarwinInitializationSettings initializationSettingsIOS =
+  DarwinInitializationSettings(
+    onDidReceiveLocalNotification: onDidReceiveLocalNotification,
+    requestAlertPermission: true,
+    requestBadgePermission: true,
+    requestSoundPermission: true,
+  );
+
+  // Combine settings
+  final InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+    iOS: initializationSettingsIOS,
+  );
+
+  // Initialize the plugin
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
+  );
+
+  // (Optional) Create an Android notification channel:
+  const AndroidNotificationChannel channel = AndroidNotificationChannel(
+    'attendance_channel_id',
+    'Attendance',
+    description: 'Notifications for check-in/check-out',
+    importance: Importance.high,
+  );
+
+  await flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin>()
+      ?.createNotificationChannel(channel);
+}
+
+/// iOS < 10 local notification callback
+void onDidReceiveLocalNotification(
+    int id,
+    String? title,
+    String? body,
+    String? payload,
+    ) {
+  debugPrint('iOS (<10) local notification: title=$title, body=$body');
+}
+
+/// iOS 10+ (and Android) notification tap or response callback
+@pragma('vm:entry-point') // important if you want background handling
+void onDidReceiveNotificationResponse(NotificationResponse response) {
+  debugPrint('Notification response tapped. Payload: ${response.payload}');
 }
 
 class MyApp extends StatelessWidget {
@@ -66,7 +141,8 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             primarySwatch: Colors.green,
             visualDensity: VisualDensity.adaptivePlatformDensity,
-            textTheme: GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme),
+            textTheme:
+            GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
@@ -80,9 +156,9 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: Colors.black,
             textTheme: GoogleFonts.oxaniumTextTheme(
               Theme.of(context).textTheme.apply(
-                    bodyColor: Colors.white,
-                    displayColor: Colors.white,
-                  ),
+                bodyColor: Colors.white,
+                displayColor: Colors.white,
+              ),
             ),
           ),
           themeMode: themeNotifier.currentTheme,
@@ -156,14 +232,16 @@ class MainScreen extends StatefulWidget {
 class MainScreenState extends State<MainScreen> {
   int _selectedIndex = 1;
   bool _enableConnection = false;
-  final List<GlobalKey<NavigatorState>> _navigatorKeys = List.generate(4, (index) => GlobalKey<NavigatorState>());
+  final List<GlobalKey<NavigatorState>> _navigatorKeys =
+  List.generate(4, (index) => GlobalKey<NavigatorState>());
 
   @override
   void initState() {
     super.initState();
     offlineProvider.initialize();
     connectivityResult.onConnectivityChanged.listen((source) async {
-      Future.delayed(const Duration(seconds: 20)).whenComplete(() => _enableConnection = true);
+      Future.delayed(const Duration(seconds: 20))
+          .whenComplete(() => _enableConnection = true);
       if (_enableConnection) {
         if (source.contains(ConnectivityResult.none)) {
           showToast('No internet', Colors.red, Icons.mobiledata_off_rounded);
@@ -206,15 +284,21 @@ class MainScreenState extends State<MainScreen> {
           children: [
             Navigator(
               key: _navigatorKeys[0],
-              onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => const AttendanceScreen()),
+              onGenerateRoute: (_) => MaterialPageRoute(
+                builder: (_) => const AttendanceScreen(),
+              ),
             ),
             Navigator(
               key: _navigatorKeys[1],
-              onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => const HomeCalendar()),
+              onGenerateRoute: (_) => MaterialPageRoute(
+                builder: (_) => const HomeCalendar(),
+              ),
             ),
             Navigator(
               key: _navigatorKeys[2],
-              onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => const Dashboard()),
+              onGenerateRoute: (_) => MaterialPageRoute(
+                builder: (_) => const Dashboard(),
+              ),
             ),
           ],
         ),

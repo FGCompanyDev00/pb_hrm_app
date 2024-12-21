@@ -23,6 +23,7 @@ import '../settings/theme_notifier.dart';
 import 'monthly_attendance_record.dart';
 import '../hive_helper/model/attendance_record.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:pb_hrsystem/main.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -32,8 +33,6 @@ class AttendanceScreen extends StatefulWidget {
 }
 
 class AttendanceScreenState extends State<AttendanceScreen> {
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-  FlutterLocalNotificationsPlugin();
   final LocalAuthentication auth = LocalAuthentication();
   final _storage = const FlutterSecureStorage();
   final userPreferences = sl<UserPreferences>();
@@ -47,7 +46,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   Timer? _timer;
   StreamSubscription<Position>? _positionStreamSubscription;
   String _currentSection = 'Home';
-  String _detectedLocation = 'Home'; // New variable to store detected location
+  String _detectedLocation = 'Home';
   String _deviceId = '';
   List<Map<String, String>> _weeklyRecords = [];
   bool _isLoading = true;
@@ -67,7 +66,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeNotifications();
     _fetchWeeklyRecords();
     _retrieveSavedState();
     _retrieveDeviceId();
@@ -84,65 +82,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     _refreshTimer = Timer.periodic(const Duration(hours: 1), (timer) {
       _fetchWeeklyRecords();
     });
-  }
-
-  Future<void> _initializeNotifications() async {
-    // Android initialization settings
-    const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/playstore');
-
-    // iOS initialization settings
-    DarwinInitializationSettings initializationSettingsIOS =
-    DarwinInitializationSettings(
-      onDidReceiveLocalNotification: onDidReceiveLocalNotification,
-    );
-
-    // Combine both Android and iOS settings
-    InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
-    );
-
-    await flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // Handle notification tap if needed
-      },
-    );
-
-    // Create Android Notification Channel
-    await _createNotificationChannel();
-
-    // Optional: Verify initialization
-    if (kDebugMode) {
-      print('FlutterLocalNotificationsPlugin initialized.');
-    }
-  }
-
-  Future<void> _createNotificationChannel() async {
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'attendance_channel_id',
-      'Attendance',
-      description: 'Notifications for check-in/check-out',
-      importance: Importance.high,
-    );
-
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
-
-    if (kDebugMode) {
-      print('Notification channel created: ${channel.id}');
-    }
-  }
-
-  Future<void> onDidReceiveLocalNotification(
-      int id, String? title, String? body, String? payload) async {
-    // Handle your notification when tapped (e.g., show a dialog)
-    if (kDebugMode) {
-      print('iOS Notification Received: $title, $body');
-    }
   }
 
   Future<void> _determineAndShowLocationModal() async {

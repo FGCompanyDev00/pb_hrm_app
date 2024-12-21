@@ -226,8 +226,8 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           break;
         case 'maybe':
           endpoint = '/api/office-administration/book_meeting_room/maybe/$uid';
-          successMessage = 'You have rejected the meeting.';
-          snackBarColor = Colors.red;
+          successMessage = 'You have marked your response as Maybe.';
+          snackBarColor = Colors.orange;
           break;
         default:
           showSnackBarEvent('Invalid response type.', Colors.red);

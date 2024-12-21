@@ -29,10 +29,6 @@
     <key>LSRequiresIPhoneOS</key>
     <true/>
 
-    <!-- Privacy Permission Purpose Strings -->
-    <key>NSLocalNotificationUsageDescription</key>
-    <string>We send notifications for updates and promotions related to the app.</string>
-
     <key>NSCameraUsageDescription</key>
     <string>We need access to the camera to allow you to take and upload photos for your profile and other features.</string>
 

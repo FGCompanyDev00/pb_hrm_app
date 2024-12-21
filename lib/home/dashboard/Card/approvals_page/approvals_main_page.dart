@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_details_page.dart';
+import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -223,7 +224,16 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
     final bool isDarkMode = themeNotifier.isDarkMode;
     final Size screenSize = MediaQuery.of(context).size;
 
-    return Scaffold(
+    return WillPopScope(
+        onWillPop: () async {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const Dashboard()),
+            (route) => false,
+      );
+      return false;
+    },
+    child: Scaffold(
       backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
       body: Column(
         children: [
@@ -293,7 +303,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                 ),
         ],
       ),
-    );
+    ));
   }
 
   /// Builds the header section with background image and title.
@@ -325,20 +335,20 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                 IconButton(
                   icon: Icon(
                     Icons.arrow_back,
-                    color: isDarkMode ? Colors.white : Colors.black, // Icon color based on theme
-                    size: screenSize.width * 0.07, // Icon size responsive to screen width
+                    color: isDarkMode ? Colors.white : Colors.black,
+                    size: screenSize.width * 0.07,
                   ),
                   onPressed: () => Navigator.maybePop(context),
                 ),
                 Text(
                   'Approvals',
                   style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black, // Title color based on theme
-                    fontSize: screenSize.width * 0.06, // Font size responsive to screen width
+                    color: isDarkMode ? Colors.white : Colors.black,
+                    fontSize: screenSize.width * 0.06,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(width: screenSize.width * 0.12), // Flexible spacing
+                SizedBox(width: screenSize.width * 0.12),
               ],
             ),
           ),
