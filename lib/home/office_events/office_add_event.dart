@@ -463,7 +463,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     const int startMinutes = 0 * 60; // 8:00 AM
     const int endMinutes = 24 * 60; // 5:00 PM
     final currentDay = DateTime.now().toUtc();
-    final DateTime initialDate = isStartDateTime ? (_startDateTime ?? currentDay) : (_endDateTime ?? currentDay);
+    final DateTime initialDate = isStartDateTime ? currentDay : (_endDateTime ?? currentDay);
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: isStartDateTime ? initialDate : _beforeEndDateTime.value,
@@ -472,7 +472,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     );
 
     if (pickedDate != null) {
-      if (_selectedBookingType == '1. Add Meeting') {
+      if (_selectedBookingType == '1. Add Meeting' || _selectedBookingType == '2. Meeting and Booking Meeting Room') {
         // For Type 1, also pick time
         DateTime currentTimeStart = pickedDate.day == initialDate.day ? initialDate : DateTime.utc(currentDay.year, currentDay.month, currentDay.day, 8, 0);
         final TimeOfDay initialTime = TimeOfDay.fromDateTime(isStartDateTime ? currentTimeStart : _beforeEndDateTime.value!);
