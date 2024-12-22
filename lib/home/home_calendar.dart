@@ -909,29 +909,25 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               _buildSectionSeparator(),
               eventsForDay.isEmpty
                   ? SizedBox(
-                height: sizeScreen(context).height * 0.20,
-                child: Center(
-                  child: Text(
-                    AppLocalizations.of(context)!.noEventsForThisDay,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              )
+                      height: sizeScreen(context).height * 0.20,
+                      child: Center(
+                        child: Text(
+                          AppLocalizations.of(context)!.noEventsForThisDay,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
                   : CalendarDaySwitchView(
-                selectedDay: _selectedDay,
-                eventsCalendar: eventsForDay,
-                passDefaultCurrentHour: switchTime.value
-                    ? 0
-                    : ((liveDay.hour - 1) < 0 ? 0 : liveDay.hour - 1),
-                passDefaultEndHour: switchTime.value
-                    ? 24
-                    : ((liveDay.hour + 3) > 24 ? 24 : liveDay.hour + 3),
-              ),
+                      selectedDay: _selectedDay,
+                      passDefaultCurrentHour: switchTime.value ? 0 : liveDay.hour,
+                      passDefaultEndHour: switchTime.value ? 25 : 18,
+                      eventsCalendar: eventsForDay,
+                    ),
             ],
           ),
         ),
