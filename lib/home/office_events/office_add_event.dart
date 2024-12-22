@@ -74,6 +74,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     _purposeController.dispose();
     _placeController.dispose();
     _nameController.dispose();
+    _beforeEndDateTime.dispose();
     super.dispose();
   }
 
@@ -109,9 +110,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         setState(() {
           _rooms = data
               .map<Map<String, dynamic>>((item) => {
-                    'room_id': item['uid'],
-                    'room_name': item['room_name'],
-                  })
+            'room_id': item['uid'],
+            'room_name': item['room_name'],
+          })
               .toList();
         });
       } else {
@@ -286,8 +287,10 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   /// Formats DateTime based on booking type
   String formatDateTime(DateTime? dateTime) {
     if (dateTime == null) return '';
-    if (_selectedBookingType == '1. Add Meeting') {
-      return DateFormat('yyyy-MM-dd HH:mm:ss').format(dateTime);
+    if (_selectedBookingType == '1. Add Meeting' ||
+        _selectedBookingType == '2. Meeting and Booking Meeting Room') {
+      // Send in UTC to ensure correct interpretation by the API
+      return DateFormat('yyyy-MM-dd HH:mm:ss').format(dateTime.toUtc());
     } else {
       return DateFormat('yyyy-MM-dd').format(dateTime);
     }
@@ -295,7 +298,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
   String formatTime(DateTime? dateTime) {
     if (dateTime == null) return '';
-    return DateFormat('HH:mm:ss').format(dateTime);
+    return DateFormat('HH:mm:ss').format(dateTime.toUtc());
   }
 
   /// Resets the form fields to default values
@@ -316,6 +319,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       _roomName = null;
       _location = null;
       _notification = null;
+      _beforeEndDateTime.value = null;
     });
   }
 
@@ -405,14 +409,32 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         return false;
     }
 
-    if (_startDateTime == null || _endDateTime == null) {
-      _showErrorMessage('Please select start and end dates.');
-      return false;
-    }
+    // Validate date-times based on booking type
+    if (_selectedBookingType == '1. Add Meeting' ||
+        _selectedBookingType == '2. Meeting and Booking Meeting Room') {
+      if (_startDateTime == null || _endDateTime == null) {
+        _showErrorMessage('Please select start and end date-times.');
+        return false;
+      }
 
-    if (_startDateTime != null && _endDateTime != null && _startDateTime!.isAfter(_endDateTime!)) {
-      _showErrorMessage('Start date must be before end date.');
-      return false;
+      if (_startDateTime != null &&
+          _endDateTime != null &&
+          _startDateTime!.isAfter(_endDateTime!)) {
+        _showErrorMessage('Start date-time must be before end date-time.');
+        return false;
+      }
+    } else if (_selectedBookingType == '3. Booking Car') {
+      if (_startDateTime == null || _endDateTime == null) {
+        _showErrorMessage('Please select start and end dates.');
+        return false;
+      }
+
+      if (_startDateTime != null &&
+          _endDateTime != null &&
+          _startDateTime!.isAfter(_endDateTime!)) {
+        _showErrorMessage('Start date must be before end date.');
+        return false;
+      }
     }
 
     return true;
@@ -440,7 +462,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     );
   }
 
-  /// Shows error message using SnackBar
+  /// Shows error message using AlertDialog
   void _showErrorFieldMessage(String title, String message) async {
     if (!mounted) return;
     await showDialog(
@@ -460,61 +482,69 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
   /// Shows date and time picker for selecting date and time
   Future<void> _selectDateTime(BuildContext context, bool isStartDateTime) async {
-    const int startMinutes = 0 * 60; // 8:00 AM
-    const int endMinutes = 24 * 60; // 5:00 PM
-    final currentDay = DateTime.now().toUtc();
-    final DateTime initialDate = isStartDateTime ? currentDay : (_endDateTime ?? currentDay);
+    final DateTime currentDay = DateTime.now();
+    DateTime initialDate;
+    TimeOfDay initialTime;
+
+    if (isStartDateTime) {
+      initialDate = currentDay;
+      initialTime = const TimeOfDay(hour: 9, minute: 0);
+    } else {
+      initialDate = _beforeEndDateTime.value ?? currentDay;
+      initialTime = const TimeOfDay(hour: 13, minute: 0);
+    }
+
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: isStartDateTime ? initialDate : _beforeEndDateTime.value,
-      firstDate: isStartDateTime ? initialDate : _beforeEndDateTime.value!,
+      initialDate: initialDate,
+      firstDate: currentDay,
       lastDate: DateTime(2101),
     );
 
     if (pickedDate != null) {
-      if (_selectedBookingType == '1. Add Meeting' || _selectedBookingType == '2. Meeting and Booking Meeting Room') {
-        // For Type 1, also pick time
-        DateTime currentTimeStart = pickedDate.day == initialDate.day ? initialDate : DateTime.utc(currentDay.year, currentDay.month, currentDay.day, 8, 0);
-        final TimeOfDay initialTime = TimeOfDay.fromDateTime(isStartDateTime ? currentTimeStart : _beforeEndDateTime.value!);
+      if (_selectedBookingType == '1. Add Meeting' ||
+          _selectedBookingType == '2. Meeting and Booking Meeting Room') {
+        // For Type 1 and Type 2, also pick time
         final TimeOfDay? pickedTime = await showTimePicker(
           context: context,
-          initialTime: initialTime,
+          initialTime: isStartDateTime ? initialTime : const TimeOfDay(hour: 13, minute: 0),
         );
-        if (pickedTime != null) {
-          final int selectedMinutes = pickedTime.hour * 60 + pickedTime.minute;
-          final int startTimeMinutes = initialTime.hour * 60 + initialTime.minute;
 
-          if (selectedMinutes < startMinutes || selectedMinutes > endMinutes) {
-            // Invalid time, show an error
-            return _showErrorFieldMessage(
+        if (pickedTime != null) {
+          // Ensure time is between 8:00 AM and 5:00 PM
+          if (pickedTime.hour < 8 || (pickedTime.hour == 17 && pickedTime.minute > 0) || pickedTime.hour > 17) {
+            _showErrorFieldMessage(
               'Invalid Time',
               'Please select a time between 8:00 AM and 5:00 PM.',
             );
-          } else if (selectedMinutes < startTimeMinutes) {
-            // Invalid time, show an error
-            return _showErrorFieldMessage('Invalid Time', 'Please select after current time at ${initialTime.hour} : ${initialTime.minute}.');
-          } else {
-            setState(() {
-              final DateTime pickedDateTime = DateTime(
-                pickedDate.year,
-                pickedDate.month,
-                pickedDate.day,
-                pickedTime.hour,
-                pickedTime.minute,
-              );
-              if (isStartDateTime) {
-                _startDateTime = pickedDateTime;
-                _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
-              } else {
-                _endDateTime = pickedDateTime;
-              }
-            });
+            return;
           }
+
+          final DateTime pickedDateTime = DateTime(
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            pickedTime.hour,
+            pickedTime.minute,
+          );
+
+          setState(() {
+            if (isStartDateTime) {
+              _startDateTime = pickedDateTime;
+              _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
+            } else {
+              _endDateTime = pickedDateTime;
+            }
+          });
         }
       } else {
-        // For Type 2 and 3, only date is needed
+        // For Type 3, only date is needed
         setState(() {
-          final DateTime pickedDateTime = DateTime(pickedDate.year, pickedDate.month, pickedDate.day);
+          final DateTime pickedDateTime = DateTime(
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+          );
           if (isStartDateTime) {
             _startDateTime = pickedDateTime;
             _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
@@ -537,7 +567,12 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
     if (selectedMembers != null && selectedMembers.isNotEmpty) {
       setState(() {
-        _selectedMembers = selectedMembers;
+        // Ensure that only unique members are added based on 'employee_id'
+        final existingIds = _selectedMembers.map((m) => m['employee_id']).toSet();
+        final newMembers = (selectedMembers as List<Map<String, dynamic>>)
+            .where((member) => !existingIds.contains(member['employee_id']))
+            .toList();
+        _selectedMembers.addAll(newMembers);
       });
     }
   }
@@ -559,10 +594,18 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 title: const Text('1. Add Meeting'),
                 onTap: () {
                   setState(() {
-                    // Set default values
+                    // Set booking type
                     _selectedBookingType = '1. Add Meeting';
+                    // Set default values
                     _location = "Meeting at Local Office";
                     _notification = 5;
+                    // Initialize start and end date-times if not already set
+                    if (_startDateTime == null || _endDateTime == null) {
+                      final DateTime now = DateTime.now();
+                      _startDateTime = DateTime(now.year, now.month, now.day, 9, 0);
+                      _endDateTime = DateTime(now.year, now.month, now.day, 13, 0);
+                      _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
+                    }
                   });
                   Navigator.pop(context);
                 },
@@ -575,6 +618,13 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                     // Set default values
                     _location = "Meeting at Local Office";
                     _notification = 5;
+                    // Initialize start and end date-times if not already set
+                    if (_startDateTime == null || _endDateTime == null) {
+                      final DateTime now = DateTime.now();
+                      _startDateTime = DateTime(now.year, now.month, now.day, 9, 0);
+                      _endDateTime = DateTime(now.year, now.month, now.day, 13, 0);
+                      _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
+                    }
                   });
                   Navigator.pop(context);
                 },
@@ -586,6 +636,13 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                     _selectedBookingType = '3. Booking Car';
                     // Set default values
                     _notification = 5;
+                    // Initialize start and end date-times if not already set
+                    if (_startDateTime == null || _endDateTime == null) {
+                      final DateTime now = DateTime.now();
+                      _startDateTime = DateTime(now.year, now.month, now.day);
+                      _endDateTime = DateTime(now.year, now.month, now.day);
+                      _beforeEndDateTime.value = null; // Not needed for Booking Car
+                    }
                   });
                   Navigator.pop(context);
                 },
@@ -664,9 +721,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         .asMap()
         .entries
         .map((entry) => DropdownMenuItem<int>(
-              value: entry.value,
-              child: Text('${entry.key + 1}. Notify me ${entry.value} min before'),
-            ))
+      value: entry.value,
+      child: Text('${entry.key + 1}. Notify me ${entry.value} min before'),
+    ))
         .toList();
 
     return DropdownButtonFormField<int>(
@@ -694,9 +751,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         .asMap()
         .entries
         .map((entry) => DropdownMenuItem<String>(
-              value: entry.value,
-              child: Text('${entry.key + 1}. ${entry.value}'),
-            ))
+      value: entry.value,
+      child: Text('${entry.key + 1}. ${entry.value}'),
+    ))
         .toList();
 
     return DropdownButtonFormField<String>(
@@ -794,7 +851,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_startDateTime == null ? 'dd/mm/yy' : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
+                          Text(_startDateTime == null
+                              ? 'dd/mm/yy - 09:00'
+                              : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -814,7 +873,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_endDateTime == null ? 'dd/mm/yy' : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
+                          Text(_endDateTime == null
+                              ? 'dd/mm/yy - 13:00'
+                              : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -968,21 +1029,21 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               children: [
                 Expanded(
                   child: Text(
-                    'Start Date*',
+                    'Start Date & Time*',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
                   ),
                 ),
                 SizedBox(width: 12.0),
                 Expanded(
                   child: Text(
-                    'End Date*',
+                    'End Date & Time*',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 4.0),
-            // Start and End Date inputs in same row
+            // Start and End Date & Time inputs in same row
             Row(
               children: [
                 Expanded(
@@ -997,7 +1058,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_startDateTime == null ? 'dd/mm/yy' : DateFormat('dd/MM/yy').format(_startDateTime!)),
+                          Text(_startDateTime == null
+                              ? 'dd/mm/yy - 09:00'
+                              : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1017,7 +1080,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_endDateTime == null ? 'dd/mm/yy' : DateFormat('dd/MM/yy').format(_endDateTime!)),
+                          Text(_endDateTime == null
+                              ? 'dd/mm/yy - 13:00'
+                              : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1046,9 +1111,11 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Debugging: Try a simple Text widget first
+                    // Display selected room or prompt to select
                     Text(
-                      _roomId != null ? '${_rooms.indexWhere((room) => room['room_id'] == _roomId) + 1}. $_roomName' : 'Room Selection', // Text should show when no room is selected
+                      _roomId != null
+                          ? '${_rooms.indexWhere((room) => room['room_id'] == _roomId) + 1}. $_roomName'
+                          : 'Room Selection',
                       style: TextStyle(
                         color: Theme.of(context).brightness == Brightness.dark
                             ? Colors.white // White text for dark mode
@@ -1216,7 +1283,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_startDateTime == null ? 'dd/mm/yy' : DateFormat('dd/MM/yy').format(_startDateTime!)),
+                          Text(_startDateTime == null
+                              ? 'dd/mm/yy - 09:00'
+                              : DateFormat('dd/MM/yy').format(_startDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1236,7 +1305,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_endDateTime == null ? 'dd/mm/yy' : DateFormat('dd/MM/yy').format(_endDateTime!)),
+                          Text(_endDateTime == null
+                              ? 'dd/mm/yy - 13:00'
+                              : DateFormat('dd/MM/yy').format(_endDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
