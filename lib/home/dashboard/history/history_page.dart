@@ -175,8 +175,8 @@ class _HistoryPageState extends State<HistoryPage> {
 
         formattedItem.addAll({
           'title': item['purpose'] ?? AppLocalizations.of(context)!.noPurpose,
-          'startDate': item['date_out'] ?? '',
-          'endDate': item['date_in'] ?? '',
+          'startDate': item['date_in'] ?? '',
+          'endDate': item['date_out'] ?? '',
           'employee_name': item['requestor_name'] ?? 'N/A',
           'employee_tel': item['employee_tel']?.toString() ?? AppLocalizations.of(context)!.noPhoneNumber,
           'id': item['uid']?.toString() ?? '',
@@ -608,7 +608,7 @@ class _HistoryPageState extends State<HistoryPage> {
                         ),
                         SizedBox(height: screenSize.height * 0.005),
                         Text(
-                          '${AppLocalizations.of(context)!.date} : $startDate',
+                          'From: $startDate',
                           style: TextStyle(
                             color: isDarkMode ? Colors.white70 : Colors.grey[700],
                             fontSize: screenSize.width * 0.03,

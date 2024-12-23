@@ -908,6 +908,150 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               _buildCalendar(context, isDarkMode),
               const SizedBox(height: 2),
               _buildSectionSeparator(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  children: [
+                    // Left side: Day and Date
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          DateFormat('EEEE').format(_selectedDay ?? DateTime.now()), // Day of the week
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          DateFormat('d MMMM y').format(_selectedDay ?? DateTime.now()), // Date
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    // Right side: Button to open dialog
+                    IconButton(
+                      icon: Icon(Icons.info_outline, color: isDarkMode ? Colors.green : Colors.red),
+                      onPressed: () {
+                        // Show dialog with event color types and calendar tips
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              title: const Text(
+                                'Event Color',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              content: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Event Colors Section
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 16,
+                                          height: 16,
+                                          color: const Color(0xFFDBB342), // Minutes of Meeting
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text('Minutes of Meeting'),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 16,
+                                          height: 16,
+                                          color: const Color(0xFF991B1B), // Leave
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text('Leave'),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 16,
+                                          height: 16,
+                                          color: const Color(0xFF89AFFF), // Car Booking
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text('Car Booking'),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 16,
+                                          height: 16,
+                                          color: const Color(0xFF25B24A), // Meeting Room
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text('Meeting Room'),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 16,
+                                          height: 16,
+                                          color: const Color(0xFF0369A1), // Meeting
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Text('Meeting'),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 20),
+                                    // Calendar Tips Section
+                                    const Text(
+                                      'Calendar Tips:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      '• Pull to refresh the page to view 24-hour events for the selected day or double-click on a date to open the timetable page.',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      '• Pull to refresh again to reset to the default view, showing the current hour - 1 up to the next 9 hours.',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  child: const Text('Close'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
               eventsForDay.isEmpty
                   ? SizedBox(
                       height: sizeScreen(context).height * 0.20,

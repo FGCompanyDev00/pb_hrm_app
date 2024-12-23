@@ -2,8 +2,10 @@
 
 import 'dart:async';
 
+import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // <--- ADDED
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -238,6 +240,7 @@ class MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    BackButtonInterceptor.add(_routeInterceptor);
     offlineProvider.initialize();
     connectivityResult.onConnectivityChanged.listen((source) async {
       Future.delayed(const Duration(seconds: 20))
@@ -257,6 +260,35 @@ class MainScreenState extends State<MainScreen> {
         }
       }
     });
+  }
+
+  @override
+  void dispose() {
+    // Unregister the back button interceptor
+    BackButtonInterceptor.remove(_routeInterceptor);
+    super.dispose();
+  }
+
+  bool _routeInterceptor(bool stopDefaultButtonEvent, RouteInfo info) {
+    // Access the current context based on the selected navigator
+    BuildContext currentContext = _navigatorKeys[_selectedIndex].currentContext!;
+
+    // Get the NavigatorState from the current context
+    var navigationState = Navigator.of(currentContext);
+
+    // If the keyboard is open, close it
+    if (MediaQuery.of(currentContext).viewInsets.bottom > 0) {
+      SystemChannels.textInput.invokeMethod('TextInput.hide');
+      return true; // Prevent default back button action
+    }
+
+    if (navigationState.canPop()) {
+      navigationState.pop();
+      return true; // Prevent default back button action
+    }
+
+    // If at the root route, allow the default back button behavior (e.g., exit app)
+    return false;
   }
 
   void _onItemTapped(int index) {

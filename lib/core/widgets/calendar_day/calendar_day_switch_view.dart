@@ -404,55 +404,55 @@ class CalendarDaySwitchView extends HookWidget {
                                       ),
                                       borderRadius: const BorderRadius.all(Radius.circular(10)),
                                     ),
-                                    child: Row(
-                                      children: [
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    const Icon(Icons.window_rounded, size: 15),
-                                                    const SizedBox(width: 5),
-                                                    Text(eventCategory),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 20),
-                                                Row(
-                                                  children: [
-                                                    iconCategory != null ? Image.asset(iconCategory, width: 15) : const SizedBox.shrink(),
-                                                    const SizedBox(width: 5),
-                                                    Text(event.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                                  ],
-                                                ),
-                                                Text(event.desc, style: const TextStyle(fontSize: 10)),
-                                              ],
-                                            ),
-                                            Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(children: _buildMembersAvatars(event, context)),
-                                                const SizedBox(height: 20),
-                                                Row(
-                                                  children: [
-                                                    const Icon(Icons.access_time, size: 15),
-                                                    const SizedBox(width: 5),
-                                                    Text(
-                                                      '${event.startDisplay != null ? FLDateTime.formatWithNames(event.startDisplay!, 'hh:mm a') : ''} - ${event.endDisplay != null ? FLDateTime.formatWithNames(event.endDisplay!, 'hh:mm a') : ''}',
-                                                      style: const TextStyle(fontSize: 10),
-                                                    ),
-                                                  ],
-                                                )
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  )
+                                  child: Row(
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.window_rounded, size: 15),
+                                                  const SizedBox(width: 5),
+                                                  Text(eventCategory),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Row(
+                                                children: [
+                                                  iconCategory != null ? Image.asset(iconCategory, width: 15) : const SizedBox.shrink(),
+                                                  const SizedBox(width: 5),
+                                                  Text(event.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                                ],
+                                              ),
+                                              // Text(event.desc, style: const TextStyle(fontSize: 10)),
+                                            ],
+                                          ),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(children: _buildMembersAvatars(event, context)),
+                                              const SizedBox(height: 20),
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.access_time, size: 15),
+                                                  const SizedBox(width: 5),
+                                                  Text(
+                                                    '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                    style: const TextStyle(fontSize: 10),
+                                                  ),
+                                                ],
+                                              )
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                )
                                 : Container(
                                     margin: const EdgeInsets.only(right: 3, left: 3),
                                     height: constraints.maxHeight,
@@ -475,11 +475,24 @@ class CalendarDaySwitchView extends HookWidget {
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                               children: [
-                                                Row(
+                                                Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
-                                                    const Icon(Icons.window_rounded, size: 15),
-                                                    const SizedBox(width: 5),
-                                                    Text(eventCategory),
+                                                    Row(
+                                                      children: [
+                                                        const Icon(Icons.window_rounded, size: 15),
+                                                        const SizedBox(width: 5),
+                                                        Text(eventCategory),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    Row(
+                                                      children: [
+                                                        const Icon(Icons.title, size: 15),
+                                                        const SizedBox(width: 5),
+                                                        Text(event.desc, style: const TextStyle(fontSize: 10)),
+                                                      ],
+                                                    ),
                                                   ],
                                                 ),
                                                 Column(
@@ -490,20 +503,13 @@ class CalendarDaySwitchView extends HookWidget {
                                                     Row(
                                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                       children: [
-                                                        Row(
-                                                          children: [
-                                                            iconCategory != null ? Image.asset(iconCategory, width: 15) : const SizedBox.shrink(),
-                                                            const SizedBox(width: 5),
-                                                            Text(event.desc, style: const TextStyle(fontSize: 10)),
-                                                          ],
-                                                        ),
                                                         const SizedBox(width: 20),
                                                         Row(
                                                           children: [
                                                             const Icon(Icons.access_time, size: 15),
                                                             const SizedBox(width: 5),
                                                             Text(
-                                                              '${event.startDisplay != null ? FLDateTime.formatWithNames(event.startDisplay!, 'hh:mm a') : ''} - ${event.endDisplay != null ? FLDateTime.formatWithNames(event.endDisplay!, 'hh:mm a') : ''}',
+                                                              '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
                                                               style: const TextStyle(fontSize: 10),
                                                             ),
                                                           ],
@@ -518,8 +524,8 @@ class CalendarDaySwitchView extends HookWidget {
                                         ),
                                       ),
                                     ),
-                                  ),
-                      );
+                        ),
+                );
                 return child;
               },
             ),

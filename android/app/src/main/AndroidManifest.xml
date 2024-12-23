@@ -38,7 +38,7 @@
         android:roundIcon="@mipmap/playstore"
         android:supportsRtl="true"
         android:theme="@style/LaunchTheme"
-        android:enableOnBackInvokedCallback="true"
+        android:enableOnBackInvokedCallback="false"
         android:requestLegacyExternalStorage="true">
 
         <receiver
