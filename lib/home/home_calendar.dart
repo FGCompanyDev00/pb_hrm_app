@@ -41,7 +41,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   // Calendar properties
   CalendarFormat _calendarFormat = CalendarFormat.month;
-  DateTime _focusedDay = DateTime.now();
+  DateTime _focusedDay = DateTime.now().toLocal();
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
 
@@ -869,7 +869,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
-    final liveDay = DateTime.now();
 
     return Scaffold(
       backgroundColor: isDarkMode ? Colors.black : Colors.white,
@@ -924,7 +923,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                     )
                   : CalendarDaySwitchView(
                       selectedDay: _selectedDay,
-                      passDefaultCurrentHour: switchTime.value ? 0 : liveDay.hour,
+                      passDefaultCurrentHour: switchTime.value ? 0 : DateTime.now().toLocal().hour,
                       passDefaultEndHour: switchTime.value ? 25 : 18,
                       eventsCalendar: eventsForDay,
                     ),

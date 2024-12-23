@@ -29,6 +29,8 @@ class CalendarDaySwitchView extends HookWidget {
   Widget build(BuildContext context) {
     final currentHour = useState(7);
     final untilEnd = useState(18);
+    final currentHourDisplay = useState(7);
+    final untilEndDisplay = useState(18);
     final currentHourDefault = useState(passDefaultCurrentHour);
     final untilEndDefault = useState(passDefaultEndHour);
     // final switchTime = useState(selectedSlotTime);
@@ -42,21 +44,21 @@ class CalendarDaySwitchView extends HookWidget {
       currentOverflowEventsRow.value.clear();
 
       if (passDefaultCurrentHour != 0) {
-        if (passDefaultCurrentHour > 7) {
-          currentHourDefault.value = 7;
-          untilEndDefault.value = 11;
-          currentHour.value = 7;
-          untilEnd.value = 11;
-        } else if (passDefaultCurrentHour > 11) {
-          currentHourDefault.value = 11;
-          untilEndDefault.value = 14;
-          currentHour.value = 11;
-          untilEnd.value = 14;
-        } else if (passDefaultCurrentHour > 14) {
+        if (passDefaultCurrentHour > 14) {
           currentHourDefault.value = 14;
           untilEndDefault.value = 18;
           currentHour.value = 14;
           untilEnd.value = 18;
+        } else if (passDefaultCurrentHour > 11) {
+          currentHourDefault.value = 11;
+          untilEndDefault.value = 15;
+          currentHour.value = 11;
+          untilEnd.value = 15;
+        } else if (passDefaultCurrentHour > 7) {
+          currentHourDefault.value = 7;
+          untilEndDefault.value = 11;
+          currentHour.value = 7;
+          untilEnd.value = 11;
         }
       } else {
         currentHourDefault.value = passDefaultCurrentHour;
@@ -66,18 +68,36 @@ class CalendarDaySwitchView extends HookWidget {
       }
 
       for (var e in eventsCalendar) {
+        DateTime startTimeDisplay = DateTime.utc(
+          selectedDay!.year,
+          selectedDay!.month,
+          selectedDay!.day,
+          e.start.hour == 0 ? currentHourDisplay.value : e.start.hour,
+          e.start.hour == 0 ? 0 : e.start.minute,
+        );
+        DateTime endTimeDisplay = DateTime.utc(
+          selectedDay!.year,
+          selectedDay!.month,
+          selectedDay!.day,
+          e.end.hour == 0 ? untilEndDisplay.value : e.end.hour,
+          e.end.hour == 0
+              ? untilEndDisplay.value == 23
+                  ? 59
+                  : 0
+              : e.end.minute,
+        );
         DateTime slotStartTime = DateTime.utc(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          currentHour.value,
+          passDefaultCurrentHour,
           0,
         );
         DateTime slotEndTime = DateTime.utc(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          untilEnd.value - 1,
+          passDefaultEndHour,
           0,
         );
         DateTime startTime = DateTime.utc(
@@ -154,6 +174,8 @@ class CalendarDaySwitchView extends HookWidget {
             category: e.category,
             members: e.members,
             status: e.status,
+            startDisplay: startTimeDisplay,
+            endDisplay: endTimeDisplay,
           ));
         } else {
           // final timeDuration = endTime.difference(startTime);
@@ -176,20 +198,20 @@ class CalendarDaySwitchView extends HookWidget {
           //     endTime = endTime.subtract(Duration(minutes: endTime.minute));
           //   }
           // }
-          startTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            currentHour.value,
-            0,
-          );
-          endTime = DateTime.utc(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
-            untilEnd.value - 1,
-            0,
-          );
+          // startTime = DateTime.utc(
+          //   selectedDay!.year,
+          //   selectedDay!.month,
+          //   selectedDay!.day,
+          //   currentHour.value,
+          //   0,
+          // );
+          // endTime = DateTime.utc(
+          //   selectedDay!.year,
+          //   selectedDay!.month,
+          //   selectedDay!.day,
+          //   untilEnd.value - 1,
+          //   0,
+          // );
 
           currentEvents.value.add(AdvancedDayEvent(
             value: e.uid,
@@ -197,6 +219,8 @@ class CalendarDaySwitchView extends HookWidget {
             desc: e.desc,
             start: startTime,
             end: endTime,
+            startDisplay: startTimeDisplay,
+            endDisplay: endTimeDisplay,
             category: e.category,
             members: e.members,
             status: e.status,
@@ -412,7 +436,7 @@ class CalendarDaySwitchView extends HookWidget {
                                                     const Icon(Icons.access_time, size: 15),
                                                     const SizedBox(width: 5),
                                                     Text(
-                                                      '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                      '${event.startDisplay != null ? FLDateTime.formatWithNames(event.startDisplay!, 'hh:mm a') : ''} - ${event.endDisplay != null ? FLDateTime.formatWithNames(event.endDisplay!, 'hh:mm a') : ''}',
                                                       style: const TextStyle(fontSize: 10),
                                                     ),
                                                   ],
@@ -474,7 +498,7 @@ class CalendarDaySwitchView extends HookWidget {
                                                             const Icon(Icons.access_time, size: 15),
                                                             const SizedBox(width: 5),
                                                             Text(
-                                                              '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                              '${event.startDisplay != null ? FLDateTime.formatWithNames(event.startDisplay!, 'hh:mm a') : ''} - ${event.endDisplay != null ? FLDateTime.formatWithNames(event.endDisplay!, 'hh:mm a') : ''}',
                                                               style: const TextStyle(fontSize: 10),
                                                             ),
                                                           ],

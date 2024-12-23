@@ -25,8 +25,8 @@ class TimeTableDayWidget extends HookWidget {
   Widget build(BuildContext context) {
     final ValueNotifier<List<Events>> currentEvents = useState([]);
     final ValueNotifier<List<OverTimeEventsRow<String>>> currentOverflowEventsRow = useState([]);
-    int currentHour = 8;
-    int untilEnd = 18;
+    int currentHour = 0;
+    int untilEnd = 24;
     late String eventType;
 
     autoEventsSlot() {
@@ -50,9 +50,7 @@ class TimeTableDayWidget extends HookWidget {
         DateTime startTime;
         DateTime endTime;
 
-        if ((e.start.hour > 0 && e.start.hour < 7) && e.end.hour < 19) {
-          debugPrint('invalid between 12AM and 6PM');
-        } else if (e.start.hour != 0 && e.end.hour != 0 && slotStartTime.isAtSameMomentAs(slotEndTime)) {
+        if (e.start.hour != 0 && e.end.hour != 0 && slotStartTime.isAtSameMomentAs(slotEndTime)) {
           debugPrint('invalid same time');
           startTime = DateTime.utc(
             selectedDay!.year,
@@ -113,7 +111,7 @@ class TimeTableDayWidget extends HookWidget {
               selectedDay!.year,
               selectedDay!.month,
               selectedDay!.day,
-              e.start.hour < 9 ? 8 : e.start.hour,
+              e.start.hour,
               e.start.minute,
             );
             endTime = DateTime.utc(
@@ -248,198 +246,197 @@ class TimeTableDayWidget extends HookWidget {
 
                 return event.category == 'Minutes Of Meeting'
                     ? GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  key: ValueKey(event.hashCode),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EventDetailView(
-                          event: {
-                            'title': event.title,
-                            'description': eventsTimeTable[itemIndex].desc,
-                            'startDateTime': event.start.toString(),
-                            'endDateTime': event.end.toString(),
-                            'isMeeting': eventsTimeTable[itemIndex].isMeeting,
-                            'createdBy': eventsTimeTable[itemIndex].createdBy ?? '',
-                            'location': eventsTimeTable[itemIndex].location ?? '',
-                            'status': event.status,
-                            'img_name': eventsTimeTable[itemIndex].imgName ?? '',
-                            'created_at': eventsTimeTable[itemIndex].createdAt ?? '',
-                            'is_repeat': eventsTimeTable[itemIndex].isRepeat ?? '',
-                            'video_conference': eventsTimeTable[itemIndex].videoConference ?? '',
-                            'uid': eventsTimeTable[itemIndex].uid,
-                            'members': event.members ?? [],
-                            'category': event.category,
-                            'leave_type': eventsTimeTable[itemIndex].leaveType ?? '',
-                          },
-                        ),
-                      ),
-                    );
-                  },
-                  child: event.status == 'Cancelled'
-                      ? const SizedBox.shrink()
-                      : Container(
-                    alignment: Alignment.center,
-                    margin: const EdgeInsets.only(right: 3, left: 3),
-                    padding: const EdgeInsets.all(8.0),
-                    height: constraints.maxHeight,
-                    width: 80,
-                    decoration: BoxDecoration(
-                      color: ColorStandardization().colorDarkGold,
-                      borderRadius: const BorderRadius.all(Radius.circular(10)),
-                    ),
-                    child: Text(
-                      eventType,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                )
+                        behavior: HitTestBehavior.opaque,
+                        key: ValueKey(event.hashCode),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EventDetailView(
+                                event: {
+                                  'title': event.title,
+                                  'description': eventsTimeTable[itemIndex].desc,
+                                  'startDateTime': event.start.toString(),
+                                  'endDateTime': event.end.toString(),
+                                  'isMeeting': eventsTimeTable[itemIndex].isMeeting,
+                                  'createdBy': eventsTimeTable[itemIndex].createdBy ?? '',
+                                  'location': eventsTimeTable[itemIndex].location ?? '',
+                                  'status': event.status,
+                                  'img_name': eventsTimeTable[itemIndex].imgName ?? '',
+                                  'created_at': eventsTimeTable[itemIndex].createdAt ?? '',
+                                  'is_repeat': eventsTimeTable[itemIndex].isRepeat ?? '',
+                                  'video_conference': eventsTimeTable[itemIndex].videoConference ?? '',
+                                  'uid': eventsTimeTable[itemIndex].uid,
+                                  'members': event.members ?? [],
+                                  'category': event.category,
+                                  'leave_type': eventsTimeTable[itemIndex].leaveType ?? '',
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                        child: event.status == 'Cancelled'
+                            ? const SizedBox.shrink()
+                            : Container(
+                                alignment: Alignment.center,
+                                margin: const EdgeInsets.only(right: 3, left: 3),
+                                padding: const EdgeInsets.all(8.0),
+                                height: constraints.maxHeight,
+                                width: 80,
+                                decoration: BoxDecoration(
+                                  color: ColorStandardization().colorDarkGold,
+                                  borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                ),
+                                child: Text(
+                                  eventType,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                      )
                     : GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  key: ValueKey(event.hashCode),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EventDetailView(
-                          event: {
-                            'title': event.title,
-                            'description': eventsTimeTable[itemIndex].reason,
-                            'startDateTime': currentEvents.value[itemIndex].start.toString(),
-                            'endDateTime': currentEvents.value[itemIndex].end.toString(),
-                            'isMeeting': true,
-                            'createdBy': eventsTimeTable[itemIndex].requestorID,
-                            'location': '',
-                            'status': event.status,
-                            'img_name': eventsTimeTable[itemIndex].imgName ?? '',
-                            'created_at': eventsTimeTable[itemIndex].createdAt ?? '',
-                            'is_repeat': '',
-                            'video_conference': '',
-                            'uid': eventsTimeTable[itemIndex].uid,
-                            'members': const [],
-                            'category': event.category,
-                            'leave_type': event.leaveType,
-                          },
+                        behavior: HitTestBehavior.opaque,
+                        key: ValueKey(event.hashCode),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EventDetailView(
+                                event: {
+                                  'title': event.title,
+                                  'description': eventsTimeTable[itemIndex].reason,
+                                  'startDateTime': event.start.toString(),
+                                  'endDateTime': event.end.toString(),
+                                  'isMeeting': true,
+                                  'createdBy': eventsTimeTable[itemIndex].requestorID,
+                                  'location': '',
+                                  'status': event.status,
+                                  'img_name': eventsTimeTable[itemIndex].imgName ?? '',
+                                  'created_at': eventsTimeTable[itemIndex].createdAt ?? '',
+                                  'is_repeat': '',
+                                  'video_conference': '',
+                                  'uid': eventsTimeTable[itemIndex].uid,
+                                  'members': const [],
+                                  'category': event.category,
+                                  'leave_type': event.leaveType,
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                        // child: statusChild,
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 3, left: 3),
+                          padding: const EdgeInsets.all(8.0),
+                          height: constraints.maxHeight,
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.2),
+                            border: Border(
+                              left: BorderSide(color: statusColor, width: 4),
+                              right: BorderSide(color: statusColor),
+                              top: BorderSide(color: statusColor),
+                              bottom: BorderSide(color: statusColor),
+                            ),
+                            borderRadius: const BorderRadius.all(Radius.circular(10)),
+                          ),
+                          child: Row(
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // First column for eventType and event.desc
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Row for icon and eventType
+                                      Row(
+                                        children: [
+                                          ColorFiltered(
+                                            colorFilter: ColorFilter.mode(
+                                              Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                              BlendMode.srcIn,
+                                            ),
+                                            child: Image.asset(
+                                              'assets/icons/element_4.png',
+                                              width: 20,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Text(eventType),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+
+                                      // Row for event.desc
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.title_sharp, size: 18, color: Colors.blueGrey),
+                                          const SizedBox(width: 5),
+                                          Align(
+                                            alignment: Alignment.bottomCenter,
+                                            child: Text(
+                                              event.desc,
+                                              textAlign: TextAlign.start,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.blueGrey,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+
+                                  const Spacer(), // Pushes the next content to the bottom
+
+                                  // Second column for additional content like members, time, and other info
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Row for avatars
+                                      Row(children: buildMembersAvatarsTimeTable(event, context)),
+                                      const SizedBox(height: 20),
+
+                                      // Row for time and additional details
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              iconCategory != null
+                                                  ? Padding(
+                                                      padding: const EdgeInsets.only(left: 10),
+                                                      child: Image.asset(iconCategory, width: 15),
+                                                    )
+                                                  : const SizedBox.shrink(),
+                                            ],
+                                          ),
+                                          const SizedBox(width: 20),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.access_time,
+                                                size: 15,
+                                                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
+                                                style: const TextStyle(fontSize: 10),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              )
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                  // child: statusChild,
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 3, left: 3),
-                    padding: const EdgeInsets.all(8.0),
-                    height: constraints.maxHeight,
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.2),
-                      border: Border(
-                        left: BorderSide(color: statusColor, width: 4),
-                        right: BorderSide(color: statusColor),
-                        top: BorderSide(color: statusColor),
-                        bottom: BorderSide(color: statusColor),
-                      ),
-                      borderRadius: const BorderRadius.all(Radius.circular(10)),
-                    ),
-                    child: Row(
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // First column for eventType and event.desc
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Row for icon and eventType
-                                Row(
-                                  children: [
-                                    ColorFiltered(
-                                      colorFilter: ColorFilter.mode(
-                                        Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-                                        BlendMode.srcIn,
-                                      ),
-                                      child: Image.asset(
-                                        'assets/icons/element_4.png',
-                                        width: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 5),
-                                    Text(eventType),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-
-                                // Row for event.desc
-                                Row(
-                                  children: [
-                                    const Icon(Icons.title_sharp, size: 18, color: Colors.blueGrey),
-                                    const SizedBox(width: 5),
-                                    Align(
-                                      alignment: Alignment.bottomCenter,
-                                      child: Text(
-                                        event.desc,
-                                        textAlign: TextAlign.start,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.blueGrey,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-
-                            const Spacer(),  // Pushes the next content to the bottom
-
-                            // Second column for additional content like members, time, and other info
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Row for avatars
-                                Row(children: buildMembersAvatarsTimeTable(event, context)),
-                                const SizedBox(height: 20),
-
-                                // Row for time and additional details
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        iconCategory != null
-                                            ? Padding(
-                                          padding: const EdgeInsets.only(left: 10),
-                                          child: Image.asset(iconCategory, width: 15),
-                                        )
-                                            : const SizedBox.shrink(),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 20),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.access_time,
-                                          size: 15,
-                                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-                                        ),
-                                        const SizedBox(width: 5),
-                                        Text(
-                                          '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
-                                          style: const TextStyle(fontSize: 10),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ],
-                        )
-
-                      ],
-                    ),
-                  ),
-                );
+                      );
               },
             );
           },
