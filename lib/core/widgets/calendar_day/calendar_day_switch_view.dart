@@ -47,7 +47,7 @@ class CalendarDaySwitchView extends HookWidget {
         if (passDefaultCurrentHour > 18) {
           currentHourDefault.value = passDefaultCurrentHour;
           untilEndDefault.value = passDefaultEndHour;
-          currentHour.value = 7;
+          currentHour.value = 8;
           untilEnd.value = 18;
         } else if (passDefaultCurrentHour > 14) {
           currentHourDefault.value = 14;
@@ -62,13 +62,13 @@ class CalendarDaySwitchView extends HookWidget {
         } else if (passDefaultCurrentHour > 7) {
           currentHourDefault.value = 7;
           untilEndDefault.value = 11;
-          currentHour.value = 7;
+          currentHour.value = 8;
           untilEnd.value = 11;
         }
       } else {
         currentHourDefault.value = passDefaultCurrentHour;
         untilEndDefault.value = passDefaultEndHour;
-        currentHour.value = 7;
+        currentHour.value = 8;
         untilEnd.value = 18;
       }
 
