@@ -877,26 +877,28 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         child: _buildCalendarHeader(isDarkMode),
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          setState(() {
-            switchTime.value = !switchTime.value;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "Your calendar data has been refresh and updated successfully",
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white : Colors.white,
-                  fontSize: 13,
-                ),
-              ),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: isDarkMode ? Colors.orange : Colors.green,
-              margin: const EdgeInsets.all(20),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        },
+        onRefresh: DateTime.now().toLocal().hour > 19
+            ? () async {}
+            : () async {
+                setState(() {
+                  switchTime.value = !switchTime.value;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      "Your calendar data has been refresh and updated successfully",
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.white,
+                        fontSize: 13,
+                      ),
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                    backgroundColor: isDarkMode ? Colors.orange : Colors.green,
+                    margin: const EdgeInsets.all(20),
+                    duration: const Duration(seconds: 4),
+                  ),
+                );
+              },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(

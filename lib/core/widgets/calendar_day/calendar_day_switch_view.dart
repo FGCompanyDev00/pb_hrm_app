@@ -44,11 +44,11 @@ class CalendarDaySwitchView extends HookWidget {
       currentOverflowEventsRow.value.clear();
 
       if (passDefaultCurrentHour != 0) {
-        if (passDefaultCurrentHour > 16) {
-          currentHourDefault.value = 0;
-          untilEndDefault.value = 24;
-          currentHour.value = 0;
-          untilEnd.value = 24;
+        if (passDefaultCurrentHour > 18) {
+          currentHourDefault.value = passDefaultCurrentHour;
+          untilEndDefault.value = passDefaultEndHour;
+          currentHour.value = 7;
+          untilEnd.value = 18;
         } else if (passDefaultCurrentHour > 14) {
           currentHourDefault.value = 14;
           untilEndDefault.value = 18;
