@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -108,7 +109,7 @@ class _HistoryPageState extends State<HistoryPage> {
           final List<dynamic> historyData = responseBody['results'];
           tempHistoryItems.addAll(historyData.map((item) => _formatItem(item as Map<String, dynamic>)));
         } else {
-          throw Exception(responseBody['message'] ?? 'Failed to load history data');
+          throw Exception(responseBody['message'] ?? AppLocalizations.of(context)!.failedToLoadHistoryData);
         }
       } else {
         throw Exception('Failed to load history data: ${historyResponse.statusCode}');
@@ -148,10 +149,10 @@ class _HistoryPageState extends State<HistoryPage> {
     switch (type) {
       case 'meeting':
         formattedItem.addAll({
-          'title': item['title'] ?? 'No Title',
+          'title': item['title'] ?? AppLocalizations.of(context)!.noTitle,
           'startDate': item['from_date_time'] ?? '',
           'endDate': item['to_date_time'] ?? '',
-          'room': item['room_name'] ?? 'No Room Info',
+          'room': item['room_name'] ?? AppLocalizations.of(context)!.noRoomInfo,
           'employee_name': item['employee_name'] ?? 'N/A',
           'id': item['uid']?.toString() ?? '',
           'remark': item['remark'] ?? '',
@@ -173,11 +174,11 @@ class _HistoryPageState extends State<HistoryPage> {
         debugPrint('Car Item Data: $item');
 
         formattedItem.addAll({
-          'title': item['purpose'] ?? 'No Purpose',
+          'title': item['purpose'] ?? AppLocalizations.of(context)!.noPurpose,
           'startDate': item['date_out'] ?? '',
           'endDate': item['date_in'] ?? '',
           'employee_name': item['requestor_name'] ?? 'N/A',
-          'employee_tel': item['employee_tel']?.toString() ?? 'No phone number',
+          'employee_tel': item['employee_tel']?.toString() ?? AppLocalizations.of(context)!.noPhoneNumber,
           'id': item['uid']?.toString() ?? '',
         });
         break;
@@ -190,7 +191,7 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   String _getItemStatus(String type, Map<String, dynamic> item) {
-    return (item['status'] ?? 'waiting').toString().toLowerCase();
+    return (item['status'] ?? AppLocalizations.of(context)!.waiting).toString().toLowerCase();
   }
 
   /// Returns color based on status
@@ -251,84 +252,84 @@ class _HistoryPageState extends State<HistoryPage> {
 
     return WillPopScope(
         onWillPop: () async {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const Dashboard()),
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const Dashboard()),
             (route) => false,
-      );
-      return false;
-    },
-    child: Scaffold(
-      backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
-      body: Column(
-        children: [
-          _buildHeader(isDarkMode, screenSize),
-          SizedBox(height: screenSize.height * 0.005),
-          _buildTabBar(screenSize),
-          SizedBox(height: screenSize.height * 0.005),
-          _isLoading
-              ? const Expanded(
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              : Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _fetchHistoryData, // This function will refresh data
-                    child: _isPendingSelected
-                        ? _pendingItems.isEmpty
-                            ? Center(
-                                child: Text(
-                                  'No Pending Items',
-                                  style: TextStyle(
-                                    fontSize: screenSize.width * 0.04,
+          );
+          return false;
+        },
+        child: Scaffold(
+          backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
+          body: Column(
+            children: [
+              _buildHeader(isDarkMode, screenSize),
+              SizedBox(height: screenSize.height * 0.005),
+              _buildTabBar(screenSize),
+              SizedBox(height: screenSize.height * 0.005),
+              _isLoading
+                  ? const Expanded(
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _fetchHistoryData, // This function will refresh data
+                        child: _isPendingSelected
+                            ? _pendingItems.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      AppLocalizations.of(context)!.noPendingItems,
+                                      style: TextStyle(
+                                        fontSize: screenSize.width * 0.04,
+                                      ),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenSize.width * 0.04,
+                                      vertical: screenSize.height * 0.008,
+                                    ),
+                                    itemCount: _pendingItems.length,
+                                    itemBuilder: (context, index) {
+                                      final item = _pendingItems[index];
+                                      return _buildHistoryCard(
+                                        context,
+                                        item,
+                                        isHistory: false,
+                                        screenSize: screenSize,
+                                      );
+                                    },
+                                  )
+                            : _historyItems.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      AppLocalizations.of(context)!.myHistoryItems,
+                                      style: TextStyle(
+                                        fontSize: screenSize.width * 0.04,
+                                      ),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenSize.width * 0.04,
+                                      vertical: screenSize.height * 0.008,
+                                    ),
+                                    itemCount: _historyItems.length,
+                                    itemBuilder: (context, index) {
+                                      final item = _historyItems[index];
+                                      return _buildHistoryCard(
+                                        context,
+                                        item,
+                                        isHistory: true,
+                                        screenSize: screenSize,
+                                      );
+                                    },
                                   ),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: screenSize.width * 0.04,
-                                  vertical: screenSize.height * 0.008,
-                                ),
-                                itemCount: _pendingItems.length,
-                                itemBuilder: (context, index) {
-                                  final item = _pendingItems[index];
-                                  return _buildHistoryCard(
-                                    context,
-                                    item,
-                                    isHistory: false,
-                                    screenSize: screenSize,
-                                  );
-                                },
-                              )
-                        : _historyItems.isEmpty
-                            ? Center(
-                                child: Text(
-                                  'No History Items',
-                                  style: TextStyle(
-                                    fontSize: screenSize.width * 0.04,
-                                  ),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: screenSize.width * 0.04,
-                                  vertical: screenSize.height * 0.008,
-                                ),
-                                itemCount: _historyItems.length,
-                                itemBuilder: (context, index) {
-                                  final item = _historyItems[index];
-                                  return _buildHistoryCard(
-                                    context,
-                                    item,
-                                    isHistory: true,
-                                    screenSize: screenSize,
-                                  );
-                                },
-                              ),
-                  ),
-                ),
-        ],
-      ),
-    ));
+                      ),
+                    ),
+            ],
+          ),
+        ));
   }
 
   /// Builds the header section with background image and title
@@ -366,7 +367,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 onPressed: () => Navigator.maybePop(context),
               ),
               Text(
-                'My History',
+                AppLocalizations.of(context)!.myHistory,
                 style: TextStyle(
                   color: isDarkMode ? Colors.white : Colors.black,
                   fontSize: screenSize.width * 0.06,
@@ -420,7 +421,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
-                      'Pending',
+                      AppLocalizations.of(context)!.pending,
                       style: TextStyle(
                         color: _isPendingSelected ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                         fontWeight: FontWeight.bold,
@@ -462,7 +463,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
-                      'History',
+                      AppLocalizations.of(context)!.history,
                       style: TextStyle(
                         color: !_isPendingSelected ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                         fontWeight: FontWeight.bold,
@@ -502,32 +503,32 @@ class _HistoryPageState extends State<HistoryPage> {
         }
         return DateFormat('dd-MM-yyyy HH:mm').format(date);
       } catch (e) {
-        return 'Invalid Date';
+        return AppLocalizations.of(context)!.invalidDate;
       }
     }
 
     switch (type) {
       case 'meeting':
         titleColor = Colors.green;
-        detailLabel = 'Room:';
+        detailLabel = '${AppLocalizations.of(context)!.room} :';
         detailText = item['room'] ?? 'N/A';
         detailTextColor = Colors.orange;
         break;
       case 'leave':
         titleColor = Colors.orange;
-        detailLabel = 'Type:';
+        detailLabel = '${AppLocalizations.of(context)!.type} :';
         detailText = item['leave_type'] ?? 'N/A';
         detailTextColor = Colors.orange;
         break;
       case 'car':
         titleColor = Colors.blue;
-        detailLabel = 'Tel:';
-        detailText = item['employee_tel']?.toString() ?? 'No phone number';
+        detailLabel = '${AppLocalizations.of(context)!.tel} :';
+        detailText = item['employee_tel']?.toString() ?? AppLocalizations.of(context)!.noPhoneNumber;
         detailTextColor = Colors.grey;
         break;
       default:
         titleColor = Colors.grey;
-        detailLabel = 'Info:';
+        detailLabel = '${AppLocalizations.of(context)!.infoLabel}:';
         detailText = 'N/A';
     }
 
@@ -542,7 +543,7 @@ class _HistoryPageState extends State<HistoryPage> {
             builder: (context) => DetailsPage(
               types: type,
               id: item['id'] ?? '',
-              status: item['status'] ?? 'pending',
+              status: item['status'] ?? AppLocalizations.of(context)!.pending,
             ),
           ),
         );
@@ -583,7 +584,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       ),
                       SizedBox(height: screenSize.height * 0.003),
                       Text(
-                        type == 'meeting' ? 'Room' : type[0].toUpperCase() + type.substring(1),
+                        type == 'meeting' ? AppLocalizations.of(context)!.room : type[0].toUpperCase() + type.substring(1),
                         style: TextStyle(
                           color: typeColor,
                           fontSize: screenSize.width * 0.03,
@@ -598,7 +599,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item['employee_name'] ?? 'No Name',
+                          item['employee_name'] ?? AppLocalizations.of(context)!.noName,
                           style: TextStyle(
                             color: titleColor,
                             fontSize: screenSize.width * 0.038,
@@ -607,7 +608,7 @@ class _HistoryPageState extends State<HistoryPage> {
                         ),
                         SizedBox(height: screenSize.height * 0.005),
                         Text(
-                          'Date: $startDate',
+                          '${AppLocalizations.of(context)!.date} : $startDate',
                           style: TextStyle(
                             color: isDarkMode ? Colors.white70 : Colors.grey[700],
                             fontSize: screenSize.width * 0.03,
@@ -632,7 +633,7 @@ class _HistoryPageState extends State<HistoryPage> {
                         Row(
                           children: [
                             Text(
-                              'Status: ',
+                              '${AppLocalizations.of(context)!.status} : ',
                               style: TextStyle(
                                 fontSize: screenSize.width * 0.03,
                                 fontWeight: FontWeight.bold,
