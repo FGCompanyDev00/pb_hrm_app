@@ -172,7 +172,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
 
       if (includeDay) {
         String dayOfWeek = DateFormat('EEEE').format(parsedDate);
-        String dateFormatted = DateFormat('yyyy-MM-dd').format(parsedDate);
+        String dateFormatted = DateFormat('dd-MM-yyyy').format(parsedDate);
         return '$dayOfWeek ($dateFormatted)';
       } else {
         return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);

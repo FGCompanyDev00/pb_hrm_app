@@ -1,15 +1,20 @@
 // lib/main.dart
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:logger/logger.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
@@ -29,6 +34,7 @@ import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'hive_helper/model/attendance_record.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 
 /// ------------------------------------------------------------
 /// 1) Global instance of FlutterLocalNotificationsPlugin
@@ -36,15 +42,27 @@ import 'hive_helper/model/attendance_record.dart';
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 FlutterLocalNotificationsPlugin();
 
+// Initialize Logger with a custom filter for production
+final Logger logger = Logger(
+  printer: PrettyPrinter(),
+  filter: ProductionFilter(),
+);
+
 const FlutterSecureStorage secureStorage = FlutterSecureStorage();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize secure HTTP client
+  final Dio dio = createSecureDio();
+  sl.registerSingleton<Dio>(dio);
+
   try {
     await setupServiceLocator();
   } catch (e) {
-    print("Error during service locator setup: $e");
+    if (kDebugMode) {
+      logger.e("Error during service locator setup: $e");
+    }
   }
   await initializeHive();
   sl<OfflineProvider>().initializeCalendar();
@@ -183,6 +201,15 @@ class MyApp extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+// Logger Production Filler
+class ProductionFilter extends LogFilter {
+  @override
+  bool shouldLog(LogEvent event) {
+    // Disable logging in release mode
+    return !kReleaseMode;
   }
 }
 
@@ -348,16 +375,85 @@ class MainScreenState extends State<MainScreen> {
 
 Future<void> initializeHive() async {
   await Hive.initFlutter();
+
+  // Register Hive adapters
   Hive.registerAdapter(AttendanceRecordAdapter());
   Hive.registerAdapter(UserProfileRecordAdapter());
   Hive.registerAdapter(QRRecordAdapter());
   // Hive.registerAdapter(MaterialColorAdapter());
 
-  await Hive.openBox<AttendanceRecord>('pending_attendance');
-  await Hive.openBox<UserProfileRecord>('user_profile');
-  await Hive.openBox<QRRecord>('qr_profile');
-  await Hive.openBox<String>('userProfileBox');
-  await Hive.openBox<List<String>>('bannersBox');
-  await Hive.openBox('loginBox');
+  // Retrieve or generate encryption key
+  final String? storedKey = await secureStorage.read(key: 'hive_encryption_key');
+  final List<int> encryptionKey = storedKey != null
+      ? base64Url.decode(storedKey)
+      : encrypt.Key.fromSecureRandom(32).bytes;
+
+  // If key was newly generated, store it securely
+  if (storedKey == null) {
+    final String encodedKey = base64UrlEncode(encryptionKey);
+    await secureStorage.write(key: 'hive_encryption_key', value: encodedKey);
+  }
+
+  final HiveAesCipher cipher = HiveAesCipher(encryptionKey);
+
+  // Open encrypted Hive boxes
+  await Hive.openBox<AttendanceRecord>(
+    'pending_attendance',
+    encryptionCipher: cipher,
+  );
+  await Hive.openBox<UserProfileRecord>(
+    'user_profile',
+    encryptionCipher: cipher,
+  );
+  await Hive.openBox<QRRecord>(
+    'qr_profile',
+    encryptionCipher: cipher,
+  );
+  await Hive.openBox<String>(
+    'userProfileBox',
+    encryptionCipher: cipher,
+  );
+  await Hive.openBox<List<String>>(
+    'bannersBox',
+    encryptionCipher: cipher,
+  );
+  await Hive.openBox(
+    'loginBox',
+    encryptionCipher: cipher,
+  );
   // await Hive.openBox('calendarEventsRecordBox');
+}
+
+Dio createSecureDio() {
+  final Dio dio = Dio();
+
+  dio.options = BaseOptions(
+    connectTimeout: const Duration(seconds: 5),
+    receiveTimeout: const Duration(seconds: 3),
+    headers: {
+      HttpHeaders.contentTypeHeader: 'application/json',
+    },
+    responseType: ResponseType.json,
+  );
+
+  // Interceptor to enforce HTTPS
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        if (!options.uri.isScheme('https')) {
+          return handler.reject(
+            DioException(
+              requestOptions: options,
+              error: 'HTTPS is required',
+              type: DioExceptionType.badResponse,
+            ),
+          );
+        }
+        return handler.next(options);
+      },
+    ),
+  );
+
+
+  return dio;
 }
