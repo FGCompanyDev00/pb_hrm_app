@@ -51,7 +51,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   List<Map<String, String>> _weeklyRecords = [];
   bool _isLoading = true;
   Timer? _refreshTimer;
-  bool _biometricEnabled = false;
   bool _isOffsite = false;
   bool _isCheckOutAvailable = true;
   String _totalCheckInDelay = '--:--:--';
@@ -115,7 +114,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     String? savedCheckInTime = userPreferences.getCheckInTime();
     String? savedCheckOutTime = userPreferences.getCheckOutTime();
     Duration? savedWorkingHours = userPreferences.getWorkingHours();
-    String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
+    bool canCheckBiometrics = await auth.canCheckBiometrics;
+    bool isDeviceSupported = await auth.isDeviceSupported();
+    String? biometricEnabledStored = await _storage.read(key: 'biometricEnabled');
 
     setState(() {
       _checkInTime = savedCheckInTime ?? '--:--:--';
@@ -124,7 +125,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       _isCheckInActive = savedCheckInTime != null && savedCheckOutTime == null;
       _isCheckOutAvailable = savedCheckOutTime == null; // Check if checkout is available
       _workingHours = savedWorkingHours ?? Duration.zero;
-      _biometricEnabled = biometricEnabled == 'true';
     });
 
     if (_isCheckInActive) {
@@ -162,10 +162,10 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     setState(() {
       _checkInTime = DateFormat('HH:mm:ss').format(now);
-      _checkOutTime = '--:--:--'; // Reset check-out time to placeholder
+      _checkOutTime = '--:--:--';
       _checkInDateTime = now;
       _checkOutDateTime = null;
-      _workingHours = Duration.zero; // Reset working hours immediately on new check-in
+      _workingHours = Duration.zero;
       _isCheckInActive = true;
       _isCheckOutAvailable = true;
     });
@@ -561,20 +561,38 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
-    if (!_biometricEnabled) {
-      _showCustomDialog(AppLocalizations.of(context)!.biometricNotEnabled, AppLocalizations.of(context)!.enableBiometricFirst, isSuccess: false);
+    // Dynamically check biometric capabilities and settings
+    bool canCheckBiometrics = await auth.canCheckBiometrics;
+    bool isDeviceSupported = await auth.isDeviceSupported();
+    String? biometricEnabledStored = await _storage.read(key: 'biometricEnabled');
+
+    // Update the biometricEnabled state based on current settings
+    bool biometricEnabled = (biometricEnabledStored == 'true') && canCheckBiometrics && isDeviceSupported;
+
+    if (!biometricEnabled) {
+      _showCustomDialog(
+        AppLocalizations.of(context)!.biometricNotEnabled,
+        AppLocalizations.of(context)!.enableBiometricFirst,
+        isSuccess: false,
+      );
       return;
     }
 
+    // Proceed with authentication
     bool didAuthenticate = await _authenticateWithBiometrics();
 
     if (!didAuthenticate) {
       if (context.mounted) {
-        _showCustomDialog(AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
+        _showCustomDialog(
+          AppLocalizations.of(context)!.authenticationFailed,
+          AppLocalizations.of(context)!.authenticateToContinue,
+          isSuccess: false,
+        );
       }
       return;
     }
 
+    // Perform Check-In or Check-Out based on the flag
     if (isCheckIn) {
       _performCheckIn(DateTime.now());
     } else {
@@ -587,6 +605,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       return await auth.authenticate(
         localizedReason: AppLocalizations.of(context)!.authenticateToLogin,
         options: const AuthenticationOptions(
+          biometricOnly: true,
           useErrorDialogs: true,
           stickyAuth: true,
         ),
@@ -1075,8 +1094,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     }
 
     final now = DateTime.now();
-    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 1, 0);
-    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 23, 0);
+    final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 0, 0);
+    final checkInDisabledTime = DateTime(now.year, now.month, now.day, 22, 0);
     bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
     // bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 6) && _isCheckOutAvailable;
 
@@ -1084,34 +1103,22 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       onTap: () async {
         if (!_isCheckInActive) {
           if (now.isBefore(checkInTimeAllowed) || now.isAfter(checkInDisabledTime)) {
-            _showCustomDialog(AppLocalizations.of(context)!.checkInNotAllowed, AppLocalizations.of(context)!.checkInLateNotAllowed, isSuccess: false);
+            _showCustomDialog(
+              AppLocalizations.of(context)!.checkInNotAllowed,
+              AppLocalizations.of(context)!.checkInLateNotAllowed,
+              isSuccess: false,
+            );
           } else if (isCheckInEnabled) {
-            bool isAuthenticated = await _authenticateWithBiometrics();
-            if (isAuthenticated) {
-              _performCheckIn(DateTime.now());
-              if (context.mounted) {
-                _showCustomDialog(AppLocalizations.of(context)!.checkInSuccess, AppLocalizations.of(context)!.checkInSuccessMessage, isSuccess: true);
-              }
-            } else {
-              if (context.mounted) {
-                _showCustomDialog(AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
-              }
-            }
+            await _authenticate(context, true); // Pass 'true' for check-in
           }
         } else if (_isCheckInActive) {
-          bool isAuthenticated = await _authenticateWithBiometrics();
-          if (isAuthenticated) {
-            _performCheckOut(DateTime.now());
-            if (context.mounted) {
-              _showCustomDialog(AppLocalizations.of(context)!.checkOutSuccess, AppLocalizations.of(context)!.checkOutSuccessMessage, isSuccess: true);
-            }
-          } else {
-            if (context.mounted) {
-              _showCustomDialog(AppLocalizations.of(context)!.authenticationFailed, AppLocalizations.of(context)!.authenticateToContinue, isSuccess: false);
-            }
-          }
-        } else if (_isCheckInActive) {
-          _showCustomDialog(AppLocalizations.of(context)!.alreadyCheckedIn, AppLocalizations.of(context)!.alreadyCheckedInMessage, isSuccess: false);
+          await _authenticate(context, false); // Pass 'false' for check-out
+        } else {
+          _showCustomDialog(
+            AppLocalizations.of(context)!.alreadyCheckedIn,
+            AppLocalizations.of(context)!.alreadyCheckedInMessage,
+            isSuccess: false,
+          );
         }
       },
       child: Container(

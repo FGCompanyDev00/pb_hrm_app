@@ -615,6 +615,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   }
 
   Widget _buildLogoAndText(double screenWidth, double screenHeight) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start, // Aligns children to the start (left)
       children: [
@@ -640,10 +642,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               Text(
                 AppLocalizations.of(context)!.welcomeToPSBV, // Localized Title
                 textAlign: TextAlign.left,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 21,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: isDarkMode ? Colors.white : Colors.black,
                 ),
               ),
               const SizedBox(height: 15),
@@ -652,9 +654,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                 padding: EdgeInsets.only(left: screenWidth * 0.04),
                 child: Text(
                   AppLocalizations.of(context)!.welcomeSubtitle1, // Localized Subtitle 1
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: Colors.black,
+                    color: isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
               ),
@@ -664,9 +666,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                 padding: EdgeInsets.only(left: screenWidth * 0.08),
                 child: Text(
                   AppLocalizations.of(context)!.welcomeSubtitle2, // Localized Subtitle 2
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: Colors.black,
+                    color: isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
               ),
@@ -678,6 +680,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   }
 
   Widget _buildCustomDateRow(double screenWidth) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     return GestureDetector(
       onTap: () {
         _selectDate(context);
@@ -688,7 +692,13 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           vertical: screenWidth * 0.02,
         ),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: isDarkMode
+              ? const LinearGradient(
+            colors: [Color(0xFF2C2C2C), Color(0xFF3A3A3A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+              : const LinearGradient(
             colors: [Color(0xFFFEE9C3), Color(0xFFFFF3D6)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -696,7 +706,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           borderRadius: BorderRadius.circular(screenWidth * 0.04),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: isDarkMode
+                  ? Colors.black.withOpacity(0.5)
+                  : Colors.black.withOpacity(0.1),
               offset: Offset(screenWidth * 0.005, screenWidth * 0.005),
               blurRadius: screenWidth * 0.01,
             ),
@@ -705,9 +717,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.calendar_today,
-              color: Colors.black54,
+              color: isDarkMode ? Colors.white : Colors.black,
               size: 20.0,
             ),
             SizedBox(width: screenWidth * 0.02),
@@ -715,9 +727,9 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               builder: (context, dateProvider, child) {
                 return Text(
                   dateProvider.formattedSelectedDate,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
-                    color: Colors.black87,
+                    color: isDarkMode ? Colors.white : Colors.black,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 1.0,
                   ),
@@ -731,19 +743,21 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   }
 
   Widget _buildTextFields(double screenWidth) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     return Column(
       children: [
         SizedBox(
           width: screenWidth * 0.8,
           child: TextField(
             controller: _usernameController,
-            style: const TextStyle(color: Colors.black),
+            style: TextStyle(color: isDarkMode ? Colors.black : Colors.black),
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.username,
-              labelStyle: const TextStyle(color: Colors.black),
+              labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
               prefixIcon: const Icon(Icons.person_outline, color: Colors.black),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.8),
+              fillColor: isDarkMode ? Colors.grey : Colors.white,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(25.0),
                 borderSide: BorderSide.none,
@@ -757,10 +771,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           child: TextField(
             controller: _passwordController,
             obscureText: !_isPasswordVisible,
-            style: const TextStyle(color: Colors.black),
+            style: TextStyle(color: isDarkMode ? Colors.black : Colors.black),
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.password,
-              labelStyle: const TextStyle(color: Colors.black),
+              labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
               prefixIcon: const Icon(Icons.lock_outline, color: Colors.black),
               suffixIcon: IconButton(
                 icon: Icon(
@@ -774,7 +788,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                 },
               ),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.8),
+              fillColor: isDarkMode ? Colors.grey : Colors.white,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(25.0),
                 borderSide: BorderSide.none,
@@ -787,6 +801,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   }
 
   Widget _buildRememberMeCheckbox(double screenWidth) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.02),
       child: Row(
@@ -803,7 +819,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
           ),
           Text(
             AppLocalizations.of(context)!.rememberMe,
-            style: const TextStyle(color: Colors.black),
+            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
           ),
         ],
       ),
@@ -811,6 +827,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
   }
 
   Widget _buildLoginAndBiometricButton(double screenWidth) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05),
       child: Row(
@@ -830,14 +848,14 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               height: screenWidth * 0.125,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                color: Colors.grey[300],
+                  color: isDarkMode ? Colors.grey : Colors.white
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.face, size: screenWidth * 0.09, color: Colors.orange),
+                  Icon(Icons.face, size: screenWidth * 0.09, color: isDarkMode ? Colors.black : Colors.orange),
                   SizedBox(width: screenWidth * 0.025),
-                  Icon(Icons.fingerprint, size: screenWidth * 0.1, color: Colors.orange),
+                  Icon(Icons.fingerprint, size: screenWidth * 0.1, color: isDarkMode ? Colors.black : Colors.orange),
                 ],
               ),
             ),
@@ -849,14 +867,14 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
               height: screenWidth * 0.125,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                color: Colors.green,
+                color: isDarkMode ? Colors.green : Colors.green,
               ),
               alignment: Alignment.center,
               child: Text(
                 AppLocalizations.of(context)!.login,
                 style: TextStyle(
                   fontSize: screenWidth * 0.045,
-                  color: Colors.white,
+                  color: isDarkMode ? Colors.black : Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
               ),

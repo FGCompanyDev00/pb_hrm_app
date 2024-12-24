@@ -61,6 +61,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _saveBiometricSetting(bool enabled) async {
     await _storage.write(key: 'biometricEnabled', value: enabled.toString());
+    print('Saved biometric, Enabled as: $enabled'); // Debugging
   }
 
   Future<bool> _onWillPop() async {
@@ -185,7 +186,7 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() {
         _biometricEnabled = false;
       });
-      await _storage.deleteAll();
+      await _storage.delete(key: 'biometricEnabled');
       await _saveBiometricSetting(false);
     }
   }
