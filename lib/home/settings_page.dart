@@ -69,6 +69,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _showBiometricModal() async {
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -96,12 +97,12 @@ class _SettingsPageState extends State<SettingsPage> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Do you want to use Fingerprint as a preferred login method for the next time?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.black87,
+                    color: isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -214,15 +215,18 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
 
-    return PopScope(
-      canPop: false, // Prevent default back navigation
-      onPopInvoked: (didPop) {
-        // Logic to execute when a pop is invoked
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const Dashboard()),
-              (route) => false,
-        );
+    return WillPopScope(
+      onWillPop: () async {
+        // Schedule the navigation to occur after the current frame
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const Dashboard()),
+                (route) => false,
+          );
+        });
+        // Prevent the default pop action
+        return false;
       },
       child: Scaffold(
         backgroundColor: themeNotifier.isDarkMode ? Colors.black : Colors.white,
