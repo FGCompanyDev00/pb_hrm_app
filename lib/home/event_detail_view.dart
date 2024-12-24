@@ -681,7 +681,6 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     );
   }
 
-
   /// Builds the list of event details.
   Widget _buildMinutesOfMeetingEventDetails() {
     final details = _getEventDetails();
@@ -892,7 +891,6 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       backgroundColor: Colors.transparent,
     );
   }
-
 
   /// Builds animated content with slide and fade transitions.
   Widget _buildAnimatedContent(Widget child) {
