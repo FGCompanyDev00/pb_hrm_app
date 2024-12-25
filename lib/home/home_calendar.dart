@@ -878,10 +878,13 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       ),
       body: RefreshIndicator(
         onRefresh: DateTime.now().toLocal().hour > 19
-            ? () async {}
+            ? () async {
+                _fetchData;
+              }
             : () async {
                 setState(() {
                   switchTime.value = !switchTime.value;
+                  _fetchData();
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
