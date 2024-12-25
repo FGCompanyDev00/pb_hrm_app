@@ -42,6 +42,10 @@ class _OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage>
   List<Map<String, dynamic>> _rooms = [];
   String? _selectedRoomId;
 
+  final ValueNotifier<DateTime?> _beforeEndDateTime = ValueNotifier<DateTime?>(null);
+  DateTime? _startDateTime;
+  DateTime? _endDateTime;
+
   // Controllers for Leave
   final TextEditingController _leaveFromController = TextEditingController();
   final TextEditingController _leaveToController = TextEditingController();
@@ -473,7 +477,7 @@ class _OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage>
         Text('${AppLocalizations.of(context)!.fromDateLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _leaveFromController, AppLocalizations.of(context)!.fromDateLabel),
+          onTap: () => _selectDate(context, _leaveFromController, AppLocalizations.of(context)!.fromDateLabel, true),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _leaveFromController,
@@ -490,7 +494,7 @@ class _OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage>
         Text('${AppLocalizations.of(context)!.toDateLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _leaveToController, AppLocalizations.of(context)!.toDateLabel),
+          onTap: () => _selectDate(context, _leaveToController, AppLocalizations.of(context)!.toDateLabel, false),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _leaveToController,
@@ -550,7 +554,7 @@ class _OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage>
         Text('${AppLocalizations.of(context)!.fromDateLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _meetingFromController, AppLocalizations.of(context)!.fromDateLabel),
+          onTap: () => _selectDate(context, _meetingFromController, AppLocalizations.of(context)!.fromDateLabel, true),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _meetingFromController,
@@ -567,7 +571,7 @@ class _OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage>
         Text('${AppLocalizations.of(context)!.toDateLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _meetingToController, AppLocalizations.of(context)!.toDateLabel),
+          onTap: () => _selectDate(context, _meetingToController, AppLocalizations.of(context)!.toDateLabel, false),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _meetingToController,
@@ -726,7 +730,7 @@ class _OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage>
         Text('${AppLocalizations.of(context)!.dateInLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _carDateInController, AppLocalizations.of(context)!.dateInLabel),
+          onTap: () => _selectDate(context, _carDateInController, AppLocalizations.of(context)!.dateInLabel, true),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _carDateInController,
@@ -743,7 +747,7 @@ class _OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage>
         Text('${AppLocalizations.of(context)!.dateOutLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _carDateOutController, AppLocalizations.of(context)!.dateOutLabel),
+          onTap: () => _selectDate(context, _carDateOutController, AppLocalizations.of(context)!.dateOutLabel, false),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _carDateOutController,
@@ -975,28 +979,57 @@ class _OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage>
   }
 
   /// Selects a date and updates the controller
-  Future<void> _selectDate(BuildContext context, TextEditingController controller, String label) async {
-    DateTime initialDate = DateTime.now();
-    if (controller.text.isNotEmpty) {
-      try {
-        initialDate = DateTime.parse(controller.text);
-      } catch (_) {}
+  Future<void> _selectDate(BuildContext context, TextEditingController controller, String label, bool isStartDateTime) async {
+    final DateTime currentDay = DateTime.now();
+    DateTime initialDate;
+    DateTime selectedDate = controller.text.isNotEmpty ? DateTime.parse(controller.text) : currentDay;
+
+    if (isStartDateTime) {
+      initialDate = currentDay;
+    } else {
+      initialDate = _beforeEndDateTime.value ?? currentDay;
     }
 
-    final DateTime? picked = await showDatePicker(
+    final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(2020),
+      initialDate: selectedDate,
+      firstDate: initialDate,
       lastDate: DateTime(2101),
     );
 
-    if (picked != null) {
+    if (pickedDate != null) {
       setState(() {
-        controller.text = DateFormat('yyyy-MM-dd').format(picked);
+        if (isStartDateTime) {
+          _startDateTime = pickedDate;
+          _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
+        } else {
+          _endDateTime = pickedDate;
+        }
+      });
+      setState(() {
+        controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
         if (kDebugMode) {
           print('Selected Date for $label: ${controller.text}');
         }
       });
     }
+  }
+
+  /// Shows error message using AlertDialog
+  void _showErrorFieldMessage(String title, String message) async {
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
   }
 }
