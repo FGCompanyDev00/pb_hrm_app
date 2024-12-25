@@ -68,7 +68,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     _fetchWeeklyRecords();
     _retrieveSavedState();
     _retrieveDeviceId();
-    _fetchWeeklyRecords();
     _startLocationMonitoring();
     _startTimerForLiveTime();
     _determineAndShowLocationModal();
@@ -231,6 +230,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
+        sound: 'default',
       );
 
       const NotificationDetails notificationDetails = NotificationDetails(

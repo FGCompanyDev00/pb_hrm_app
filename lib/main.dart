@@ -72,11 +72,6 @@ void main() async {
   /// ----------------------------------------------
   await _initializeLocalNotifications();
 
-  final ios = flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-      IOSFlutterLocalNotificationsPlugin>();
-  await ios?.requestPermissions(alert: true, badge: true, sound: true);
-
   runApp(
     MultiProvider(
       providers: [
@@ -102,7 +97,6 @@ Future<void> _initializeLocalNotifications() async {
   // For iOS
   const DarwinInitializationSettings initializationSettingsIOS =
   DarwinInitializationSettings(
-    onDidReceiveLocalNotification: onDidReceiveLocalNotification,
     requestAlertPermission: true,
     requestBadgePermission: true,
     requestSoundPermission: true,
@@ -114,7 +108,7 @@ Future<void> _initializeLocalNotifications() async {
     iOS: initializationSettingsIOS,
   );
 
-  // Initialize the plugin
+  // Initialize the plugin without deprecated callbacks
   await flutterLocalNotificationsPlugin.initialize(
     initializationSettings,
     onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
@@ -145,7 +139,7 @@ void onDidReceiveLocalNotification(
 }
 
 /// iOS 10+ (and Android) notification tap or response callback
-@pragma('vm:entry-point') // important if you want background handling
+@pragma('vm:entry-point')
 void onDidReceiveNotificationResponse(NotificationResponse response) {
   debugPrint('Notification response tapped. Payload: ${response.payload}');
 }
