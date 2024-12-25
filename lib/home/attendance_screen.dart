@@ -99,6 +99,10 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     // _showLocationModal(_isOffsite ? 'Offsite' : 'Office');
   }
 
+  String _getCurrentApiUrl() {
+    return _isOffsite ? offsiteApiUrl : officeApiUrl;
+  }
+
   String _formatDuration(Duration duration) {
     int hours = duration.inHours;
     int minutes = duration.inMinutes % 60;
@@ -380,7 +384,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   Future<void> _sendCheckInOutRequest(AttendanceRecord record) async {
     if (sl<OfflineProvider>().isOfflineService.value) return;
 
-    String url = _isOffsite ? offsiteApiUrl : officeApiUrl;
+    String url = _getCurrentApiUrl();
 
     String? token = userPreferences.getToken();
 
