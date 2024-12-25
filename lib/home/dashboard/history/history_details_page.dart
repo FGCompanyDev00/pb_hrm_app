@@ -178,59 +178,34 @@ class _DetailsPageState extends State<DetailsPage> {
           }
 
           // Handle the results based on type
-          if (type == 'meeting') {
-            if (responseData['results'] is Map) {
-              final Map<String, dynamic> meetingData = responseData['results'];
+          if (responseData['results'] is List) {
+            final List<dynamic> dataList = responseData['results'];
+            if (dataList.isNotEmpty) {
               setState(() {
-                data = meetingData;
+                data = dataList[0] as Map<String, dynamic>;
                 isLoading = false;
               });
             } else {
               setState(() {
                 data = null;
                 isLoading = false;
-                _errorMessage = 'Unexpected data format for meeting.';
+                _errorMessage = 'No data found.';
               });
-              _showErrorDialog('Error', 'Unexpected data format for meeting.');
             }
-          } else if (type == 'car') {
-            if (responseData['results'] is Map) {
-              final Map<String, dynamic> carData = responseData['results'];
-              setState(() {
-                data = carData;
-                isLoading = false;
-              });
-            } else {
-              setState(() {
-                data = null;
-                isLoading = false;
-                _errorMessage = 'Unexpected data format for car.';
-              });
-              _showErrorDialog('Error', 'Unexpected data format for car.');
-            }
-          } else if (type == 'leave') {
-            if (responseData['results'] is List) {
-              final List<dynamic> leaveData = responseData['results'];
-              if (leaveData.isNotEmpty) {
-                setState(() {
-                  data = leaveData[0] as Map<String, dynamic>;
-                  isLoading = false;
-                });
-              } else {
-                setState(() {
-                  data = null;
-                  isLoading = false;
-                  _errorMessage = 'No leave data found.';
-                });
-              }
-            } else {
-              setState(() {
-                data = null;
-                isLoading = false;
-                _errorMessage = 'Unexpected data format for leave.';
-              });
-              _showErrorDialog('Error', 'Unexpected data format for leave.');
-            }
+          } else if (responseData['results'] is Map) {
+            final Map<String, dynamic> singleData = responseData['results'];
+            setState(() {
+              data = singleData;
+              isLoading = false;
+            });
+          } else {
+            // Handle unexpected format
+            setState(() {
+              data = null;
+              isLoading = false;
+              _errorMessage = 'Unexpected data format.';
+            });
+            _showErrorDialog('Error', 'Unexpected data format.');
           }
         } else {
           // Handle API-level errors

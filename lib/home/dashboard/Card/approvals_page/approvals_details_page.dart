@@ -191,7 +191,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
       if (includeDay) {
         String dayOfWeek = DateFormat('EEEE').format(parsedDate);
-        String dateFormatted = DateFormat('yyyy-MM-dd').format(parsedDate);
+        String dateFormatted = DateFormat('dd-MM-yyyy').format(parsedDate);
         return '$dayOfWeek ($dateFormatted)';
       } else {
         return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);
@@ -301,7 +301,6 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         approvalData?['requestor_name'] ??
         'No Name';
 
-    // Adjusted to use 'created_date' for car and meeting types if 'created_at' is null
     String submittedOn = 'N/A';
     if (approvalData?['created_at'] != null &&
         approvalData!['created_at'].toString().isNotEmpty) {
@@ -323,7 +322,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           style: TextStyle(
             color: isDarkMode ? Colors.white : Colors.black, // Title color
             fontWeight: FontWeight.bold,
-            fontSize: 20,
+            fontSize: 22,
           ),
         ),
         const SizedBox(height: 10),
@@ -348,14 +347,14 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                   requestorName,
                   style: TextStyle(
                     color: isDarkMode ? Colors.white : Colors.black, // Name text color
-                    fontSize: 18,
+                    fontSize: 16,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Submitted on $submittedOn',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 12,
                     color: isDarkMode ? Colors.white70 : Colors.black54, // Date text color
                   ),
                 ),
@@ -384,7 +383,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           _getTypeHeader(),
           style: TextStyle(
             color: isDarkMode ? Colors.white : Colors.black,  // Adjust text color
-            fontSize: 18,
+            fontSize: 16,
           ),
         ),
       ),
@@ -599,19 +598,35 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   Widget _buildInfoRow(
       String title, String content, IconData icon, Color color, bool isDarkMode) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(
           icon,
-          size: 20,
+          size: 22,
           color: color,
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            '$title: $content',
-            style: TextStyle(
-              fontSize: 16,
-              color: isDarkMode ? Colors.white : Colors.black, // Text color change for dark mode
+          child: RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: '$title: ',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                    fontWeight: FontWeight.bold, // Bold label
+                  ),
+                ),
+                TextSpan(
+                  text: content,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDarkMode ? Colors.white70 : Colors.grey[800],
+                    fontWeight: FontWeight.normal, // Regular content
+                  ),
+                ),
+              ],
             ),
           ),
         ),

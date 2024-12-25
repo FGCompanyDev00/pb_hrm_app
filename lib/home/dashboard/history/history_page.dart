@@ -94,7 +94,13 @@ class _HistoryPageState extends State<HistoryPage> {
         final responseBody = jsonDecode(pendingResponse.body);
         if (responseBody['statusCode'] == 200) {
           final List<dynamic> pendingData = responseBody['results'];
-          tempPendingItems.addAll(pendingData.map((item) => _formatItem(item as Map<String, dynamic>)));
+          // Exclude items with status 'cancel' from pending
+          final List<dynamic> filteredPendingData = pendingData.where((item) {
+            final status = (item['status'] ?? '').toString().toLowerCase();
+            return status != 'cancel';
+          }).toList();
+
+          tempPendingItems.addAll(filteredPendingData.map((item) => _formatItem(item as Map<String, dynamic>)));
         } else {
           throw Exception(responseBody['message'] ?? 'Failed to load pending data');
         }
@@ -107,7 +113,13 @@ class _HistoryPageState extends State<HistoryPage> {
         final responseBody = jsonDecode(historyResponse.body);
         if (responseBody['statusCode'] == 200) {
           final List<dynamic> historyData = responseBody['results'];
-          tempHistoryItems.addAll(historyData.map((item) => _formatItem(item as Map<String, dynamic>)));
+          // Exclude items with status 'cancel' from history
+          final List<dynamic> filteredHistoryData = historyData.where((item) {
+            final status = (item['status'] ?? '').toString().toLowerCase();
+            return status != 'cancel';
+          }).toList();
+
+          tempHistoryItems.addAll(filteredHistoryData.map((item) => _formatItem(item as Map<String, dynamic>)));
         } else {
           throw Exception(responseBody['message'] ?? AppLocalizations.of(context)!.failedToLoadHistoryData);
         }
@@ -199,6 +211,8 @@ class _HistoryPageState extends State<HistoryPage> {
     switch (status) {
       case 'approved':
         return Colors.green;
+      case 'completed':
+        return Colors.blue;
       case 'disapproved':
       case 'rejected':
       case 'cancel':

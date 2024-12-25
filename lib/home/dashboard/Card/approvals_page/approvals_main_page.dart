@@ -525,8 +525,8 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         break;
       case 'car':
         title = item['purpose']?.toString() ?? 'No Purpose';
-        startDate = item['date_out']?.toString() ?? '';
-        endDate = item['date_in']?.toString() ?? '';
+        startDate = item['date_in']?.toString() ?? '';
+        endDate = item['date_out']?.toString() ?? '';
         detailLabel = 'Requestor Name';
         detailValue = requestorName;
         break;
@@ -628,7 +628,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                         ),
                         SizedBox(height: screenSize.height * 0.003),
                         Text(
-                          'Date: ${_formatDate(startDate)}',
+                          'From: ${_formatDate(startDate)}',
                           style: TextStyle(
                             color: isDarkMode ? Colors.white70 : Colors.grey.shade700, // Date text color in dark mode
                             fontSize: screenSize.width * 0.03,
