@@ -110,9 +110,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         setState(() {
           _rooms = data
               .map<Map<String, dynamic>>((item) => {
-            'room_id': item['uid'],
-            'room_name': item['room_name'],
-          })
+                    'room_id': item['uid'],
+                    'room_name': item['room_name'],
+                  })
               .toList();
         });
       } else {
@@ -287,8 +287,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   /// Formats DateTime based on booking type
   String formatDateTime(DateTime? dateTime) {
     if (dateTime == null) return '';
-    if (_selectedBookingType == '1. Add Meeting' ||
-        _selectedBookingType == '2. Meeting and Booking Meeting Room') {
+    if (_selectedBookingType == '1. Add Meeting' || _selectedBookingType == '2. Meeting and Booking Meeting Room') {
       // Send in UTC to ensure correct interpretation by the API
       return DateFormat('yyyy-MM-dd HH:mm:ss').format(dateTime.toUtc());
     } else {
@@ -410,16 +409,13 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     }
 
     // Validate date-times based on booking type
-    if (_selectedBookingType == '1. Add Meeting' ||
-        _selectedBookingType == '2. Meeting and Booking Meeting Room') {
+    if (_selectedBookingType == '1. Add Meeting' || _selectedBookingType == '2. Meeting and Booking Meeting Room') {
       if (_startDateTime == null || _endDateTime == null) {
         _showErrorMessage('Please select start and end date-times.');
         return false;
       }
 
-      if (_startDateTime != null &&
-          _endDateTime != null &&
-          _startDateTime!.isAfter(_endDateTime!)) {
+      if (_startDateTime != null && _endDateTime != null && _startDateTime!.isAfter(_endDateTime!)) {
         _showErrorMessage('Start date-time must be before end date-time.');
         return false;
       }
@@ -429,9 +425,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         return false;
       }
 
-      if (_startDateTime != null &&
-          _endDateTime != null &&
-          _startDateTime!.isAfter(_endDateTime!)) {
+      if (_startDateTime != null && _endDateTime != null && _startDateTime!.isAfter(_endDateTime!)) {
         _showErrorMessage('Start date must be before end date.');
         return false;
       }
@@ -497,13 +491,12 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
-      firstDate: currentDay,
+      firstDate: initialDate,
       lastDate: DateTime(2101),
     );
 
     if (pickedDate != null) {
-      if (_selectedBookingType == '1. Add Meeting' ||
-          _selectedBookingType == '2. Meeting and Booking Meeting Room') {
+      if (_selectedBookingType == '1. Add Meeting' || _selectedBookingType == '2. Meeting and Booking Meeting Room') {
         // For Type 1 and Type 2, also pick time
         final TimeOfDay? pickedTime = await showTimePicker(
           context: context,
@@ -569,9 +562,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       setState(() {
         // Ensure that only unique members are added based on 'employee_id'
         final existingIds = _selectedMembers.map((m) => m['employee_id']).toSet();
-        final newMembers = (selectedMembers as List<Map<String, dynamic>>)
-            .where((member) => !existingIds.contains(member['employee_id']))
-            .toList();
+        final newMembers = (selectedMembers as List<Map<String, dynamic>>).where((member) => !existingIds.contains(member['employee_id'])).toList();
         _selectedMembers.addAll(newMembers);
       });
     }
@@ -721,9 +712,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         .asMap()
         .entries
         .map((entry) => DropdownMenuItem<int>(
-      value: entry.value,
-      child: Text('${entry.key + 1}. Notify me ${entry.value} min before'),
-    ))
+              value: entry.value,
+              child: Text('${entry.key + 1}. Notify me ${entry.value} min before'),
+            ))
         .toList();
 
     return DropdownButtonFormField<int>(
@@ -751,9 +742,9 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         .asMap()
         .entries
         .map((entry) => DropdownMenuItem<String>(
-      value: entry.value,
-      child: Text('${entry.key + 1}. ${entry.value}'),
-    ))
+              value: entry.value,
+              child: Text('${entry.key + 1}. ${entry.value}'),
+            ))
         .toList();
 
     return DropdownButtonFormField<String>(
@@ -851,9 +842,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_startDateTime == null
-                              ? 'dd/mm/yy - 09:00'
-                              : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
+                          Text(_startDateTime == null ? 'dd/mm/yy - 09:00' : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -873,9 +862,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_endDateTime == null
-                              ? 'dd/mm/yy - 13:00'
-                              : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
+                          Text(_endDateTime == null ? 'dd/mm/yy - 13:00' : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1058,9 +1045,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_startDateTime == null
-                              ? 'dd/mm/yy - 09:00'
-                              : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
+                          Text(_startDateTime == null ? 'dd/mm/yy - 09:00' : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1080,9 +1065,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_endDateTime == null
-                              ? 'dd/mm/yy - 13:00'
-                              : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
+                          Text(_endDateTime == null ? 'dd/mm/yy - 13:00' : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1113,9 +1096,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   children: [
                     // Display selected room or prompt to select
                     Text(
-                      _roomId != null
-                          ? '${_rooms.indexWhere((room) => room['room_id'] == _roomId) + 1}. $_roomName'
-                          : 'Room Selection',
+                      _roomId != null ? '${_rooms.indexWhere((room) => room['room_id'] == _roomId) + 1}. $_roomName' : 'Room Selection',
                       style: TextStyle(
                         color: Theme.of(context).brightness == Brightness.dark
                             ? Colors.white // White text for dark mode
@@ -1283,9 +1264,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_startDateTime == null
-                              ? 'dd/mm/yy - 09:00'
-                              : DateFormat('dd/MM/yy').format(_startDateTime!)),
+                          Text(_startDateTime == null ? 'dd/mm/yy - 09:00' : DateFormat('dd/MM/yy').format(_startDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1305,9 +1284,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_endDateTime == null
-                              ? 'dd/mm/yy - 13:00'
-                              : DateFormat('dd/MM/yy').format(_endDateTime!)),
+                          Text(_endDateTime == null ? 'dd/mm/yy - 13:00' : DateFormat('dd/MM/yy').format(_endDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),

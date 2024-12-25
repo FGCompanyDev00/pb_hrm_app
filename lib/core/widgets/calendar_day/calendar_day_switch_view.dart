@@ -295,8 +295,8 @@ class CalendarDaySwitchView extends HookWidget {
               startOfDay: TimeOfDay(hour: currentHourDefault.value, minute: 0),
               endOfDay: TimeOfDay(hour: untilEndDefault.value, minute: 0),
               renderRowAsListView: true,
-              cropBottomEvents: true,
               showMoreOnRowButton: true,
+              showCurrentTimeLine: true,
               timeTitleColumnWidth: 40,
               time12: true,
               overflowItemBuilder: (context, constraints, itemIndex, event) {

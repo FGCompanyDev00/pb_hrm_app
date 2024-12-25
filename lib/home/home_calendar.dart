@@ -44,6 +44,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   DateTime _focusedDay = DateTime.now().toLocal();
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
+  ScrollController scrollController = ScrollController();
 
   // Notifications
   late final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
@@ -63,6 +64,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   // Loading State
   bool _isLoading = false;
+  bool _isFirstDefaultTime = true;
 
   @override
   void initState() {
@@ -157,7 +159,19 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         _fetchMeetingRoomBookings(),
         _fetchCarBookings(),
         _fetchMinutesOfMeeting(),
-      ]).whenComplete(() => _filterAndSearchEvents());
+      ]).whenComplete(() {
+        _filterAndSearchEvents();
+        if (_isFirstDefaultTime) {
+          WidgetsBinding.instance.addPostFrameCallback((time) {
+            _isFirstDefaultTime = false;
+            scrollController.jumpTo(
+              (7 * 60.0) + 350,
+              // duration: const Duration(seconds: 10),
+              // curve: Curves.bounceIn,
+            ); // 9:00 AM (1 pixel = 1 minute)
+          });
+        }
+      });
     } catch (e) {
       showSnackBar('Error fetching data: $e');
     } finally {
@@ -604,17 +618,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   }
 
   int liveHour() {
-    int hour = _selectedDay?.hour ?? 7;
-
-    if (hour < 11) {
-      return 0;
-    } else if (hour < 14) {
-      return 1;
-    } else if (hour < 18) {
-      return 2;
-    } else {
-      return 1;
-    }
+    int hour = DateTime.now().toLocal().hour;
+    return hour;
   }
 
   /// Retrieves events for a specific day
@@ -879,13 +884,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       body: RefreshIndicator(
         onRefresh: DateTime.now().toLocal().hour > 19
             ? () async {
-                _fetchData;
+                await _onRefresh();
               }
             : () async {
-                setState(() {
-                  switchTime.value = !switchTime.value;
-                  _fetchData();
-                });
+                await _onRefresh();
+                // setState(() {
+                //   // switchTime.value = !switchTime.value;
+                //   _fetchData();
+                // });
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
@@ -904,6 +910,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
+          controller: scrollController,
           child: Column(
             mainAxisSize: MainAxisSize.max,
             crossAxisAlignment: CrossAxisAlignment.center,
