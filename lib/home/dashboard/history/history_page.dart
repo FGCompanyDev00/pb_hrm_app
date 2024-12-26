@@ -202,7 +202,7 @@ class _HistoryPageState extends State<HistoryPage> {
       case 'car':
         debugPrint('Car Item Data: $item');
         // Combine date_out with time_out for From:
-        String? dateOut = item['date_out'];
+        String? dateOut = item['date_in'];
         String? timeOut = item['time_out'];
         String startDateTimeStr = '';
         if (dateOut != null && timeOut != null) {
@@ -210,7 +210,7 @@ class _HistoryPageState extends State<HistoryPage> {
         }
 
         // Combine date_in with time_in for To:
-        String? dateIn = item['date_in'];
+        String? dateIn = item['date_out'];
         String? timeIn = item['time_in'];
         String endDateTimeStr = '';
         if (dateIn != null && timeIn != null) {

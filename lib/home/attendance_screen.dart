@@ -1223,7 +1223,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           children: [
             // Date and Time
             Text(
-              DateFormat('EEEE, MMMM dd, yyyy').format(DateTime.now()),
+              DateFormat('EEEE, dd MMMM yyyy').format(DateTime.now()),
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
