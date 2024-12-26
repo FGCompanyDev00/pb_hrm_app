@@ -400,7 +400,7 @@ class _DetailsPageState extends State<DetailsPage> {
   Widget _buildRequestorSection() {
     String requestorName = (data?['requestor_name'] ?? data?['employee_name']) ?? 'No Name';
     String submittedOn = formatDate(
-      data?['created_at'] ?? data?['date_create'],
+      data?['created_date'] ?? data?['date_create'],
       includeTime: true,
     );
     String requestorImageUrl = data?['img_name'] ?? data?['img_path'] ?? '';
@@ -414,12 +414,12 @@ class _DetailsPageState extends State<DetailsPage> {
         Text(
           'Requestor',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : Colors.black, // Change text color for dark mode
+            color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
-        const SizedBox(height: 8), // Reduced spacing
+        const SizedBox(height: 10),
 
         // Profile Image and Name
         Row(
@@ -427,8 +427,8 @@ class _DetailsPageState extends State<DetailsPage> {
           children: [
             CircleAvatar(
               backgroundImage: requestorImageUrl.isNotEmpty
-                  ? NetworkImage(requestorImageUrl) // Use the image URL from API
-                  : NetworkImage(_defaultAvatarUrl()), // Fallback to default image if URL is empty
+                  ? NetworkImage(requestorImageUrl)
+                  : NetworkImage(_defaultAvatarUrl()),
               radius: 30, // Profile image size
               backgroundColor: Colors.grey[300],
               onBackgroundImageError: (_, __) {
@@ -438,7 +438,7 @@ class _DetailsPageState extends State<DetailsPage> {
                 });
               },
             ),
-            const SizedBox(width: 12), // Reduced spacing
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,18 +448,18 @@ class _DetailsPageState extends State<DetailsPage> {
                     style: TextStyle(
                       fontSize: 16, // Reduced font size
                       fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : Colors.black, // Change name text color for dark mode
+                      color: isDarkMode ? Colors.white : Colors.black,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis, // Handle overflow
                   ),
-                  const SizedBox(height: 2), // Reduced spacing
+                  const SizedBox(height: 2),
                   Text(
                     'Submitted on $submittedOn',
                     style: TextStyle(
                       fontSize: 12, // Reduced font size
                       fontWeight: FontWeight.w500,
-                      color: isDarkMode ? Colors.white70 : Colors.black54, // Change date text color for dark mode
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
                     ),
                   ),
                 ],
@@ -473,21 +473,21 @@ class _DetailsPageState extends State<DetailsPage> {
 
   /// Build Blue Section
   Widget _buildBlueSection() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark; // Check for dark mode
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       width: 100, // Reduced width
       margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
       decoration: BoxDecoration(
-        color: isDarkMode ? Colors.blueGrey[700] : Colors.lightBlue[100], // Dark mode blue-grey and light mode light blue
+        color: isDarkMode ? Colors.blueGrey[700] : Colors.lightBlue[100],
         borderRadius: BorderRadius.circular(20),
       ),
       child: Center(
         child: Text(
-          '${widget.types[0].toUpperCase()}${widget.types.substring(1).toLowerCase()}', // Capitalize first letter
+          '${widget.types[0].toUpperCase()}${widget.types.substring(1).toLowerCase()}',
           style: TextStyle(
-            fontSize: 12, // Reduced font size
+            fontSize: 15, // Reduced font size
             fontWeight: FontWeight.bold,
             color: isDarkMode ? Colors.white : Colors.black, // Text color changes for dark mode
           ),
@@ -514,9 +514,9 @@ class _DetailsPageState extends State<DetailsPage> {
       details.addAll([
         {'icon': Icons.bookmark, 'title': 'Purpose', 'value': data?['purpose'] ?? 'No Purpose', 'color': Colors.blue},
         {'icon': Icons.place, 'title': 'Place', 'value': data?['place'] ?? 'N/A', 'color': Colors.green},
-        {'icon': Icons.calendar_today, 'title': 'Date', 'value': '${formatDate(data?['date_out'])} - ${formatDate(data?['date_in'])}', 'color': Colors.orange},
+        {'icon': Icons.calendar_today, 'title': 'Date', 'value': '${formatDate(data?['date_in'])} - ${formatDate(data?['date_out'])}', 'color': Colors.orange},
         {'icon': Icons.access_time, 'title': 'Time', 'value': '${data?['time_out'] ?? 'N/A'} - ${data?['time_in'] ?? 'No time out and time in'}', 'color': Colors.purple},
-        {'icon': Icons.phone, 'title': 'Discretion', 'value': data?['employee_tel'] ?? 'N/A', 'color': Colors.red}
+        {'icon': Icons.phone, 'title': 'Discretion', 'value': data?['employee_tel'] ?? 'No phone number', 'color': Colors.red}
       ]);
     } else if (type == 'leave') {
       String leaveTypeName = _leaveTypes[data?['leave_type_id']] ?? 'Unknown Leave Type';
@@ -576,8 +576,8 @@ class _DetailsPageState extends State<DetailsPage> {
     if (widget.types.toLowerCase() == 'leave') {
       return Wrap(
         alignment: WrapAlignment.center,
-        spacing: 10, // Reduced spacing
-        runSpacing: 10, // Reduced spacing
+        spacing: 10,
+        runSpacing: 10,
         children: [
           _buildUserAvatar(data?['img_name'] ?? _defaultAvatarUrl(), borderColor: Colors.green),
           Transform.translate(
@@ -636,7 +636,7 @@ class _DetailsPageState extends State<DetailsPage> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20.0), // Reduced vertical padding
+      padding: const EdgeInsets.symmetric(vertical: 20.0),
       child: Row(
         children: [
           Expanded(
@@ -692,17 +692,17 @@ class _DetailsPageState extends State<DetailsPage> {
             ),
             child: Icon(
               icon,
-              color: backgroundColor, // Icon color matches the button background
+              color: backgroundColor,
               size: 18, // Icon size
             ),
           ),
-          const SizedBox(width: 8), // Space between icon and label
+          const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
               color: textColor,
               fontSize: 14.0, // Font size
-              fontWeight: FontWeight.bold, // Optional: Bold text
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
