@@ -411,5 +411,15 @@
     "offsiteModeTitle": "ໂມດເສັ້ນອອກ",
     "offsiteModeMessage": "ທ່ານກຳລັງໃນໂມດເສັ້ນອອກການຮ່ວມງານ.",
     "officeModeTitle": "ໂມດສຳນັກງານ/ບ້ານ",
-    "officeModeMessage": "ທ່ານກຳລັງໃນໂມດສຳນັກງານ/ໂມດບ້ານການຮ່ວມງານ."
+    "officeModeMessage": "ທ່ານກຳລັງໃນໂມດສຳນັກງານ/ໂມດບ້ານການຮ່ວມງານ.",
+    "incorrectPin": "ລະຫັດ PIN ທີ່ໃສ່ບໍ່ຖືກຕ້ອງ.",
+      "setPin": "ຕັ້ງລະຫັດ PIN ຂອງທ່ານ",
+      "enterPin": "ໃສ່ລະຫັດ PIN ຂອງທ່ານ",
+      "confirmPin": "ຢືນຢັນລະຫັດ PIN ຂອງທ່ານ",
+      "pinCannotBeEmpty": "ລະຫັດ PIN ບໍ່ສາມາດເປັນຄ່າວ່າງ.",
+      "pinsDoNotMatch": "ລະຫັດ PIN ບໍ່ຄືກັນ.",
+      "pinSetSuccessfully": "ຕັ້ງລະຫັດ PIN ສຳເລັດແລ້ວ.",
+      "submit": "ສົ່ງ",
+      "set": "ຕັ້ງ",
+      "pin": "ລະຫັດ PIN"
 }

@@ -405,5 +405,15 @@
     "offsiteModeTitle": "Offsite Mode",
     "offsiteModeMessage": "You're in offsite attendance mode.",
     "officeModeTitle": "Office/Home Mode",
-    "officeModeMessage": "You're in office/home attendance mode."
+    "officeModeMessage": "You're in office/home attendance mode.",
+     "incorrectPin": "The PIN entered is incorrect.",
+      "setPin": "Set your PIN",
+      "enterPin": "Enter your PIN",
+      "confirmPin": "Confirm your PIN",
+      "pinCannotBeEmpty": "PIN cannot be empty.",
+      "pinsDoNotMatch": "The PINs do not match.",
+      "pinSetSuccessfully": "PIN has been set successfully.",
+      "submit": "Submit",
+      "set": "Set",
+      "pin": "PIN"
 }

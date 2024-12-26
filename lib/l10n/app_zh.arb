@@ -444,5 +444,15 @@
   "offsiteModeTitle": "外勤模式",
   "offsiteModeMessage": "您已进入外勤出勤模式。",
    "officeModeTitle": "办公室/家庭模式",
-  "officeModeMessage": "您已进入办公室/家庭出勤模式。"
+  "officeModeMessage": "您已进入办公室/家庭出勤模式。",
+   "incorrectPin": "输入的PIN码不正确。",
+  "setPin": "设置您的PIN码",
+  "enterPin": "输入您的PIN码",
+  "confirmPin": "确认您的PIN码",
+  "pinCannotBeEmpty": "PIN码不能为空。",
+  "pinsDoNotMatch": "PIN码不匹配。",
+  "pinSetSuccessfully": "PIN码设置成功。",
+  "submit": "提交",
+  "set": "设置",
+  "pin": "PIN码"
 }
