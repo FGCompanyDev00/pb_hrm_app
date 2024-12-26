@@ -175,6 +175,7 @@
   "office": "Office",
   "offsite": "Offsite",
   "checkInNotAllowed": "Check-In Not Allowed",
+  "checkInNotAllowedMessage": "Your location is not available. please come to the office area",
   "checkInLateNotAllowed": "Check-In not allowed now.",
   "biometricNotEnabled": "Biometric Not Enabled",
   "enableBiometricFirst": "Please enable biometric authentication in the settings first.",

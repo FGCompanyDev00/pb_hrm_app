@@ -1235,14 +1235,14 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
               children: [
                 Expanded(
                   child: Text(
-                    'Start Date*',
+                    'Start Date & Time*',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
                   ),
                 ),
                 SizedBox(width: 12.0),
                 Expanded(
                   child: Text(
-                    'End Date*',
+                    'End Date & Time*',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
                   ),
                 ),

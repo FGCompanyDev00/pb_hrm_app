@@ -127,17 +127,34 @@ class _HistoryPageState extends State<HistoryPage> {
         throw Exception('Failed to load history data: ${historyResponse.statusCode}');
       }
 
+      // Sort the temporary lists by 'updated_at' in descending order
+      tempPendingItems.sort((a, b) {
+        DateTime aDate = a['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        DateTime bDate = b['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bDate.compareTo(aDate); // Descending order
+      });
+
+      tempHistoryItems.sort((a, b) {
+        DateTime aDate = a['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        DateTime bDate = b['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bDate.compareTo(aDate); // Descending order
+      });
+
       // Update State
       setState(() {
         _pendingItems = tempPendingItems;
         _historyItems = tempHistoryItems;
         _isLoading = false;
       });
-    } catch (e) {
+
+      print('Pending items loaded and sorted: ${_pendingItems.length} items.');
+      print('History items loaded and sorted: ${_historyItems.length} items.');
+    } catch (e, stackTrace) {
       setState(() {
         _isLoading = false;
       });
       print('Error fetching data: $e');
+      print(stackTrace);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching data: $e')),
       );
@@ -153,7 +170,7 @@ class _HistoryPageState extends State<HistoryPage> {
       'statusColor': _getStatusColor(_getItemStatus(type, item)),
       'icon': _getIconForType(type),
       'iconColor': _getTypeColor(type),
-      'timestamp': DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now(),
+      'updated_at': DateTime.tryParse(item['updated_at'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
       'img_name': item['img_name'] ?? 'https://via.placeholder.com/150', // Placeholder image
       'img_path': item['img_path'] ?? '', // Add img_path if available
     };
@@ -195,7 +212,7 @@ class _HistoryPageState extends State<HistoryPage> {
         });
         break;
       default:
-        // Handle unknown types if necessary
+      // Handle unknown types if necessary
         break;
     }
 

@@ -145,12 +145,25 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           final List<dynamic> pendingData = responseBody['results'];
 
           // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = pendingData.where((item) => item != null).map((item) => Map<String, dynamic>.from(item)).where((item) => item['types'] != null && _knownTypes.contains(item['types'].toString().toLowerCase())).toList();
+          final List<Map<String, dynamic>> filteredData = pendingData
+              .where((item) => item != null)
+              .map((item) => Map<String, dynamic>.from(item))
+              .where((item) =>
+          item['types'] != null &&
+              _knownTypes.contains(item['types'].toString().toLowerCase()))
+              .toList();
+
+          // Sort the filtered data by 'updated_at' in descending order
+          filteredData.sort((a, b) {
+            DateTime aDate = DateTime.tryParse(a['updated_at'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+            DateTime bDate = DateTime.tryParse(b['updated_at'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return bDate.compareTo(aDate); // Descending order
+          });
 
           setState(() {
             _pendingItems = filteredData;
           });
-          print('Pending items loaded: ${_pendingItems.length} items.');
+          print('Pending items loaded and sorted: ${_pendingItems.length} items.');
         } else {
           throw Exception(responseBody['message'] ?? 'Failed to load pending data');
         }
@@ -196,12 +209,25 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           final List<dynamic> historyData = responseBody['results'];
 
           // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = historyData.where((item) => item != null).map((item) => Map<String, dynamic>.from(item)).where((item) => item['types'] != null && _knownTypes.contains(item['types'].toString().toLowerCase())).toList();
+          final List<Map<String, dynamic>> filteredData = historyData
+              .where((item) => item != null)
+              .map((item) => Map<String, dynamic>.from(item))
+              .where((item) =>
+          item['types'] != null &&
+              _knownTypes.contains(item['types'].toString().toLowerCase()))
+              .toList();
+
+          // Sort the filtered data by 'updated_at' in descending order
+          filteredData.sort((a, b) {
+            DateTime aDate = DateTime.tryParse(a['updated_at'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+            DateTime bDate = DateTime.tryParse(b['updated_at'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return bDate.compareTo(aDate); // Descending order
+          });
 
           setState(() {
             _historyItems = filteredData;
           });
-          print('History items loaded: ${_historyItems.length} items.');
+          print('History items loaded and sorted: ${_historyItems.length} items.');
         } else {
           throw Exception(responseBody['message'] ?? 'Failed to load history data');
         }

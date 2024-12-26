@@ -413,9 +413,15 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         }),
       );
 
-      if (response.statusCode == 201 || response.statusCode == 202) {
+      if (response.statusCode == 201) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
         // Optionally handle success response
+      } else if (response.statusCode == 202 && url == officeApiUrl) {
+        // Show modal indicating check-in is not allowed
+        if (mounted) {
+          _showCheckInNotAllowedModalLocation();
+        }
+        return; // Do not proceed further
       } else {
         throw Exception('Failed with status code ${response.statusCode}');
       }
@@ -487,6 +493,97 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       }
       // Optionally, show a dialog or snackbar
     }
+  }
+
+  void _showCheckInNotAllowedModalLocation() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: isDarkMode ? Colors.grey[900] : Colors.white,
+              border: Border.all(
+                color: isDarkMode ? Colors.white24 : Colors.black12,
+                width: 1,
+              ),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: constraints.maxWidth < 400 ? constraints.maxWidth * 0.9 : 400,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/attendance.png',
+                          width: 40,
+                          color: isDarkMode ? const Color(0xFFDBB342) : null,
+                        ),
+                        const SizedBox(height: 16),
+                        // Title
+                        Text(
+                          AppLocalizations.of(context)!.checkInNotAllowed,
+                          style: TextStyle(
+                            fontSize: constraints.maxWidth < 400 ? 18 : 20,
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Message
+                        Text(
+                          AppLocalizations.of(context)!.checkInNotAllowedMessage,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: constraints.maxWidth < 400 ? 14 : 16,
+                            fontWeight: FontWeight.w500,
+                            color: isDarkMode ? Colors.grey : Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Close Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFDBB342), // Gold color for button
+                              padding: const EdgeInsets.symmetric(vertical: 12.0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14.0),
+                              ),
+                            ),
+                            child: Text(
+                              AppLocalizations.of(context)!.close,
+                              style: TextStyle(
+                                fontSize: constraints.maxWidth < 400 ? 14 : 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _startLocationMonitoring() async {

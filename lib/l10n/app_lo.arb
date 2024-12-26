@@ -175,6 +175,7 @@
   "office": "ອົງກອນ",
   "offsite": "ນອກອົງກອນ",
   "checkInNotAllowed": "ການເຂົ້າແລະອອກບໍ່ຖືກອະນຸຍາດ",
+  "checkInNotAllowedMessage": "ສະຖານທີ່ຂອງທ່ານບໍ່ມີ. ກະລຸນາມາຢູ່ເຂດສູນງານ",
   "checkInLateNotAllowed": "ບໍ່ອະນຸຍາດການຕິດຕາມຕອນນ",
   "biometricNotEnabled": "ການພິມນິ້ວມືບໍ່ຖືກເປີດໃຊ້",
   "enableBiometricFirst": "ກະລຸນາເປີດການພິມນິ້ວມືໃນການຕັ້ງຄ່າແລ້ວກ່ອນ.",

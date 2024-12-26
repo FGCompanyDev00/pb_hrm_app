@@ -1018,7 +1018,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                                     ),
                                     const SizedBox(height: 8),
                                     const Text(
-                                      '• This calendar page is scrollable and can pull to refresh the data.',
+                                      '• This calendar page is scrollable and can pull up to refresh the data.',
                                       style: TextStyle(fontSize: 12),
                                     ),
                                     const SizedBox(height: 8),

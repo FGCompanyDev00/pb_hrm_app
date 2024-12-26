@@ -174,6 +174,7 @@
   "office": "办公室",
   "offsite": "外出",
   "checkInNotAllowed": "签到/签退不允许",
+  "checkInNotAllowedMessage": "您的位置不可用。请到办公室区域",
   "checkInLateNotAllowed": "当前不允许办理入住。",
   "biometricNotEnabled": "生物识别未启用",
   "enableBiometricFirst": "请先在设置中启用生物识别身份验证。",
