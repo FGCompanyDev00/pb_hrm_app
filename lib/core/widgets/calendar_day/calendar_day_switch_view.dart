@@ -28,27 +28,36 @@ class CalendarDaySwitchView extends HookWidget {
   @override
   Widget build(BuildContext context) {
     final currentHour = useState(7);
-    final untilEnd = useState(18);
+    final untilEnd = useState(24);
     final currentHourDisplay = useState(7);
-    final untilEndDisplay = useState(18);
+    final untilEndDisplay = useState(24);
     final currentHourDefault = useState(passDefaultCurrentHour);
     final untilEndDefault = useState(passDefaultEndHour);
     // final switchTime = useState(selectedSlotTime);
     final ValueNotifier<List<AdvancedDayEvent<String>>> currentEvents = useState([]);
     final ValueNotifier<List<OverflowEventsRow<String>>> currentOverflowEventsRow = useState([]);
 
+    // ScrollController to control the initial scroll position
+    final scrollController = useScrollController();
+
+    // Function to process and slot events
     autoEventsSlot() {
-      currentHourDefault.value = passDefaultCurrentHour;
-      untilEndDefault.value = passDefaultEndHour;
+      // Set default start and end hours
+      currentHourDefault.value = passDefaultCurrentHour; // 0
+      untilEndDefault.value = passDefaultEndHour;       // 24
+      currentHour.value = 7;                            // Starting display at 7 AM
+      untilEnd.value = 24;
+
+      // Clear previous events
       currentEvents.value.clear();
       currentOverflowEventsRow.value.clear();
 
-      if (passDefaultCurrentHour != 0) {
+      // if (passDefaultCurrentHour != 0) {
         // if (passDefaultCurrentHour > 18) {
-        currentHourDefault.value = passDefaultCurrentHour;
-        untilEndDefault.value = passDefaultEndHour;
-        currentHour.value = 7;
-        untilEnd.value = 18;
+        // currentHourDefault.value = passDefaultCurrentHour;
+        // untilEndDefault.value = passDefaultEndHour;
+        // currentHour.value = 7;
+        // untilEnd.value = 18;
         // } else if (passDefaultCurrentHour > 14) {
         //   currentHourDefault.value = 14;
         //   untilEndDefault.value = 18;
@@ -65,76 +74,78 @@ class CalendarDaySwitchView extends HookWidget {
         //   currentHour.value = 7;
         //   untilEnd.value = 11;
         // }
-      } else {
-        currentHourDefault.value = passDefaultCurrentHour;
-        untilEndDefault.value = passDefaultEndHour;
-        currentHour.value = 7;
-        untilEnd.value = 18;
-      }
+      // } else {
+      //   currentHourDefault.value = passDefaultCurrentHour;
+      //   untilEndDefault.value = passDefaultEndHour;
+      //   currentHour.value = 7;
+      //   untilEnd.value = 18;
+      // }
 
       for (var e in eventsCalendar) {
-        DateTime startTimeDisplay = DateTime.utc(
+        DateTime startTimeDisplay = DateTime(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
           e.start.hour == 0 ? currentHourDisplay.value : e.start.hour,
           e.start.hour == 0 ? 0 : e.start.minute,
         );
-        DateTime endTimeDisplay = DateTime.utc(
+        DateTime endTimeDisplay = DateTime(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
           e.end.hour == 0 ? untilEndDisplay.value : e.end.hour,
           e.end.hour == 0
               ? untilEndDisplay.value == 23
-                  ? 59
-                  : 0
+              ? 59
+              : 0
               : e.end.minute,
         );
-        DateTime slotStartTime = DateTime.utc(
+        DateTime slotStartTime = DateTime(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
           passDefaultCurrentHour,
           0,
         );
-        DateTime slotEndTime = DateTime.utc(
+        DateTime slotEndTime = DateTime(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
           passDefaultEndHour,
           0,
         );
-        DateTime startTime = DateTime.utc(
+        DateTime startTime = DateTime(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          e.start.hour == 0 ? currentHour.value : (e.start.hour > currentHourDefault.value ? e.start.hour : currentHourDefault.value),
+          e.start.hour == 0
+              ? currentHour.value
+              : (e.start.hour > currentHourDefault.value ? e.start.hour : currentHourDefault.value),
           e.start.minute,
         );
-        DateTime endTime = DateTime.utc(
+        DateTime endTime = DateTime(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
           e.end.hour == 0
               ? untilEnd.value
               : (e.end.hour == e.start.hour
-                  ? e.end.hour
-                  : e.end.hour > untilEnd.value
-                      ? untilEnd.value
-                      : e.end.hour),
+              ? e.end.hour
+              : e.end.hour > untilEnd.value
+              ? untilEnd.value
+              : e.end.hour),
           e.end.minute,
         );
 
         if (startTime.hour != 0 && endTime.hour != 0 && startTime.isAtSameMomentAs(endTime)) {
-          startTime = DateTime.utc(
+          startTime = DateTime(
             selectedDay!.year,
             selectedDay!.month,
             selectedDay!.day,
             currentHour.value,
             e.start.minute,
           );
-          endTime = DateTime.utc(
+          endTime = DateTime(
             selectedDay!.year,
             selectedDay!.month,
             selectedDay!.day,
@@ -142,14 +153,14 @@ class CalendarDaySwitchView extends HookWidget {
             e.end.minute,
           );
 
-          startTimeDisplay = DateTime.utc(
+          startTimeDisplay = DateTime(
             selectedDay!.year,
             selectedDay!.month,
             selectedDay!.day,
             currentHourDisplay.value,
             0,
           );
-          endTimeDisplay = DateTime.utc(
+          endTimeDisplay = DateTime(
             selectedDay!.year,
             selectedDay!.month,
             selectedDay!.day,
@@ -158,10 +169,10 @@ class CalendarDaySwitchView extends HookWidget {
           );
         }
 
-        if (slotEndTime.isBefore(startTime)) {
-        } else if (endTime.isBefore(slotStartTime)) {
-        } else if (startTime.isAfter(endTime)) {
-        } else if (startTime.isBefore(slotStartTime)) {
+        // if (slotEndTime.isBefore(startTime)) {
+        // } else if (endTime.isBefore(slotStartTime)) {
+        // } else if (startTime.isAfter(endTime)) {
+        // } else if (startTime.isBefore(slotStartTime)) {
           // int subHours = currentHour.value - startTime.hour;
           // startTime = startTime.add(Duration(hours: subHours));
           // if (startTime.minute > 0) {
@@ -191,6 +202,13 @@ class CalendarDaySwitchView extends HookWidget {
 
           // }
 
+        if (slotEndTime.isBefore(startTime)) {
+          // Event ends before the visible slot; ignore
+        } else if (endTime.isBefore(slotStartTime)) {
+          // Event starts after the visible slot; ignore
+        } else if (startTime.isAfter(endTime)) {
+          // Invalid event timing; ignore
+        } else if (startTime.isBefore(slotStartTime)) {
           currentEvents.value.add(AdvancedDayEvent(
             value: e.uid,
             title: e.title,
@@ -204,41 +222,6 @@ class CalendarDaySwitchView extends HookWidget {
             endDisplay: endTimeDisplay,
           ));
         } else {
-          // final timeDuration = endTime.difference(startTime);
-          // if (timeDuration.inMinutes < 30) {
-          //   endTime = endTime.add(const Duration(hours: 1));
-          // }
-          // if (startTime.hour <= currentHour.value && startTime.minute > 0) {
-          //   int addHours = currentHour.value - startTime.hour;
-          //   startTime = startTime.add(Duration(hours: addHours)).subtract(Duration(minutes: startTime.minute));
-          // }
-
-          // if (endTime.isAtSameMomentAs(slotEndTime.add(const Duration(hours: 1)))) {
-          //   endTime = endTime.subtract(const Duration(hours: 1));
-          // }
-
-          // if (endTime.hour >= slotEndTime.hour) {
-          //   int subHours = endTime.hour - (untilEnd.value - 1);
-          //   endTime = endTime.subtract(Duration(hours: subHours));
-          //   if (endTime.minute > 0) {
-          //     endTime = endTime.subtract(Duration(minutes: endTime.minute));
-          //   }
-          // }
-          // startTime = DateTime.utc(
-          //   selectedDay!.year,
-          //   selectedDay!.month,
-          //   selectedDay!.day,
-          //   currentHour.value,
-          //   0,
-          // );
-          // endTime = DateTime.utc(
-          //   selectedDay!.year,
-          //   selectedDay!.month,
-          //   selectedDay!.day,
-          //   untilEnd.value - 1,
-          //   0,
-          // );
-
           currentEvents.value.add(AdvancedDayEvent(
             value: e.uid,
             title: e.title,
@@ -254,6 +237,7 @@ class CalendarDaySwitchView extends HookWidget {
         }
       }
 
+      // Process overflow events
       currentOverflowEventsRow.value = processOverflowEvents(
         [...currentEvents.value]..sort((a, b) => a.compare(b)),
         startOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: currentHour.value, minute: 0)),
@@ -278,6 +262,16 @@ class CalendarDaySwitchView extends HookWidget {
     //   }
     // }
 
+    useEffect(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        const double offset = 7 * 60.0;
+        if (scrollController.hasClients) {
+          scrollController.jumpTo(offset);
+        }
+      });
+      return null;
+    }, []);
+
     useEffect(() => autoEventsSlot());
 
     return ValueListenableBuilder(
@@ -286,6 +280,7 @@ class CalendarDaySwitchView extends HookWidget {
           return Padding(
             padding: const EdgeInsets.only(top: 20),
             child: OverFlowCalendarDayView(
+              controller: scrollController,
               onTimeTap: (s) {},
               overflowEvents: flowEvent,
               events: UnmodifiableListView(currentEvents.value),

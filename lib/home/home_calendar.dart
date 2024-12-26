@@ -589,17 +589,20 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   }
 
   /// Handles pull-to-refresh action
+  Key _refreshKey = UniqueKey();
+
   Future<void> _onRefresh() async {
     connectivityResult.checkConnectivity().then((e) async {
       if (e.contains(ConnectivityResult.none)) {
         eventsForDay = await offlineProvider.getCalendar();
         setState(() {
           addEventOffline(eventsForDay);
+          _refreshKey = UniqueKey(); // Trigger full page rebuild
         });
       } else {
         await _fetchData();
         setState(() {
-          _showFiltersAndSearchBar = !_showFiltersAndSearchBar;
+          _refreshKey = UniqueKey(); // Trigger full page rebuild
         });
       }
     });
@@ -864,45 +867,39 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     return Scaffold(
+      key: _refreshKey,
       backgroundColor: isDarkMode ? Colors.black : Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(130),
         child: _buildCalendarHeader(isDarkMode),
       ),
       body: RefreshIndicator(
-        onRefresh: DateTime.now().toLocal().hour > 19
-            ? () async {
-                await _onRefresh();
-              }
-            : () async {
-                setState(() {
-                  switchTime.value = !switchTime.value;
-                });
-                await _onRefresh();
-
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        "Your calendar data has been refresh and updated successfully",
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.white,
-                          fontSize: 13,
-                        ),
-                      ),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: isDarkMode ? Colors.orange : Colors.green,
-                      margin: const EdgeInsets.all(20),
-                      duration: const Duration(seconds: 4),
+        onRefresh: () async {
+          if (DateTime.now().toLocal().hour > 19) {
+            await _onRefresh();
+          } else {
+            await _onRefresh();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text(
+                    "Your calendar data has been refreshed and updated successfully",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
                     ),
-                  );
-                }
-              },
+                  ),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: isDarkMode ? Colors.orange : Colors.green,
+                  margin: const EdgeInsets.all(20),
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            }
+          }
+        },
         child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
-            mainAxisSize: MainAxisSize.max,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _buildCalendar(context, isDarkMode),
               const SizedBox(height: 2),
@@ -911,12 +908,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(
                   children: [
-                    // Left side: Day and Date
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          DateFormat('EEEE').format(_selectedDay ?? DateTime.now()), // Day of the week
+                          DateFormat('EEEE').format(_selectedDay ?? DateTime.now()),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -925,7 +921,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          DateFormat('d MMMM y').format(_selectedDay ?? DateTime.now()), // Date
+                          DateFormat('d MMMM y').format(_selectedDay ?? DateTime.now()),
                           style: TextStyle(
                             fontSize: 12,
                             color: isDarkMode ? Colors.white70 : Colors.black54,
@@ -934,11 +930,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                       ],
                     ),
                     const Spacer(),
-                    // Right side: Button to open dialog
                     IconButton(
                       icon: Icon(Icons.info_outline, color: isDarkMode ? Colors.green : Colors.red),
                       onPressed: () {
-                        // Show dialog with event color types and calendar tips
                         showDialog(
                           context: context,
                           builder: (context) {
@@ -955,13 +949,12 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Event Colors Section
                                     Row(
                                       children: [
                                         Container(
                                           width: 16,
                                           height: 16,
-                                          color: const Color(0xFFDBB342), // Minutes of Meeting
+                                          color: const Color(0xFFDBB342),
                                         ),
                                         const SizedBox(width: 8),
                                         const Text('Minutes of Meeting'),
@@ -973,7 +966,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                                         Container(
                                           width: 16,
                                           height: 16,
-                                          color: const Color(0xFF991B1B), // Leave
+                                          color: const Color(0xFF991B1B),
                                         ),
                                         const SizedBox(width: 8),
                                         const Text('Leave'),
@@ -985,7 +978,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                                         Container(
                                           width: 16,
                                           height: 16,
-                                          color: const Color(0xFF89AFFF), // Car Booking
+                                          color: const Color(0xFF89AFFF),
                                         ),
                                         const SizedBox(width: 8),
                                         const Text('Car Booking'),
@@ -997,7 +990,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                                         Container(
                                           width: 16,
                                           height: 16,
-                                          color: const Color(0xFF25B24A), // Meeting Room
+                                          color: const Color(0xFF25B24A),
                                         ),
                                         const SizedBox(width: 8),
                                         const Text('Meeting Room'),
@@ -1009,14 +1002,13 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                                         Container(
                                           width: 16,
                                           height: 16,
-                                          color: const Color(0xFF0369A1), // Meeting
+                                          color: const Color(0xFF0369A1),
                                         ),
                                         const SizedBox(width: 8),
                                         const Text('Meeting'),
                                       ],
                                     ),
                                     const SizedBox(height: 20),
-                                    // Calendar Tips Section
                                     const Text(
                                       'Calendar Tips:',
                                       style: TextStyle(
@@ -1026,12 +1018,17 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                                     ),
                                     const SizedBox(height: 8),
                                     const Text(
-                                      '• Pull to refresh the page to view 24-hour events for the selected day or double-click on a date to open the timetable page.',
+                                      '• This calendar page is scrollable and can pull to refresh the data.',
                                       style: TextStyle(fontSize: 12),
                                     ),
                                     const SizedBox(height: 8),
                                     const Text(
-                                      '• Pull to refresh again to reset to the default view, showing the current hour - 1 up to the next 9 hours.',
+                                      '• By default, the daily hour view at the bottom will display at 7am for its start time.',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      '• You can scroll up and down to see previous and next time and its events.',
                                       style: TextStyle(fontSize: 12),
                                     ),
                                   ],
@@ -1051,27 +1048,27 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                   ],
                 ),
               ),
-              eventsForDay.isEmpty
-                  ? SizedBox(
-                      height: sizeScreen(context).height * 0.20,
-                      child: Center(
-                        child: Text(
-                          AppLocalizations.of(context)!.noEventsForThisDay,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    )
-                  : CalendarDaySwitchView(
-                      selectedDay: _selectedDay,
-                      passDefaultCurrentHour: switchTime.value ? 0 : 7,
-                      passDefaultEndHour: switchTime.value ? 25 : 18,
-                      eventsCalendar: eventsForDay,
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.50,
+                child: eventsForDay.isEmpty
+                    ? Center(
+                  child: Text(
+                    AppLocalizations.of(context)!.noEventsForThisDay,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
                     ),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+                    : CalendarDaySwitchView(
+                  selectedDay: _selectedDay,
+                  passDefaultCurrentHour: 0,
+                  passDefaultEndHour: 25,
+                  eventsCalendar: eventsForDay,
+                ),
+              ),
             ],
           ),
         ),
