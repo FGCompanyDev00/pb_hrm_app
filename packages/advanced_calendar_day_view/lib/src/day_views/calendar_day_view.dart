@@ -144,15 +144,6 @@ class _OverFlowCalendarDayViewState<T extends Object> extends State<OverFlowCale
     super.dispose();
   }
 
-  /// Handles pull-to-refresh action
-  Future<void> _onEarlier() async {
-    debugPrint('earler');
-    // await _fetchData();
-    // setState(() {
-    //   _showFiltersAndSearchBar = !_showFiltersAndSearchBar;
-    // });
-  }
-
   @override
   Widget build(BuildContext context) {
     final heightUnit = widget.heightPerMin * _rowScale;

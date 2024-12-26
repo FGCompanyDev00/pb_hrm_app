@@ -44,27 +44,27 @@ class CalendarDaySwitchView extends HookWidget {
       currentOverflowEventsRow.value.clear();
 
       if (passDefaultCurrentHour != 0) {
-        if (passDefaultCurrentHour > 18) {
-          currentHourDefault.value = passDefaultCurrentHour;
-          untilEndDefault.value = passDefaultEndHour;
-          currentHour.value = 7;
-          untilEnd.value = 18;
-        } else if (passDefaultCurrentHour > 14) {
-          currentHourDefault.value = 14;
-          untilEndDefault.value = 18;
-          currentHour.value = 14;
-          untilEnd.value = 18;
-        } else if (passDefaultCurrentHour > 10) {
-          currentHourDefault.value = 11;
-          untilEndDefault.value = 15;
-          currentHour.value = 11;
-          untilEnd.value = 15;
-        } else if (passDefaultCurrentHour > 6) {
-          currentHourDefault.value = 7;
-          untilEndDefault.value = 11;
-          currentHour.value = 7;
-          untilEnd.value = 11;
-        }
+        // if (passDefaultCurrentHour > 18) {
+        currentHourDefault.value = passDefaultCurrentHour;
+        untilEndDefault.value = passDefaultEndHour;
+        currentHour.value = 7;
+        untilEnd.value = 18;
+        // } else if (passDefaultCurrentHour > 14) {
+        //   currentHourDefault.value = 14;
+        //   untilEndDefault.value = 18;
+        //   currentHour.value = 14;
+        //   untilEnd.value = 18;
+        // } else if (passDefaultCurrentHour > 10) {
+        //   currentHourDefault.value = 11;
+        //   untilEndDefault.value = 15;
+        //   currentHour.value = 11;
+        //   untilEnd.value = 15;
+        // } else if (passDefaultCurrentHour > 6) {
+        //   currentHourDefault.value = 7;
+        //   untilEndDefault.value = 11;
+        //   currentHour.value = 7;
+        //   untilEnd.value = 11;
+        // }
       } else {
         currentHourDefault.value = passDefaultCurrentHour;
         untilEndDefault.value = passDefaultEndHour;

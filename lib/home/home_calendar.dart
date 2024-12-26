@@ -44,7 +44,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   DateTime _focusedDay = DateTime.now().toLocal();
   DateTime? _selectedDay;
   DateTime? _singleTapSelectedDay;
-  ScrollController scrollController = ScrollController();
 
   // Notifications
   late final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
@@ -64,7 +63,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   // Loading State
   bool _isLoading = false;
-  bool _isFirstDefaultTime = true;
 
   @override
   void initState() {
@@ -161,16 +159,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         _fetchMinutesOfMeeting(),
       ]).whenComplete(() {
         _filterAndSearchEvents();
-        if (_isFirstDefaultTime) {
-          WidgetsBinding.instance.addPostFrameCallback((time) {
-            _isFirstDefaultTime = false;
-            scrollController.jumpTo(
-              (7 * 60.0) + 350,
-              // duration: const Duration(seconds: 10),
-              // curve: Curves.bounceIn,
-            ); // 9:00 AM (1 pixel = 1 minute)
-          });
-        }
       });
     } catch (e) {
       showSnackBar('Error fetching data: $e');
@@ -887,30 +875,31 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 await _onRefresh();
               }
             : () async {
+                setState(() {
+                  switchTime.value = !switchTime.value;
+                });
                 await _onRefresh();
-                // setState(() {
-                //   // switchTime.value = !switchTime.value;
-                //   _fetchData();
-                // });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      "Your calendar data has been refresh and updated successfully",
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.white,
-                        fontSize: 13,
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        "Your calendar data has been refresh and updated successfully",
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.white,
+                          fontSize: 13,
+                        ),
                       ),
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: isDarkMode ? Colors.orange : Colors.green,
+                      margin: const EdgeInsets.all(20),
+                      duration: const Duration(seconds: 4),
                     ),
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: isDarkMode ? Colors.orange : Colors.green,
-                    margin: const EdgeInsets.all(20),
-                    duration: const Duration(seconds: 4),
-                  ),
-                );
+                  );
+                }
               },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          controller: scrollController,
           child: Column(
             mainAxisSize: MainAxisSize.max,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -1079,7 +1068,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                     )
                   : CalendarDaySwitchView(
                       selectedDay: _selectedDay,
-                      passDefaultCurrentHour: switchTime.value ? 0 : DateTime.now().toLocal().hour,
+                      passDefaultCurrentHour: switchTime.value ? 0 : 7,
                       passDefaultEndHour: switchTime.value ? 25 : 18,
                       eventsCalendar: eventsForDay,
                     ),
