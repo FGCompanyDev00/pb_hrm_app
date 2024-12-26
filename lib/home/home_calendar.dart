@@ -49,7 +49,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   late final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
   // Filters and Search
-  bool _showFiltersAndSearchBar = false;
+  final bool _showFiltersAndSearchBar = false;
   String _selectedCategory = 'All';
   final List<String> _categories = ['All', 'Add Meeting', 'Leave', 'Meeting Room Bookings', 'Booking Car'];
   String _searchQuery = '';
