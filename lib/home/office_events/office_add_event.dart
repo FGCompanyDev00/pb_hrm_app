@@ -287,12 +287,12 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
   /// Formats DateTime based on booking type
   String formatDateTime(DateTime? dateTime) {
     if (dateTime == null) return '';
-    if (_selectedBookingType == '1. Add Meeting' || _selectedBookingType == '2. Meeting and Booking Meeting Room') {
-      // Send in UTC to ensure correct interpretation by the API
-      return DateFormat('yyyy-MM-dd HH:mm:ss').format(dateTime.toUtc());
-    } else {
-      return DateFormat('yyyy-MM-dd').format(dateTime);
-    }
+    // if (_selectedBookingType == '1. Add Meeting' || _selectedBookingType == '2. Meeting and Booking Meeting Room') {
+    // Send in UTC to ensure correct interpretation by the API
+    return DateFormat('yyyy-MM-dd HH:mm:ss').format(dateTime);
+    // } else {
+    //   return DateFormat('yyyy-MM-dd').format(dateTime);
+    // }
   }
 
   String formatTime(DateTime? dateTime) {
@@ -496,48 +496,32 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
     );
 
     if (pickedDate != null) {
-      if (_selectedBookingType == '1. Add Meeting' || _selectedBookingType == '2. Meeting and Booking Meeting Room') {
-        // For Type 1 and Type 2, also pick time
-        final TimeOfDay? pickedTime = await showTimePicker(
-          context: context,
-          initialTime: isStartDateTime ? initialTime : const TimeOfDay(hour: 13, minute: 0),
+      // if (_selectedBookingType == '1. Add Meeting' || _selectedBookingType == '2. Meeting and Booking Meeting Room') {
+      // For Type 1 and Type 2, also pick time
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: isStartDateTime ? initialTime : const TimeOfDay(hour: 13, minute: 0),
+      );
+
+      if (pickedTime != null) {
+        // Ensure time is between 8:00 AM and 5:00 PM
+        if (pickedTime.hour < 8 || (pickedTime.hour == 17 && pickedTime.minute > 0) || pickedTime.hour > 17) {
+          _showErrorFieldMessage(
+            'Invalid Time',
+            'Please select a time between 8:00 AM and 5:00 PM.',
+          );
+          return;
+        }
+
+        final DateTime pickedDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
         );
 
-        if (pickedTime != null) {
-          // Ensure time is between 8:00 AM and 5:00 PM
-          if (pickedTime.hour < 8 || (pickedTime.hour == 17 && pickedTime.minute > 0) || pickedTime.hour > 17) {
-            _showErrorFieldMessage(
-              'Invalid Time',
-              'Please select a time between 8:00 AM and 5:00 PM.',
-            );
-            return;
-          }
-
-          final DateTime pickedDateTime = DateTime(
-            pickedDate.year,
-            pickedDate.month,
-            pickedDate.day,
-            pickedTime.hour,
-            pickedTime.minute,
-          );
-
-          setState(() {
-            if (isStartDateTime) {
-              _startDateTime = pickedDateTime;
-              _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
-            } else {
-              _endDateTime = pickedDateTime;
-            }
-          });
-        }
-      } else {
-        // For Type 3, only date is needed
         setState(() {
-          final DateTime pickedDateTime = DateTime(
-            pickedDate.year,
-            pickedDate.month,
-            pickedDate.day,
-          );
           if (isStartDateTime) {
             _startDateTime = pickedDateTime;
             _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
@@ -546,6 +530,22 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           }
         });
       }
+      // } else {
+      // For Type 3, only date is needed
+      //   setState(() {
+      //     final DateTime pickedDateTime = DateTime(
+      //       pickedDate.year,
+      //       pickedDate.month,
+      //       pickedDate.day,
+      //     );
+      //     if (isStartDateTime) {
+      //       _startDateTime = pickedDateTime;
+      //       _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
+      //     } else {
+      //       _endDateTime = pickedDateTime;
+      //     }
+      //   });
+      // }
     }
   }
 
@@ -1264,7 +1264,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_startDateTime == null ? 'dd/mm/yy - 09:00' : DateFormat('dd/MM/yy').format(_startDateTime!)),
+                          Text(_startDateTime == null ? 'dd/mm/yy - 09:00' : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1284,7 +1284,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_endDateTime == null ? 'dd/mm/yy - 13:00' : DateFormat('dd/MM/yy').format(_endDateTime!)),
+                          Text(_endDateTime == null ? 'dd/mm/yy - 13:00' : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
