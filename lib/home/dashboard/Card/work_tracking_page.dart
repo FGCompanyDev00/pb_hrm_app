@@ -44,10 +44,12 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     });
 
     try {
+      List<Map<String, dynamic>> fetchedProjects = [];
+
       if (_isMyProjectsSelected) {
         print('Fetching My Projects...');
-        _projects = await _workTrackingService.fetchMyProjects();
-        print('Fetched My Projects: $_projects');
+        fetchedProjects = await _workTrackingService.fetchMyProjects();
+        print('Fetched My Projects: $fetchedProjects');
       } else {
         print('Fetching All Projects...');
         final allProjects = await _workTrackingService.fetchAllProjects();
@@ -55,11 +57,38 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
         final currentUser = prefs.getString('user_id');
         print('Current User ID: $currentUser');
 
-        _projects = allProjects.where((project) {
+        fetchedProjects = allProjects.where((project) {
           return project['create_project_by'] != currentUser;
         }).toList();
-        print('Filtered All Projects: $_projects');
+        print('Filtered All Projects: $fetchedProjects');
       }
+
+      // Sort the fetched projects based on 'update_project_at' in descending order
+      fetchedProjects.sort((a, b) {
+        DateTime aDate;
+        DateTime bDate;
+
+        try {
+          aDate = DateTime.parse(a['created_project_at'] ?? '')
+              .toLocal();
+        } catch (e) {
+          aDate = DateTime.fromMillisecondsSinceEpoch(0); // Default date if parsing fails
+        }
+
+        try {
+          // Parse 'update_project_at' and convert to local time
+          bDate = DateTime.parse(b['created_project_at'] ?? '')
+              .toLocal();
+        } catch (e) {
+          bDate = DateTime.fromMillisecondsSinceEpoch(0); // Default date if parsing fails
+        }
+
+        return bDate.compareTo(aDate); // Descending order
+      });
+
+      setState(() {
+        _projects = fetchedProjects;
+      });
     } catch (e) {
       print('Error in _fetchProjects: $e');
       _showErrorDialog('Failed to fetch projects: $e');
@@ -256,14 +285,14 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: isDarkMode ? Colors.grey[800] : Colors.white, // Background color changes based on dark mode
+                color: isDarkMode ? Colors.grey[800] : Colors.white,
                 borderRadius: BorderRadius.circular(8.0),
                 border: Border.all(color: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade300),
               ),
               child: TextField(
                 decoration: InputDecoration(
                   hintText: 'Search name',
-                  hintStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.grey), // Hint text color change
+                  hintStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.grey),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
                   suffixIcon: Icon(Icons.search, color: isDarkMode ? Colors.white : Colors.grey), // Icon color change
@@ -289,10 +318,10 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: _selectedStatus,
-                icon: Icon(Icons.arrow_drop_down, color: isDarkMode ? Colors.white : Colors.grey), // Icon color change
+                icon: Icon(Icons.arrow_drop_down, color: isDarkMode ? Colors.white : Colors.grey),
                 iconSize: 24,
                 elevation: 16,
-                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black), // Text color change
+                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
                 onChanged: (String? newValue) {
                   setState(() {
                     _selectedStatus = newValue!;
@@ -301,10 +330,31 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
-                    child: Text(value),
+                    child: Row(
+                      children: [
+                        if (value != 'All Status') ...[
+                          Container(
+                            width: 8,
+                            height: 8,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: value == 'Processing'
+                                  ? Colors.blue
+                                  : value == 'Pending'
+                                  ? Colors.orange
+                                  : value == 'Finished'
+                                  ? Colors.green
+                                  : Colors.transparent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                        Text(value),
+                      ],
+                    ),
                   );
                 }).toList(),
-              ),
+              )
             ),
           ),
         ],
@@ -359,9 +409,15 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     String formatDate(String? date) {
       if (date == null) return 'Unknown';
       try {
-        return DateFormat('dd MMM yyyy').format(DateTime.parse(date));
+        // Parse the date string
+        DateTime parsedDate = DateTime.parse(date);
+        // Convert to local time
+        DateTime localDate = parsedDate.toLocal();
+        // Format the date
+        return DateFormat('dd MMM yyyy').format(localDate);
       } catch (e) {
-        return date; // Fallback to the original date string if parsing fails
+        print('Error parsing date: $e');
+        return date; // Fallback to original string if parsing fails
       }
     }
 

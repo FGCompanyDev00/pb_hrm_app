@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:provider/provider.dart';
 
@@ -46,9 +47,22 @@ class _EditProjectPageState extends State<EditProjectPage> {
     _branch = 'HQ office';
     _department = 'Digital Banking Dept';
     _nameController = TextEditingController(text: widget.project['p_name']);
-    _deadline1Controller = TextEditingController(text: widget.project['dl']);
-    _deadline2Controller = TextEditingController(text: widget.project['extend']);
+    String formattedDeadline = _formatDateForDisplay(widget.project['dl']);
+    String formattedExtended = _formatDateForDisplay(widget.project['extend']);
+    _deadline1Controller = TextEditingController(text: formattedDeadline);
+    _deadline2Controller = TextEditingController(text: formattedExtended);
     _progress = (double.tryParse(widget.project['precent']?.toString() ?? '0') ?? 0) / 100;
+  }
+
+  String _formatDateForDisplay(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return '';
+    try {
+      DateTime date = DateTime.parse(dateStr);
+      return DateFormat('dd-MM-yyyy').format(date);
+    } catch (e) {
+      // If parsing fails, return the original string or handle accordingly
+      return dateStr;
+    }
   }
 
   Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
@@ -60,7 +74,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
     );
     if (picked != null) {
       setState(() {
-        controller.text = "${picked.toLocal()}".split(' ')[0];
+        controller.text = DateFormat('dd-MM-yyyy').format(picked);
       });
     }
   }
@@ -71,14 +85,18 @@ class _EditProjectPageState extends State<EditProjectPage> {
       return;
     }
 
+    // Convert display dates back to yyyy-MM-dd
+    String formattedDeadline = _convertToBackendFormat(_deadline1Controller.text.trim());
+    String formattedExtended = _convertToBackendFormat(_deadline2Controller.text.trim());
+
     final updatedProject = {
       "project_name": _nameController.text.trim(),
       "department_id": "147",
       "branch_id": "1",
       "status_id": statusMap[_status]!,
       "precent_of_project": (_progress * 100).toStringAsFixed(0),
-      "deadline": _deadline1Controller.text.trim(),
-      "extended": _deadline2Controller.text.trim(),
+      "deadline": formattedDeadline,
+      "extended": formattedExtended,
     };
 
     try {
@@ -98,6 +116,17 @@ class _EditProjectPageState extends State<EditProjectPage> {
       }
     } catch (e) {
       _showErrorDialog(e.toString());
+    }
+  }
+
+  String _convertToBackendFormat(String dateStr) {
+    try {
+      DateTime date = DateFormat('dd-MM-yyyy').parseStrict(dateStr);
+      // Include time component as "00:00:00"
+      return DateFormat('yyyy-MM-dd HH:mm:ss').format(date);
+    } catch (e) {
+      // Handle parsing error, possibly return an empty string or the original string
+      return dateStr;
     }
   }
 
