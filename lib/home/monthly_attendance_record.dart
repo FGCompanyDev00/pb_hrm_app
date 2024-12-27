@@ -71,6 +71,8 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
               ),
               'officeStatus':
               item['office_status']?.toString() ?? 'office',
+              'checkInStatus': item['check_in_status']?.toString() ?? 'unknown',
+              'checkOutStatus': item['check_out_status']?.toString() ?? 'unknown',
             };
           }).toList();
 
@@ -141,21 +143,23 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
     );
   }
 
-  Widget _buildAttendanceRow(Map<String, String> record) {
-    Color iconColor;
-    switch (record['officeStatus']) {
-      case 'home':
-        iconColor = Colors.yellow;
-        break;
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase() ?? 'unknown') {
       case 'office':
-        iconColor = Colors.green;
-        break;
+        return Colors.green;
       case 'offsite':
-        iconColor = Colors.red;
-        break;
+        return Colors.red;
+      case 'home':
+        return Colors.orange;
       default:
-        iconColor = Colors.green;
+        return Colors.green;
     }
+  }
+
+  Widget _buildAttendanceRow(Map<String, String> record) {
+    // Retrieve colors based on check_in_status and check_out_status
+    Color checkInColor = _getStatusColor(record['checkInStatus']);
+    Color checkOutColor = _getStatusColor(record['checkOutStatus']);
 
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -166,13 +170,19 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         title: Center(
-            child:
-            Text(record['date']!, style: TextStyle(fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black))),
+            child: Text(
+              record['date']!,
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black),
+            )),
         subtitle: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildAttendanceItem('Check In', record['checkIn']!, iconColor),
-            _buildAttendanceItem('Check Out', record['checkOut']!, iconColor),
+            // Pass checkInColor for Check In
+            _buildAttendanceItem('Check In', record['checkIn']!, checkInColor),
+            // Pass checkOutColor for Check Out
+            _buildAttendanceItem('Check Out', record['checkOut']!, checkOutColor),
             _buildAttendanceItem(
                 'Working Hours', record['workDuration']!, Colors.blue),
           ],
@@ -225,7 +235,8 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () {
                   setState(() {
-                    _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
+                    _currentMonth = DateTime(
+                        _currentMonth.year, _currentMonth.month - 1);
                     _fetchAttendanceRecords();
                   });
                 },
@@ -245,7 +256,8 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
                     ? null
                     : () {
                   setState(() {
-                    _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+                    _currentMonth = DateTime(
+                        _currentMonth.year, _currentMonth.month + 1);
                     _fetchAttendanceRecords();
                   });
                 },
@@ -256,7 +268,8 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: isDarkMode ? Colors.lightGreen : const Color(0xFFDAA520),
+              color:
+              isDarkMode ? Colors.lightGreen : const Color(0xFFDAA520),
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [
                 BoxShadow(
@@ -312,18 +325,36 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
         children: [
           _buildMonthNavigationHeader(),
           Expanded(
-            child: _errorFetchingData
-                ? Center(
-              child: Text(
-                "No attendance record data for this month.",
-                style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+            child: RefreshIndicator(
+              onRefresh: _fetchAttendanceRecords,
+              child: _errorFetchingData
+                  ? ListView(
+                // To enable pull-to-refresh when there's an error,
+                // wrap the Center widget in a ListView
+                children: [
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.4,
+                    child: Center(
+                      child: Text(
+                        "No attendance record data for this month.",
+                        style: TextStyle(
+                            color: Theme.of(context)
+                                .textTheme
+                                .bodyLarge
+                                ?.color),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+                  : ListView.builder(
+                physics:
+                const AlwaysScrollableScrollPhysics(), // Ensures the list can always be scrolled to trigger refresh
+                itemCount: _attendanceRecords.length,
+                itemBuilder: (context, index) {
+                  return _buildAttendanceRow(_attendanceRecords[index]);
+                },
               ),
-            )
-                : ListView.builder(
-              itemCount: _attendanceRecords.length,
-              itemBuilder: (context, index) {
-                return _buildAttendanceRow(_attendanceRecords[index]);
-              },
             ),
           ),
         ],
@@ -338,7 +369,9 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
       flexibleSpace: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+            image: AssetImage(isDarkMode
+                ? 'assets/darkbg.png'
+                : 'assets/ready_bg.png'),
             fit: BoxFit.cover,
           ),
           borderRadius: const BorderRadius.only(
@@ -356,6 +389,16 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
           fontWeight: FontWeight.w700,
         ),
       ),
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: () {
+            _fetchAttendanceRecords();
+          },
+          tooltip: 'Refresh',
+          color: isDarkMode ? Colors.white : Colors.black,
+        ),
+      ],
       leading: IconButton(
         icon: Icon(
           Icons.arrow_back_ios_new,
