@@ -28,11 +28,11 @@ class CalendarDaySwitchView extends HookWidget {
   @override
   Widget build(BuildContext context) {
     final currentHour = useState(7);
-    final untilEnd = useState(24);
+    final untilEnd = useState(18);
     final currentHourDisplay = useState(7);
-    final untilEndDisplay = useState(24);
-    final currentHourDefault = useState(passDefaultCurrentHour);
-    final untilEndDefault = useState(passDefaultEndHour);
+    final untilEndDisplay = useState(18);
+    final currentHourDefault = useState(7);
+    final untilEndDefault = useState(23);
     // final switchTime = useState(selectedSlotTime);
     final ValueNotifier<List<AdvancedDayEvent<String>>> currentEvents = useState([]);
     final ValueNotifier<List<OverflowEventsRow<String>>> currentOverflowEventsRow = useState([]);
@@ -44,36 +44,35 @@ class CalendarDaySwitchView extends HookWidget {
     autoEventsSlot() {
       // Set default start and end hours
       currentHourDefault.value = passDefaultCurrentHour; // 0
-      untilEndDefault.value = passDefaultEndHour;       // 24
-      currentHour.value = 7;                            // Starting display at 7 AM
-      untilEnd.value = 24;
+      untilEndDefault.value = passDefaultEndHour; // 24
+      currentHour.value = 7; // Starting display at 7 AM
 
       // Clear previous events
       currentEvents.value.clear();
       currentOverflowEventsRow.value.clear();
 
       // if (passDefaultCurrentHour != 0) {
-        // if (passDefaultCurrentHour > 18) {
-        // currentHourDefault.value = passDefaultCurrentHour;
-        // untilEndDefault.value = passDefaultEndHour;
-        // currentHour.value = 7;
-        // untilEnd.value = 18;
-        // } else if (passDefaultCurrentHour > 14) {
-        //   currentHourDefault.value = 14;
-        //   untilEndDefault.value = 18;
-        //   currentHour.value = 14;
-        //   untilEnd.value = 18;
-        // } else if (passDefaultCurrentHour > 10) {
-        //   currentHourDefault.value = 11;
-        //   untilEndDefault.value = 15;
-        //   currentHour.value = 11;
-        //   untilEnd.value = 15;
-        // } else if (passDefaultCurrentHour > 6) {
-        //   currentHourDefault.value = 7;
-        //   untilEndDefault.value = 11;
-        //   currentHour.value = 7;
-        //   untilEnd.value = 11;
-        // }
+      // if (passDefaultCurrentHour > 18) {
+      // currentHourDefault.value = passDefaultCurrentHour;
+      // untilEndDefault.value = passDefaultEndHour;
+      // currentHour.value = 7;
+      // untilEnd.value = 18;
+      // } else if (passDefaultCurrentHour > 14) {
+      //   currentHourDefault.value = 14;
+      //   untilEndDefault.value = 18;
+      //   currentHour.value = 14;
+      //   untilEnd.value = 18;
+      // } else if (passDefaultCurrentHour > 10) {
+      //   currentHourDefault.value = 11;
+      //   untilEndDefault.value = 15;
+      //   currentHour.value = 11;
+      //   untilEnd.value = 15;
+      // } else if (passDefaultCurrentHour > 6) {
+      //   currentHourDefault.value = 7;
+      //   untilEndDefault.value = 11;
+      //   currentHour.value = 7;
+      //   untilEnd.value = 11;
+      // }
       // } else {
       //   currentHourDefault.value = passDefaultCurrentHour;
       //   untilEndDefault.value = passDefaultEndHour;
@@ -96,8 +95,8 @@ class CalendarDaySwitchView extends HookWidget {
           e.end.hour == 0 ? untilEndDisplay.value : e.end.hour,
           e.end.hour == 0
               ? untilEndDisplay.value == 23
-              ? 59
-              : 0
+                  ? 59
+                  : 0
               : e.end.minute,
         );
         DateTime slotStartTime = DateTime(
@@ -118,9 +117,7 @@ class CalendarDaySwitchView extends HookWidget {
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          e.start.hour == 0
-              ? currentHour.value
-              : (e.start.hour > currentHourDefault.value ? e.start.hour : currentHourDefault.value),
+          e.start.hour == 0 ? currentHour.value : (e.start.hour > currentHour.value ? e.start.hour : currentHour.value),
           e.start.minute,
         );
         DateTime endTime = DateTime(
@@ -130,10 +127,10 @@ class CalendarDaySwitchView extends HookWidget {
           e.end.hour == 0
               ? untilEnd.value
               : (e.end.hour == e.start.hour
-              ? e.end.hour
-              : e.end.hour > untilEnd.value
-              ? untilEnd.value
-              : e.end.hour),
+                  ? e.end.hour
+                  : e.end.hour > untilEnd.value
+                      ? untilEnd.value
+                      : e.end.hour),
           e.end.minute,
         );
 
@@ -173,34 +170,34 @@ class CalendarDaySwitchView extends HookWidget {
         // } else if (endTime.isBefore(slotStartTime)) {
         // } else if (startTime.isAfter(endTime)) {
         // } else if (startTime.isBefore(slotStartTime)) {
-          // int subHours = currentHour.value - startTime.hour;
-          // startTime = startTime.add(Duration(hours: subHours));
-          // if (startTime.minute > 0) {
-          //   startTime = startTime.subtract(Duration(minutes: startTime.minute));
-          // }
+        // int subHours = currentHour.value - startTime.hour;
+        // startTime = startTime.add(Duration(hours: subHours));
+        // if (startTime.minute > 0) {
+        //   startTime = startTime.subtract(Duration(minutes: startTime.minute));
+        // }
 
-          // if (endTime.isAtSameMomentAs(slotEndTime.add(const Duration(hours: 1)))) {
-          //   endTime = endTime.subtract(const Duration(hours: 1));
-          // }
+        // if (endTime.isAtSameMomentAs(slotEndTime.add(const Duration(hours: 1)))) {
+        //   endTime = endTime.subtract(const Duration(hours: 1));
+        // }
 
-          // if (endTime.hour >= slotEndTime.hour) {
-          //   int subHours = endTime.hour - (untilEnd.value - 1);
-          // startTime = DateTime.utc(
-          //   selectedDay!.year,
-          //   selectedDay!.month,
-          //   selectedDay!.day,
-          //   currentHour.value,
-          //   0,
-          // );
-          // endTime = DateTime.utc(
-          //   selectedDay!.year,
-          //   selectedDay!.month,
-          //   selectedDay!.day,
-          //   untilEnd.value - 1,
-          //   0,
-          // );
+        // if (endTime.hour >= slotEndTime.hour) {
+        //   int subHours = endTime.hour - (untilEnd.value - 1);
+        // startTime = DateTime.utc(
+        //   selectedDay!.year,
+        //   selectedDay!.month,
+        //   selectedDay!.day,
+        //   currentHour.value,
+        //   0,
+        // );
+        // endTime = DateTime.utc(
+        //   selectedDay!.year,
+        //   selectedDay!.month,
+        //   selectedDay!.day,
+        //   untilEnd.value - 1,
+        //   0,
+        // );
 
-          // }
+        // }
 
         if (slotEndTime.isBefore(startTime)) {
           // Event ends before the visible slot; ignore
