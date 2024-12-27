@@ -918,7 +918,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                         ),
                       ),
                       Text(
-                        ', ${DateFormat('dd MMMM yy').format(_selectedDay ?? DateTime.now())}',
+                        ', ${DateFormat('dd MMMM yyyy').format(_selectedDay ?? DateTime.now())}',
                         style: TextStyle(
                           fontSize: 12,
                           color: isDarkMode ? Colors.white70 : Colors.black54,
