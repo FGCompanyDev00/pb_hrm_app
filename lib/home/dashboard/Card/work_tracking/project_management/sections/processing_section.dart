@@ -323,7 +323,8 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                         ),
                       ),
                       Text(
-                        '${DateFormat('yyyy-MM-dd').format(fromDate)} ${meeting['start_time'] ?? ''}',
+                        DateFormat('yyyy-MM-dd').format(fromDate),
+                        // '${DateFormat('yyyy-MM-dd').format(fromDate)} ${meeting['start_time'] ?? ''}',
                         style: TextStyle(fontSize: 12,  color: isDarkMode ? Colors.white : Colors.black,),
                       ),
                     ],
@@ -348,7 +349,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                         ),
                       ),
                       Text(
-                        '${DateFormat('yyyy-MM-dd').format(toDate)} ${meeting['end_time'] ?? ''}',
+                        DateFormat('yyyy-MM-dd').format(toDate),
                         style: TextStyle(fontSize: 12,  color: isDarkMode ? Colors.white : Colors.black,),
                       ),
                     ],

@@ -155,8 +155,57 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _performCheckIn(DateTime now) async {
-    // await initializeService();
+    // 1) Build a record
+    AttendanceRecord record = AttendanceRecord(
+      deviceId: _deviceId,
+      latitude: '',
+      longitude: '',
+      section: _isOffsite ? 'Offsite' : 'Office',
+      type: 'checkIn',
+      timestamp: now,
+    );
 
+    // 2) Attempt to get current position
+    Position? currentPosition = await _getCurrentPosition();
+    if (currentPosition != null) {
+      record.latitude = currentPosition.latitude.toString();
+      record.longitude = currentPosition.longitude.toString();
+    }
+
+    // 3) Check connectivity
+    final hasConnection = await connectivityResult.checkConnectivity();
+    final isOffline = hasConnection.contains(ConnectivityResult.none);
+
+    if (isOffline) {
+      // a) Offline => store locally, treat as "checked in" since user can't verify with server
+      await offlineProvider.addPendingAttendance(record);
+      await offlineProvider.autoOffline(true);
+      if (kDebugMode) {
+        print('No internet. Check-in stored locally.');
+      }
+      // b) Now setState to reflect local check-in
+      _applyCheckInState(now);
+      // c) Optionally show local check-in notification
+      await _showCheckInNotification(_checkInTime);
+    } else {
+      // 4) Online => attempt to send to server first
+      bool success = await _sendCheckInOutRequest(record);
+      if (!success) {
+        // => If returns false, it means status 202 or error => DO NOTHING
+        // => Do not set the time, do not show any notification
+        if (kDebugMode) {
+          print('Check-in request not allowed or failed. No UI changes.');
+        }
+        return;
+      }
+
+      // 5) If success == true => proceed with setState, store prefs, notify user
+      _applyCheckInState(now);
+      await _showCheckInNotification(_checkInTime);
+    }
+  }
+
+  void _applyCheckInState(DateTime now) {
     setState(() {
       _checkInTime = DateFormat('HH:mm:ss').format(now);
       _checkOutTime = '--:--:--';
@@ -167,51 +216,10 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     });
 
     // Store check-in time locally
-    userPreferences.storeCheckInTime(_checkInTime); // Save the new check-in time
-    userPreferences.storeCheckOutTime(_checkOutTime); // Reset stored check-out time to --:--:--
-
-    // Create AttendanceRecord
-    AttendanceRecord record = AttendanceRecord(
-      deviceId: _deviceId,
-      latitude: '',
-      // Will be filled below
-      longitude: '',
-      // Will be filled below
-      section: _isOffsite ? 'Offsite' : 'Office',
-      type: 'checkIn',
-      timestamp: now,
-    );
-
-    // Get current position
-    Position? currentPosition = await _getCurrentPosition();
-    if (currentPosition != null) {
-      record.latitude = currentPosition.latitude.toString();
-      record.longitude = currentPosition.longitude.toString();
-    }
-
-    await connectivityResult.checkConnectivity().then((e) async {
-      if (e.contains(ConnectivityResult.none)) {
-        await offlineProvider.addPendingAttendance(record);
-        await offlineProvider.autoOffline(true);
-        if (kDebugMode) {
-          print('No internet connection. Check-in stored locally.');
-        }
-      } else {
-        try {
-          await _sendCheckInOutRequest(record);
-          if (kDebugMode) {
-            print('Check-in request sent successfully.');
-          }
-          await _showCheckInNotification(_checkInTime);
-        } catch (error) {
-          if (kDebugMode) {
-            print('Error during Check-in process: $error');
-          }
-        }
-      }
-    });
-
-    await _showCheckInNotification(_checkInTime);
+    userPreferences.storeCheckInTime(_checkInTime);
+    userPreferences.storeCheckOutTime(_checkOutTime);
+    // Start the working hours timer
+    _startTimerForWorkingHours();
   }
 
   Future<void> _showCheckInNotification(String checkInTime) async {
@@ -260,65 +268,64 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _performCheckOut(DateTime now) async {
-    // await stopBackgroundService();
-
-    setState(() {
-      _checkOutTime = DateFormat('HH:mm:ss').format(now);
-      _checkOutDateTime = now;
-      if (_checkInDateTime != null) {
-        _workingHours = now.difference(_checkInDateTime!); // Calculate working hours
-        _isCheckInActive = false;
-        _timer?.cancel(); // Stop the working hours timer
-        // _showWorkingHoursDialog(context);
-      }
-    });
-
-    // Store check-out time and working hours locally
-    userPreferences.storeCheckOutTime(_checkOutTime); // Save the new check-out time
-    userPreferences.storeWorkingHours(_workingHours); // Save the total working hours
-
-    // Create AttendanceRecord
+    // 1) Build the record
     AttendanceRecord record = AttendanceRecord(
       deviceId: _deviceId,
       latitude: '',
-      // Will be filled below
       longitude: '',
-      // Will be filled below
       section: _isOffsite ? 'Offsite' : 'Office',
       type: 'checkOut',
       timestamp: now,
     );
 
-    // Get current position
+    // 2) Get current position
     Position? currentPosition = await _getCurrentPosition();
     if (currentPosition != null) {
       record.latitude = currentPosition.latitude.toString();
       record.longitude = currentPosition.longitude.toString();
     }
 
-    // Check connectivity
-    await connectivityResult.checkConnectivity().then((e) async {
-      if (e.contains(ConnectivityResult.none)) {
-        await offlineProvider.addPendingAttendance(record);
-        if (kDebugMode) {
-          print('No internet connection. Check-out stored locally.');
-        }
-      } else {
-        try {
-          await _sendCheckInOutRequest(record);
-          if (kDebugMode) {
-            print('Check-out request sent successfully.');
-          }
-          await _showCheckOutNotification(_checkOutTime, _workingHours);
-        } catch (error) {
-          if (kDebugMode) {
-            print('Error during Check-out process: $error');
-          }
-        }
+    // 3) Check connectivity
+    final hasConnection = await connectivityResult.checkConnectivity();
+    final isOffline = hasConnection.contains(ConnectivityResult.none);
+
+    // 4) If offline, store locally + update UI
+    if (isOffline) {
+      await offlineProvider.addPendingAttendance(record);
+      if (kDebugMode) {
+        print('No internet connection. Check-out stored locally.');
+      }
+      _applyCheckOutState(now);
+      await _showCheckOutNotification(_checkOutTime, _workingHours);
+      return;
+    }
+
+    // 5) Online => ask server first
+    bool success = await _sendCheckInOutRequest(record);
+    if (!success) {
+      // => If server says "202" or error => do nothing
+      return;
+    }
+
+    // 6) If success => update UI
+    _applyCheckOutState(now);
+    await _showCheckOutNotification(_checkOutTime, _workingHours);
+  }
+
+  /// Applies the local changes for check-out
+  void _applyCheckOutState(DateTime now) {
+    setState(() {
+      _checkOutTime = DateFormat('HH:mm:ss').format(now);
+      _checkOutDateTime = now;
+      if (_checkInDateTime != null) {
+        _workingHours = now.difference(_checkInDateTime!);
+        _isCheckInActive = false;
+        _timer?.cancel(); // Stop the working hours timer if any
       }
     });
-
-    await _showCheckOutNotification(_checkOutTime, _workingHours);
+    // Store times + working hours
+    userPreferences.storeCheckOutTime(_checkOutTime);
+    userPreferences.storeWorkingHours(_workingHours);
   }
 
   // Method to show notification for check-out
@@ -371,11 +378,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
 
-  Future<void> _sendCheckInOutRequest(AttendanceRecord record) async {
-    if (sl<OfflineProvider>().isOfflineService.value) return;
+  Future<bool> _sendCheckInOutRequest(AttendanceRecord record) async {
+    // If offline mode is forcibly on, do nothing and return false
+    if (sl<OfflineProvider>().isOfflineService.value) {
+      return false;
+    }
 
     String url = _getCurrentApiUrl();
-
     String? token = userPreferences.getToken();
 
     if (token == null) {
@@ -386,7 +395,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           isSuccess: false,
         );
       }
-      return;
+      return false;
     }
 
     try {
@@ -404,29 +413,36 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       );
 
       if (response.statusCode == 201) {
-        jsonDecode(response.body);
-        // Optionally handle success response
-      } else if (response.statusCode == 202 && url == officeApiUrl) {
-        // Show modal indicating check-in is not allowed
+        // Check-in/Check-out was successful
+        return true;
+      }
+      // If the URL is the "office" API and we get 202 => location is out of range
+      else if (response.statusCode == 202 && url == officeApiUrl) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final serverMessage = data['message'] ?? AppLocalizations.of(context)!.checkInNotAllowedMessage;
+
         if (mounted) {
-          _showCheckInNotAllowedModalLocation();
+          _showCheckInNotAllowedModalLocation(serverMessage);
         }
-        return; // Do not proceed further
-      } else {
+        // Return false => do NOT proceed with local setState, notifications, etc.
+        return false;
+      }
+      else {
+        // Some other error from the server
         throw Exception('Failed with status code ${response.statusCode}');
       }
     } catch (error) {
       if (mounted) {
         // If sending fails, save to local storage
         await offlineProvider.addPendingAttendance(record);
-        if (mounted) {
-          _showCustomDialog(
-            AppLocalizations.of(context)!.error,
-            '${AppLocalizations.of(context)!.failedToCheckInOut}: $error',
-            isSuccess: false,
-          );
-        }
+        // Show a dialog or just keep silent
+        _showCustomDialog(
+          AppLocalizations.of(context)!.error,
+          '${AppLocalizations.of(context)!.failedToCheckInOut}: $error',
+          isSuccess: false,
+        );
       }
+      return false;
     }
   }
 
@@ -485,7 +501,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  void _showCheckInNotAllowedModalLocation() {
+  void _showCheckInNotAllowedModalLocation(String serverMessage) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -529,9 +545,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        // Message
+                        // **Display the API message here**:
                         Text(
-                          AppLocalizations.of(context)!.checkInNotAllowedMessage,
+                          serverMessage,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: constraints.maxWidth < 400 ? 14 : 16,
@@ -548,7 +564,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                               Navigator.of(context).pop();
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFDBB342), // Gold color for button
+                              backgroundColor: const Color(0xFFDBB342), // Gold color
                               padding: const EdgeInsets.symmetric(vertical: 12.0),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14.0),

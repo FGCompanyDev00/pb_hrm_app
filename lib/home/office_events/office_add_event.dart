@@ -374,10 +374,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           _showErrorMessage('Please select a notification time.');
           return false;
         }
-        if (_selectedMembers.isEmpty) {
-          _showErrorMessage('Please add at least one member.');
-          return false;
-        }
         break;
 
       case '3. Booking Car':
@@ -504,15 +500,6 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
       );
 
       if (pickedTime != null) {
-        // Ensure time is between 8:00 AM and 5:00 PM
-        if (pickedTime.hour < 8 || (pickedTime.hour == 17 && pickedTime.minute > 0) || pickedTime.hour > 17) {
-          _showErrorFieldMessage(
-            'Invalid Time',
-            'Please select a time between 8:00 AM and 5:00 PM.',
-          );
-          return;
-        }
-
         final DateTime pickedDateTime = DateTime(
           pickedDate.year,
           pickedDate.month,

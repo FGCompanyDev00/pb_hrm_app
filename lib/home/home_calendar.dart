@@ -902,173 +902,56 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           child: Column(
             children: [
               _buildCalendar(context, isDarkMode),
-              const SizedBox(height: 2),
               _buildSectionSeparator(),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          DateFormat('EEEE').format(_selectedDay ?? DateTime.now()),
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: isDarkMode ? Colors.white : Colors.black,
-                          ),
+              Center(
+                child: Transform.translate(
+                  offset: const Offset(0, -14),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        DateFormat('EEEE').format(_selectedDay ?? DateTime.now()),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black,
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          DateFormat('d MMMM y').format(_selectedDay ?? DateTime.now()),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDarkMode ? Colors.white70 : Colors.black54,
-                          ),
+                      ),
+                      Text(
+                        ', ${DateFormat('dd MMMM yy').format(_selectedDay ?? DateTime.now())}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
                         ),
-                      ],
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: Icon(Icons.info_outline, color: isDarkMode ? Colors.green : Colors.red),
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: const Text(
-                                'Event Color',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              content: SingleChildScrollView(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 16,
-                                          height: 16,
-                                          color: const Color(0xFFDBB342),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        const Text('Minutes of Meeting'),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 16,
-                                          height: 16,
-                                          color: const Color(0xFF991B1B),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        const Text('Leave'),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 16,
-                                          height: 16,
-                                          color: const Color(0xFF89AFFF),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        const Text('Car Booking'),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 16,
-                                          height: 16,
-                                          color: const Color(0xFF25B24A),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        const Text('Meeting Room'),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 16,
-                                          height: 16,
-                                          color: const Color(0xFF0369A1),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        const Text('Meeting'),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 20),
-                                    const Text(
-                                      'Calendar Tips:',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      '• This calendar page is scrollable and can pull up to refresh the data.',
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      '• By default, the daily hour view at the bottom will display at 7am for its start time.',
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      '• You can scroll up and down to see previous and next time and its events.',
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  child: const Text('Close'),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.50,
-                child: eventsForDay.isEmpty
-                    ? Center(
-                        child: Text(
-                          AppLocalizations.of(context)!.noEventsForThisDay,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      )
-                    : CalendarDaySwitchView(
-                        selectedDay: _selectedDay,
-                        passDefaultCurrentHour: 0,
-                        passDefaultEndHour: 25,
-                        eventsCalendar: eventsForDay,
+              Transform.translate(
+                offset: const Offset(0, -32),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height * 0.50,
+                  child: eventsForDay.isEmpty
+                      ? Center(
+                    child: Text(
+                      AppLocalizations.of(context)!.noEventsForThisDay,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
                       ),
-              ),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                      : CalendarDaySwitchView(
+                    selectedDay: _selectedDay,
+                    passDefaultCurrentHour: 0,
+                    passDefaultEndHour: 25,
+                    eventsCalendar: eventsForDay,
+                  ),
+                ),
+              )
             ],
           ),
         ),
@@ -1082,7 +965,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       children: [
         Container(
           width: double.infinity,
-          height: 128,
+          height: 130,
           decoration: BoxDecoration(
             image: DecorationImage(
               image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
@@ -1099,7 +982,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SizedBox(height: 45),
+                    const SizedBox(height: 47),
                     Text(
                       AppLocalizations.of(context)!.calendar,
                       style: TextStyle(
@@ -1112,7 +995,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 ),
               ),
               Positioned(
-                top: 45,
+                top: 47,
                 right: 15,
                 child: IconButton(
                   icon: Icon(
@@ -1231,7 +1114,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   /// Builds the TableCalendar widget with customized navigation arrows
   Widget _buildCalendar(BuildContext context, bool isDarkMode) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+      margin: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.black38 : Colors.white,
         borderRadius: BorderRadius.circular(8),
@@ -1243,7 +1126,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           Consumer2<DateProvider, LanguageNotifier>(
             builder: (context, dateProvider, languageNotifier, child) {
               return TableCalendar<Events>(
-                rowHeight: 34,
+                rowHeight: 35,
                 firstDay: DateTime.utc(2010, 10, 16),
                 lastDay: DateTime.utc(2030, 3, 14),
                 focusedDay: dateProvider.selectedDate,
@@ -1349,7 +1232,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   /// Builds a custom header with bordered navigation arrows
   Widget _buildCustomHeader(bool isDarkMode) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 12.0),
+      padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1372,7 +1255,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               padding: const EdgeInsets.all(4.0),
               child: Icon(
                 Icons.chevron_left,
-                size: 15,
+                size: 18,
                 color: isDarkMode ? Colors.white : Colors.black,
                 semanticLabel: AppLocalizations.of(context)!.previousMonth,
               ),
@@ -1410,7 +1293,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
               padding: const EdgeInsets.all(4.0),
               child: Icon(
                 Icons.chevron_right,
-                size: 15,
+                size: 18,
                 color: isDarkMode ? Colors.white : Colors.black,
                 semanticLabel: AppLocalizations.of(context)!.nextMonth,
               ),
@@ -1480,7 +1363,7 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
               ],
             ),
           ),
-          margin: const EdgeInsets.only(bottom: 20.0, left: 15.0, right: 15.0, top: 20.0),
+          margin: const EdgeInsets.only(bottom: 22.0, left: 15.0, right: 15.0, top: 20.0),
         );
       },
     );

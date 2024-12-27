@@ -158,7 +158,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage>
                 fontWeight: FontWeight.normal,
               ),
               tabs: const [
-                Tab(text: 'Processing / Detail'),
+                Tab(text: 'Processing / Details'),
                 Tab(text: 'Assignment / Task'),
                 Tab(text: 'Comment / Chat'),
               ],
