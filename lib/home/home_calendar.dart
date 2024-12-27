@@ -520,14 +520,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         try {
           // Combine date and time properly
-          DateTime outDate = DateTime.parse(dateOutStr).toUtc();
+          DateTime outDate = DateTime.parse(dateOutStr);
           List<String> timeOutParts = timeOutStr.split(':');
           if (timeOutParts.length == 3) timeOutParts.removeLast();
           if (timeOutParts.length != 2) {
             throw const FormatException('Invalid time_out format');
           }
 
-          startDateTime = DateTime(
+          endDateTime = DateTime(
             outDate.year,
             outDate.month,
             outDate.day,
@@ -535,13 +535,13 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             int.parse(timeOutParts[1]),
           );
 
-          DateTime inDate = DateTime.parse(dateInStr).toUtc();
+          DateTime inDate = DateTime.parse(dateInStr);
           List<String> timeInParts = timeInStr.split(':');
-          if (timeOutParts.length == 3) timeOutParts.removeLast();
+          if (timeInParts.length == 3) timeInParts.removeLast();
           if (timeInParts.length != 2) {
             throw const FormatException('Invalid time_in format');
           }
-          endDateTime = DateTime(
+          startDateTime = DateTime(
             inDate.year,
             inDate.month,
             inDate.day,
@@ -1052,22 +1052,22 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 height: MediaQuery.of(context).size.height * 0.50,
                 child: eventsForDay.isEmpty
                     ? Center(
-                  child: Text(
-                    AppLocalizations.of(context)!.noEventsForThisDay,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                )
+                        child: Text(
+                          AppLocalizations.of(context)!.noEventsForThisDay,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      )
                     : CalendarDaySwitchView(
-                  selectedDay: _selectedDay,
-                  passDefaultCurrentHour: 0,
-                  passDefaultEndHour: 25,
-                  eventsCalendar: eventsForDay,
-                ),
+                        selectedDay: _selectedDay,
+                        passDefaultCurrentHour: 0,
+                        passDefaultEndHour: 25,
+                        eventsCalendar: eventsForDay,
+                      ),
               ),
             ],
           ),
