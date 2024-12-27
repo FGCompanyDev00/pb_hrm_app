@@ -223,44 +223,84 @@ class _EditProjectPageState extends State<EditProjectPage> {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(22.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Expanded(
-                    child: ElevatedButton.icon(
+                    child: ElevatedButton(
                       onPressed: _deleteProject,
-                      icon: Icon(Icons.delete, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
-                      label: Text(
-                        'Delete',
-                        style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
-                      ),
                       style: ElevatedButton.styleFrom(
-                        foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white,
-                        backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[700] : Colors.grey,
+                        backgroundColor: const Color(0xFFC2C2C2),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                            ),
+                            padding: const EdgeInsets.all(6.0),
+                            child: const Icon(
+                              Icons.close, // X icon
+                              color: Colors.grey,
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Delete',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: ElevatedButton.icon(
+                    child: ElevatedButton(
                       onPressed: _updateProject,
-                      icon: Icon(Icons.update, color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white),
-                      label: Text(
-                        'Update',
-                        style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white),
-                      ),
                       style: ElevatedButton.styleFrom(
-                        foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-                        backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.amber[700] : Colors.amber,
+                        backgroundColor: const Color(0xFFDBB342),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white,
+                            ),
+                            padding: const EdgeInsets.all(6.0),
+                            child: const Icon(
+                              Icons.check, // Tick icon
+                              color: Color(0xFFDBB342),
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Update',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -300,12 +340,13 @@ class _EditProjectPageState extends State<EditProjectPage> {
               ),
               const SizedBox(height: 20),
               const Text(
-                'Progress',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                'Percent *',
+                style: TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 10),
               _buildProgressBar(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
+
             ],
           ),
         ),
@@ -319,7 +360,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16),
         ),
         const SizedBox(height: 5),
         TextField(
@@ -340,7 +381,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16),
         ),
         const SizedBox(height: 5),
         DropdownButtonFormField<String>(
@@ -368,7 +409,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16),
         ),
         const SizedBox(height: 5),
         GestureDetector(
@@ -390,32 +431,78 @@ class _EditProjectPageState extends State<EditProjectPage> {
   }
 
   Widget _buildProgressBar() {
-    return Row(
-      children: [
-        Expanded(
-          child: Slider(
-            value: _progress,
-            onChanged: (value) {
-              setState(() {
-                _progress = value;
-              });
-            },
-            min: 0,
-            max: 1,
-            divisions: 100,
-            label: '${(_progress * 100).toStringAsFixed(0)}%',
-          ),
+    return Center(
+      child: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.9,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: MediaQuery.of(context).size.width * 0.9,
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 10,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
+                  activeTrackColor: Colors.black54,
+                  inactiveTrackColor: Colors.lightBlue[100],
+                  thumbColor: Colors.amber,
+                  valueIndicatorColor: Colors.amber,
+                  valueIndicatorTextStyle: const TextStyle(color: Colors.black),
+                ),
+                child: Slider(
+                  value: _progress,
+                  onChanged: (value) => setState(() => _progress = value),
+                  min: 0,
+                  max: 1,
+                  divisions: 100,
+                  label: '${(_progress * 100).toStringAsFixed(0)}%',
+                ),
+              ),
+            ),
+            const SizedBox(height: 7),
+            // Progress bar
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return SizedBox(
+                  height: 25,
+                  width: constraints.maxWidth,
+                  child: Stack(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.lightBlue[200],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      FractionallySizedBox(
+                        widthFactor: _progress,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.amber,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
+                      Center(
+                        child: Text(
+                          '${(_progress * 100).toStringAsFixed(0)}%',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
         ),
-        const SizedBox(width: 10),
-        Text(
-          '${(_progress * 100).toStringAsFixed(0)}%',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-      ],
+      ),
     );
   }
+
 }
