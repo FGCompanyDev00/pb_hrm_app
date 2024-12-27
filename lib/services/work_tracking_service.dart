@@ -559,16 +559,37 @@ class WorkTrackingService {
 
   // Get a list of all employees (for member selection)
   Future<List<Map<String, dynamic>>> getAllEmployees() async {
+    // Step 1: Retrieve headers (including the authorization token)
     final headers = await _getHeaders();
+
+    // Step 2: Retrieve the current user's employee_id from SharedPreferences
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? currentUserEmployeeId = prefs.getString('employee_id');
+
+    // Check if currentUserEmployeeId is available
+    if (currentUserEmployeeId == null || currentUserEmployeeId.isEmpty) {
+      throw Exception('Current user employee_id not found.');
+    }
+
+    // Step 3: Make the API request to fetch all employees
     final response = await http.get(
       Uri.parse('$baseUrl/api/work-tracking/project-member/get-all-employees'),
       headers: headers,
     );
 
+    // Step 4: Handle the API response
     if (response.statusCode == 200) {
       final body = json.decode(response.body);
       if (body['results'] != null && body['results'] is List) {
-        return List<Map<String, dynamic>>.from(body['results']);
+        // Convert the results to a List of Map<String, dynamic>
+        List<Map<String, dynamic>> allEmployees = List<Map<String, dynamic>>.from(body['results']);
+
+        // Step 5: Filter out the current user from the list
+        List<Map<String, dynamic>> filteredEmployees = allEmployees.where((employee) {
+          return employee['employee_id'] != currentUserEmployeeId;
+        }).toList();
+
+        return filteredEmployees;
       } else {
         throw Exception('Unexpected response format');
       }
