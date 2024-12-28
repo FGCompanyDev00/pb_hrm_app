@@ -16,10 +16,10 @@ class AddProcessingPage extends StatefulWidget {
   final String baseUrl;
 
   const AddProcessingPage({
-    Key? key,
+    super.key,
     required this.projectId,
     required this.baseUrl,
-  }) : super(key: key);
+  });
 
   @override
   _AddProcessingPageState createState() => _AddProcessingPageState();
