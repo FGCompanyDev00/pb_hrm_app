@@ -65,7 +65,6 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
         'Content-Type': 'application/json',
       };
 
-      // Make the GET request with headers
       final response = await http.get(Uri.parse(url), headers: headers);
 
       if (response.statusCode == 200) {
@@ -84,15 +83,9 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
           for (var member in data) {
             final employeeId = member['employee_id'].toString();
 
-            // Ensure employee_id is in the expected format
-            // If not, handle accordingly
-            // For example, if the API expects 'PSV-00-137852' but you have '1',
-            // you might need to map or adjust accordingly.
-
             final profileImageUrl =
             await _fetchMemberProfileImage(employeeId, headers);
 
-            // Construct the name by combining available fields
             String name = '';
 
             if (member['name'] != null && member['surname'] != null) {

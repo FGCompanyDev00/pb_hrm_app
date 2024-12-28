@@ -453,6 +453,8 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => EditProjectPage(
+                    projectId: project['project_id'],
+                    baseUrl: WorkTrackingService.baseUrl,
                     project: project,
                     onUpdate: (updatedProject) {
                       setState(() {
@@ -540,6 +542,8 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => EditProjectPage(
+                            projectId: project['project_id'],
+                            baseUrl: WorkTrackingService.baseUrl,
                             project: project,
                             onUpdate: (updatedProject) {
                               setState(() {
@@ -568,6 +572,8 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => EditProjectPage(
+                            projectId: project['project_id'],
+                            baseUrl: WorkTrackingService.baseUrl,
                             project: project,
                             onUpdate: (updatedProject) {
                               setState(() {
