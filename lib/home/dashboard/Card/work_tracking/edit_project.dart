@@ -764,7 +764,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
     }
 
     // Maximum 5 members to display, +1 for remaining count
-    final maxDisplay = 5;
+    const maxDisplay = 6;
     final displayedMembers = _projectMembers.take(maxDisplay).toList();
     final remainingCount = _projectMembers.length - maxDisplay;
 
@@ -798,7 +798,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
             ),
           if (remainingCount > 0)
             Positioned(
-              left: displayedMembers.length * 20.0,
+              left: displayedMembers.length * 28.0,
               child: CircleAvatar(
                 radius: 25,
                 backgroundColor: Colors.grey,
