@@ -1,27 +1,25 @@
-// add_processing.dart
-
 import 'dart:convert';
-import 'dart:io'; // For File
+import 'dart:io'; // For File operations
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart'; // For Image Picker
 import 'package:http/http.dart' as http;
 import 'package:mime/mime.dart'; // For MIME type checking
+import 'package:http_parser/http_parser.dart'; // For MediaType
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_processing_members.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
-import 'package:http_parser/http_parser.dart'; // For MediaType
 
 class AddProcessingPage extends StatefulWidget {
   final String projectId;
   final String baseUrl;
 
   const AddProcessingPage({
-    super.key,
+    Key? key,
     required this.projectId,
     required this.baseUrl,
-  });
+  }) : super(key: key);
 
   @override
   _AddProcessingPageState createState() => _AddProcessingPageState();
@@ -30,22 +28,28 @@ class AddProcessingPage extends StatefulWidget {
 class _AddProcessingPageState extends State<AddProcessingPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // Processing Data
+  // Fields for the form
   String title = '';
   String description = '';
   String status = 'Processing';
   String statusId = '0a8d93f0-1c05-42b2-8e56-984a578ef077';
+
+  // Instead of just date, we now track date + time
   DateTime? fromDate;
   DateTime? toDate;
+  TimeOfDay? fromTime;
+  TimeOfDay? toTime;
 
   // Members
   List<Map<String, dynamic>> selectedMembers = [];
 
-  bool _isLoading = false;
-
-  // Image File
+  // Image file
   File? _selectedImage;
 
+  // Loading indicator
+  bool _isLoading = false;
+
+  // Map for status -> status_id
   final Map<String, String> _statusMap = {
     'Error': '87403916-9113-4e2e-9d7d-b5ed269fe20a',
     'Pending': '40d2ba5e-a978-47ce-bc48-caceca8668e9',
@@ -57,11 +61,14 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
   void initState() {
     super.initState();
     print('[_AddProcessingPageState] Initializing with projectId: ${widget.projectId}, baseUrl: ${widget.baseUrl}');
-    // Initialize dates as null to display placeholders initially
+    // Initialize fromDate/toDate, fromTime/toTime as null
     fromDate = null;
     toDate = null;
+    fromTime = null;
+    toTime = null;
   }
 
+  /// For displaying status colors in the dropdown
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Pending':
@@ -77,36 +84,81 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     }
   }
 
-  Future<void> _selectFromDate() async {
+  /// Picks Start Date, then Start Time
+  Future<void> _selectFromDateTime() async {
     final DateTime initialDate = fromDate ?? DateTime.now();
-    final DateTime? picked = await showDatePicker(
+    final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
-    if (picked != null) {
-      setState(() {
-        fromDate = picked;
-      });
+    if (pickedDate == null) {
+      // user canceled
+      return;
     }
+
+    final TimeOfDay initialTime = fromTime ?? TimeOfDay.now();
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+    );
+    if (pickedTime == null) {
+      // user canceled
+      return;
+    }
+
+    // Combine the chosen date + time
+    setState(() {
+      fromDate = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime.hour,
+        pickedTime.minute,
+      );
+      fromTime = pickedTime;
+    });
   }
 
-  Future<void> _selectToDate() async {
+  /// Picks End Date, then End Time
+  Future<void> _selectToDateTime() async {
     final DateTime initialDate = toDate ?? DateTime.now();
-    final DateTime? picked = await showDatePicker(
+    final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
-    if (picked != null) {
-      setState(() {
-        toDate = picked;
-      });
+    if (pickedDate == null) {
+      // user canceled
+      return;
     }
+
+    final TimeOfDay initialTime = toTime ?? TimeOfDay.now();
+    final TimeOfDay? pickedTime = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+    );
+    if (pickedTime == null) {
+      // user canceled
+      return;
+    }
+
+    // Combine the chosen date + time
+    setState(() {
+      toDate = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime.hour,
+        pickedTime.minute,
+      );
+      toTime = pickedTime;
+    });
   }
 
+  /// Picks an image from Gallery
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     try {
@@ -135,6 +187,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
           return;
         }
 
+        // If all checks pass, set state
         setState(() {
           _selectedImage = file;
         });
@@ -148,20 +201,24 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     }
   }
 
+  /// Sends the form data to the backend
   Future<void> _addProcessingItem() async {
+    // Validate form fields
     if (_formKey.currentState?.validate() != true) {
       return;
     }
 
+    // Validate that fromDate/toDate are chosen
     if (fromDate == null || toDate == null) {
       _showAlertDialog(
         title: 'Invalid Dates',
-        content: 'Please select both start and end dates.',
+        content: 'Please select both start and end date & time.',
         isError: true,
       );
       return;
     }
 
+    // Validate that at least one member is chosen
     if (selectedMembers.isEmpty) {
       _showAlertDialog(
         title: 'No Members Selected',
@@ -175,117 +232,100 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       _isLoading = true;
     });
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    if (token == null) {
-      _showAlertDialog(
-        title: 'Authentication Error',
-        content: 'Token is null. Please log in again.',
-        isError: true,
-      );
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
-
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      if (token == null) {
+        _showAlertDialog(
+          title: 'Authentication Error',
+          content: 'Token is null. Please log in again.',
+          isError: true,
+        );
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Format fromDate/toDate as "yyyy-MM-dd HH:mm:ss"
+      final fromDateString = DateFormat('yyyy-MM-dd HH:mm:ss').format(fromDate!);
+      final toDateString = DateFormat('yyyy-MM-dd HH:mm:ss').format(toDate!);
+
+      // Build the request
       var uri = Uri.parse('${widget.baseUrl}/api/work-tracking/meeting/insert');
       var request = http.MultipartRequest('POST', uri);
       request.headers['Authorization'] = 'Bearer $token';
 
+      // Fill the fields
       request.fields['project_id'] = widget.projectId;
       request.fields['title'] = title;
       request.fields['descriptions'] = description;
       request.fields['status_id'] = _statusMap[status]!;
-      request.fields['fromdate'] = DateFormat('yyyy-MM-dd').format(fromDate!);
-      request.fields['todate'] = DateFormat('yyyy-MM-dd').format(toDate!);
+      request.fields['fromdate'] = fromDateString; // e.g., "2024-11-19 08:00:00"
+      request.fields['todate'] = toDateString;     // e.g., "2024-11-19 12:00:00"
 
+      // Default notification = "5"
+      request.fields['notification'] = '5';
+
+      // If you still need separate start_time & end_time in the body, you can do:
+      // request.fields['start_time'] = '';
+      // request.fields['end_time']   = '';
+
+      // location is optional, so omit or set empty
+      // request.fields['location'] = '';
+
+      // Convert members list to JSON
       List<Map<String, String>> membersDetails = selectedMembers
           .map((member) => {"employee_id": member['employee_id'].toString()})
           .toList();
       request.fields['membersDetails'] = jsonEncode(membersDetails);
 
-      if (_selectedImage != null) {
-        if (await _selectedImage!.exists()) {
-          final mimeType = lookupMimeType(_selectedImage!.path) ?? 'application/octet-stream';
-          final mimeTypeData = mimeType.split('/');
-
-          request.files.add(
-            await http.MultipartFile.fromPath(
-              'file_name', // Ensure this matches the API's expected field name
-              _selectedImage!.path,
-              contentType: MediaType(mimeTypeData[0], mimeTypeData[1]),
-            ),
-          );
-        } else {
-          _showAlertDialog(
-            title: 'File Error',
-            content: 'Selected image file does not exist.',
-            isError: true,
-          );
-          setState(() {
-            _isLoading = false;
-          });
-          return;
-        }
+      // If there's an image
+      if (_selectedImage != null && await _selectedImage!.exists()) {
+        final mimeType = lookupMimeType(_selectedImage!.path) ?? 'application/octet-stream';
+        final mimeSplit = mimeType.split('/');
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'file_name', // Must match API field name
+            _selectedImage!.path,
+            contentType: MediaType(mimeSplit[0], mimeSplit[1]),
+          ),
+        );
       }
 
-      // Log request details for debugging
-      print('Sending request to: ${uri.toString()}');
+      // Debugging
+      print('Sending request to: $uri');
       print('Request Fields: ${request.fields}');
       print('Number of files: ${request.files.length}');
 
+      // Send the request
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
 
       print('Response Status Code: ${response.statusCode}');
       print('Response Body: ${response.body}');
 
+      // Show success *only* if 200 <= statusCode < 300
       if (response.statusCode >= 200 && response.statusCode < 300) {
         _showAlertDialog(
           title: 'Success',
-          content: 'Processing item added successfully.',
+          content: 'Item added successfully.',
           isError: false,
           onOk: () {
             Navigator.pop(context, true);
           },
         );
       } else {
-        String errorMessage = 'Failed to add processing item.';
-        try {
-          final responseData = jsonDecode(response.body);
-          if (responseData['message'] != null) {
-            errorMessage = responseData['message'];
-          }
-        } catch (_) {}
-        _showAlertDialog(title: 'Error', content: errorMessage, isError: true);
+        _showAlertDialog(
+          title: 'Error',
+          content: 'Failed to add item.\n\nAPI Response:\n${response.body}',
+          isError: true,
+        );
       }
-    } on SocketException catch (e) {
-      _showAlertDialog(
-        title: 'Network Error',
-        content: 'Please check your internet connection and try again.',
-        isError: true,
-      );
-      print('SocketException: $e');
-    } on HttpException catch (e) {
-      _showAlertDialog(
-        title: 'HTTP Error',
-        content: 'Could not connect to the server. Please try again later.',
-        isError: true,
-      );
-      print('HttpException: $e');
-    } on FormatException catch (e) {
-      _showAlertDialog(
-        title: 'Data Format Error',
-        content: 'Unexpected data format received from the server.',
-        isError: true,
-      );
-      print('FormatException: $e');
     } catch (e) {
       _showAlertDialog(
         title: 'Unexpected Error',
-        content: 'An unexpected error occurred: $e',
+        content: 'An error occurred: $e',
         isError: true,
       );
       print('Unexpected error: $e');
@@ -296,6 +336,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     });
   }
 
+  /// Reusable AlertDialog for error/success
   void _showAlertDialog({
     required String title,
     required String content,
@@ -305,7 +346,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (BuildContext ctx) {
         return AlertDialog(
           title: Text(
             title,
@@ -318,13 +359,11 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
-                if (!isError &&
-                    (title.toLowerCase().contains('success') ||
-                        title.toLowerCase().contains('added'))) {
-                  if (onOk != null) {
-                    onOk();
-                  }
+                Navigator.of(ctx).pop();
+                // If it's not an error, and the title is "Success" or "Added",
+                // we call onOk() to pop the page or do other success logic
+                if (!isError && (title.contains('Success') || title.contains('Added'))) {
+                  onOk?.call();
                 }
               },
               child: const Text('OK'),
@@ -335,6 +374,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     );
   }
 
+  /// Navigates to SelectProcessingMembersPage to pick members
   void _navigateToSelectMembers() async {
     print('[_AddProcessingPageState] Navigating to SelectProcessingMembersPage with projectId: ${widget.projectId}');
     final result = await Navigator.push(
@@ -352,10 +392,12 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       setState(() {
         selectedMembers = result;
       });
-      print('[_AddProcessingPageState] Members selected: ${selectedMembers.map((m) => m['employee_id']).toList()}');
+      print('[_AddProcessingPageState] Members selected: '
+          '${selectedMembers.map((m) => m['employee_id']).toList()}');
     }
   }
 
+  /// Displays an overlapping set of member avatars
   Widget _buildSelectedMembers() {
     if (selectedMembers.isEmpty) return const Text('No members selected.');
 
@@ -367,9 +409,11 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
         Positioned(
           left: i * 24.0,
           child: CircleAvatar(
-            backgroundImage: selectedMembers[i]['image_url'] != null && selectedMembers[i]['image_url'].isNotEmpty
+            backgroundImage: selectedMembers[i]['image_url'] != null &&
+                selectedMembers[i]['image_url'].isNotEmpty
                 ? NetworkImage(selectedMembers[i]['image_url'])
-                : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                : const AssetImage('assets/default_avatar.png')
+            as ImageProvider,
             radius: 18,
             backgroundColor: Colors.white,
             child: Container(
@@ -401,17 +445,19 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
 
     return SizedBox(
       height: 32,
-      child: Stack(
-        children: avatars,
-      ),
+      child: Stack(children: avatars),
     );
   }
 
+  /// Renders the "Add" button
   Widget _buildAddButton(double buttonWidth) {
+    double safeWidth = MediaQuery.of(context).size.width * 0.4;
+    if (safeWidth < 100) safeWidth = 100;
+
     return SizedBox(
-      width: buttonWidth = 160,
+      width: (buttonWidth < safeWidth) ? buttonWidth : safeWidth,
       child: ElevatedButton.icon(
-        onPressed: _isLoading ? null : _addProcessingItem, // Disable when loading
+        onPressed: _isLoading ? null : _addProcessingItem,
         icon: const Icon(Icons.add, color: Colors.black),
         label: const Text(
           'Add',
@@ -419,29 +465,33 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFDBB342), // #DBB342
-          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16.0),
+            borderRadius: BorderRadius.circular(20.0),
           ),
-          elevation: 2,
+          elevation: 4,
         ),
       ),
     );
   }
 
-  Widget _buildDateInput({
+  Widget _buildDateTimeInput({
     required String label,
-    required DateTime? selectedDate,
+    required DateTime? selectedDateTime,
     required VoidCallback onTap,
   }) {
+    final displayText = (selectedDateTime == null)
+        ? 'dd-MM-yyyy'  // Default placeholder text
+        : DateFormat('dd/MM/yyyy HH:mm').format(selectedDateTime);
+
     return GestureDetector(
       onTap: onTap,
       child: AbsorbPointer(
         child: TextFormField(
           decoration: InputDecoration(
-            labelText: label.isNotEmpty ? label : null,
-            hintText: selectedDate == null ? 'dd/mm/yyyy' : '',
-            hintStyle: const TextStyle(color: Colors.grey),
+            labelText: label,
+            hintText: 'Select date & time',
+            hintStyle: const TextStyle(color: Colors.grey),  // Grey color for hint
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.0),
             ),
@@ -451,13 +501,14 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                 'assets/calendar-icon.png',
                 width: 22,
                 height: 22,
-                color: Colors.grey,
+                color: Colors.grey,  // Icon in grey
               ),
             ),
           ),
-          controller: TextEditingController(
-            text: selectedDate != null ? DateFormat('dd/MM/yyyy').format(selectedDate) : '',
+          style: TextStyle(
+            color: selectedDateTime == null ? Colors.grey : Colors.black,  // Grey if no date selected
           ),
+          controller: TextEditingController(text: displayText),
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
               return 'This field is required.';
@@ -474,11 +525,11 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    // Determine screen size for responsiveness
     final Size screenSize = MediaQuery.of(context).size;
+    double horizontalPadding = screenSize.width * 0.04; // 4% of screen width
+    double verticalPadding = screenSize.height * 0.05;  // 5% of screen height
 
-    double horizontalPadding = screenSize.width * 0.04; // 5% of screen width
-    double verticalPadding = screenSize.height * 0.05; // 5% of screen height
+    // Ensure we have at least 16.0 px horizontally on very narrow screens
     horizontalPadding = horizontalPadding < 16.0 ? 16.0 : horizontalPadding;
 
     return Scaffold(
@@ -486,7 +537,9 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+              image: AssetImage(
+                isDarkMode ? 'assets/darkbg.png' : 'assets/background.png',
+              ),
               fit: BoxFit.cover,
             ),
             borderRadius: const BorderRadius.only(
@@ -499,7 +552,9 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
         title: Text(
           'Add Processing Item',
           style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic text color based on theme
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
             fontSize: 22,
             fontWeight: FontWeight.w500,
           ),
@@ -507,7 +562,9 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic icon color based on theme
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
             size: 20,
           ),
           onPressed: () {
@@ -523,7 +580,10 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
           : GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 18.0),
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding,
+            vertical: 18.0,
+          ),
           child: Form(
             key: _formKey,
             child: LayoutBuilder(
@@ -534,10 +594,11 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                     // + Add Button at Top Right
                     Align(
                       alignment: Alignment.topRight,
-                      child: _buildAddButton(100), // Fixed width for consistency
+                      child: _buildAddButton(160),
                     ),
-                    const SizedBox(height: 10),
-                    // Title Section
+                    const SizedBox(height: 6),
+
+                    // Title
                     const Text(
                       'Title',
                       style: TextStyle(
@@ -551,7 +612,8 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                       decoration: const InputDecoration(
                         hintText: 'Enter title',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(8.0)), // Curved border
+                          borderRadius:
+                          BorderRadius.all(Radius.circular(8.0)),
                         ),
                       ),
                       validator: (value) {
@@ -567,10 +629,12 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                       },
                     ),
                     const SizedBox(height: 18),
-                    // Status Dropdown and Upload Image Button Row
+
+                    // Row: Status Dropdown + Upload Image Button
                     Row(
                       children: [
-                        Expanded( // Wrap the Status Dropdown with Expanded to prevent overflow
+                        // Status
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -584,29 +648,33 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                               ),
                               const SizedBox(height: 6),
                               DropdownButtonFormField<String>(
-                                value: status, // Current status value
+                                value: status, // "Processing" by default
                                 decoration: const InputDecoration(
                                   border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.all(Radius.circular(8.0)), // Curved border
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(8.0),
+                                    ),
                                   ),
                                 ),
                                 items: ['Processing', 'Pending', 'Finished', 'Error']
-                                    .map<DropdownMenuItem<String>>((String value) {
-                                  return DropdownMenuItem<String>(
-                                    value: value,
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.circle,
-                                          color: _getStatusColor(value), // Method to get color based on status
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(value),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
+                                    .map<DropdownMenuItem<String>>(
+                                      (String value) {
+                                    return DropdownMenuItem<String>(
+                                      value: value,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.circle,
+                                            color: _getStatusColor(value),
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(value),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ).toList(),
                                 onChanged: (String? newValue) {
                                   setState(() {
                                     status = newValue!;
@@ -624,7 +692,9 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Expanded( // Wrap the Upload Image button with Expanded to take the remaining space
+
+                        // Upload Image
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -636,10 +706,10 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
-                                  borderRadius: BorderRadius.circular(8.0),
+                                  borderRadius: BorderRadius.circular(16.0),
                                 ),
                                 child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _pickImage, // Disable when loading
+                                  onPressed: _isLoading ? null : _pickImage,
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.transparent,
                                     shadowColor: Colors.transparent,
@@ -647,15 +717,25 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                                       borderRadius: BorderRadius.circular(8.0),
                                     ),
                                     padding: EdgeInsets.symmetric(
-                                      vertical: 18.0,
-                                      horizontal: MediaQuery.of(context).size.width < 400 ? 44 : 44,
+                                      vertical: 17.0,
+                                      horizontal: MediaQuery.of(context)
+                                          .size
+                                          .width <
+                                          400
+                                          ? 40
+                                          : 53,
                                     ),
                                   ),
                                   child: Text(
                                     'Upload Image',
                                     style: TextStyle(
                                       color: Colors.black,
-                                      fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
+                                      fontSize: MediaQuery.of(context)
+                                          .size
+                                          .width <
+                                          400
+                                          ? 12
+                                          : 14,
                                     ),
                                   ),
                                 ),
@@ -677,16 +757,17 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                       ],
                     ),
                     const SizedBox(height: 18),
-                    // Start Date and End Date
+
+                    // Row: Start DateTime + End DateTime
                     Row(
                       children: [
-                        // Start Date
+                        // Start
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Start Date',
+                                'Start Date & Time',
                                 style: TextStyle(
                                   color: Colors.black,
                                   fontSize: 14,
@@ -694,22 +775,23 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                                 ),
                               ),
                               const SizedBox(height: 6),
-                              _buildDateInput(
+                              _buildDateTimeInput(
                                 label: '',
-                                selectedDate: fromDate,
-                                onTap: _selectFromDate,
+                                selectedDateTime: fromDate,
+                                onTap: _selectFromDateTime,
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 10),
-                        // End Date
+
+                        // End
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'End Date',
+                                'End Date & Time',
                                 style: TextStyle(
                                   color: Colors.black,
                                   fontSize: 14,
@@ -717,10 +799,10 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                                 ),
                               ),
                               const SizedBox(height: 6),
-                              _buildDateInput(
+                              _buildDateTimeInput(
                                 label: '',
-                                selectedDate: toDate,
-                                onTap: _selectToDate,
+                                selectedDateTime: toDate,
+                                onTap: _selectToDateTime,
                               ),
                             ],
                           ),
@@ -728,23 +810,28 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                       ],
                     ),
                     const SizedBox(height: 18),
-                    // Add People and Selected Members
+
+                    // Row: Add People Button + Avatars
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // + Add People Button
                         SizedBox(
                           width: constraints.maxWidth * 0.45,
                           child: ElevatedButton.icon(
-                            onPressed: _isLoading ? null : _navigateToSelectMembers, // Disable when loading
-                            icon: const Icon(Icons.person_add, color: Colors.white),
+                            onPressed: _isLoading
+                                ? null
+                                : _navigateToSelectMembers,
+                            icon: const Icon(Icons.person_add, color: Colors.black),
                             label: const Text(
                               'Add People',
-                              style: TextStyle(color: Colors.white),
+                              style: TextStyle(color: Colors.black),
                             ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
-                              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12.0,
+                                vertical: 10.0,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16.0),
                               ),
@@ -752,7 +839,6 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                             ),
                           ),
                         ),
-                        // Selected Members Display
                         SizedBox(
                           width: constraints.maxWidth * 0.5 - 8,
                           child: _buildSelectedMembers(),
@@ -760,6 +846,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                       ],
                     ),
                     const SizedBox(height: 18),
+
                     // Description
                     const Text(
                       'Description',
@@ -774,10 +861,11 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                       decoration: const InputDecoration(
                         hintText: 'Enter description',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(8.0)), // Curved border
+                          borderRadius:
+                          BorderRadius.all(Radius.circular(8.0)),
                         ),
                       ),
-                      maxLines: 4,
+                      maxLines: 7,
                       onChanged: (value) {
                         setState(() {
                           description = value;
