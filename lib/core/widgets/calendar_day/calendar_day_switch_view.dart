@@ -117,20 +117,14 @@ class CalendarDaySwitchView extends HookWidget {
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          e.start.hour == 0 ? currentHour.value : (e.start.hour > currentHour.value ? e.start.hour : currentHour.value),
+          e.start.hour == 0 ? currentHour.value : e.start.hour,
           e.start.minute,
         );
         DateTime endTime = DateTime(
           selectedDay!.year,
           selectedDay!.month,
           selectedDay!.day,
-          e.end.hour == 0
-              ? untilEnd.value
-              : (e.end.hour == e.start.hour
-                  ? e.end.hour
-                  : e.end.hour > untilEnd.value
-                      ? untilEnd.value
-                      : e.end.hour),
+          e.end.hour == 0 ? untilEnd.value : e.end.hour,
           e.end.minute,
         );
 

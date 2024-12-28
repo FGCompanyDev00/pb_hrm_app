@@ -157,6 +157,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         _fetchMeetingRoomBookings(),
         _fetchCarBookings(),
         _fetchMinutesOfMeeting(),
+        _fetchMeetingOutData(),
       ]).whenComplete(() {
         _filterAndSearchEvents();
       });
@@ -186,8 +187,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         //   leaveType = resultType.firstOrNull['name'];
         // }
 
-        final DateTime startDate = item['take_leave_from'] != null ? normalizeDate(DateTime.parse(item['take_leave_from']).toUtc()) : normalizeDate(DateTime.now());
-        final DateTime endDate = item['take_leave_to'] != null ? normalizeDate(DateTime.parse(item['take_leave_to']).toUtc()) : normalizeDate(DateTime.now());
+        final DateTime startDate = item['take_leave_from'] != null ? normalizeDate(DateTime.parse(item['take_leave_from'])) : normalizeDate(DateTime.now());
+        final DateTime endDate = item['take_leave_to'] != null ? normalizeDate(DateTime.parse(item['take_leave_to'])) : normalizeDate(DateTime.now());
         final String uid = 'leave_${item['id']}';
         double days;
 
@@ -268,7 +269,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         DateTime endDateTime;
         try {
           // Parse 'from_date' and 'start_time' separately and combine
-          DateTime fromDate = DateTime.parse(item['from_date']).toUtc();
+          DateTime fromDate = DateTime.parse(item['from_date']);
           List<String> startTimeParts = item['start_time'] != "" ? item['start_time'].split(':') : ["00", "00"];
           if (startTimeParts.length == 3) startTimeParts.removeLast();
 
@@ -284,7 +285,203 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           );
 
           // Parse 'to_date' and 'end_time' separately and combine
-          DateTime toDate = DateTime.parse(item['to_date']).toUtc();
+          DateTime toDate = DateTime.parse(item['to_date']);
+          List<String> endTimeParts = item['end_time'] != "" ? item['end_time'].split(':') : ["00", "00"];
+          if (endTimeParts.length == 3) endTimeParts.removeLast();
+          if (endTimeParts.length != 2) {
+            throw const FormatException('Invalid end_time format');
+          }
+          endDateTime = DateTime(
+            toDate.year,
+            toDate.month,
+            toDate.day,
+            int.parse(endTimeParts[0]),
+            int.parse(endTimeParts[1]),
+          );
+        } catch (e) {
+          showSnackBar('Error parsing meeting dates or times: $e');
+          continue;
+        }
+
+        // Handle possible nulls with default values
+        final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
+
+        String status = item['s_name'] != null ? mapEventStatus(item['s_name'].toString()) : 'Pending';
+
+        if (status == 'Cancelled') continue;
+
+        final event = Events(
+          title: item['title'] ?? 'Add Meeting',
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['description'] ?? '',
+          status: status,
+          isMeeting: true,
+          location: item['location'] ?? '', // Assuming 'location' field exists
+          createdBy: item['create_by'] ?? '',
+          imgName: item['file_name'] ?? '',
+          createdAt: item['created_at'] ?? '',
+          uid: uid,
+          isRepeat: item['is_repeat']?.toString(),
+          videoConference: item['video_conference']?.toString(),
+          backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
+          outmeetingUid: item['meeting_id']?.toString(),
+          category: 'Add Meeting',
+          members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
+        );
+
+        // Normalize the start and end dates for event mapping
+        final normalizedStartDay = normalizeDate(startDateTime);
+        final normalizedEndDay = normalizeDate(endDateTime);
+
+        for (var day = normalizedStartDay; !day.isAfter(normalizedEndDay); day = day.add(const Duration(days: 1))) {
+          addEvent(day, event);
+        }
+      }
+    } catch (e) {
+      showSnackBar('Error parsing meeting data: $e');
+    }
+
+    return;
+  }
+
+  /// Fetches meeting out data from the API
+  Future<void> _fetchMeetingOutData() async {
+    final response = await getRequest('/api/work-tracking/out-meeting/out-meeting');
+    if (response == null) return;
+
+    try {
+      final data = json.decode(response.body);
+
+      if (data == null || data['results'] == null || data['results'] is! List) {
+        showSnackBar('Invalid meeting data format.');
+        return;
+      }
+
+      final List<dynamic> results = data['results'];
+
+      for (var item in results) {
+        // Ensure necessary fields are present
+        if (item['fromdate'] == null || item['todate'] == null) {
+          showSnackBar('Missing date or time fields in meeting data.');
+          continue;
+        }
+
+        // Combine 'from_date' with 'start_time' and 'to_date' with 'end_time'
+        DateTime startDateTime;
+        DateTime endDateTime;
+        try {
+          // Parse 'from_date' and 'start_time' separately and combine
+          DateTime fromDate = DateTime.parse(item['fromdate']);
+
+          startDateTime = DateTime(
+            fromDate.year,
+            fromDate.month,
+            fromDate.day,
+            fromDate.hour,
+            fromDate.minute,
+          );
+
+          // Parse 'to_date' and 'end_time' separately and combine
+          DateTime toDate = DateTime.parse(item['todate']);
+          endDateTime = DateTime(
+            toDate.year,
+            toDate.month,
+            toDate.day,
+            toDate.hour,
+            toDate.minute,
+          );
+        } catch (e) {
+          showSnackBar('Error parsing meeting dates or times: $e');
+          continue;
+        }
+
+        // Handle possible nulls with default values
+        final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
+
+        String status = item['s_name'] != null ? mapEventStatus(item['s_name'].toString()) : 'Pending';
+
+        if (status == 'Cancelled') continue;
+
+        final event = Events(
+          title: item['title'] ?? 'Out Meeting',
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['description'] ?? '',
+          status: status,
+          isMeeting: true,
+          location: item['location'] ?? '', // Assuming 'location' field exists
+          createdBy: item['create_by'] ?? '',
+          imgName: item['file_name'] ?? '',
+          createdAt: item['created_at'] ?? '',
+          uid: uid,
+          isRepeat: item['is_repeat']?.toString(),
+          videoConference: item['video_conference']?.toString(),
+          backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
+          outmeetingUid: item['meeting_id']?.toString(),
+          category: 'Add Meeting',
+          members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
+        );
+
+        // Normalize the start and end dates for event mapping
+        final normalizedStartDay = normalizeDate(startDateTime);
+        final normalizedEndDay = normalizeDate(endDateTime);
+
+        for (var day = normalizedStartDay; !day.isAfter(normalizedEndDay); day = day.add(const Duration(days: 1))) {
+          addEvent(day, event);
+        }
+      }
+    } catch (e) {
+      showSnackBar('Error parsing meeting data: $e');
+    }
+
+    return;
+  }
+
+  /// Fetches meeting out data from the API
+  Future<void> _fetchOutMeetingMembersData() async {
+    final response = await getRequest('/api/work-tracking/out-meeting/outmeeting/my-members');
+    if (response == null) return;
+
+    try {
+      final data = json.decode(response.body);
+
+      if (data == null || data['results'] == null || data['results'] is! List) {
+        showSnackBar('Invalid meeting data format.');
+        return;
+      }
+
+      final List<dynamic> results = data['results'];
+
+      for (var item in results) {
+        // Ensure necessary fields are present
+        if (item['from_date'] == null || item['to_date'] == null || item['start_time'] == null || item['end_time'] == null) {
+          showSnackBar('Missing date or time fields in meeting data.');
+          continue;
+        }
+
+        // Combine 'from_date' with 'start_time' and 'to_date' with 'end_time'
+        DateTime startDateTime;
+        DateTime endDateTime;
+        try {
+          // Parse 'from_date' and 'start_time' separately and combine
+          DateTime fromDate = DateTime.parse(item['from_date']);
+          List<String> startTimeParts = item['start_time'] != "" ? item['start_time'].split(':') : ["00", "00"];
+          if (startTimeParts.length == 3) startTimeParts.removeLast();
+
+          if (startTimeParts.length != 2) {
+            throw const FormatException('Invalid start_time format');
+          }
+          startDateTime = DateTime(
+            fromDate.year,
+            fromDate.month,
+            fromDate.day,
+            int.parse(startTimeParts[0]),
+            int.parse(startTimeParts[1]),
+          );
+
+          // Parse 'to_date' and 'end_time' separately and combine
+          DateTime toDate = DateTime.parse(item['to_date']);
           List<String> endTimeParts = item['end_time'] != "" ? item['end_time'].split(':') : ["00", "00"];
           if (endTimeParts.length == 3) endTimeParts.removeLast();
           if (endTimeParts.length != 2) {
@@ -372,7 +569,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         try {
           // Combine date and time properly
-          DateTime fromDate = DateTime.parse(dateFrom).toUtc();
+          DateTime fromDate = DateTime.parse(dateFrom);
           List<String> timeOutParts = startTime.split(':');
           if (timeOutParts.length == 3) timeOutParts.removeLast();
           if (timeOutParts.length != 2) {
@@ -386,7 +583,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             int.parse(timeOutParts[1]),
           );
 
-          DateTime inDate = DateTime.parse(dateTo).toUtc();
+          DateTime inDate = DateTime.parse(dateTo);
           List<String> timeInParts = endTime.split(':');
           if (timeInParts.length == 3) timeInParts.removeLast();
           if (timeInParts.length != 2) {
@@ -417,7 +614,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         Events? event;
         if (mounted) {
           event = Events(
-            title: item['project_name'] ?? 'Minutes Of Meeting',
+            title: item['project_name'] ?? 'Minutes  Of Meeting',
             start: startDateTime,
             end: endDateTime,
             desc: item['descriptions'] ?? 'Minutes Of Meeting Pending',
@@ -452,8 +649,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final meetingRoomBookings = List<Map<String, dynamic>>.from(results);
 
       for (var item in meetingRoomBookings) {
-        final DateTime? startDateTime = item['from_date_time'] != null ? DateTime.parse(item['from_date_time']).toUtc() : null;
-        final DateTime? endDateTime = item['to_date_time'] != null ? DateTime.parse(item['to_date_time']).toUtc() : null;
+        final DateTime? startDateTime = item['from_date_time'] != null ? DateTime.parse(item['from_date_time']) : null;
+        final DateTime? endDateTime = item['to_date_time'] != null ? DateTime.parse(item['to_date_time']) : null;
 
         if (startDateTime == null || endDateTime == null) {
           showSnackBar('Missing from_date_time or to_date_time in meeting room booking.');
@@ -807,8 +1004,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       if (newEvent != null) {
         _addEvent(
           title: newEvent['title'] ?? 'New Event',
-          startDateTime: DateTime.parse(newEvent['startDateTime']).toUtc(),
-          endDateTime: DateTime.parse(newEvent['endDateTime']).toUtc(),
+          startDateTime: DateTime.parse(newEvent['startDateTime']),
+          endDateTime: DateTime.parse(newEvent['endDateTime']),
           description: newEvent['description'] ?? '',
           status: 'Pending',
           isMeeting: true,
