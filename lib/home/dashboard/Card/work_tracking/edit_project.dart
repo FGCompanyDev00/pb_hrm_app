@@ -42,7 +42,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
   late String _department;
   late double _progress;
 
-  final List<String> _statusOptions = ['Pending', 'Processing', 'Completed'];
+  final List<String> _statusOptions = ['Pending', 'Processing', 'Finished'];
   final List<String> _branchOptions = ['HQ office', 'Branch office'];
   final List<String> _departmentOptions = [
     'Digital Banking Dept',
@@ -53,7 +53,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
   final Map<String, String> statusMap = {
     'Pending': '40d2ba5e-a978-47ce-bc48-caceca8668e9',
     'Processing': '0a8d93f0-1c05-42b2-8e56-984a578ef077',
-    'Completed': 'e35569eb-75e1-4005-9232-bfb57303b8b3',
+    'Finished': 'e35569eb-75e1-4005-9232-bfb57303b8b3',
   };
 
   // New variables for project members
