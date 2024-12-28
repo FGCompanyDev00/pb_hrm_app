@@ -346,7 +346,6 @@ class _EditProjectPageState extends State<EditProjectPage> {
               const SizedBox(height: 10),
               _buildProgressBar(),
               const SizedBox(height: 10),
-
             ],
           ),
         ),
@@ -432,77 +431,143 @@ class _EditProjectPageState extends State<EditProjectPage> {
 
   Widget _buildProgressBar() {
     return Center(
-      child: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.9,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: MediaQuery.of(context).size.width * 0.9,
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  trackHeight: 10,
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
-                  activeTrackColor: Colors.black54,
-                  inactiveTrackColor: Colors.lightBlue[100],
-                  thumbColor: Colors.amber,
-                  valueIndicatorColor: Colors.amber,
-                  valueIndicatorTextStyle: const TextStyle(color: Colors.black),
-                ),
-                child: Slider(
-                  value: _progress,
-                  onChanged: (value) => setState(() => _progress = value),
-                  min: 0,
-                  max: 1,
-                  divisions: 100,
-                  label: '${(_progress * 100).toStringAsFixed(0)}%',
-                ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: MediaQuery.of(context).size.width * 0.9,
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 10,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
+                activeTrackColor: Colors.black54,
+                inactiveTrackColor: Colors.lightBlue[100],
+                thumbColor: Colors.amber,
+                valueIndicatorColor: Colors.amber,
+                valueIndicatorTextStyle: const TextStyle(color: Colors.black),
+              ),
+              child: Slider(
+                value: _progress,
+                onChanged: (value) => setState(() => _progress = value),
+                min: 0,
+                max: 1,
+                divisions: 100,
+                label: '${(_progress * 100).toStringAsFixed(0)}%',
               ),
             ),
-            const SizedBox(height: 7),
-            // Progress bar
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return SizedBox(
-                  height: 25,
-                  width: constraints.maxWidth,
-                  child: Stack(
-                    children: [
-                      Container(
+          ),
+          const SizedBox(height: 7),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return SizedBox(
+                height: 25,
+                width: constraints.maxWidth,
+                child: Stack(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.lightBlue[200],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    FractionallySizedBox(
+                      widthFactor: _progress,
+                      child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.lightBlue[200],
+                          color: Colors.amber,
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      FractionallySizedBox(
-                        widthFactor: _progress,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.amber,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
+                    ),
+                    Center(
+                      child: Text(
+                        '${(_progress * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
                         ),
                       ),
-                      Center(
-                        child: Text(
-                          '${(_progress * 100).toStringAsFixed(0)}%',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.35,
+                child: ElevatedButton(
+                  onPressed: () {
+                    // Add action for adding people
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 13.0),
                   ),
-                );
+                  child: const Text(
+                    '+ Add People',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: List.generate(
+              5,
+                  (index) {
+                if (index == 4) {
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey,
+                      ),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        '+3',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  );
+                } else {
+                  // Render avatars
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 2.0),
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        image: DecorationImage(
+                          image: AssetImage('assets/avatar_placeholder.png'),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  );
+                }
               },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
-
 }

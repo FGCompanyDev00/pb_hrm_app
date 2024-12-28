@@ -246,6 +246,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           "date_out": formatDateTime(_endDateTime),
           "notification": _notification ?? 5,
           "members": _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList(),
+          "permit_branch": 0,
         };
 
         // Sending the POST request
