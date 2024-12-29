@@ -152,7 +152,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
 
   Widget _buildHeader(bool isDarkMode) {
     return Container(
-      height: 120,
+      height: 130,
       decoration: BoxDecoration(
         image: DecorationImage(
           image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),

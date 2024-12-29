@@ -1,14 +1,14 @@
-// update_assignment.dart
-
 import 'dart:convert';
+import 'dart:io'; // For File
 import 'package:flutter/material.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_assignment_members.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:mime/mime.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:file_picker/file_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 
 class UpdateAssignmentPage extends StatefulWidget {
   final String assignmentId;
@@ -28,32 +28,40 @@ class UpdateAssignmentPage extends StatefulWidget {
 
 class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
   final _formKey = GlobalKey<FormState>();
+  List<Map<String, dynamic>> selectedMembers = [];
 
   // Original Data
-  TextEditingController originalTitleController = TextEditingController();
-  TextEditingController originalDescriptionController = TextEditingController();
+  String originalTitle = '';
+  String originalDescription = '';
   String originalStatus = 'Processing';
   String originalStatusId = '0a8d93f0-1c05-42b2-8e56-984a578ef077';
+  DateTime? originalFromDate;
+  DateTime? originalToDate;
+  TimeOfDay? originalStartTime;
+  TimeOfDay? originalEndTime;
 
   // Updated Data
   String? updatedTitle;
   String? updatedDescription;
   String? updatedStatus;
   String? updatedStatusId;
+  DateTime? updatedFromDate;
+  DateTime? updatedToDate;
+  TimeOfDay? updatedStartTime;
+  TimeOfDay? updatedEndTime;
 
-  // Flags to track if a field has been edited
   bool isTitleEdited = false;
   bool isDescriptionEdited = false;
   bool isStatusEdited = false;
-
-  // File Handling
-  List<Map<String, dynamic>> _existingFiles = [];
-  final List<Map<String, dynamic>> _filesToDelete = [];
-  final List<PlatformFile> _newFiles = [];
-  List<Map<String, dynamic>> _selectedMembers = [];
-  Map<String, dynamic>? _assignmentDetails;
+  bool isFromDateEdited = false;
+  bool isToDateEdited = false;
+  bool isStartTimeEdited = false;
+  bool isEndTimeEdited = false;
 
   bool _isLoading = false;
+
+  // For uploading an image
+  File? _selectedImage;
 
   final Map<String, String> _statusMap = {
     'Error': '87403916-9113-4e2e-9d7d-b5ed269fe20a',
@@ -62,22 +70,172 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
     'Finished': 'e35569eb-75e1-4005-9232-bfb57303b8b3',
   };
 
+  // Controllers to manage text fields
+  late TextEditingController _titleController;
+  late TextEditingController _descriptionController;
+  late TextEditingController _startDateController;
+  late TextEditingController _endDateController;
+  late TextEditingController _startTimeController;
+  late TextEditingController _endTimeController;
+
   @override
   void initState() {
     super.initState();
     _fetchAssignmentDetails();
+
+    // Initialize controllers
+    _titleController = TextEditingController();
+    _descriptionController = TextEditingController();
+    _startDateController = TextEditingController();
+    _endDateController = TextEditingController();
+    _startTimeController = TextEditingController();
+    _endTimeController = TextEditingController();
   }
 
+  @override
+  void dispose() {
+    // Dispose controllers
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _startDateController.dispose();
+    _endDateController.dispose();
+    _startTimeController.dispose();
+    _endTimeController.dispose();
+    super.dispose();
+  }
+
+  // ---------------------------------------------------------------
+  //                   IMAGE PICK & UPLOAD LOGIC
+  // ---------------------------------------------------------------
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        final file = File(image.path);
+
+        // Optional: Validate file size or type if needed
+        final fileSize = await file.length();
+        if (fileSize > 5 * 1024 * 1024) {
+          _showAlertDialog(
+            title: 'File Too Large',
+            content: 'Please select an image smaller than 5MB.',
+            isError: true,
+          );
+          return;
+        }
+
+        // Validate file type
+        final mimeType = lookupMimeType(image.path) ?? '';
+        if (!mimeType.startsWith('image/')) {
+          _showAlertDialog(
+            title: 'Invalid File Type',
+            content: 'Please select a valid image file.',
+            isError: true,
+          );
+          return;
+        }
+
+        setState(() {
+          _selectedImage = file;
+        });
+
+        // Once image is picked, we upload it
+        await _uploadImage();
+      }
+    } catch (e) {
+      _showAlertDialog(
+        title: 'Image Picker Error',
+        content: 'Failed to pick image: $e',
+        isError: true,
+      );
+    }
+  }
+
+  Future<void> _uploadImage() async {
+    if (_selectedImage == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) {
+      _showAlertDialog(
+        title: 'Authentication Error',
+        content: 'Token is null. Please log in again.',
+        isError: true,
+      );
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final uri = Uri.parse(
+        '${widget.baseUrl}/api/work-tracking/ass/add-files/${widget.assignmentId}',
+      );
+
+      final request = http.MultipartRequest('PUT', uri);
+      request.headers['Authorization'] = 'Bearer $token';
+
+      // Prepare file to send in form-data
+      final mimeType = lookupMimeType(_selectedImage!.path) ?? 'application/octet-stream';
+      final mimeTypeData = mimeType.split('/');
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file_name',
+          _selectedImage!.path,
+          contentType: MediaType(mimeTypeData[0], mimeTypeData[1]),
+        ),
+      );
+
+      // Send request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        _showSnackBar(
+          message: 'Image uploaded successfully.',
+          isError: false,
+        );
+      } else {
+        String errorMessage = 'Failed to upload image.';
+        try {
+          final responseData = jsonDecode(response.body);
+          if (responseData['message'] != null) {
+            errorMessage = responseData['message'];
+          }
+        } catch (_) {}
+        _showSnackBar(
+          message: errorMessage,
+          isError: true,
+        );
+      }
+    } catch (e) {
+      _showSnackBar(
+        message: 'Error uploading image: $e',
+        isError: true,
+      );
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  // For reference, your existing color helper
   Color _getStatusColor(String status) {
     switch (status) {
       case 'Pending':
-        return Colors.orange;
+        return Colors.yellow;
       case 'Processing':
         return Colors.blue;
       case 'Finished':
         return Colors.green;
-      case 'Error':
-        return Colors.red;
       default:
         return Colors.black;
     }
@@ -102,281 +260,66 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
     }
     try {
       final response = await http.get(
-        Uri.parse('${widget.baseUrl}/api/work-tracking/ass/get-assignment/${widget.assignmentId}'),
+        Uri.parse(
+            '${widget.baseUrl}/api/work-tracking/ass/assignments'),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
-        _assignmentDetails = data['result'][0];
-        setState(() {
-          originalTitleController.text = _assignmentDetails?['title'] ?? '';
-          originalDescriptionController.text = _assignmentDetails?['descriptions'] ?? '';
-          originalStatus = _assignmentDetails?['s_name'] ?? 'Processing';
-          originalStatusId = _statusMap[originalStatus] ?? '0a8d93f0-1c05-42b2-8e56-984a578ef077';
-          _selectedMembers = List<Map<String, dynamic>>.from(data['members'] ?? []);
-          _existingFiles = List<Map<String, dynamic>>.from(data['files'] ?? []);
-          _isLoading = false;
-        });
+        final meeting = (data['results'] as List).firstWhere(
+              (item) => item['as_id'] == widget.assignmentId,
+          orElse: () => null,
+        );
+        if (meeting != null) {
+          setState(() {
+            originalTitle = meeting['title'] ?? '';
+            originalDescription = meeting['description'] ?? '';
+            originalStatusId = _statusMap[originalStatus] ??
+                '0a8d93f0-1c05-42b2-8e56-984a578ef077';
+            _titleController.text = originalTitle;
+            _descriptionController.text = originalDescription;
+          });
+        } else {
+          _showAlertDialog(
+            title: 'Error',
+            content: 'Meeting not found.',
+            isError: true,
+          );
+        }
       } else {
         _showAlertDialog(
           title: 'Error',
-          content: 'Failed to load assignment details.',
+          content: 'Failed to load meeting details.',
           isError: true,
         );
-        setState(() {
-          _isLoading = false;
-        });
       }
     } catch (e) {
       _showAlertDialog(
         title: 'Error',
-        content: 'Error fetching assignment details: $e',
+        content: 'Error fetching meeting details: $e',
         isError: true,
       );
-      setState(() {
-        _isLoading = false;
-      });
     }
-  }
-
-  /// Opens the member selection page and retrieves selected members
-  Future<void> _navigateToAddMembers() async {
-    final selected = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SelectAssignmentMembersPage(
-          projectId: widget.projectId,
-          baseUrl: widget.baseUrl,
-        ),
-      ),
-    );
-    if (selected != null && selected is List<Map<String, dynamic>>) {
-      await _fetchMembersImages(selected);
-    }
-  }
-
-  /// Displays an error dialog
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Error'),
-          content: Text(message),
-          actions: [
-            TextButton(
-              child: const Text('OK'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _fetchMembersImages(List<Map<String, dynamic>> members) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    if (token == null) {
-      _showErrorDialog('Token is null. Please log in again.');
-      return;
-    }
-
-    List<Map<String, dynamic>> membersWithImages = [];
-    for (var member in members) {
-      try {
-        final response = await http.get(
-          Uri.parse('${widget.baseUrl}/api/profile/${member['employee_id']}'),
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        );
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          membersWithImages.add({
-            'employee_id': member['employee_id'],
-            'name': member['name'] ?? 'Unknown',
-            'surname': member['surname'] ?? '',
-            'images': data['images'] ?? '',
-          });
-        } else {
-          membersWithImages.add({
-            'employee_id': member['employee_id'],
-            'name': member['name'] ?? 'Unknown',
-            'surname': member['surname'] ?? '',
-            'images': '',
-          });
-        }
-      } catch (e) {
-        membersWithImages.add({
-          'employee_id': member['employee_id'],
-          'name': member['name'] ?? 'Unknown',
-          'surname': member['surname'] ?? '',
-          'images': '',
-        });
-      }
-    }
-
     setState(() {
-      _selectedMembers = membersWithImages;
+      _isLoading = false;
     });
   }
 
-  Future<void> _addFiles() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      allowMultiple: true,
-    );
-
-    if (result != null) {
-      setState(() {
-        _newFiles.addAll(result.files);
-      });
-    }
-  }
-
-  Future<void> _uploadNewFiles() async {
-    if (_newFiles.isEmpty) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    if (token == null) {
-      _showAlertDialog(
-        title: 'Authentication Error',
-        content: 'Token is null. Please log in again.',
-        isError: true,
-      );
-      return;
-    }
-
-    try {
-      var request = http.MultipartRequest(
-        'PUT',
-        Uri.parse('${widget.baseUrl}/api/work-tracking/ass/add-files/${widget.assignmentId}'),
-      );
-      request.headers['Authorization'] = 'Bearer $token';
-
-      for (var file in _newFiles) {
-        if (file.path != null) {
-          request.files.add(
-            await http.MultipartFile.fromPath(
-              'file_name',
-              file.path!,
-              filename: file.name,
-            ),
-          );
-        }
-      }
-
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        _showAlertDialog(
-          title: 'Success',
-          content: 'Files uploaded successfully.',
-          isError: false,
-        );
-        setState(() {
-          _newFiles.clear();
-          _fetchAssignmentDetails();
-        });
-      } else {
-        String errorMessage = 'Failed to upload files.';
-        try {
-          final responseData = jsonDecode(response.body);
-          if (responseData['message'] != null) {
-            errorMessage = responseData['message'];
-          }
-        } catch (_) {}
-        _showAlertDialog(
-          title: 'Error',
-          content: errorMessage,
-          isError: true,
-        );
-      }
-    } catch (e) {
-      _showAlertDialog(
-        title: 'Error',
-        content: 'Error uploading files: $e',
-        isError: true,
-      );
-    }
-  }
-
-  Future<void> _deleteFile(Map<String, dynamic> file) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    if (token == null) {
-      _showAlertDialog(
-        title: 'Authentication Error',
-        content: 'Token is null. Please log in again.',
-        isError: true,
-      );
-      return;
-    }
-
-    try {
-      final response = await http.put(
-        Uri.parse('${widget.baseUrl}/api/work-tracking/ass/delete-file/${widget.assignmentId}'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'file_id': file['file_id'], // Assuming 'file_id' is the identifier
-        }),
-      );
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        setState(() {
-          _existingFiles.remove(file);
-          _filesToDelete.remove(file);
-        });
-        _showAlertDialog(
-          title: 'Success',
-          content: 'File deleted successfully.',
-          isError: false,
-        );
-      } else {
-        String errorMessage = 'Failed to delete file.';
-        try {
-          final responseData = jsonDecode(response.body);
-          if (responseData['message'] != null) {
-            errorMessage = responseData['message'];
-          }
-        } catch (_) {}
-        _showAlertDialog(
-          title: 'Error',
-          content: errorMessage,
-          isError: true,
-        );
-      }
-    } catch (e) {
-      _showAlertDialog(
-        title: 'Error',
-        content: 'Error deleting file: $e',
-        isError: true,
-      );
-    }
-  }
-
   Future<void> _updateAssignment() async {
-    // Check if any field has been edited or files have been marked for deletion
-    if (!isTitleEdited && !isDescriptionEdited && !isStatusEdited && _filesToDelete.isEmpty && _newFiles.isEmpty) {
-      await _showAlertDialog(
-        title: 'No Changes',
-        content: 'No fields have been updated.',
+    if (_formKey.currentState?.validate() != true) {
+      return;
+    }
+
+    // Check if any field has been edited
+    if (!isTitleEdited &&
+        !isDescriptionEdited &&
+        !isStatusEdited ){
+      _showSnackBar(
+        message: 'No fields have been updated.',
         isError: false,
       );
-      return;
-    }
-
-    // Validate form
-    if (!_formKey.currentState!.validate()) {
       return;
     }
 
@@ -387,7 +330,7 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     if (token == null) {
-      await _showAlertDialog(
+      _showAlertDialog(
         title: 'Authentication Error',
         content: 'Token is null. Please log in again.',
         isError: true,
@@ -401,13 +344,16 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
     try {
       // Prepare the request body with updated or original data
       Map<String, dynamic> body = {
-        "status_id": isStatusEdited ? (_statusMap[updatedStatus!] ?? originalStatusId) : originalStatusId,
-        "title": isTitleEdited ? (updatedTitle ?? originalTitleController.text) : originalTitleController.text,
-        "descriptions": isDescriptionEdited ? (updatedDescription ?? originalDescriptionController.text) : originalDescriptionController.text,
+        'title': isTitleEdited ? updatedTitle : originalTitle,
+        'descriptions':
+        isDescriptionEdited ? updatedDescription : originalDescription,
+        'status_id': isStatusEdited ? updatedStatusId : originalStatusId,
       };
 
       final response = await http.put(
-        Uri.parse('${widget.baseUrl}/api/work-tracking/ass/update/${widget.assignmentId}'),
+        Uri.parse(
+            '${widget.baseUrl}/api/work-tracking/ass/update/${widget
+                .assignmentId}'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -416,28 +362,13 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        // Upload new files if any
-        if (_newFiles.isNotEmpty) {
-          await _uploadNewFiles();
-        }
-
-        // Delete files if any
-        if (_filesToDelete.isNotEmpty) {
-          for (var file in _filesToDelete) {
-            await _deleteFile(file);
-          }
-        }
-
-        // Refresh assignment details
-        await _fetchAssignmentDetails();
-
-        // Show success dialog without navigating back
-        await _showAlertDialog(
-          title: 'Success',
-          content: 'Assignment updated successfully.',
+        _showSnackBar(
+          message: 'Assignment updated successfully.',
           isError: false,
         );
-      } else {
+        Navigator.pop(context, true); // pass true
+      }
+      else {
         String errorMessage = 'Failed to update assignment.';
         try {
           final responseData = jsonDecode(response.body);
@@ -445,16 +376,14 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
             errorMessage = responseData['message'];
           }
         } catch (_) {}
-        await _showAlertDialog(
-          title: 'Error',
-          content: errorMessage,
+        _showSnackBar(
+          message: errorMessage,
           isError: true,
         );
       }
     } catch (e) {
-      await _showAlertDialog(
-        title: 'Error',
-        content: 'Error updating assignment: $e',
+      _showSnackBar(
+        message: 'Error updating assignment: $e',
         isError: true,
       );
     }
@@ -463,6 +392,78 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
       _isLoading = false;
     });
   }
+
+  Widget _buildSelectedMembers() {
+    if (selectedMembers.isEmpty) return const Text('No members selected.');
+
+    int displayCount = selectedMembers.length > 5 ? 5 : selectedMembers.length;
+    List<Widget> avatars = [];
+
+    for (int i = 0; i < displayCount; i++) {
+      avatars.add(
+        Positioned(
+          left: i * 24.0,
+          child: CircleAvatar(
+            backgroundImage: selectedMembers[i]['image_url'] != null && selectedMembers[i]['image_url'].isNotEmpty
+                ? NetworkImage(selectedMembers[i]['image_url'])
+                : const AssetImage('assets/default_avatar.png') as ImageProvider,
+            radius: 18,
+            backgroundColor: Colors.white,
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white, width: 4.0),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (selectedMembers.length > 5) {
+      avatars.add(
+        Positioned(
+          left: displayCount * 24.0,
+          child: CircleAvatar(
+            backgroundColor: Colors.grey[300],
+            radius: 16,
+            child: Text(
+              '+${selectedMembers.length - 5}',
+              style: const TextStyle(color: Colors.black, fontSize: 12),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 32,
+      child: Stack(
+        children: avatars,
+      ),
+    );
+  }
+
+  // void _navigateToEditMembers() async {
+  //   print('[_AddProcessingPageState] Navigating to SelectProcessingMembersPage with assignmentId: ${widget.meetingId}');
+  //   final result = await Navigator.push(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (context) => EditProcessingMembersPage(
+  //         assignmentId: widget.assignmentId,
+  //         baseUrl: widget.baseUrl,
+  //         alreadySelectedMembers: selectedMembers,
+  //       ),
+  //     ),
+  //   );
+  //
+  //   if (result != null && result is List<Map<String, dynamic>>) {
+  //     setState(() {
+  //       selectedMembers = result;
+  //     });
+  //     print('[_AddProcessingPageState] Members selected: ${selectedMembers.map((m) => m['employee_id']).toList()}');
+  //   }
+  // }
 
   Future<void> _deleteAssignment() async {
     bool confirm = await showDialog(
@@ -479,9 +480,11 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey, // Grey button as per request
+                backgroundColor: Colors
+                    .redAccent,
               ),
-              child: const Text('Delete', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                  'Delete', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -497,7 +500,7 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     if (token == null) {
-      await _showAlertDialog(
+      _showAlertDialog(
         title: 'Authentication Error',
         content: 'Token is null. Please log in again.',
         isError: true,
@@ -510,24 +513,22 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
 
     try {
       final response = await http.put(
-        Uri.parse('${widget.baseUrl}/api/work-tracking/ass/delete/${widget.assignmentId}'),
+        Uri.parse(
+            '${widget.baseUrl}/api/work-tracking/ass/delete/${widget
+                .assignmentId}'),
         headers: {
           'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
         },
       );
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        // Show success dialog without navigating back
-        await _showAlertDialog(
-          title: 'Success',
-          content: 'Assignment deleted successfully.',
+        _showSnackBar(
+          message: 'Assignment deleted successfully.',
           isError: false,
         );
-
-        // Optionally, navigate back or to another page
-        Navigator.of(context).pop(); // Navigate back after deletion
-      } else {
+        Navigator.pop(context, true); // pass true
+      }
+      else {
         String errorMessage = 'Failed to delete assignment.';
         try {
           final responseData = jsonDecode(response.body);
@@ -535,16 +536,14 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
             errorMessage = responseData['message'];
           }
         } catch (_) {}
-        await _showAlertDialog(
-          title: 'Error',
-          content: errorMessage,
+        _showSnackBar(
+          message: errorMessage,
           isError: true,
         );
       }
     } catch (e) {
-      await _showAlertDialog(
-        title: 'Error',
-        content: 'Error deleting assignment: $e',
+      _showSnackBar(
+        message: 'Error deleting meeting: $e',
         isError: true,
       );
     }
@@ -554,23 +553,30 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
     });
   }
 
-  Future<void> _showAlertDialog({
+  void _showAlertDialog({
     required String title,
     required String content,
     required bool isError,
-  }) async {
-    await showDialog(
+  }) {
+    showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(title, style: TextStyle(color: isError ? Colors.red : Colors.green, fontWeight: FontWeight.bold)),
+          title: Text(title,
+              style: TextStyle(
+                  color: isError ? Colors.red : Colors.green,
+                  fontWeight: FontWeight.bold)),
           content: Text(content),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close the AlertDialog
-                // No further navigation
+                Navigator.of(context).pop();
+                if (!isError &&
+                    (title.toLowerCase().contains('success') ||
+                        title.toLowerCase().contains('deleted'))) {
+                  Navigator.of(context).pop(); // Navigate back on success
+                }
               },
               child: const Text('OK'),
             ),
@@ -580,98 +586,13 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
     );
   }
 
-  Future<void> _downloadFile(String url, String originalName) async {
-    final Uri fileUri = Uri.parse(url);
-
-    if (await canLaunchUrl(fileUri)) {
-      await launchUrl(fileUri, mode: LaunchMode.externalApplication);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not launch the file URL')),
-      );
-    }
-  }
-
-  /// Builds the list of selected members with their avatars
-  Widget _buildSelectedMembers() {
-    if (_selectedMembers.isEmpty) return const Text('No members selected.');
-
-    return Row(
-      children: _selectedMembers.map((member) {
-        return CircleAvatar(
-          backgroundImage: member['images'] != null && member['images'] != '' ? NetworkImage(member['images']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildFileList() {
-    if (_existingFiles.isEmpty && _newFiles.isEmpty) {
-      return const Center(child: Text('No files attached.'));
-    }
-
-    return Column(
-      children: [
-        // Existing Files
-        ..._existingFiles.map((file) {
-          final fileUrl = file['images'] != null && file['images'] is List && file['images'].isNotEmpty ? file['images'][0] : null;
-          final originalName = file['originalname'] ?? 'No Name';
-          final fileId = file['file_id'] ?? '';
-
-          final isMarkedForDeletion = _filesToDelete.contains(file);
-
-          return Opacity(
-            opacity: isMarkedForDeletion ? 0.5 : 1.0,
-            child: ListTile(
-              leading: const Icon(Icons.attach_file, color: Colors.green),
-              title: Text(originalName),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      Icons.download,
-                      color: fileUrl != null ? Colors.blue : Colors.grey,
-                    ),
-                    onPressed: fileUrl != null ? () => _downloadFile(fileUrl, originalName) : null,
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      isMarkedForDeletion ? Icons.undo : Icons.delete,
-                      color: isMarkedForDeletion ? Colors.orange : Colors.red,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        if (isMarkedForDeletion) {
-                          _filesToDelete.remove(file);
-                        } else {
-                          _filesToDelete.add(file);
-                        }
-                      });
-                    },
-                  ),
-                ],
-              ),
-              tileColor: isMarkedForDeletion ? Colors.red.withOpacity(0.1) : null,
-            ),
-          );
-        }),
-        // New Files
-        ..._newFiles.map((file) {
-          return ListTile(
-            leading: const Icon(Icons.attach_file, color: Colors.green),
-            title: Text(file.name),
-            trailing: IconButton(
-              icon: const Icon(Icons.close, color: Colors.red),
-              onPressed: () {
-                setState(() {
-                  _newFiles.remove(file);
-                });
-              },
-            ),
-          );
-        }),
-      ],
+  void _showSnackBar({required String message, required bool isError}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -680,12 +601,18 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
+    final Size screenSize = MediaQuery.of(context).size;
+    double horizontalPadding = screenSize.width * 0.04;
+    horizontalPadding = horizontalPadding < 16.0 ? 16.0 : horizontalPadding;
+
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+              image: AssetImage(
+                isDarkMode ? 'assets/darkbg.png' : 'assets/background.png',
+              ),
               fit: BoxFit.cover,
             ),
             borderRadius: const BorderRadius.only(
@@ -696,9 +623,11 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
         ),
         centerTitle: true,
         title: Text(
-          'Update Assignment',
+          'Edit Assignment',
           style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic title color based on theme
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
             fontSize: 22,
             fontWeight: FontWeight.w500,
           ),
@@ -706,12 +635,12 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic icon color based on theme
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
             size: 20,
           ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         toolbarHeight: 80,
         elevation: 0,
@@ -720,206 +649,313 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : GestureDetector(
-              onTap: () => FocusScope.of(context).unfocus(),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Stack(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SingleChildScrollView(
+          padding:
+          EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 18.0),
+          child: Form(
+            key: _formKey,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Delete and Update Buttons
-                          Row(
-                            children: [
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: _deleteAssignment,
-                                  icon: const Icon(Icons.close, color: Colors.white),
-                                  label: const Text(
-                                    'Delete',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.grey, // Grey button as per request
-                                    padding: const EdgeInsets.symmetric(vertical: 12.0),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8.0),
-                                    ),
-                                  ),
-                                ),
+                    // Row of Delete and Update Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _deleteAssignment,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFC2C2C2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: _updateAssignment,
-                                  icon: const Icon(Icons.check, color: Colors.black),
-                                  label: const Text(
-                                    'Update',
-                                    style: TextStyle(color: Colors.black),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFDBB342), // Hex #DBB342
-                                    padding: const EdgeInsets.symmetric(vertical: 12.0),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8.0),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-                          // Title Input
-                          TextFormField(
-                            controller: originalTitleController,
-                            decoration: const InputDecoration(
-                              labelText: 'Title',
-                              border: OutlineInputBorder(),
+                              padding: const EdgeInsets.symmetric(vertical: 12.0),
                             ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Title cannot be empty';
-                              }
-                              return null;
-                            },
-                            onChanged: (value) {
-                              setState(() {
-                                updatedTitle = value;
-                                isTitleEdited = true;
-                              });
-                            },
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                  ),
+                                  padding: const EdgeInsets.all(6.0),
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: Colors.grey,
+                                    size: 16,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Delete',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 24),
-                          // Status Dropdown
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: DropdownButtonFormField<String>(
-                                  value: isStatusEdited ? updatedStatus : originalStatus,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Status',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  icon: Image.asset(
-                                    'assets/task.png',
-                                    width: 24,
-                                    height: 24,
-                                  ),
-                                  items: ['Processing', 'Pending', 'Finished', 'Error'].map<DropdownMenuItem<String>>((String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.access_time,
-                                            color: _getStatusColor(value),
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(value),
-                                        ],
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (String? newValue) {
-                                    if (newValue != null) {
-                                      setState(() {
-                                        updatedStatus = newValue;
-                                        updatedStatusId = _statusMap[newValue] ?? originalStatusId;
-                                        isStatusEdited = true;
-                                      });
-                                    }
-                                  },
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Please select a status';
-                                    }
-                                    return null;
-                                  },
-                                ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _updateAssignment,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFDBB342),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                flex: 2,
-                                child: ElevatedButton.icon(
-                                  onPressed: _addFiles,
-                                  icon: const Icon(Icons.add, color: Colors.white),
-                                  label: const Text(
-                                    'Upload image',
-                                    style: TextStyle(color: Colors.white),
+                              padding: const EdgeInsets.symmetric(vertical: 12.0),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
                                   ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green,
-                                    padding: const EdgeInsets.symmetric(vertical: 18.0, horizontal: 12.0),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8.0),
-                                    ),
+                                  padding: const EdgeInsets.all(6.0),
+                                  child: const Icon(
+                                    Icons.check,
+                                    color: Color(0xFFDBB342),
+                                    size: 16,
                                   ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Update',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 24),
-                          // Member Selection
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              ElevatedButton.icon(
-                                onPressed: _navigateToAddMembers,
-                                icon: const Icon(Icons.add, color: Colors.white),
-                                label: const Text(
-                                  'Add People',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8.0),
-                                  ),
-                                ),
-                              ),
-                              _buildSelectedMembers(),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
+                        ),
+                      ],
+                    ),
 
-                          // Description Input
-                          TextFormField(
-                            controller: originalDescriptionController,
-                            decoration: const InputDecoration(
-                              labelText: 'Description',
-                              border: OutlineInputBorder(),
-                            ),
-                            maxLines: 5,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Description cannot be empty';
-                              }
-                              return null;
-                            },
-                            onChanged: (value) {
-                              setState(() {
-                                updatedDescription = value;
-                                isDescriptionEdited = true;
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 24),
-                        ],
+                    const SizedBox(height: 16),
+
+                    // Title
+                    const Text(
+                      'Title',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    // Positioned Delete and Update Buttons to handle opacity overlay if needed
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _titleController,
+                      decoration: const InputDecoration(
+                        hintText: 'Enter title',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(8.0)),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          updatedTitle = value;
+                          isTitleEdited = true;
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    // Row: Status Dropdown + Upload Image
+                    Row(
+                      children: [
+                        // Status
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Status',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              DropdownButtonFormField<String>(
+                                value:
+                                isStatusEdited ? updatedStatus : originalStatus,
+                                decoration: const InputDecoration(
+                                  border: OutlineInputBorder(
+                                    borderRadius:
+                                    BorderRadius.all(Radius.circular(8.0)),
+                                  ),
+                                ),
+                                items: ['Processing', 'Pending', 'Finished', 'Error']
+                                    .map<DropdownMenuItem<String>>((String value) {
+                                  return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.circle,
+                                          color: _getStatusColor(value),
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(value),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    updatedStatus = newValue;
+                                    updatedStatusId =
+                                        _statusMap[updatedStatus!] ??
+                                            '0a8d93f0-1c05-42b2-8e56-984a578ef077';
+                                    isStatusEdited = true;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Upload Image
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 25),
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Colors.green, Colors.lightGreen],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16.0),
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: _pickImage,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8.0),
+                                    ),
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 17.0,
+                                      horizontal: (MediaQuery.of(context).size.width < 400) ? 40 : 53,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Upload Image',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: (MediaQuery.of(context).size.width < 400) ? 12 : 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (_selectedImage != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    'Selected: ${_selectedImage!.path.split('/').last}',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    // + Add People (Placeholder)
+                    // Row(
+                    //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    //   children: [
+                    //     SizedBox(
+                    //       width: constraints.maxWidth * 0.5,
+                    //       child: ElevatedButton.icon(
+                    //         onPressed: _isLoading
+                    //             ? null
+                    //             : _navigateToEditMembers,
+                    //         icon: const Icon(Icons.person_add, color: Colors.black),
+                    //         label: const Text(
+                    //           'Add People',
+                    //           style: TextStyle(color: Colors.black),
+                    //         ),
+                    //         style: ElevatedButton.styleFrom(
+                    //           backgroundColor: Colors.green,
+                    //           padding: const EdgeInsets.symmetric(
+                    //             horizontal: 12.0,
+                    //             vertical: 10.0,
+                    //           ),
+                    //           shape: RoundedRectangleBorder(
+                    //             borderRadius: BorderRadius.circular(16.0),
+                    //           ),
+                    //           elevation: 3,
+                    //         ),
+                    //       ),
+                    //     ),
+                    //     // Selected Members Display
+                    //     SizedBox(
+                    //       width: constraints.maxWidth * 0.5 - 8,
+                    //       child: _buildSelectedMembers(),
+                    //     ),
+                    //   ],
+                    // ),
+                    //
+                    // const SizedBox(height: 18),
+
+                    // Description
+                    const Text(
+                      'Description',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _descriptionController,
+                      maxLines: 10,
+                      decoration: const InputDecoration(
+                        hintText: 'Enter description',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.all(Radius.circular(8.0)),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          updatedDescription = value;
+                          isDescriptionEdited = true;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 30),
                   ],
-                ),
-              ),
+                );
+              },
             ),
-      // floatingActionButton: _isLoading
-      //     ? null
-      //     : null, // You can add FABs here if needed in the future
+          ),
+        ),
+      ),
     );
   }
 }

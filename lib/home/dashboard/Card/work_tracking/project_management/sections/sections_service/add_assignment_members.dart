@@ -1,4 +1,4 @@
-// add_assignment_members.dart
+// add_processing_members.dart
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -7,65 +7,82 @@ import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SelectAssignmentMembersPage extends StatefulWidget {
+class AddAssignmentMembersPage extends StatefulWidget {
   final String projectId;
   final String baseUrl;
+  final List<Map<String, dynamic>> alreadySelectedMembers;
 
-  const SelectAssignmentMembersPage({
+  const AddAssignmentMembersPage({
     super.key,
     required this.projectId,
     required this.baseUrl,
+    this.alreadySelectedMembers = const [],
   });
 
   @override
-  _SelectAssignmentMembersPageState createState() =>
-      _SelectAssignmentMembersPageState();
+  _AddAssignmentMembersPageState createState() =>
+      _AddAssignmentMembersPageState();
 }
 
-class _SelectAssignmentMembersPageState
-    extends State<SelectAssignmentMembersPage> {
+class _AddAssignmentMembersPageState
+    extends State<AddAssignmentMembersPage> {
   List<Map<String, dynamic>> _members = [];
   List<Map<String, dynamic>> _filteredMembers = [];
-  final List<Map<String, dynamic>> _selectedMembers = [];
+  List<Map<String, dynamic>> _selectedMembers = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _selectedMembers = List.from(widget.alreadySelectedMembers);
     _fetchMembers();
   }
 
-  /// Fetches the authentication token from SharedPreferences.
+  // Fetch the token from SharedPreferences
   Future<String> _fetchToken() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
+    print('[_AddAssignmentMembersPageState] Retrieved token: $token');
     return token ?? '';
   }
 
-  /// Fetches members associated with the given project ID.
+  // Fetch members based on projectId
   Future<void> _fetchMembers() async {
     setState(() {
       _isLoading = true;
     });
+    print(
+        '[_AddAssignmentMembersPageState] Fetching members for projectId: ${widget.projectId}, baseUrl: ${widget.baseUrl}');
+
     try {
       String token = await _fetchToken();
       if (token.isEmpty) {
         throw Exception('Token not found. Please log in again.');
       }
 
+      String apiUrl =
+          '${widget.baseUrl}/api/work-tracking/proj/find-Member-By-ProjectId/${widget.projectId}';
+      print('[_SelectProcessingMembersPageState] API URL: $apiUrl');
+
       final response = await http.get(
-        Uri.parse(
-            '${widget.baseUrl}/api/work-tracking/proj/find-Member-By-ProjectId/${widget.projectId}'),
+        Uri.parse(apiUrl),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
 
+      print(
+          '[_SelectProcessingMembersPageState] API Response Status Code: ${response.statusCode}');
+      print('[_SelectProcessingMembersPageState] API Response Body: ${response.body}');
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseBody = jsonDecode(response.body);
-        final List<dynamic> data = responseBody['Members'] ?? [];
+        print('[_SelectProcessingMembersPageState] Parsed response body.');
 
-        // Remove duplicate members based on employee_id
+        final List<dynamic> data = responseBody['Members'] ?? [];
+        print(
+            '[_SelectProcessingMembersPageState] Number of members fetched: ${data.length}');
+
         final uniqueMembers = <String, Map<String, dynamic>>{};
         for (var item in data) {
           if (item == null) continue;
@@ -77,9 +94,9 @@ class _SelectAssignmentMembersPageState
               'id': item['id']?.toString() ?? '',
               'employee_id': employeeId,
               'name': item['name']?.toString() ?? 'Unknown',
-              'surname': item['surname']?.toString() ?? 'Unknown',
+              'surname': item['surname']?.toString() ?? '',
               'email': item['email']?.toString() ?? 'No Email',
-              'images': item['images']?.toString() ?? '',
+              'image_url': '', // Placeholder for image URL
             };
           }
         }
@@ -89,10 +106,14 @@ class _SelectAssignmentMembersPageState
           _filteredMembers = _members;
         });
 
+        print(
+            '[_SelectProcessingMembersPageState] Unique members count after filtering: ${_members.length}');
+
         // Fetch images for each member
         await _fetchMembersImages(token);
       } else {
-        throw Exception('Failed to load members: ${response.body}');
+        throw Exception(
+            'Failed to load members: ${response.statusCode}, ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorMessage('Error fetching members: $e');
@@ -102,65 +123,85 @@ class _SelectAssignmentMembersPageState
     });
   }
 
-  /// Fetches profile images for each member using their employee_id.
+  // Fetch member images
   Future<void> _fetchMembersImages(String token) async {
     List<Future<void>> imageFetchFutures = _members.map((member) async {
       String employeeId = member['employee_id'];
       String? imageUrl = await _fetchMemberImage(employeeId, token);
       setState(() {
-        member['image_url'] = imageUrl;
+        member['image_url'] = imageUrl ?? '';
       });
+      print(
+          '[_SelectProcessingMembersPageState] Member: $employeeId, Image URL: ${member['image_url']}');
     }).toList();
 
     await Future.wait(imageFetchFutures);
+    print('[_SelectProcessingMembersPageState] Completed fetching member images.');
   }
 
-  /// Fetches the profile image URL for a given employee_id.
+  // Fetch individual member image
   Future<String?> _fetchMemberImage(String employeeId, String token) async {
     try {
+      String apiUrl = '${widget.baseUrl}/api/profile/$employeeId';
+      print(
+          '[_SelectProcessingMembersPageState] Fetching image for employeeId: $employeeId, API URL: $apiUrl');
+
       final response = await http.get(
-        Uri.parse('${widget.baseUrl}/api/profile/$employeeId'),
+        Uri.parse(apiUrl),
         headers: {
           'Authorization': 'Bearer $token',
         },
       );
 
+      print(
+          '[_SelectProcessingMembersPageState] Image API Response Status Code: ${response.statusCode}');
+      print('[_SelectProcessingMembersPageState] Image API Response Body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['results'] != null && data['results']['images'] != null) {
+          print('[_SelectProcessingMembersPageState] Found image URL for $employeeId');
           return data['results']['images'];
+        } else {
+          print('[_SelectProcessingMembersPageState] No image found for $employeeId');
         }
       } else {
         print(
-            'Failed to fetch image for $employeeId: ${response.statusCode}');
+            '[_SelectProcessingMembersPageState] Failed to fetch image for $employeeId: ${response.statusCode}');
       }
     } catch (e) {
-      print('Exception while fetching image for $employeeId: $e');
+      print('[_SelectProcessingMembersPageState] Exception while fetching image for $employeeId: $e');
     }
     return null;
   }
 
-  /// Handles member selection and deselection.
+  // Handle member selection
   void _onMemberSelected(bool? selected, Map<String, dynamic> member) {
     setState(() {
       if (selected == true) {
         if (!_selectedMembers
             .any((m) => m['employee_id'] == member['employee_id'])) {
           _selectedMembers.add(member);
+          print(
+              '[_AddAssignmentMembersPageState] Selected member: ${member['employee_id']}');
         }
       } else {
         _selectedMembers
             .removeWhere((m) => m['employee_id'] == member['employee_id']);
+        print(
+            '[_AddAssignmentMembersPageState] Deselected member: ${member['employee_id']}');
       }
     });
   }
 
-  /// Navigates back with the selected members.
+  // Handle Add button press
   void _onAddButtonPressed() {
+    print(
+        '[_AddAssignmentMembersPageState] Adding selected members: ${_selectedMembers.map((m) => m['employee_id']).toList()}');
     Navigator.pop(context, _selectedMembers);
   }
 
-  /// Filters members based on the search query.
+  // Filter members based on search query
   void _filterMembers(String query) {
     List<Map<String, dynamic>> filteredList = _members.where((member) {
       String name = member['name']?.toLowerCase() ?? '';
@@ -171,22 +212,25 @@ class _SelectAssignmentMembersPageState
     setState(() {
       _filteredMembers = filteredList;
     });
+    print(
+        '[_AddAssignmentMembersPageState] Filtered members count: ${_filteredMembers.length}');
   }
 
-  /// Displays an error message using a SnackBar.
+  // Display error messages
   void _showErrorMessage(String message) {
+    print('[_AddAssignmentMembersPageState] $message');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content:
-        Text(message, style: const TextStyle(color: Colors.white)),
+        content: Text(message,
+            style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.red,
       ),
     );
   }
 
-  /// Builds the UI for selected members' avatars.
+  // Display selected members as avatars
   Widget _buildSelectedMembers() {
-    if (_selectedMembers.isEmpty) return Container();
+    if (_selectedMembers.isEmpty) return const Text('No members selected.');
     int displayCount = _selectedMembers.length > 5 ? 5 : _selectedMembers.length;
     List<Widget> avatars = [];
     for (int i = 0; i < displayCount; i++) {
@@ -226,7 +270,7 @@ class _SelectAssignmentMembersPageState
     );
   }
 
-  /// Builds the AppBar with consistent styling.
+  // Custom AppBar with background image and styling
   PreferredSizeWidget _buildAppBar() {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
@@ -245,7 +289,7 @@ class _SelectAssignmentMembersPageState
       ),
       centerTitle: true,
       title: const Text(
-        'Add Assignment Members',
+        'Add Processing Members',
         style: TextStyle(
           color: Colors.black,
           fontSize: 22,
@@ -268,7 +312,7 @@ class _SelectAssignmentMembersPageState
     );
   }
 
-  /// Constructs the full name, preventing duplication.
+  // Construct full name from name and surname
   String _constructFullName(Map<String, dynamic> member) {
     String name = member['name']?.toString() ?? '';
     String surname = member['surname']?.toString() ?? '';
@@ -300,7 +344,7 @@ class _SelectAssignmentMembersPageState
                     child: ElevatedButton(
                       onPressed: _onAddButtonPressed,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.yellow[700],
+                        backgroundColor: const Color(0xFFDBB342),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 40.0, vertical: 15.0),
                         shape: RoundedRectangleBorder(
@@ -347,14 +391,16 @@ class _SelectAssignmentMembersPageState
                     : 'No Email';
                 String? imageUrl = member['image_url'];
 
+                bool isSelected = _selectedMembers.any((m) =>
+                m['employee_id'] ==
+                    member['employee_id']);
+
                 return ListTile(
                   leading: CircleAvatar(
                     backgroundImage: imageUrl != null &&
                         imageUrl.isNotEmpty
                         ? NetworkImage(imageUrl)
-                        : const AssetImage(
-                        'assets/default_avatar.png')
-                    as ImageProvider,
+                        : const AssetImage('assets/default_avatar.png') as ImageProvider,
                     radius: 25,
                     backgroundColor: Colors.grey[200],
                   ),
@@ -369,8 +415,7 @@ class _SelectAssignmentMembersPageState
                   ),
                   subtitle: Text(email),
                   trailing: Checkbox(
-                    value: _selectedMembers.any((m) =>
-                    m['employee_id'] == member['employee_id']),
+                    value: isSelected,
                     activeColor: Colors.green,
                     onChanged: (bool? selected) {
                       _onMemberSelected(selected, member);

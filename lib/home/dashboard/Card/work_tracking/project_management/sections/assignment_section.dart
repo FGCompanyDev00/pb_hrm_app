@@ -134,7 +134,6 @@ class _AssignmentSectionState extends State<AssignmentSection> {
         ),
       ),
     );
-
     if (result == true) {
       print('[_AssignmentSection] New assignment added. Refreshing data.');
       _fetchAssignmentData();

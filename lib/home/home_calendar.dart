@@ -305,7 +305,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           continue;
         }
 
-        // Handle possible nulls with default values
         final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
 
         String status = item['s_name'] != null ? mapEventStatus(item['s_name'].toString()) : 'Pending';
@@ -319,7 +318,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           desc: item['description'] ?? '',
           status: status,
           isMeeting: true,
-          location: item['location'] ?? '', // Assuming 'location' field exists
+          location: item['location'] ?? '',
           createdBy: item['create_by'] ?? '',
           imgName: item['file_name'] ?? '',
           createdAt: item['created_at'] ?? '',

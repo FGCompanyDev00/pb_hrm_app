@@ -1,11 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
-
-import '../../../../../../../settings/theme_notifier.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 
 class ViewAssignmentPage extends StatefulWidget {
   final String assignmentId;
@@ -20,15 +21,15 @@ class ViewAssignmentPage extends StatefulWidget {
   });
 
   @override
-  State<ViewAssignmentPage> createState() => _ViewAssignmentPageState();
+  _ViewAssignmentPageState createState() => _ViewAssignmentPageState();
 }
 
 class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
   bool _isLoading = true;
   bool _hasError = false;
-  Map<String, dynamic>? _assignmentDetails;
-  List<Map<String, dynamic>> _members = [];
-  List<Map<String, dynamic>> _files = [];
+  Map<String, dynamic>? _assignment;
+  List<Map<String, dynamic>>? _files;
+  List<Map<String, dynamic>>? _members;
 
   @override
   void initState() {
@@ -68,304 +69,369 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        if (data['statusCode'] == 200 && data['result'] != null && data['result'].isNotEmpty) {
-          setState(() {
-            _assignmentDetails = data['result'][0];
-            _members = List<Map<String, dynamic>>.from(data['members'] ?? []);
-            _files = List<Map<String, dynamic>>.from(data['files'] ?? []);
-            _isLoading = false;
-          });
+        setState(() {
+          _assignment = (data['result'] is List && data['result'].isNotEmpty)
+              ? data['result'][0] as Map<String, dynamic>
+              : (data['result'] is Map)
+              ? data['result'] as Map<String, dynamic>
+              : null;
+          _files = _parseFiles(data['files']);
+          _members = _parseMembers(data['members']);
+          _isLoading = false;
+        });
 
-          // Fetch member images
-          if (_members.isNotEmpty) {
-            await _fetchMembersImages(token);
-          }
-        } else {
-          _showError(data['message'] ?? 'Failed to load assignment details');
+        // Fetch images for each member
+        if (_members != null && _members!.isNotEmpty) {
+          await _fetchMembersImages(token);
         }
       } else {
-        _showError('Failed to load assignment details: ${response.statusCode}');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load assignment details: ${response.body}')),
+        );
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
       }
     } catch (e) {
-      _showError('Error fetching assignment details: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching assignment details: $e')),
+      );
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
     }
+  }
+
+  List<Map<String, dynamic>> _parseFiles(dynamic filesData) {
+    if (filesData == null) return [];
+    List<Map<String, dynamic>> files = [];
+
+    if (filesData is List) {
+      for (var file in filesData) {
+        if (file is Map<String, dynamic>) {
+          files.add({
+            'file_name': file['file_name']?.toString() ?? 'Unnamed File',
+            'file_url': file['file_url']?.toString() ?? '',
+          });
+        }
+      }
+    }
+    return files;
+  }
+
+  List<Map<String, dynamic>> _parseMembers(dynamic membersData) {
+    if (membersData == null) return [];
+    return membersData is List ? membersData.cast<Map<String, dynamic>>() : [];
   }
 
   Future<void> _fetchMembersImages(String token) async {
-    List<Future<void>> fetchTasks = _members.map((member) async {
-      String empId = member['emp_id'];
-      try {
-        final response = await http.get(
-          Uri.parse('${widget.baseUrl}/api/profile/$empId'),
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        );
-
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          String? imageUrl = data['results']?['images'];
-          setState(() {
-            member['image_url'] = imageUrl ?? 'https://via.placeholder.com/50';
-          });
-        }
-      } catch (e) {
-        print('Error fetching image for $empId: $e');
-      }
+    List<Future<void>> imageFetchFutures = _members!.map((member) async {
+      String employeeId = member['emp_id'].toString();
+      String? imageUrl = await _fetchMemberImage(employeeId, token);
+      setState(() {
+        member['image_url'] = imageUrl;
+      });
     }).toList();
 
-    await Future.wait(fetchTasks);
+    await Future.wait(imageFetchFutures);
   }
 
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-    setState(() {
-      _isLoading = false;
-      _hasError = true;
-    });
-  }
+  Future<String?> _fetchMemberImage(String employeeId, String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${widget.baseUrl}/api/profile/$employeeId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
 
-  Color _getStatusColor(String? status) {
-    switch (status) {
-      case 'Pending':
-        return Colors.orange;
-      case 'Processing':
-        return Colors.blue;
-      case 'Finished':
-        return Colors.green;
-      case 'Error':
-        return Colors.red;
-      default:
-        return Colors.black;
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['results']?['images']?.toString();
+      }
+    } catch (e) {
+      print('Error fetching image for $employeeId: $e');
     }
+    return null;
   }
 
-  Future<void> _downloadFile(String url, String originalName) async {
-    final Uri fileUri = Uri.parse(url);
+  Future<void> _downloadAll() async {
+    await _downloadDescription();
+    await _downloadFiles();
+  }
 
-    if (await canLaunchUrl(fileUri)) {
-      await launchUrl(fileUri, mode: LaunchMode.externalApplication);
-    } else {
+  Future<void> _downloadDescription() async {
+    if (_assignment == null) return;
+    String description = _assignment!['description'] ?? '';
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final path = '${directory.path}/description.txt';
+      final file = File(path);
+      await file.writeAsString(description);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not launch the file URL')),
+        SnackBar(content: Text('Description downloaded to $path')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to download description: $e')),
       );
     }
   }
 
-  Widget _buildMembersList() {
-    // Filter duplicates based on member names
-    var uniqueMembers = <Map<String, dynamic>>[];
-    var seenNames = <String>{};
+  Future<void> _downloadFiles() async {
+    if (_files == null || _files!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No files to download')),
+      );
+      return;
+    }
 
-    for (var member in _members) {
-      String fullName = '${member['name']} ${member['surname']}';
-      if (!seenNames.contains(fullName)) {
-        seenNames.add(fullName);
-        uniqueMembers.add(member);
+    bool allSuccess = true;
+
+    for (var file in _files!) {
+      String fileUrl = file['file_url']?.toString() ?? '';
+      String fileName = file['file_name']?.toString() ?? 'unknown_file';
+
+      if (fileUrl.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invalid URL for file: $fileName')),
+        );
+        allSuccess = false;
+        continue;
+      }
+
+      try {
+        final response = await http.get(Uri.parse(fileUrl));
+        if (response.statusCode == 200) {
+          final directory = await getApplicationDocumentsDirectory();
+          final path = '${directory.path}/$fileName';
+          final fileToSave = File(path);
+          await fileToSave.writeAsBytes(response.bodyBytes);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to download $fileName')),
+          );
+          allSuccess = false;
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error downloading $fileName: $e')),
+        );
+        allSuccess = false;
       }
     }
 
-    if (uniqueMembers.isEmpty) {
-      return const Text('No members assigned.', style: TextStyle(fontSize: 14));
+    if (allSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('All files downloaded successfully')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Some files failed to download')),
+      );
     }
+  }
 
-    return Wrap(
-      spacing: 12,
-      children: uniqueMembers.map((member) {
-        String imageUrl = member['image_url'] ?? 'https://via.placeholder.com/50';
-        String memberName = '${member['name']} ${member['surname']}';
-
-        return GestureDetector(
-          onTap: () {
-            showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  title: const Text('Selected Member'),
-                  content: Text('Name: $memberName'),
-                  actions: <Widget>[
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('Close'),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
-          child: Column(
-            children: [
-              CircleAvatar(
-                backgroundImage: NetworkImage(imageUrl),
-                radius: 30,
-              ),
-              // Remove the member name from being displayed by default
-              // The name will only show when clicked.
-            ],
+  PreferredSizeWidget _buildAppBar() {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+    return AppBar(
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+            fit: BoxFit.cover,
           ),
-        );
-      }).toList(),
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(30),
+            bottomRight: Radius.circular(30),
+          ),
+        ),
+      ),
+      centerTitle: true,
+      title: Text(
+        'Assignment Details',
+        style: TextStyle(
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic title color based on theme
+          fontSize: 22,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      leading: IconButton(
+        icon: Icon(
+          Icons.arrow_back_ios_new,
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic icon color based on theme
+          size: 20,
+        ),
+        onPressed: () {
+          Navigator.pop(context);
+        },
+      ),
+      toolbarHeight: 80,
+      elevation: 0,
+      backgroundColor: Colors.transparent,
     );
   }
 
-  Widget _buildFilesList() {
-    if (_files.isEmpty) {
-      return const Text('No files attached.', style: TextStyle(fontSize: 14));
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'processing':
+        return Colors.blue;
+      case 'finished':
+        return Colors.green;
+      default:
+        return Colors.grey;
     }
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _files.length,
-      itemBuilder: (context, index) {
-        final file = _files[index];
-        final fileUrl = file['url'] ?? '';
-        final originalName = file['name'] ?? 'Unnamed File';
-
-        return ListTile(
-          leading: const Icon(Icons.file_present, color: Colors.blue), // Modern file icon
-          title: Text(originalName, style: const TextStyle(fontSize: 14)),
-          trailing: IconButton(
-            icon: const Icon(Icons.download_rounded, color: Colors.green), // Modern download icon
-            onPressed: () => _downloadFile(fileUrl, originalName),
-          ),
-        );
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
+    if (_isLoading) {
+      return Scaffold(
+        appBar: _buildAppBar(),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_hasError || _assignment == null) {
+      return Scaffold(
+        appBar: _buildAppBar(),
+        body: const Center(child: Text('Failed to load meeting details')),
+      );
+    }
+
+    final status = _assignment!['s_name']?.toString() ?? 'Unknown';
+    final statusColor = _getStatusColor(status);
+    final title = _assignment!['title']?.toString() ?? 'No Title';
+    final description = _assignment!['description']?.toString() ?? '';
+
     return Scaffold(
-      appBar: AppBar(
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
-              fit: BoxFit.cover,
-            ),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(30),
-              bottomRight: Radius.circular(30),
-            ),
-          ),
-        ),
-        centerTitle: true,
-        title: Text(
-          'View Assignment',
-          style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic title color based on theme
-            fontSize: 22,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new,
-            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dynamic icon color based on theme
-            size: 20,
-          ),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        toolbarHeight: 80,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _hasError
-              ? const Center(child: Text('Failed to load assignment details'))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Title and Status
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.title, color: Colors.purple),
-                              const SizedBox(width: 8),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text('Title:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                                  Text(
-                                    _assignmentDetails!['title'] ?? 'No Title',
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              const Icon(Icons.access_time, color: Colors.black),
-                              const SizedBox(width: 4),
-                              const Text(
-                                'Status:',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _assignmentDetails!['s_name'] ?? 'Pending',
-                                style: TextStyle(
-                                  color: _getStatusColor(_assignmentDetails!['s_name']),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Members
-                      const Text('Member:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      _buildMembersList(),
-                      const SizedBox(height: 16),
-
-                      // Description and Download Button
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.folder_open, color: Colors.black),
-                              SizedBox(width: 8),
-                              Text('Description:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: () {}, // Add your download logic here
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                            ),
-                            icon: const Icon(Icons.cloud_download, color: Colors.white),
-                            label: const Text('Download', style: TextStyle(color: Colors.white)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _assignmentDetails!['description']?.isNotEmpty == true ? _assignmentDetails!['description'] : 'No Description',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    ],
-                  ),
+      appBar: _buildAppBar(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title and Status
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.title, color: Colors.blue),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Title:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        Text(title, style: const TextStyle(fontSize: 14)),
+                      ],
+                    ),
+                  ],
                 ),
+                Row(
+                  children: [
+                    const Icon(Icons.access_time, color: Colors.black),
+                    const SizedBox(width: 4),
+                    const Text(
+                      'Status: ',
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 14),
+                    ),
+                    Text(status, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 14)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Members
+            const Text(
+              'Members:',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            _members != null && _members!.isNotEmpty
+                ? Wrap(
+              spacing: 12,
+              children: _members!.map((member) {
+                String imageUrl = member['image_url']?.toString() ?? 'https://via.placeholder.com/50';
+                String memberName = member['name']?.toString() ?? 'Member';
+                return Column(
+                  children: [
+                    CircleAvatar(
+                      backgroundImage: NetworkImage(imageUrl),
+                      radius: 20,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      memberName,
+                      style: const TextStyle(fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                );
+              }).toList(),
+            )
+                : const Text('No members assigned'),
+            const SizedBox(height: 20),
+
+            // Description and Download Button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.folder_open, color: Colors.black),
+                    SizedBox(width: 8),
+                    Text(
+                      'Description:',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                ElevatedButton.icon(
+                  onPressed: _downloadAll,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  ),
+                  icon: const Icon(Icons.cloud_download, color: Colors.white),
+                  label: const Text('Download', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(description, style: const TextStyle(fontSize: 14)),
+            // Files
+            const SizedBox(height: 30),
+            const Text(
+              'Files:',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            _files != null && _files!.isNotEmpty
+                ? Column(
+              children: _files!.map((file) {
+                return ListTile(
+                  leading: const Icon(Icons.file_present, color: Colors.blue), // Modern file icon
+                  title: Text(file['file_name'] ?? 'File', style: const TextStyle(fontSize: 14)),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.download_rounded, color: Colors.green), // Modern download icon
+                    onPressed: _downloadFiles,
+                  ),
+                );
+              }).toList(),
+            )
+                : const Text('No files available'),
+          ],
+        ),
+      ),
     );
   }
 }
