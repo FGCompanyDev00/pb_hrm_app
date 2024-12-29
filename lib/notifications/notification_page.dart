@@ -505,9 +505,7 @@ class _NotificationPageState extends State<NotificationPage> {
                   vertical: screenSize.height * 0.010,
                 ),
                 decoration: BoxDecoration(
-                  color: _isMeetingSelected
-                      ? (isDarkMode ? Colors.amber.shade700 : Colors.amber)
-                      : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
+                  color: _isMeetingSelected ? (isDarkMode ? Colors.amber.shade700 : Colors.amber) : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -519,17 +517,13 @@ class _NotificationPageState extends State<NotificationPage> {
                     Icon(
                       Icons.meeting_room,
                       size: screenSize.width * 0.07,
-                      color: _isMeetingSelected
-                          ? Colors.white
-                          : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                      color: _isMeetingSelected ? Colors.white : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Meeting',
                       style: TextStyle(
-                        color: _isMeetingSelected
-                            ? Colors.white
-                            : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                        color: _isMeetingSelected ? Colors.white : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -554,9 +548,7 @@ class _NotificationPageState extends State<NotificationPage> {
                   vertical: screenSize.height * 0.010,
                 ),
                 decoration: BoxDecoration(
-                  color: !_isMeetingSelected
-                      ? (isDarkMode ? Colors.amber.shade700 : Colors.amber)
-                      : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
+                  color: !_isMeetingSelected ? (isDarkMode ? Colors.amber.shade700 : Colors.amber) : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(20.0),
                     bottomRight: Radius.circular(20.0),
@@ -569,17 +561,13 @@ class _NotificationPageState extends State<NotificationPage> {
                       'assets/pending.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: !_isMeetingSelected
-                          ? Colors.white
-                          : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                      color: !_isMeetingSelected ? Colors.white : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Approval',
                       style: TextStyle(
-                        color: !_isMeetingSelected
-                            ? Colors.white
-                            : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                        color: !_isMeetingSelected ? Colors.white : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),

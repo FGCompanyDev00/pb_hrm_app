@@ -148,12 +148,8 @@ class _ProcessingSectionState extends State<ProcessingSection> {
 
   Widget _buildProcessingTaskCard(Map<String, dynamic> meeting) {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final fromDate = meeting['from_date'] != null
-        ? DateTime.parse(meeting['from_date'])
-        : DateTime.now();
-    final toDate = meeting['to_date'] != null
-        ? DateTime.parse(meeting['to_date'])
-        : DateTime.now();
+    final fromDate = meeting['from_date'] != null ? DateTime.parse(meeting['from_date']) : DateTime.now();
+    final toDate = meeting['to_date'] != null ? DateTime.parse(meeting['to_date']) : DateTime.now();
     final now = DateTime.now();
     final daysRemaining = toDate.difference(now).inDays;
 
@@ -179,9 +175,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
       child: Container(
         margin: const EdgeInsets.only(top: 6.0, left: 8.0, right: 8.0, bottom: 16.0),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.grey[850]
-              : Colors.white,
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[850] : Colors.white,
           boxShadow: [
             BoxShadow(
               color: statusColor.withOpacity(0.4),
@@ -325,7 +319,10 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                       Text(
                         DateFormat('yyyy-MM-dd').format(fromDate),
                         // '${DateFormat('yyyy-MM-dd').format(fromDate)} ${meeting['start_time'] ?? ''}',
-                        style: TextStyle(fontSize: 12,  color: isDarkMode ? Colors.white : Colors.black,),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
                       ),
                     ],
                   ),
@@ -350,7 +347,10 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                       ),
                       Text(
                         DateFormat('yyyy-MM-dd').format(toDate),
-                        style: TextStyle(fontSize: 12,  color: isDarkMode ? Colors.white : Colors.black,),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
                       ),
                     ],
                   ),
@@ -426,15 +426,15 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                   decoration: BoxDecoration(
                     gradient: isDarkMode
                         ? const LinearGradient(
-                      colors: [Color(0xFF424242), Color(0xFF303030)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
+                            colors: [Color(0xFF424242), Color(0xFF303030)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
                         : const LinearGradient(
-                      colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                            colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.1),
@@ -448,15 +448,11 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
-                      value: _statusOptions.contains(_selectedStatus)
-                          ? _selectedStatus
-                          : null,
+                      value: _statusOptions.contains(_selectedStatus) ? _selectedStatus : null,
                       icon: Image.asset('assets/task.png', width: 24, height: 24),
                       iconSize: 28,
                       elevation: 16,
-                      dropdownColor: isDarkMode
-                          ? const Color(0xFF424242)
-                          : Colors.white,
+                      dropdownColor: isDarkMode ? const Color(0xFF424242) : Colors.white,
                       style: TextStyle(
                         color: isDarkMode ? Colors.white : Colors.black87,
                         fontWeight: FontWeight.bold,
@@ -467,14 +463,12 @@ class _ProcessingSectionState extends State<ProcessingSection> {
                           _selectedStatus = newValue!;
                         });
                       },
-                      items: _statusOptions
-                          .map<DropdownMenuItem<String>>((String value) {
+                      items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
                         return DropdownMenuItem<String>(
                           value: value,
                           child: Row(
                             children: [
-                              Icon(Icons.access_time,
-                                  color: _getStatusColor(value), size: 14),
+                              Icon(Icons.access_time, color: _getStatusColor(value), size: 14),
                               const SizedBox(width: 10),
                               Text(value),
                             ],
@@ -517,26 +511,24 @@ class _ProcessingSectionState extends State<ProcessingSection> {
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _hasError
-              ? Center(
-            child: Text(
-              'Failed to load meetings.',
-              style: TextStyle(
-                  color: isDarkMode ? Colors.white : Colors.black,
-                  fontSize: 16),
-            ),
-          )
-              : filteredMeetings.isEmpty
-              ? const Center(child: Text('No processing data to display'))
-              : RefreshIndicator(
-            onRefresh: _fetchMeetingData,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(8.0),
-              itemCount: filteredMeetings.length,
-              itemBuilder: (context, index) {
-                return _buildProcessingTaskCard(filteredMeetings[index]);
-              },
-            ),
-          ),
+                  ? Center(
+                      child: Text(
+                        'Failed to load meetings.',
+                        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black, fontSize: 16),
+                      ),
+                    )
+                  : filteredMeetings.isEmpty
+                      ? const Center(child: Text('No processing data to display'))
+                      : RefreshIndicator(
+                          onRefresh: _fetchMeetingData,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(8.0),
+                            itemCount: filteredMeetings.length,
+                            itemBuilder: (context, index) {
+                              return _buildProcessingTaskCard(filteredMeetings[index]);
+                            },
+                          ),
+                        ),
         ),
       ],
     );

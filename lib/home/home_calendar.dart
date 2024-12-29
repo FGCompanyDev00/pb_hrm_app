@@ -156,8 +156,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         _fetchLeaveRequests(),
         _fetchMeetingRoomBookings(),
         _fetchCarBookings(),
-        _fetchMinutesOfMeeting(),
+        // _fetchMinutesOfMeeting(),
         _fetchMeetingOutData(),
+        _fetchOutMeetingMembersData(),
+        _fetchCarBookingsInvite(),
+        _fetchMinutesOfMeetingInvite(),
       ]).whenComplete(() {
         _filterAndSearchEvents();
       });
@@ -419,8 +422,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
-          category: 'Add Meeting',
-          members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
+          category: 'Out Meeting',
+          members: item['guests'] != null ? List<Map<String, dynamic>>.from(item['guests']) : [],
         );
 
         // Normalize the start and end dates for event mapping
@@ -455,7 +458,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
       for (var item in results) {
         // Ensure necessary fields are present
-        if (item['from_date'] == null || item['to_date'] == null || item['start_time'] == null || item['end_time'] == null) {
+        if (item['fromdate'] == null || item['todate'] == null) {
           showSnackBar('Missing date or time fields in meeting data.');
           continue;
         }
@@ -465,34 +468,23 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         DateTime endDateTime;
         try {
           // Parse 'from_date' and 'start_time' separately and combine
-          DateTime fromDate = DateTime.parse(item['from_date']);
-          List<String> startTimeParts = item['start_time'] != "" ? item['start_time'].split(':') : ["00", "00"];
-          if (startTimeParts.length == 3) startTimeParts.removeLast();
-
-          if (startTimeParts.length != 2) {
-            throw const FormatException('Invalid start_time format');
-          }
+          DateTime fromDate = DateTime.parse(item['fromdate']);
           startDateTime = DateTime(
             fromDate.year,
             fromDate.month,
             fromDate.day,
-            int.parse(startTimeParts[0]),
-            int.parse(startTimeParts[1]),
+            fromDate.hour,
+            fromDate.minute,
           );
 
           // Parse 'to_date' and 'end_time' separately and combine
-          DateTime toDate = DateTime.parse(item['to_date']);
-          List<String> endTimeParts = item['end_time'] != "" ? item['end_time'].split(':') : ["00", "00"];
-          if (endTimeParts.length == 3) endTimeParts.removeLast();
-          if (endTimeParts.length != 2) {
-            throw const FormatException('Invalid end_time format');
-          }
+          DateTime toDate = DateTime.parse(item['todate']);
           endDateTime = DateTime(
             toDate.year,
             toDate.month,
             toDate.day,
-            int.parse(endTimeParts[0]),
-            int.parse(endTimeParts[1]),
+            toDate.hour,
+            toDate.minute,
           );
         } catch (e) {
           showSnackBar('Error parsing meeting dates or times: $e');
@@ -502,12 +494,12 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         // Handle possible nulls with default values
         final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
 
-        String status = item['s_name'] != null ? mapEventStatus(item['s_name'].toString()) : 'Pending';
+        String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
 
         if (status == 'Cancelled') continue;
 
         final event = Events(
-          title: item['title'] ?? 'Add Meeting',
+          title: item['title'] ?? 'Out Meeting',
           start: startDateTime,
           end: endDateTime,
           desc: item['description'] ?? '',
@@ -522,7 +514,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
-          category: 'Add Meeting',
+          category: 'Out Meeting',
           members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
         );
 
@@ -541,9 +533,107 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     return;
   }
 
+  // /// Fetches meeting room bookings from the API
+  // Future<void> _fetchMinutesOfMeeting() async {
+  //   final response = await getRequest('/api/work-tracking/meeting/assignment/my-metting');
+  //   if (response == null) return;
+
+  //   try {
+  //     final List<dynamic> results = json.decode(response.body)['results'] ?? [];
+  //     final minutesMeeting = List<Map<String, dynamic>>.from(results);
+
+  //     for (var item in minutesMeeting) {
+  //       // final DateTime? startDateTime = item['from_date'] != null ? DateTime.parse(item['from_date']) : null;
+  //       // final DateTime? endDateTime = item['to_date'] != null ? DateTime.parse(item['to_date']) : null;
+
+  //       String dateFrom = formatDateString(item['from_date'].toString());
+  //       String dateTo = formatDateString(item['to_date'].toString());
+  //       String startTime = item['start_time'] != "" ? item['start_time'].toString() : '00:00';
+  //       String endTime = item['end_time'] != "" ? item['end_time'].toString() : '23:59';
+
+  //       if (dateFrom.isEmpty || dateTo.isEmpty) {
+  //         showSnackBar('Missing from_date or to_date in minutes of meeting.');
+  //         continue;
+  //       }
+
+  //       DateTime? startDateTime;
+  //       DateTime? endDateTime;
+
+  //       try {
+  //         // Combine date and time properly
+  //         DateTime fromDate = DateTime.parse(dateFrom);
+  //         List<String> timeOutParts = startTime.split(':');
+  //         if (timeOutParts.length == 3) timeOutParts.removeLast();
+  //         if (timeOutParts.length != 2) {
+  //           throw const FormatException('Invalid time_out format');
+  //         }
+  //         startDateTime = DateTime(
+  //           fromDate.year,
+  //           fromDate.month,
+  //           fromDate.day,
+  //           int.parse(timeOutParts[0]),
+  //           int.parse(timeOutParts[1]),
+  //         );
+
+  //         DateTime inDate = DateTime.parse(dateTo);
+  //         List<String> timeInParts = endTime.split(':');
+  //         if (timeInParts.length == 3) timeInParts.removeLast();
+  //         if (timeInParts.length != 2) {
+  //           throw const FormatException('Invalid time_in format');
+  //         }
+  //         endDateTime = DateTime(
+  //           inDate.year,
+  //           inDate.month,
+  //           inDate.day,
+  //           int.parse(timeInParts[0]),
+  //           int.parse(timeInParts[1]),
+  //         );
+  //       } catch (e) {
+  //         showSnackBar('Error parsing car booking dates: $e');
+  //         continue;
+  //       }
+
+  //       final String uid = item['project_id']?.toString() ?? UniqueKey().toString();
+
+  //       String status = item['statuss'] != null
+  //           ? item['statuss'] == 1
+  //               ? 'Success'
+  //               : 'Pending'
+  //           : 'Pending';
+
+  //       if (status == 'Cancelled') continue;
+
+  //       Events? event;
+  //       if (mounted) {
+  //         event = Events(
+  //           title: item['project_name'] ?? 'Minutes  Of Meeting',
+  //           start: startDateTime,
+  //           end: endDateTime,
+  //           desc: item['descriptions'] ?? 'Minutes Of Meeting Pending',
+  //           status: status,
+  //           isMeeting: true,
+  //           category: 'Minutes Of Meeting',
+  //           uid: uid,
+  //           imgName: item['img_name'],
+  //           createdBy: item['member_name'],
+  //           createdAt: item['updated_at'],
+  //           // members: List<Map<String, dynamic>>.from(resultMembers),
+  //         );
+  //       }
+
+  //       for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+  //         addEvent(day, event!);
+  //       }
+  //     }
+  //   } catch (e) {
+  //     showSnackBar('Error parsing meeting room bookings: $e');
+  //   }
+  //   return;
+  // }
+
   /// Fetches meeting room bookings from the API
-  Future<void> _fetchMinutesOfMeeting() async {
-    final response = await getRequest('/api/work-tracking/meeting/assignment/my-metting');
+  Future<void> _fetchMinutesOfMeetingInvite() async {
+    final response = await getRequest('/api/office-administration/book_meeting_room/invites-meeting');
     if (response == null) return;
 
     try {
@@ -772,6 +862,100 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             imgName: item['img_name'],
             createdBy: item['requestor_name'],
             createdAt: item['updated_at'],
+          );
+        }
+
+        for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+          addEvent(day, event!);
+        }
+      }
+    } catch (e) {
+      showSnackBar('Error parsing booking car: $e');
+    }
+    return;
+  }
+
+  /// Fetches car bookings from the API
+  Future<void> _fetchCarBookingsInvite() async {
+    final response = await getRequest('/api/office-administration/car_permits/invites-car-member');
+    if (response == null) return;
+
+    try {
+      final List<dynamic> results = json.decode(response.body)['results'] ?? [];
+      final carBookings = List<Map<String, dynamic>>.from(results);
+
+      for (var item in carBookings) {
+        if (item['date_out'] == null || item['date_in'] == null) {
+          showSnackBar('Missing date_out or date_in in car booking.');
+          continue;
+        }
+
+        String dateOutStr = formatDateString(item['date_out'].toString());
+        String dateInStr = formatDateString(item['date_in'].toString());
+        String timeOutStr = item['time_out']?.toString() ?? '00:00';
+        String timeInStr = item['time_in']?.toString() ?? '23:59';
+
+        DateTime? startDateTime;
+        DateTime? endDateTime;
+
+        try {
+          // Combine date and time properly
+          DateTime outDate = DateTime.parse(dateOutStr);
+          List<String> timeOutParts = timeOutStr.split(':');
+          if (timeOutParts.length == 3) timeOutParts.removeLast();
+          if (timeOutParts.length != 2) {
+            throw const FormatException('Invalid time_out format');
+          }
+
+          endDateTime = DateTime(
+            outDate.year,
+            outDate.month,
+            outDate.day,
+            int.parse(timeOutParts[0]),
+            int.parse(timeOutParts[1]),
+          );
+
+          DateTime inDate = DateTime.parse(dateInStr);
+          List<String> timeInParts = timeInStr.split(':');
+          if (timeInParts.length == 3) timeInParts.removeLast();
+          if (timeInParts.length != 2) {
+            throw const FormatException('Invalid time_in format');
+          }
+          startDateTime = DateTime(
+            inDate.year,
+            inDate.month,
+            inDate.day,
+            int.parse(timeInParts[0]),
+            int.parse(timeInParts[1]),
+          );
+        } catch (e) {
+          showSnackBar('Error parsing car booking dates: $e');
+          continue;
+        }
+
+        final String uid = 'car_${item['uid']?.toString() ?? UniqueKey().toString()}';
+
+        String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
+
+        if (status == 'Cancelled') continue;
+
+        Events? event;
+
+        if (mounted) {
+          event = Events(
+            title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
+            start: startDateTime,
+            end: endDateTime,
+            desc: item['place'] ?? 'Car Booking Pending',
+            status: status,
+            isMeeting: false,
+            category: 'Booking Car',
+            uid: uid,
+            location: item['place'] ?? '',
+            imgName: item['img_name'],
+            createdBy: item['requestor_name'],
+            createdAt: item['updated_at'],
+            members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
           );
         }
 
@@ -1131,22 +1315,22 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                   height: MediaQuery.of(context).size.height * 0.50,
                   child: eventsForDay.isEmpty
                       ? Center(
-                    child: Text(
-                      AppLocalizations.of(context)!.noEventsForThisDay,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  )
+                          child: Text(
+                            AppLocalizations.of(context)!.noEventsForThisDay,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        )
                       : CalendarDaySwitchView(
-                    selectedDay: _selectedDay,
-                    passDefaultCurrentHour: 0,
-                    passDefaultEndHour: 25,
-                    eventsCalendar: eventsForDay,
-                  ),
+                          selectedDay: _selectedDay,
+                          passDefaultCurrentHour: 0,
+                          passDefaultEndHour: 25,
+                          eventsCalendar: eventsForDay,
+                        ),
                 ),
               )
             ],

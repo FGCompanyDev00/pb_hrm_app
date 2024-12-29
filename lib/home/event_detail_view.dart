@@ -399,7 +399,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     List<Widget> membersList = [];
 
     for (var v in members) {
-      membersList.add(_avatarUser(v['img_name'], v['status']));
+      membersList.add(_avatarUser(v['img_name'], v['status'] ?? ''));
     }
 
     return Padding(
@@ -441,7 +441,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     );
   }
 
-  Widget _avatarUser(String link, String status) {
+  Widget _avatarUser(String link, String? status) {
     Color statusColor;
 
     switch (status) {

@@ -304,6 +304,8 @@ class CalendarDaySwitchView extends HookWidget {
                     eventCategory = AppLocalizations.of(context)!.bookingCar;
                   case 'Minutes Of Meeting':
                     eventCategory = AppLocalizations.of(context)!.minutesOfMeeting;
+                  case 'Out Meeting':
+                    eventCategory = AppLocalizations.of(context)!.outMeeting;
                   default:
                     eventCategory = AppLocalizations.of(context)!.other;
                 }
@@ -675,19 +677,19 @@ class CalendarDaySwitchView extends HookWidget {
     );
   }
 
-  Widget _avatarUserList(String link, name) {
+  Widget _avatarUserList(String? link, name) {
     return Padding(
       padding: const EdgeInsets.all(10),
       child: Row(
         children: [
           CircleAvatar(
             radius: 30,
-            backgroundImage: NetworkImage(link),
+            backgroundImage: NetworkImage(link ?? ''),
           ),
           const SizedBox(
             width: 20,
           ),
-          Text(name),
+          Text(name ?? ''),
         ],
       ),
     );

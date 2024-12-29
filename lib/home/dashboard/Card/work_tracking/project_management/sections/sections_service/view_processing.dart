@@ -72,7 +72,9 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
         setState(() {
           _meeting = (data['result'] is List && data['result'].isNotEmpty)
               ? data['result'][0] as Map<String, dynamic>
-              : (data['result'] is Map) ? data['result'] as Map<String, dynamic> : null;
+              : (data['result'] is Map)
+                  ? data['result'] as Map<String, dynamic>
+                  : null;
           _files = _parseFiles(data['files']);
           _members = _parseMembers(data['members']);
           _isLoading = false;
@@ -307,12 +309,8 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
     final status = _meeting!['s_name']?.toString() ?? 'Unknown';
     final statusColor = _getStatusColor(status);
     final title = _meeting!['title']?.toString() ?? 'No Title';
-    final fromDate = _meeting!['from_date'] != null
-        ? DateTime.tryParse(_meeting!['from_date'].toString()) ?? DateTime.now()
-        : DateTime.now();
-    final toDate = _meeting!['to_date'] != null
-        ? DateTime.tryParse(_meeting!['to_date'].toString()) ?? DateTime.now()
-        : DateTime.now();
+    final fromDate = _meeting!['from_date'] != null ? DateTime.tryParse(_meeting!['from_date'].toString()) ?? DateTime.now() : DateTime.now();
+    final toDate = _meeting!['to_date'] != null ? DateTime.tryParse(_meeting!['to_date'].toString()) ?? DateTime.now() : DateTime.now();
     final startTime = _meeting!['start_time']?.toString() ?? '';
     final endTime = _meeting!['end_time']?.toString() ?? '';
     final description = _meeting!['description']?.toString() ?? '';
@@ -390,26 +388,26 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
             const SizedBox(height: 10),
             _members != null && _members!.isNotEmpty
                 ? Wrap(
-              spacing: 12,
-              children: _members!.map((member) {
-                String imageUrl = member['image_url']?.toString() ?? 'https://via.placeholder.com/50';
-                String memberName = member['name']?.toString() ?? 'Member';
-                return Column(
-                  children: [
-                    CircleAvatar(
-                      backgroundImage: NetworkImage(imageUrl),
-                      radius: 20,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      memberName,
-                      style: const TextStyle(fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                );
-              }).toList(),
-            )
+                    spacing: 12,
+                    children: _members!.map((member) {
+                      String imageUrl = member['image_url']?.toString() ?? 'https://via.placeholder.com/50';
+                      String memberName = member['name']?.toString() ?? 'Member';
+                      return Column(
+                        children: [
+                          CircleAvatar(
+                            backgroundImage: NetworkImage(imageUrl),
+                            radius: 20,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            memberName,
+                            style: const TextStyle(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  )
                 : const Text('No members assigned'),
             const SizedBox(height: 20),
 
@@ -450,17 +448,17 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
             const SizedBox(height: 10),
             _files != null && _files!.isNotEmpty
                 ? Column(
-              children: _files!.map((file) {
-                return ListTile(
-                  leading: const Icon(Icons.file_present, color: Colors.blue), // Modern file icon
-                  title: Text(file['file_name'] ?? 'File', style: const TextStyle(fontSize: 14)),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.download_rounded, color: Colors.green), // Modern download icon
-                    onPressed: _downloadFiles,
-                  ),
-                );
-              }).toList(),
-            )
+                    children: _files!.map((file) {
+                      return ListTile(
+                        leading: const Icon(Icons.file_present, color: Colors.blue), // Modern file icon
+                        title: Text(file['file_name'] ?? 'File', style: const TextStyle(fontSize: 14)),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.download_rounded, color: Colors.green), // Modern download icon
+                          onPressed: _downloadFiles,
+                        ),
+                      );
+                    }).toList(),
+                  )
                 : const Text('No files available'),
           ],
         ),
