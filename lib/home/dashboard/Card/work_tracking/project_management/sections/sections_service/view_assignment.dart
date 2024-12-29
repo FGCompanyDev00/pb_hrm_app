@@ -281,99 +281,91 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _hasError
-          ? const Center(child: Text('Failed to load assignment details'))
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title and Status
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.title, color: Colors.purple),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Title:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                        Text(
-                          _assignmentDetails!['title'] ?? 'No Title',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    const Icon(Icons.access_time, color: Colors.black),
-                    const SizedBox(width: 4),
-                    const Text(
-                      'Status:',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _assignmentDetails!['s_name'] ?? 'Pending',
-                      style: TextStyle(
-                        color: _getStatusColor(_assignmentDetails!['s_name']),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+              ? const Center(child: Text('Failed to load assignment details'))
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title and Status
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.title, color: Colors.purple),
+                              const SizedBox(width: 8),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Title:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                                  Text(
+                                    _assignmentDetails!['title'] ?? 'No Title',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              const Icon(Icons.access_time, color: Colors.black),
+                              const SizedBox(width: 4),
+                              const Text(
+                                'Status:',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _assignmentDetails!['s_name'] ?? 'Pending',
+                                style: TextStyle(
+                                  color: _getStatusColor(_assignmentDetails!['s_name']),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-            // Members
-            const Text('Member:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            _buildMembersList(),
-            const SizedBox(height: 16),
+                      // Members
+                      const Text('Member:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      _buildMembersList(),
+                      const SizedBox(height: 16),
 
-            // Description and Download Button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.folder_open, color: Colors.black),
-                    SizedBox(width: 8),
-                    Text('Description:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {}, // Add your download logic here
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      // Description and Download Button
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.folder_open, color: Colors.black),
+                              SizedBox(width: 8),
+                              Text('Description:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () {}, // Add your download logic here
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                            ),
+                            icon: const Icon(Icons.cloud_download, color: Colors.white),
+                            label: const Text('Download', style: TextStyle(color: Colors.white)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _assignmentDetails!['description']?.isNotEmpty == true ? _assignmentDetails!['description'] : 'No Description',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
                   ),
-                  icon: const Icon(Icons.cloud_download, color: Colors.white),
-                  label: const Text('Download', style: TextStyle(color: Colors.white)),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _assignmentDetails!['description']?.isNotEmpty == true
-                  ? _assignmentDetails!['description']
-                  : 'No Description',
-              style: const TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-
-            // Files
-            const Text('Files:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            _buildFilesList(),
-          ],
-        ),
-      ),
     );
   }
 }

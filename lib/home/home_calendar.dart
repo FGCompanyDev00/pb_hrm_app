@@ -156,7 +156,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         _fetchLeaveRequests(),
         _fetchMeetingRoomBookings(),
         _fetchCarBookings(),
-        // _fetchMinutesOfMeeting(),
+        _fetchMinutesOfMeeting(),
         _fetchMeetingOutData(),
         _fetchOutMeetingMembersData(),
         _fetchCarBookingsInvite(),
@@ -534,102 +534,102 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   }
 
   // /// Fetches meeting room bookings from the API
-  // Future<void> _fetchMinutesOfMeeting() async {
-  //   final response = await getRequest('/api/work-tracking/meeting/assignment/my-metting');
-  //   if (response == null) return;
+  Future<void> _fetchMinutesOfMeeting() async {
+    final response = await getRequest('/api/work-tracking/meeting/assignment/my-metting');
+    if (response == null) return;
 
-  //   try {
-  //     final List<dynamic> results = json.decode(response.body)['results'] ?? [];
-  //     final minutesMeeting = List<Map<String, dynamic>>.from(results);
+    try {
+      final List<dynamic> results = json.decode(response.body)['results'] ?? [];
+      final minutesMeeting = List<Map<String, dynamic>>.from(results);
 
-  //     for (var item in minutesMeeting) {
-  //       // final DateTime? startDateTime = item['from_date'] != null ? DateTime.parse(item['from_date']) : null;
-  //       // final DateTime? endDateTime = item['to_date'] != null ? DateTime.parse(item['to_date']) : null;
+      for (var item in minutesMeeting) {
+        // final DateTime? startDateTime = item['from_date'] != null ? DateTime.parse(item['from_date']) : null;
+        // final DateTime? endDateTime = item['to_date'] != null ? DateTime.parse(item['to_date']) : null;
 
-  //       String dateFrom = formatDateString(item['from_date'].toString());
-  //       String dateTo = formatDateString(item['to_date'].toString());
-  //       String startTime = item['start_time'] != "" ? item['start_time'].toString() : '00:00';
-  //       String endTime = item['end_time'] != "" ? item['end_time'].toString() : '23:59';
+        String dateFrom = formatDateString(item['from_date'].toString());
+        String dateTo = formatDateString(item['to_date'].toString());
+        String startTime = item['start_time'] != "" ? item['start_time'].toString() : '00:00';
+        String endTime = item['end_time'] != "" ? item['end_time'].toString() : '23:59';
 
-  //       if (dateFrom.isEmpty || dateTo.isEmpty) {
-  //         showSnackBar('Missing from_date or to_date in minutes of meeting.');
-  //         continue;
-  //       }
+        if (dateFrom.isEmpty || dateTo.isEmpty) {
+          showSnackBar('Missing from_date or to_date in minutes of meeting.');
+          continue;
+        }
 
-  //       DateTime? startDateTime;
-  //       DateTime? endDateTime;
+        DateTime? startDateTime;
+        DateTime? endDateTime;
 
-  //       try {
-  //         // Combine date and time properly
-  //         DateTime fromDate = DateTime.parse(dateFrom);
-  //         List<String> timeOutParts = startTime.split(':');
-  //         if (timeOutParts.length == 3) timeOutParts.removeLast();
-  //         if (timeOutParts.length != 2) {
-  //           throw const FormatException('Invalid time_out format');
-  //         }
-  //         startDateTime = DateTime(
-  //           fromDate.year,
-  //           fromDate.month,
-  //           fromDate.day,
-  //           int.parse(timeOutParts[0]),
-  //           int.parse(timeOutParts[1]),
-  //         );
+        try {
+          // Combine date and time properly
+          DateTime fromDate = DateTime.parse(dateFrom);
+          List<String> timeOutParts = startTime.split(':');
+          if (timeOutParts.length == 3) timeOutParts.removeLast();
+          if (timeOutParts.length != 2) {
+            throw const FormatException('Invalid time_out format');
+          }
+          startDateTime = DateTime(
+            fromDate.year,
+            fromDate.month,
+            fromDate.day,
+            int.parse(timeOutParts[0]),
+            int.parse(timeOutParts[1]),
+          );
 
-  //         DateTime inDate = DateTime.parse(dateTo);
-  //         List<String> timeInParts = endTime.split(':');
-  //         if (timeInParts.length == 3) timeInParts.removeLast();
-  //         if (timeInParts.length != 2) {
-  //           throw const FormatException('Invalid time_in format');
-  //         }
-  //         endDateTime = DateTime(
-  //           inDate.year,
-  //           inDate.month,
-  //           inDate.day,
-  //           int.parse(timeInParts[0]),
-  //           int.parse(timeInParts[1]),
-  //         );
-  //       } catch (e) {
-  //         showSnackBar('Error parsing car booking dates: $e');
-  //         continue;
-  //       }
+          DateTime inDate = DateTime.parse(dateTo);
+          List<String> timeInParts = endTime.split(':');
+          if (timeInParts.length == 3) timeInParts.removeLast();
+          if (timeInParts.length != 2) {
+            throw const FormatException('Invalid time_in format');
+          }
+          endDateTime = DateTime(
+            inDate.year,
+            inDate.month,
+            inDate.day,
+            int.parse(timeInParts[0]),
+            int.parse(timeInParts[1]),
+          );
+        } catch (e) {
+          showSnackBar('Error parsing car booking dates: $e');
+          continue;
+        }
 
-  //       final String uid = item['project_id']?.toString() ?? UniqueKey().toString();
+        final String uid = item['project_id']?.toString() ?? UniqueKey().toString();
 
-  //       String status = item['statuss'] != null
-  //           ? item['statuss'] == 1
-  //               ? 'Success'
-  //               : 'Pending'
-  //           : 'Pending';
+        String status = item['statuss'] != null
+            ? item['statuss'] == 1
+                ? 'Success'
+                : 'Pending'
+            : 'Pending';
 
-  //       if (status == 'Cancelled') continue;
+        if (status == 'Cancelled') continue;
 
-  //       Events? event;
-  //       if (mounted) {
-  //         event = Events(
-  //           title: item['project_name'] ?? 'Minutes  Of Meeting',
-  //           start: startDateTime,
-  //           end: endDateTime,
-  //           desc: item['descriptions'] ?? 'Minutes Of Meeting Pending',
-  //           status: status,
-  //           isMeeting: true,
-  //           category: 'Minutes Of Meeting',
-  //           uid: uid,
-  //           imgName: item['img_name'],
-  //           createdBy: item['member_name'],
-  //           createdAt: item['updated_at'],
-  //           // members: List<Map<String, dynamic>>.from(resultMembers),
-  //         );
-  //       }
+        Events? event;
+        if (mounted) {
+          event = Events(
+            title: item['project_name'] ?? 'Minutes  Of Meeting',
+            start: startDateTime,
+            end: endDateTime,
+            desc: item['descriptions'] ?? 'Minutes Of Meeting Pending',
+            status: status,
+            isMeeting: true,
+            category: 'Minutes Of Meeting',
+            uid: uid,
+            imgName: item['img_name'],
+            createdBy: item['member_name'],
+            createdAt: item['updated_at'],
+            // members: List<Map<String, dynamic>>.from(resultMembers),
+          );
+        }
 
-  //       for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
-  //         addEvent(day, event!);
-  //       }
-  //     }
-  //   } catch (e) {
-  //     showSnackBar('Error parsing meeting room bookings: $e');
-  //   }
-  //   return;
-  // }
+        for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+          addEvent(day, event!);
+        }
+      }
+    } catch (e) {
+      showSnackBar('Error parsing meeting room bookings: $e');
+    }
+    return;
+  }
 
   /// Fetches meeting room bookings from the API
   Future<void> _fetchMinutesOfMeetingInvite() async {

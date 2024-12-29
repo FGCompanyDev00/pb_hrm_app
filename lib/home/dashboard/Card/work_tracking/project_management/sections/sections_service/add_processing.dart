@@ -262,7 +262,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       request.fields['descriptions'] = description;
       request.fields['status_id'] = _statusMap[status]!;
       request.fields['fromdate'] = fromDateString; // e.g., "2024-11-19 08:00:00"
-      request.fields['todate'] = toDateString;     // e.g., "2024-11-19 12:00:00"
+      request.fields['todate'] = toDateString; // e.g., "2024-11-19 12:00:00"
 
       // Default notification = "5"
       request.fields['notification'] = '5';
@@ -275,9 +275,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       // request.fields['location'] = '';
 
       // Convert members list to JSON
-      List<Map<String, String>> membersDetails = selectedMembers
-          .map((member) => {"employee_id": member['employee_id'].toString()})
-          .toList();
+      List<Map<String, String>> membersDetails = selectedMembers.map((member) => {"employee_id": member['employee_id'].toString()}).toList();
       request.fields['membersDetails'] = jsonEncode(membersDetails);
 
       // If there's an image
@@ -409,11 +407,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
         Positioned(
           left: i * 24.0,
           child: CircleAvatar(
-            backgroundImage: selectedMembers[i]['image_url'] != null &&
-                selectedMembers[i]['image_url'].isNotEmpty
-                ? NetworkImage(selectedMembers[i]['image_url'])
-                : const AssetImage('assets/default_avatar.png')
-            as ImageProvider,
+            backgroundImage: selectedMembers[i]['image_url'] != null && selectedMembers[i]['image_url'].isNotEmpty ? NetworkImage(selectedMembers[i]['image_url']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
             radius: 18,
             backgroundColor: Colors.white,
             child: Container(
@@ -481,7 +475,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
     required VoidCallback onTap,
   }) {
     final displayText = (selectedDateTime == null)
-        ? 'dd-MM-yyyy'  // Default placeholder text
+        ? 'dd-MM-yyyy' // Default placeholder text
         : DateFormat('dd/MM/yyyy HH:mm').format(selectedDateTime);
 
     return GestureDetector(
@@ -491,7 +485,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
           decoration: InputDecoration(
             labelText: label,
             hintText: 'Select date & time',
-            hintStyle: const TextStyle(color: Colors.grey),  // Grey color for hint
+            hintStyle: const TextStyle(color: Colors.grey), // Grey color for hint
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12.0),
             ),
@@ -501,12 +495,12 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
                 'assets/calendar-icon.png',
                 width: 22,
                 height: 22,
-                color: Colors.grey,  // Icon in grey
+                color: Colors.grey, // Icon in grey
               ),
             ),
           ),
           style: TextStyle(
-            color: selectedDateTime == null ? Colors.grey : Colors.black,  // Grey if no date selected
+            color: selectedDateTime == null ? Colors.grey : Colors.black, // Grey if no date selected
           ),
           controller: TextEditingController(text: displayText),
           validator: (value) {
@@ -527,7 +521,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
 
     final Size screenSize = MediaQuery.of(context).size;
     double horizontalPadding = screenSize.width * 0.04; // 4% of screen width
-    double verticalPadding = screenSize.height * 0.05;  // 5% of screen height
+    double verticalPadding = screenSize.height * 0.05; // 5% of screen height
 
     // Ensure we have at least 16.0 px horizontally on very narrow screens
     horizontalPadding = horizontalPadding < 16.0 ? 16.0 : horizontalPadding;
@@ -552,9 +546,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
         title: Text(
           'Add Processing Item',
           style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white
-                : Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
             fontSize: 22,
             fontWeight: FontWeight.w500,
           ),
@@ -562,9 +554,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white
-                : Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
             size: 20,
           ),
           onPressed: () {
@@ -578,308 +568,293 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: horizontalPadding,
-            vertical: 18.0,
-          ),
-          child: Form(
-            key: _formKey,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // + Add Button at Top Right
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: _buildAddButton(160),
-                    ),
-                    const SizedBox(height: 6),
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: 18.0,
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // + Add Button at Top Right
+                          Align(
+                            alignment: Alignment.topRight,
+                            child: _buildAddButton(160),
+                          ),
+                          const SizedBox(height: 6),
 
-                    // Title
-                    const Text(
-                      'Title',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      decoration: const InputDecoration(
-                        hintText: 'Enter title',
-                        border: OutlineInputBorder(
-                          borderRadius:
-                          BorderRadius.all(Radius.circular(8.0)),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Title is required.';
-                        }
-                        return null;
-                      },
-                      onChanged: (value) {
-                        setState(() {
-                          title = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Row: Status Dropdown + Upload Image Button
-                    Row(
-                      children: [
-                        // Status
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Status',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                          // Title
+                          const Text(
+                            'Title',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            decoration: const InputDecoration(
+                              hintText: 'Enter title',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.all(Radius.circular(8.0)),
                               ),
-                              const SizedBox(height: 6),
-                              DropdownButtonFormField<String>(
-                                value: status, // "Processing" by default
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(8.0),
-                                    ),
-                                  ),
-                                ),
-                                items: ['Processing', 'Pending', 'Finished', 'Error']
-                                    .map<DropdownMenuItem<String>>(
-                                      (String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.circle,
-                                            color: _getStatusColor(value),
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(value),
-                                        ],
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Title is required.';
+                              }
+                              return null;
+                            },
+                            onChanged: (value) {
+                              setState(() {
+                                title = value;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 18),
+
+                          // Row: Status Dropdown + Upload Image Button
+                          Row(
+                            children: [
+                              // Status
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Status',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                    );
-                                  },
-                                ).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    status = newValue!;
-                                    statusId = _statusMap[status]!;
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Status is required.';
-                                  }
-                                  return null;
-                                },
+                                    ),
+                                    const SizedBox(height: 6),
+                                    DropdownButtonFormField<String>(
+                                      value: status, // "Processing" by default
+                                      decoration: const InputDecoration(
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.all(
+                                            Radius.circular(8.0),
+                                          ),
+                                        ),
+                                      ),
+                                      items: ['Processing', 'Pending', 'Finished', 'Error'].map<DropdownMenuItem<String>>(
+                                        (String value) {
+                                          return DropdownMenuItem<String>(
+                                            value: value,
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.circle,
+                                                  color: _getStatusColor(value),
+                                                  size: 16,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(value),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ).toList(),
+                                      onChanged: (String? newValue) {
+                                        setState(() {
+                                          status = newValue!;
+                                          statusId = _statusMap[status]!;
+                                        });
+                                      },
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Status is required.';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+
+                              // Upload Image
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 25),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [Colors.green, Colors.lightGreen],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(16.0),
+                                      ),
+                                      child: ElevatedButton(
+                                        onPressed: _isLoading ? null : _pickImage,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          shadowColor: Colors.transparent,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8.0),
+                                          ),
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 17.0,
+                                            horizontal: MediaQuery.of(context).size.width < 400 ? 40 : 53,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Upload Image',
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    if (_selectedImage != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8.0),
+                                        child: Text(
+                                          'Selected: ${_selectedImage!.path.split('/').last}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(width: 10),
+                          const SizedBox(height: 18),
 
-                        // Upload Image
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          // Row: Start DateTime + End DateTime
+                          Row(
                             children: [
-                              const SizedBox(height: 25),
-                              Container(
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Colors.green, Colors.lightGreen],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(16.0),
+                              // Start
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Start Date & Time',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    _buildDateTimeInput(
+                                      label: '',
+                                      selectedDateTime: fromDate,
+                                      onTap: _selectFromDateTime,
+                                    ),
+                                  ],
                                 ),
-                                child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _pickImage,
+                              ),
+                              const SizedBox(width: 10),
+
+                              // End
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'End Date & Time',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    _buildDateTimeInput(
+                                      label: '',
+                                      selectedDateTime: toDate,
+                                      onTap: _selectToDateTime,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 18),
+
+                          // Row: Add People Button + Avatars
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              SizedBox(
+                                width: constraints.maxWidth * 0.45,
+                                child: ElevatedButton.icon(
+                                  onPressed: _isLoading ? null : _navigateToSelectMembers,
+                                  icon: const Icon(Icons.person_add, color: Colors.black),
+                                  label: const Text(
+                                    'Add People',
+                                    style: TextStyle(color: Colors.black),
+                                  ),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
+                                    backgroundColor: Colors.green,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12.0,
+                                      vertical: 10.0,
+                                    ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8.0),
+                                      borderRadius: BorderRadius.circular(16.0),
                                     ),
-                                    padding: EdgeInsets.symmetric(
-                                      vertical: 17.0,
-                                      horizontal: MediaQuery.of(context)
-                                          .size
-                                          .width <
-                                          400
-                                          ? 40
-                                          : 53,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Upload Image',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: MediaQuery.of(context)
-                                          .size
-                                          .width <
-                                          400
-                                          ? 12
-                                          : 14,
-                                    ),
+                                    elevation: 3,
                                   ),
                                 ),
                               ),
-                              if (_selectedImage != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    'Selected: ${_selectedImage!.path.split('/').last}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Row: Start DateTime + End DateTime
-                    Row(
-                      children: [
-                        // Start
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Start Date & Time',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              _buildDateTimeInput(
-                                label: '',
-                                selectedDateTime: fromDate,
-                                onTap: _selectFromDateTime,
+                              SizedBox(
+                                width: constraints.maxWidth * 0.5 - 8,
+                                child: _buildSelectedMembers(),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(width: 10),
+                          const SizedBox(height: 18),
 
-                        // End
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'End Date & Time',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              _buildDateTimeInput(
-                                label: '',
-                                selectedDateTime: toDate,
-                                onTap: _selectToDateTime,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Row: Add People Button + Avatars
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        SizedBox(
-                          width: constraints.maxWidth * 0.45,
-                          child: ElevatedButton.icon(
-                            onPressed: _isLoading
-                                ? null
-                                : _navigateToSelectMembers,
-                            icon: const Icon(Icons.person_add, color: Colors.black),
-                            label: const Text(
-                              'Add People',
-                              style: TextStyle(color: Colors.black),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12.0,
-                                vertical: 10.0,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16.0),
-                              ),
-                              elevation: 3,
+                          // Description
+                          const Text(
+                            'Description',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                        SizedBox(
-                          width: constraints.maxWidth * 0.5 - 8,
-                          child: _buildSelectedMembers(),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Description
-                    const Text(
-                      'Description',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      decoration: const InputDecoration(
-                        hintText: 'Enter description',
-                        border: OutlineInputBorder(
-                          borderRadius:
-                          BorderRadius.all(Radius.circular(8.0)),
-                        ),
-                      ),
-                      maxLines: 7,
-                      onChanged: (value) {
-                        setState(() {
-                          description = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                );
-              },
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            decoration: const InputDecoration(
+                              hintText: 'Enter description',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.all(Radius.circular(8.0)),
+                              ),
+                            ),
+                            maxLines: 7,
+                            onChanged: (value) {
+                              setState(() {
+                                description = value;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }
