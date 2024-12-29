@@ -304,8 +304,6 @@ class CalendarDaySwitchView extends HookWidget {
                     eventCategory = AppLocalizations.of(context)!.bookingCar;
                   case 'Minutes Of Meeting':
                     eventCategory = AppLocalizations.of(context)!.minutesOfMeeting;
-                  case 'Out Meeting':
-                    eventCategory = AppLocalizations.of(context)!.outMeeting;
                   default:
                     eventCategory = AppLocalizations.of(context)!.other;
                 }
