@@ -1,5 +1,3 @@
-// view_project.dart
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -42,7 +40,6 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
       if (kDebugMode) {
         print('No token found.');
       }
-      // You might want to navigate to login or show an error message
     }
   }
 
@@ -59,7 +56,6 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
         'https://demo-application-api.flexiflows.co/api/work-tracking/proj/find-Member-By-ProjectId/$projectId';
 
     try {
-      // Set up headers with Authorization token
       final headers = {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -78,7 +74,6 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
           print('Members Data: $data');
         }
 
-        // Check if data is not empty
         if (data.isNotEmpty) {
           for (var member in data) {
             final employeeId = member['employee_id'].toString();
@@ -95,7 +90,6 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
             } else if (member['surname'] != null) {
               name = member['surname'];
             } else if (member['created_by'] != null) {
-              // To avoid duplication, append employee_id or member_id
               name = '${member['created_by']} (${member['employee_id']})';
             } else {
               name = 'Unknown (${member['employee_id']})';
@@ -104,7 +98,7 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
             setState(() {
               projectMembers.add({
                 'name': name,
-                'profileImage': profileImageUrl, // Use consistent key
+                'profileImage': profileImageUrl,
               });
             });
           }
@@ -113,28 +107,23 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
         if (kDebugMode) {
           print('Failed to load project members: ${response.statusCode}');
         }
-        // Optionally, handle different status codes here
       }
     } catch (e) {
       if (kDebugMode) {
         print('Failed to load project members: $e');
       }
-      // Optionally, show a user-friendly error message
     }
   }
 
-  // Fetching profile images for each member with Authorization headers
   Future<String> _fetchMemberProfileImage(
       String employeeId, Map<String, String> headers) async {
-    final url =
-        'https://demo-application-api.flexiflows.co/api/profile/$employeeId';
+    final url = 'https://demo-application-api.flexiflows.co/api/profile/$employeeId';
     try {
       final response = await http.get(Uri.parse(url), headers: headers);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        // Adjust according to actual API response structure
         return data['results']?['images'] ??
-            'https://via.placeholder.com/150'; // Use null-aware operator
+            'https://via.placeholder.com/150';
       } else {
         if (kDebugMode) {
           print('Failed to load profile image: ${response.statusCode}');
@@ -173,7 +162,9 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
           flexibleSpace: Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+                image: AssetImage(
+                  isDarkMode ? 'assets/darkbg.png' : 'assets/background.png',
+                ),
                 fit: BoxFit.cover,
               ),
               borderRadius: const BorderRadius.only(
@@ -186,102 +177,209 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
       ),
 
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(12.0), // Reduced padding
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20), // Reduced height
-              _buildTextField(
-                  'Created by', widget.project['create_project_by']),
-              const SizedBox(height: 12),
-              _buildTextField('Name of Project', widget.project['p_name']),
-              const SizedBox(height: 12),
-              _buildTextField('Department', widget.project['d_name']),
-              const SizedBox(height: 12),
-              _buildTextField('Branch', widget.project['b_name']),
-              const SizedBox(height: 12),
-              _buildTextField('Status', widget.project['s_name']),
-              const SizedBox(height: 12),
-              _buildDateField('Deadline', widget.project['dl']),
-              const SizedBox(height: 12),
-              _buildDateField('Extended Deadline', widget.project['extend']),
-              const SizedBox(height: 20),
-              const Text(
-                'Progress',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              _buildProgressBar(widget.project['precent']),
-              const SizedBox(height: 25),
-              const Text(
-                'Project Members',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              projectMembers.isEmpty
-                  ? const Text(
-                'No project members found',
-                style:
-                TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
-              )
-                  : _buildProjectMembersGrid(projectMembers),
-            ],
-          ),
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // *** Project Info Card ***
+            _buildProjectInfoCard(),
+
+            const SizedBox(height: 20),
+            const Text(
+              'Progress',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            _buildProgressBar(widget.project['precent']),
+
+            const SizedBox(height: 25),
+            const Text(
+              'Project Members',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            projectMembers.isEmpty
+                ? const Text(
+              'No project members found',
+              style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+            )
+                : _buildProjectMembersGrid(projectMembers),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildTextField(String label, String? value) {
+  Widget _buildProjectInfoCard() {
+    final status = widget.project['s_name'] ?? '';
+    final statusColor = _getStatusColor(status);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row containing: Name of Project (left) and Status (right)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Name of Project
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Name of Project',
+                      style:
+                      TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.project['p_name'] ?? '',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+              // Status on the right
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text(
+                    'Status:',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Branch & Department in row
+          Row(
+            children: [
+              Expanded(
+                child: _buildLabelAndValue(
+                  label: 'Branch',
+                  value: widget.project['b_name'],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildLabelAndValue(
+                  label: 'Department',
+                  value: widget.project['d_name'],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Deadline & Extended Deadline in row
+          Row(
+            children: [
+              Expanded(
+                child: _buildLabelAndValue(
+                  label: 'Dead-line',
+                  value: widget.project['dl'],
+                  icon: Icons.calendar_today,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildLabelAndValue(
+                  label: 'Dead-line 2',
+                  value: widget.project['extend'],
+                  icon: Icons.calendar_today,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Created by
+          _buildLabelAndValue(
+            label: 'Created by',
+            value: widget.project['create_project_by'],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Simple helper for consistent label:value pairs.
+  Widget _buildLabelAndValue({
+    required String label,
+    required String? value,
+    IconData? icon,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
           style:
-          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 4), // Reduced height
-        TextField(
-          controller: TextEditingController(text: value ?? ''),
-          readOnly: true,
-          decoration: InputDecoration(
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0), // Optimized padding
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.0),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 16),
+              const SizedBox(width: 4),
+            ],
+            Expanded(
+              child: Text(
+                value ?? '',
+                style: const TextStyle(fontSize: 14),
+              ),
             ),
-          ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildDateField(String label, String? date) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style:
-          const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4), // Reduced height
-        TextField(
-          controller: TextEditingController(text: date ?? ''),
-          readOnly: true,
-          decoration: InputDecoration(
-            suffixIcon: const Icon(Icons.calendar_today, size: 20),
-            contentPadding:
-            const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0), // Optimized padding
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.0),
-            ),
-          ),
-        ),
-      ],
-    );
+  /// Returns a color based on the project status
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+      // Orange/yellow for Pending
+        return Colors.orange;
+      case 'processing':
+      // Blue for Processing
+        return Colors.blue;
+      case 'finished':
+      // Green for Finished
+        return Colors.green;
+      default:
+      // Gray if unknown status
+        return Colors.grey;
+    }
   }
 
   Widget _buildProgressBar(String? progressStr) {
@@ -293,14 +391,14 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
             value: progress / 100,
             color: Colors.yellow,
             backgroundColor: Colors.grey.shade300,
-            minHeight: 8.0, // Slightly thicker for better visibility
+            minHeight: 8.0,
           ),
         ),
-        const SizedBox(width: 8), // Reduced width
+        const SizedBox(width: 8),
         Text(
           '${progress.toStringAsFixed(0)}%',
           style: const TextStyle(
-            fontSize: 14, // Slightly smaller font
+            fontSize: 14,
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
@@ -309,8 +407,8 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
     );
   }
 
+  /// Builds a grid of project members
   Widget _buildProjectMembersGrid(List<Map<String, dynamic>> members) {
-    // Determine the crossAxisCount based on screen width for responsiveness
     int crossAxisCount = MediaQuery.of(context).size.width > 600 ? 6 : 4;
 
     return GridView.builder(
@@ -318,8 +416,8 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
-        childAspectRatio: 0.8, // Adjusted for better fit
-        crossAxisSpacing: 12.0, // Reduced spacing
+        childAspectRatio: 0.8,
+        crossAxisSpacing: 12.0,
       ),
       itemCount: members.length,
       itemBuilder: (context, index) {
@@ -330,17 +428,18 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
             children: [
               CircleAvatar(
                 backgroundImage: NetworkImage(
-                    member['profileImage'] ??
-                        'https://via.placeholder.com/150'),
-                radius: 22, // Reduced radius
+                  member['profileImage'] ??
+                      'https://via.placeholder.com/150',
+                ),
+                radius: 22,
               ),
-              const SizedBox(height: 4), // Reduced height
+              const SizedBox(height: 4),
               Text(
                 member['name'] ?? 'Unknown',
                 style: const TextStyle(fontSize: 12),
                 textAlign: TextAlign.center,
                 maxLines: 3,
-                overflow: TextOverflow.ellipsis, // Handle long names gracefully
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
