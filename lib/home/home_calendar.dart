@@ -546,10 +546,10 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         // final DateTime? startDateTime = item['from_date'] != null ? DateTime.parse(item['from_date']) : null;
         // final DateTime? endDateTime = item['to_date'] != null ? DateTime.parse(item['to_date']) : null;
 
-        String dateFrom = formatDateString(item['from_date'].toString());
-        String dateTo = formatDateString(item['to_date'].toString());
-        String startTime = item['start_time'] != "" ? item['start_time'].toString() : '00:00';
-        String endTime = item['end_time'] != "" ? item['end_time'].toString() : '23:59';
+        String dateFrom = formatDateString(item['from_date_time'].toString());
+        String dateTo = formatDateString(item['to_date_time'].toString());
+        // String startTime = item['start_time'] != "" ? item['start_time'].toString() : '00:00';
+        // String endTime = item['end_time'] != "" ? item['end_time'].toString() : '23:59';
 
         if (dateFrom.isEmpty || dateTo.isEmpty) {
           showSnackBar('Missing from_date or to_date in minutes of meeting.');
@@ -562,31 +562,27 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         try {
           // Combine date and time properly
           DateTime fromDate = DateTime.parse(dateFrom);
-          List<String> timeOutParts = startTime.split(':');
-          if (timeOutParts.length == 3) timeOutParts.removeLast();
-          if (timeOutParts.length != 2) {
-            throw const FormatException('Invalid time_out format');
-          }
+          // List<String> timeOutParts = startTime.split(':');
+          // if (timeOutParts.length == 3) timeOutParts.removeLast();
+          // if (timeOutParts.length != 2) {
+          //   throw const FormatException('Invalid time_out format');
+          // }
           startDateTime = DateTime(
             fromDate.year,
             fromDate.month,
             fromDate.day,
-            int.parse(timeOutParts[0]),
-            int.parse(timeOutParts[1]),
+            fromDate.hour,
+            fromDate.minute,
           );
 
           DateTime inDate = DateTime.parse(dateTo);
-          List<String> timeInParts = endTime.split(':');
-          if (timeInParts.length == 3) timeInParts.removeLast();
-          if (timeInParts.length != 2) {
-            throw const FormatException('Invalid time_in format');
-          }
+
           endDateTime = DateTime(
             inDate.year,
             inDate.month,
             inDate.day,
-            int.parse(timeInParts[0]),
-            int.parse(timeInParts[1]),
+            inDate.hour,
+            inDate.minute,
           );
         } catch (e) {
           showSnackBar('Error parsing car booking dates: $e');
