@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/comment_approvals_reply.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -22,6 +23,9 @@ class ApprovalsDetailsPage extends StatefulWidget {
 
 class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   final TextEditingController _descriptionController = TextEditingController();
+  /// A separate controller for the reason typed in the bottom sheet
+  final TextEditingController _rejectReasonController = TextEditingController();
+
   bool isLoading = true;
   bool isFinalized = false;
   Map<String, dynamic>? approvalData;
@@ -71,14 +75,16 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if ((data['statusCode'] == 200 || data['statusCode'] == 201) && data['results'] != null) {
+        if ((data['statusCode'] == 200 || data['statusCode'] == 201) &&
+            data['results'] != null) {
           setState(() {
             approvalData = widget.type == 'leave'
                 ? Map<String, dynamic>.from(data['results'][0])
                 : Map<String, dynamic>.from(data['results']);
 
             if (widget.type == 'leave') {
-              String employeeId = approvalData?['employee_id'] ?? approvalData?['requestor_id'] ?? '';
+              final employeeId =
+                  approvalData?['employee_id'] ?? approvalData?['requestor_id'] ?? '';
               if (employeeId.isNotEmpty) {
                 // Fetch the profile image using the employee_id
                 _fetchProfileImage(employeeId).then((imageUrl) {
@@ -92,7 +98,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                 isLoading = false;
               }
             } else if (widget.type == 'car' || widget.type == 'meeting') {
-              String? imgName = approvalData?['img_name']?.toString().trim();
+              final imgName = approvalData?['img_name']?.toString().trim();
               if (imgName != null && imgName.isNotEmpty) {
                 // Determine if imgName is a full URL or just an image name
                 if (imgName.startsWith('http')) {
@@ -162,6 +168,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     }
   }
 
+  /// Utility to check if status is "Waiting"/"Pending"/"Processing"/etc.
   bool isPendingStatus(String status) {
     return status.toLowerCase() == 'waiting' ||
         status.toLowerCase() == 'pending' ||
@@ -170,6 +177,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         status.toLowerCase() == 'branch processing';
   }
 
+  /// Format date string for display
   String formatDate(String? dateStr, {bool includeDay = false}) {
     try {
       if (dateStr == null || dateStr.isEmpty) {
@@ -190,8 +198,8 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       }
 
       if (includeDay) {
-        String dayOfWeek = DateFormat('EEEE').format(parsedDate);
-        String dateFormatted = DateFormat('dd-MM-yyyy').format(parsedDate);
+        final dayOfWeek = DateFormat('EEEE').format(parsedDate);
+        final dateFormatted = DateFormat('dd-MM-yyyy').format(parsedDate);
         return '$dayOfWeek ($dateFormatted)';
       } else {
         return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);
@@ -203,9 +211,10 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     }
   }
 
+  /// Retrieve stored token
   Future<String?> _getToken() async {
     try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance();
       return prefs.getString('token');
     } catch (e, stackTrace) {
       print('Error retrieving token: $e');
@@ -217,7 +226,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    String status = (approvalData?['status']?.toString() ??
+    final status = (approvalData?['status']?.toString() ??
         approvalData?['is_approve']?.toString() ??
         'Pending')
         .trim();
@@ -237,10 +246,9 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
             _buildBlueSection(isDarkMode),
             const SizedBox(height: 5),
             _buildDetailsSection(),
-            const SizedBox(height: 4),
-            if (widget.type == 'leave' ||
-                widget.type == 'car' ||
-                widget.type == 'meeting') ...[
+
+            // Show comment input & action buttons only for 'leave'/'meeting'
+            if (widget.type == 'leave' || widget.type == 'meeting') ...[
               const SizedBox(height: 10),
               if (isPendingStatus(status)) ...[
                 _buildCommentInputSection(),
@@ -263,7 +271,9 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       flexibleSpace: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+            image: AssetImage(
+              isDarkMode ? 'assets/darkbg.png' : 'assets/background.png',
+            ),
             fit: BoxFit.cover,
           ),
           borderRadius: const BorderRadius.only(
@@ -274,16 +284,16 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       ),
       centerTitle: true,
       title: Text(
-        'Approval Details',
+        'Approvals',
         style: TextStyle(
-          color: isDarkMode ? Colors.white : Colors.black, // Title color for dark mode
+          color: isDarkMode ? Colors.white : Colors.black,
           fontSize: 24,
         ),
       ),
       leading: IconButton(
         icon: Icon(
           Icons.arrow_back_ios_new,
-          color: isDarkMode ? Colors.white : Colors.black, // Icon color for dark mode
+          color: isDarkMode ? Colors.white : Colors.black,
           size: 24,
         ),
         onPressed: () {
@@ -297,7 +307,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   }
 
   Widget _buildRequestorSection(bool isDarkMode) {
-    String requestorName = approvalData?['employee_name'] ??
+    final requestorName = approvalData?['employee_name'] ??
         approvalData?['requestor_name'] ??
         'No Name';
 
@@ -311,7 +321,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       submittedOn = formatDate(approvalData!['created_date']);
     }
 
-    String profileImage = requestorImage ??
+    final profileImage = requestorImage ??
         'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
 
     return Column(
@@ -320,7 +330,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         Text(
           'Requestor',
           style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black, // Title color
+            color: isDarkMode ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: 22,
           ),
@@ -332,7 +342,8 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
             CircleAvatar(
               backgroundImage: NetworkImage(profileImage),
               radius: 35,
-              backgroundColor: isDarkMode ? Colors.grey[700] : Colors.grey[300], // Avatar background color
+              backgroundColor:
+              isDarkMode ? Colors.grey[700] : Colors.grey[300],
               onBackgroundImageError: (error, stackTrace) {
                 setState(() {
                   requestorImage = 'https://via.placeholder.com/150';
@@ -346,7 +357,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                 Text(
                   requestorName,
                   style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black, // Name text color
+                    color: isDarkMode ? Colors.white : Colors.black,
                     fontSize: 16,
                   ),
                 ),
@@ -355,7 +366,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                   'Submitted on $submittedOn',
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDarkMode ? Colors.white70 : Colors.black54, // Date text color
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
                   ),
                 ),
               ],
@@ -367,23 +378,21 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   }
 
   Widget _buildBlueSection(bool isDarkMode) {
-    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;  // Check if dark mode is active
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 30.0),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 25),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
           color: isDarkMode
-              ? Colors.blueGrey.withOpacity(0.4)  // Dark mode color
-              : Colors.lightBlueAccent.withOpacity(0.4),  // Light mode color
+              ? Colors.blueGrey.withOpacity(0.4)
+              : Colors.lightBlueAccent.withOpacity(0.4),
           borderRadius: BorderRadius.circular(25),
         ),
         child: Text(
           _getTypeHeader(),
           style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black,  // Adjust text color
-            fontSize: 16,
+            color: isDarkMode ? Colors.white : Colors.black,
+            fontSize: 18,
           ),
         ),
       ),
@@ -392,19 +401,18 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
   String _getTypeHeader() {
     if (widget.type == 'leave') {
-      return 'LEAVE REQUEST';
+      return 'Leave';
     } else if (widget.type == 'car') {
-      return 'CAR BOOKING REQUEST';
+      return 'Booking Car';
     } else if (widget.type == 'meeting') {
-      return 'MEETING ROOM BOOKING REQUEST';
+      return 'Booking Meeting Room';
     } else {
       return 'Approval Details';
     }
   }
 
   Widget _buildDetailsSection() {
-    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;  // Check if dark mode is active
-
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     if (widget.type == 'leave') {
       return _buildLeaveDetails();
     } else if (widget.type == 'car') {
@@ -417,16 +425,16 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           'Unknown Request Type',
           style: TextStyle(
             fontSize: 18,
-            color: isDarkMode ? Colors.white : Colors.red,  // Adjust text color for dark mode
+            color: isDarkMode ? Colors.white : Colors.red,
           ),
         ),
       );
     }
   }
 
+  /// LEAVE DETAILS
   Widget _buildLeaveDetails() {
-    bool isDarkMode = Theme.of(context).brightness == Brightness.dark; // Check dark mode
-
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -481,8 +489,14 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     );
   }
 
+  /// CAR DETAILS
   Widget _buildCarDetails() {
-    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    // Show them only if status is NOT "Approved", "Rejected", or "Deleted".
+    final currentStatus = approvalData?['status']?.toString().toLowerCase() ?? '';
+    final canShowButtons = (currentStatus != 'approved' &&
+        currentStatus != 'disapproved' &&
+        currentStatus != 'deleted');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,7 +508,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           Colors.green,
           isDarkMode,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         _buildInfoRow(
           'Purpose',
           approvalData?['purpose'] ?? 'N/A',
@@ -502,7 +516,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           Colors.green,
           isDarkMode,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         _buildInfoRow(
           'Date Out',
           formatDate(approvalData?['date_out'], includeDay: true),
@@ -510,7 +524,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           Colors.blue,
           isDarkMode,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         _buildInfoRow(
           'Date In',
           formatDate(approvalData?['date_in'], includeDay: true),
@@ -518,15 +532,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           Colors.blue,
           isDarkMode,
         ),
-        const SizedBox(height: 8),
-        _buildInfoRow(
-          'Place',
-          approvalData?['place']?.toString() ?? 'N/A',
-          Icons.place,
-          Colors.orange,
-          isDarkMode,
-        ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         _buildInfoRow(
           'Status',
           approvalData?['status']?.toString() ?? 'Pending',
@@ -534,13 +540,239 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           Colors.red,
           isDarkMode,
         ),
+
+        // If status is not Approved/Rejected/Deleted, show 4 buttons
+        if (canShowButtons) ...[
+          const SizedBox(height: 60),
+          _buildCarActionButtons(isDarkMode),
+        ],
       ],
     );
   }
 
-  Widget _buildMeetingDetails() {
-    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  /// 4 CAR BUTTONS
+  Widget _buildCarActionButtons(bool isDarkMode) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // First row: Merge + Reply
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildCarButton(
+              label: 'Merge',
+              backgroundColor: const Color(0xFF4CAF50),
+              icon: Icons.description,
+              onPressed: () {
+                // No function yet
+              },
+            ),
+            _buildCarButton(
+              label: 'Reply',
+              backgroundColor: const Color(0xFF2196F3),
+              icon: Icons.reply,
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true, // Allows the bottom sheet to be full-screen if necessary
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  builder: (ctx) {
+                    return const FractionallySizedBox(
+                      heightFactor: 0.8,
+                      child: ChatCommentApprovalSection(),
+                    );
+                  },
+                );
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        // Second row: Reject + Approve
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildCarButton(
+              label: 'Reject',
+              backgroundColor: const Color(0xFF9E9E9E),
+              icon: Icons.close,
+              onPressed: () => _openRejectBottomSheet(context),
+            ),
+            _buildCarButton(
+              label: 'Approve',
+              backgroundColor: const Color(0xFFDBB342),
+              icon: Icons.check_circle,
+              onPressed: () {
+                // Approve logic here if needed
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
+  /// A helper for building a single Car button
+  Widget _buildCarButton({
+    required String label,
+    required Color backgroundColor,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      width: 130,
+      height: 56,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          elevation: 4,
+          shadowColor: Colors.black.withOpacity(0.2),
+        ),
+        icon: Icon(
+          icon,
+          color: Colors.white,
+          size: 20,
+        ),
+        label: Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontSize: 15),
+        ),
+      ),
+    );
+  }
+
+  /// Show a bottom sheet that slides up with a reason text field + Reject button
+  void _openRejectBottomSheet(BuildContext context) {
+    _rejectReasonController.clear(); // Clear previous input if any
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        final mediaQuery = MediaQuery.of(ctx);
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            // Ensure the keyboard doesn't cover the bottom sheet
+            bottom: mediaQuery.viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icon + Title
+              const Icon(Icons.question_answer, size: 52, color: Colors.amber),
+              const SizedBox(height: 6),
+              const Text(
+                'Reason',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 30),
+
+              // Text Field
+              TextField(
+                controller: _rejectReasonController,
+                minLines: 3,
+                maxLines: 8,
+                decoration: InputDecoration(
+                  hintText: 'Reason for reject',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Reject button
+              SizedBox(
+                width: 130,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () {
+                    Navigator.of(ctx).pop(); // close bottom sheet
+                    _handleCarReject(context); // then perform the reject call
+                  },
+                  child: const Text(
+                    'Reject',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Actually call the disapprove API for the car
+  Future<void> _handleCarReject(BuildContext context) async {
+    final String? token = await _getToken();
+    if (token == null) {
+      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      return;
+    }
+
+    final baseUrl = 'https://demo-application-api.flexiflows.co';
+    final endpoint = '$baseUrl/api/office-administration/car_permit/disapproved/${widget.id}';
+    final reason = _rejectReasonController.text.trim();
+
+    setState(() {
+      isFinalized = true;
+    });
+
+    try {
+      // Build the request body only if a reason was entered
+      final requestBody = reason.isNotEmpty ? {"comment": reason} : {};
+
+      final response = await http.put(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      print('[Car Reject] Status: ${response.statusCode}');
+      print('[Car Reject] Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // success
+        _showSuccessDialog('Rejected', 'Car booking has been rejected.');
+      } else {
+        final responseBody = jsonDecode(response.body);
+        final errorMessage = responseBody['message'] ?? 'Failed to reject the car booking.';
+        _showErrorDialog('Error', errorMessage);
+      }
+    } catch (e, stackTrace) {
+      print('Error rejecting car: $e');
+      print(stackTrace);
+      _showErrorDialog('Error', 'An unexpected error occurred while rejecting.');
+    } finally {
+      setState(() {
+        isFinalized = false;
+      });
+    }
+  }
+
+  /// MEETING DETAILS
+  Widget _buildMeetingDetails() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -595,16 +827,18 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     );
   }
 
+  /// Common UI row with icon + label + content
   Widget _buildInfoRow(
-      String title, String content, IconData icon, Color color, bool isDarkMode) {
+      String title,
+      String content,
+      IconData icon,
+      Color color,
+      bool isDarkMode,
+      ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 22,
-          color: color,
-        ),
+        Icon(icon, size: 22, color: color),
         const SizedBox(width: 12),
         Expanded(
           child: RichText(
@@ -615,7 +849,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                   style: TextStyle(
                     fontSize: 15,
                     color: isDarkMode ? Colors.white : Colors.black,
-                    fontWeight: FontWeight.bold, // Bold label
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 TextSpan(
@@ -623,7 +857,6 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                   style: TextStyle(
                     fontSize: 14,
                     color: isDarkMode ? Colors.white70 : Colors.grey[800],
-                    fontWeight: FontWeight.normal, // Regular content
                   ),
                 ),
               ],
@@ -634,17 +867,22 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     );
   }
 
+  /// COMMENT INPUT: SHOWN ONLY FOR LEAVE/MEETING
   Widget _buildCommentInputSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Comments',
-            style: TextStyle(fontSize: 16, color: Colors.black)),
+        const Text(
+          'Comments',
+          style: TextStyle(fontSize: 16, color: Colors.black),
+        ),
         const SizedBox(height: 8),
         TextField(
           controller: _descriptionController,
           decoration: InputDecoration(
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             hintText: 'Enter approval/rejection comments',
           ),
           maxLines: 3,
@@ -653,14 +891,16 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     );
   }
 
+  /// DENY REASON: SHOWN ONLY FOR LEAVE/MEETING
   Widget _buildDenyReasonSection() {
-    String denyReason =
-        approvalData?['deny_reason']?.toString() ?? 'No reason provided.';
+    final denyReason = approvalData?['deny_reason']?.toString() ?? 'No reason provided.';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Deny Reason',
-            style: TextStyle(fontSize: 16, color: Colors.black)),
+        const Text(
+          'Deny Reason',
+          style: TextStyle(fontSize: 16, color: Colors.black),
+        ),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(12.0),
@@ -677,22 +917,25 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     );
   }
 
+  /// APPROVE/REJECT BUTTONS: SHOWN ONLY FOR LEAVE/MEETING
   Widget _buildActionButtons(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         _buildStyledButton(
-            label: 'Reject',
-            icon: Icons.close,
-            backgroundColor: Colors.red,
-            textColor: Colors.white,
-            onPressed: isFinalized ? null : () => _handleReject(context)),
+          label: 'Reject',
+          icon: Icons.close,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          onPressed: isFinalized ? null : () => _handleReject(context),
+        ),
         _buildStyledButton(
-            label: 'Approve',
-            icon: Icons.check_circle_outline,
-            backgroundColor: Colors.green,
-            textColor: Colors.white,
-            onPressed: isFinalized ? null : () => _handleApprove(context)),
+          label: 'Approve',
+          icon: Icons.check_circle_outline,
+          backgroundColor: Colors.green,
+          textColor: Colors.white,
+          onPressed: isFinalized ? null : () => _handleApprove(context),
+        ),
       ],
     );
   }
@@ -712,9 +955,10 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
       ),
       icon: Icon(icon, color: textColor, size: 20),
-      label: Text(label,
-          style: TextStyle(
-              fontSize: 18, fontWeight: FontWeight.w600, color: textColor)),
+      label: Text(
+        label,
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: textColor),
+      ),
     );
   }
 
@@ -726,9 +970,9 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     await _sendApprovalStatus('reject', context);
   }
 
-  Future<void> _sendApprovalStatus(
-      String action, BuildContext context) async {
-    final String comment = _descriptionController.text.trim();
+  /// Original approval/rejection code for leave/meeting (unchanged)
+  Future<void> _sendApprovalStatus(String action, BuildContext context) async {
+    final comment = _descriptionController.text.trim();
 
     setState(() {
       isFinalized = true;
@@ -737,8 +981,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String? token = await _getToken();
     if (token == null) {
-      _showErrorDialog('Authentication Error',
-          'Token not found. Please log in again.');
+      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
       setState(() {
         isFinalized = false;
       });
@@ -749,7 +992,6 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     Map<String, dynamic> body = {};
     String method = 'POST'; // default method
 
-    // Adjust endpoint, body and method based on type and action
     if (widget.type == 'leave') {
       method = 'PUT';
       if (action == 'approve') {
@@ -757,25 +999,22 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       } else if (action == 'reject') {
         endpoint = '$baseUrl/api/leave_reject/${widget.id}';
       }
-      body = {};
       if (comment.isNotEmpty) {
         body['comments'] = comment;
       }
     } else if (widget.type == 'meeting') {
       method = 'PUT';
       if (action == 'approve') {
-        endpoint =
-        '$baseUrl/api/office-administration/book_meeting_room/approve/${widget.id}';
+        endpoint = '$baseUrl/api/office-administration/book_meeting_room/approve/${widget.id}';
       } else if (action == 'reject') {
-        endpoint =
-        '$baseUrl/api/office-administration/book_meeting_room/disapprove/${widget.id}';
+        endpoint = '$baseUrl/api/office-administration/book_meeting_room/disapprove/${widget.id}';
       }
-      body = {};
       if (comment.isNotEmpty) {
         body['comments'] = comment;
       }
     } else if (widget.type == 'car') {
-      // Existing code for car
+      // Car type -- we already handle this with separate function
+      // This code won't be called because we hide these UI buttons for 'car'
       method = 'POST';
       endpoint = '$baseUrl/api/app/tasks/approvals/pending/${widget.id}';
       body = {
@@ -825,7 +1064,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
             'Success', 'Request has been $action successfully.');
       } else {
         final responseBody = jsonDecode(response.body);
-        String errorMessage =
+        final errorMessage =
             responseBody['message'] ?? 'Failed to $action the request.';
         _showErrorDialog('Error', errorMessage);
       }
@@ -840,6 +1079,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     }
   }
 
+  /// Generic error dialog
   void _showErrorDialog(String title, String message) {
     showDialog(
       context: context,
@@ -856,6 +1096,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     );
   }
 
+  /// Generic success dialog
   void _showSuccessDialog(String title, String message) {
     showDialog(
       context: context,
@@ -865,7 +1106,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(ctx).pop(); // Close the dialog
+              Navigator.of(ctx).pop(); // Close dialog
               Navigator.of(context).pop(); // Navigate back
             },
             child: const Text('OK'),

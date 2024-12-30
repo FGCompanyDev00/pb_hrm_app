@@ -515,7 +515,7 @@ class _DetailsPageState extends State<DetailsPage> {
         {'icon': Icons.bookmark, 'title': 'Purpose', 'value': data?['purpose'] ?? 'No Purpose', 'color': Colors.blue},
         {'icon': Icons.place, 'title': 'Place', 'value': data?['place'] ?? 'N/A', 'color': Colors.green},
         {'icon': Icons.calendar_today, 'title': 'Date', 'value': '${formatDate(data?['date_in'])} - ${formatDate(data?['date_out'])}', 'color': Colors.orange},
-        {'icon': Icons.access_time, 'title': 'Time', 'value': '${data?['time_out'] ?? 'N/A'} - ${data?['time_in'] ?? 'No time out and time in'}', 'color': Colors.purple},
+        {'icon': Icons.access_time, 'title': 'Time', 'value': '${data?['time_in'] ?? 'N/A'} - ${data?['time_out'] ?? 'No time out and time in'}', 'color': Colors.purple},
         {'icon': Icons.phone, 'title': 'Discretion', 'value': data?['employee_tel'] ?? 'No phone number', 'color': Colors.red}
       ]);
     } else if (type == 'leave') {
