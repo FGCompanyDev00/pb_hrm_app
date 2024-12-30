@@ -190,7 +190,12 @@ class _OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage>
         final data = jsonDecode(response.body);
         if (data['statusCode'] == 200 && data['results'] is List) {
           setState(() {
-            _rooms = List<Map<String, dynamic>>.from(data['results']);
+            _rooms = data['results']
+                .map<Map<String, dynamic>>((item) => {
+                      'room_id': item['uid'],
+                      'room_name': item['room_name'],
+                    })
+                .toList();
           });
         } else {
           throw Exception('Failed to fetch rooms');
@@ -338,8 +343,8 @@ class _OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage>
       _carEmployeeIDController.text = data['employee_id'] ?? 'No Employee ID';
       _carPurposeController.text = data['purpose'] ?? '';
       _carPlaceController.text = data['place'] ?? '';
-      _carDateInController.text = formatDate(data['date_in']);
-      _carDateOutController.text = formatDate(data['date_out']);
+      _carDateInController.text = '${data['date_in']} ${data['time_in']}';
+      _carDateOutController.text = '${data['date_out']} ${data['time_out']}';
 
       // _selectedMembers = List<Map<String, dynamic>>.from(
       //     data['members']?.map((member) => {
@@ -983,35 +988,52 @@ class _OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage>
     final DateTime currentDay = DateTime.now();
     DateTime initialDate;
     DateTime selectedDate = controller.text.isNotEmpty ? DateTime.parse(controller.text) : currentDay;
+    TimeOfDay initialTime;
 
     if (isStartDateTime) {
-      initialDate = currentDay;
+      initialDate = DateTime(currentDay.year, currentDay.month, currentDay.day);
+      initialTime = TimeOfDay(hour: selectedDate.hour, minute: selectedDate.hour);
     } else {
-      initialDate = _beforeEndDateTime.value ?? currentDay;
+      initialDate = _beforeEndDateTime.value ?? DateTime(currentDay.year, currentDay.month, currentDay.day);
+      initialTime = TimeOfDay(hour: (_beforeEndDateTime.value?.hour ?? currentDay.hour), minute: (_beforeEndDateTime.value?.minute ?? currentDay.minute));
     }
 
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: selectedDate,
+      initialDate: initialDate.isAfter(selectedDate) ? initialDate : selectedDate,
       firstDate: initialDate,
       lastDate: DateTime(2101),
     );
 
     if (pickedDate != null) {
-      setState(() {
-        if (isStartDateTime) {
-          _startDateTime = pickedDate;
-          _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
-        } else {
-          _endDateTime = pickedDate;
-        }
-      });
-      setState(() {
-        controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
-        if (kDebugMode) {
-          print('Selected Date for $label: ${controller.text}');
-        }
-      });
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: isStartDateTime ? initialTime : const TimeOfDay(hour: 13, minute: 0),
+      );
+
+      if (pickedTime != null) {
+        final DateTime pickedDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+
+        setState(() {
+          if (isStartDateTime) {
+            _startDateTime = pickedDateTime;
+            _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
+          } else {
+            _endDateTime = pickedDateTime;
+          }
+
+          controller.text = DateFormat('yyyy-MM-dd HH:mm').format(pickedDateTime);
+          if (kDebugMode) {
+            print('Selected Date for $label: ${controller.text}');
+          }
+        });
+      }
     }
   }
 

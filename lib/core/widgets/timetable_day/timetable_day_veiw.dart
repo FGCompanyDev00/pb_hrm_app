@@ -157,7 +157,7 @@ class TimeTableDayWidget extends HookWidget {
               overflowEvents: data,
               events: UnmodifiableListView(eventsTimeTable),
               dividerColor: Colors.black,
-              currentDate: selectedDay ?? DateTime.now().toUtc(),
+              currentDate: selectedDay ?? DateTime.now(),
               heightPerMin: 1.5,
               startOfDay: const TimeOfDay(hour: 0, minute: 0),
               endOfDay: const TimeOfDay(hour: 25, minute: 0),

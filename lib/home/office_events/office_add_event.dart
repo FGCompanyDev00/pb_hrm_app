@@ -298,7 +298,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
   String formatTime(DateTime? dateTime) {
     if (dateTime == null) return '';
-    return DateFormat('HH:mm:ss').format(dateTime.toUtc());
+    return DateFormat('HH:mm:ss').format(dateTime);
   }
 
   /// Resets the form fields to default values
@@ -394,10 +394,10 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
           _showErrorMessage('Please select a notification time.');
           return false;
         }
-        if (_selectedMembers.isEmpty) {
-          _showErrorMessage('Please add at least one member.');
-          return false;
-        }
+        // if (_selectedMembers.isEmpty) {
+        //   _showErrorMessage('Please add at least one member.');
+        //   return false;
+        // }
         break;
 
       default:
