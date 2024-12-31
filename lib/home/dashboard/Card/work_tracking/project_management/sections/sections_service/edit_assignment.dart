@@ -8,7 +8,6 @@ import 'package:http_parser/http_parser.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 
 class UpdateAssignmentPage extends StatefulWidget {
   final String assignmentId;
@@ -23,10 +22,10 @@ class UpdateAssignmentPage extends StatefulWidget {
   });
 
   @override
-  _UpdateAssignmentPageState createState() => _UpdateAssignmentPageState();
+  UpdateAssignmentPageState createState() => UpdateAssignmentPageState();
 }
 
-class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
+class UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
   final _formKey = GlobalKey<FormState>();
   List<Map<String, dynamic>> selectedMembers = [];
 
@@ -260,8 +259,7 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
     }
     try {
       final response = await http.get(
-        Uri.parse(
-            '${widget.baseUrl}/api/work-tracking/ass/assignments'),
+        Uri.parse('${widget.baseUrl}/api/work-tracking/ass/assignments'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -269,15 +267,14 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
         final meeting = (data['results'] as List).firstWhere(
-              (item) => item['as_id'] == widget.assignmentId,
+          (item) => item['as_id'] == widget.assignmentId,
           orElse: () => null,
         );
         if (meeting != null) {
           setState(() {
             originalTitle = meeting['title'] ?? '';
             originalDescription = meeting['description'] ?? '';
-            originalStatusId = _statusMap[originalStatus] ??
-                '0a8d93f0-1c05-42b2-8e56-984a578ef077';
+            originalStatusId = _statusMap[originalStatus] ?? '0a8d93f0-1c05-42b2-8e56-984a578ef077';
             _titleController.text = originalTitle;
             _descriptionController.text = originalDescription;
           });
@@ -313,9 +310,7 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
     }
 
     // Check if any field has been edited
-    if (!isTitleEdited &&
-        !isDescriptionEdited &&
-        !isStatusEdited ){
+    if (!isTitleEdited && !isDescriptionEdited && !isStatusEdited) {
       _showSnackBar(
         message: 'No fields have been updated.',
         isError: false,
@@ -345,15 +340,12 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
       // Prepare the request body with updated or original data
       Map<String, dynamic> body = {
         'title': isTitleEdited ? updatedTitle : originalTitle,
-        'descriptions':
-        isDescriptionEdited ? updatedDescription : originalDescription,
+        'descriptions': isDescriptionEdited ? updatedDescription : originalDescription,
         'status_id': isStatusEdited ? updatedStatusId : originalStatusId,
       };
 
       final response = await http.put(
-        Uri.parse(
-            '${widget.baseUrl}/api/work-tracking/ass/update/${widget
-                .assignmentId}'),
+        Uri.parse('${widget.baseUrl}/api/work-tracking/ass/update/${widget.assignmentId}'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -366,9 +358,8 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
           message: 'Assignment updated successfully.',
           isError: false,
         );
-        Navigator.pop(context, true); // pass true
-      }
-      else {
+        if (mounted) Navigator.pop(context, true); // pass true
+      } else {
         String errorMessage = 'Failed to update assignment.';
         try {
           final responseData = jsonDecode(response.body);
@@ -404,9 +395,7 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
         Positioned(
           left: i * 24.0,
           child: CircleAvatar(
-            backgroundImage: selectedMembers[i]['image_url'] != null && selectedMembers[i]['image_url'].isNotEmpty
-                ? NetworkImage(selectedMembers[i]['image_url'])
-                : const AssetImage('assets/default_avatar.png') as ImageProvider,
+            backgroundImage: selectedMembers[i]['image_url'] != null && selectedMembers[i]['image_url'].isNotEmpty ? NetworkImage(selectedMembers[i]['image_url']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
             radius: 18,
             backgroundColor: Colors.white,
             child: Container(
@@ -480,11 +469,9 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors
-                    .redAccent,
+                backgroundColor: Colors.redAccent,
               ),
-              child: const Text(
-                  'Delete', style: TextStyle(color: Colors.white)),
+              child: const Text('Delete', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -513,9 +500,7 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
 
     try {
       final response = await http.put(
-        Uri.parse(
-            '${widget.baseUrl}/api/work-tracking/ass/delete/${widget
-                .assignmentId}'),
+        Uri.parse('${widget.baseUrl}/api/work-tracking/ass/delete/${widget.assignmentId}'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -526,9 +511,8 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
           message: 'Assignment deleted successfully.',
           isError: false,
         );
-        Navigator.pop(context, true); // pass true
-      }
-      else {
+        if (mounted) Navigator.pop(context, true); // pass true
+      } else {
         String errorMessage = 'Failed to delete assignment.';
         try {
           final responseData = jsonDecode(response.body);
@@ -563,18 +547,13 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(title,
-              style: TextStyle(
-                  color: isError ? Colors.red : Colors.green,
-                  fontWeight: FontWeight.bold)),
+          title: Text(title, style: TextStyle(color: isError ? Colors.red : Colors.green, fontWeight: FontWeight.bold)),
           content: Text(content),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                if (!isError &&
-                    (title.toLowerCase().contains('success') ||
-                        title.toLowerCase().contains('deleted'))) {
+                if (!isError && (title.toLowerCase().contains('success') || title.toLowerCase().contains('deleted'))) {
                   Navigator.of(context).pop(); // Navigate back on success
                 }
               },
@@ -625,9 +604,7 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
         title: Text(
           'Edit Assignment',
           style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white
-                : Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
             fontSize: 22,
             fontWeight: FontWeight.w500,
           ),
@@ -635,9 +612,7 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white
-                : Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
             size: 20,
           ),
           onPressed: () => Navigator.pop(context),
@@ -649,313 +624,307 @@ class _UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: SingleChildScrollView(
-          padding:
-          EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 18.0),
-          child: Form(
-            key: _formKey,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Row of Delete and Update Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _deleteAssignment,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFC2C2C2),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12.0),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white,
-                                  ),
-                                  padding: const EdgeInsets.all(6.0),
-                                  child: const Icon(
-                                    Icons.close,
-                                    color: Colors.grey,
-                                    size: 16,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Delete',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _updateAssignment,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFDBB342),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12.0),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white,
-                                  ),
-                                  padding: const EdgeInsets.all(6.0),
-                                  child: const Icon(
-                                    Icons.check,
-                                    color: Color(0xFFDBB342),
-                                    size: 16,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Update',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Title
-                    const Text(
-                      'Title',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter title',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(8.0)),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          updatedTitle = value;
-                          isTitleEdited = true;
-                        });
-                      },
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    // Row: Status Dropdown + Upload Image
-                    Row(
-                      children: [
-                        // Status
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 18.0),
+                child: Form(
+                  key: _formKey,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Row of Delete and Update Buttons
+                          Row(
                             children: [
-                              const Text(
-                                'Status',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              DropdownButtonFormField<String>(
-                                value:
-                                isStatusEdited ? updatedStatus : originalStatus,
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(
-                                    borderRadius:
-                                    BorderRadius.all(Radius.circular(8.0)),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: _deleteAssignment,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFC2C2C2),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 12.0),
                                   ),
-                                ),
-                                items: ['Processing', 'Pending', 'Finished', 'Error']
-                                    .map<DropdownMenuItem<String>>((String value) {
-                                  return DropdownMenuItem<String>(
-                                    value: value,
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.circle,
-                                          color: _getStatusColor(value),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.white,
+                                        ),
+                                        padding: const EdgeInsets.all(6.0),
+                                        child: const Icon(
+                                          Icons.close,
+                                          color: Colors.grey,
                                           size: 16,
                                         ),
-                                        const SizedBox(width: 8),
-                                        Text(value),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    updatedStatus = newValue;
-                                    updatedStatusId =
-                                        _statusMap[updatedStatus!] ??
-                                            '0a8d93f0-1c05-42b2-8e56-984a578ef077';
-                                    isStatusEdited = true;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        // Upload Image
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 25),
-                              Container(
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Colors.green, Colors.lightGreen],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        'Delete',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  borderRadius: BorderRadius.circular(16.0),
                                 ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
                                 child: ElevatedButton(
-                                  onPressed: _pickImage,
+                                  onPressed: _updateAssignment,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
+                                    backgroundColor: const Color(0xFFDBB342),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8.0),
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
-                                    padding: EdgeInsets.symmetric(
-                                      vertical: 17.0,
-                                      horizontal: (MediaQuery.of(context).size.width < 400) ? 40 : 53,
-                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 12.0),
                                   ),
-                                  child: Text(
-                                    'Upload Image',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: (MediaQuery.of(context).size.width < 400) ? 12 : 14,
-                                    ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.white,
+                                        ),
+                                        padding: const EdgeInsets.all(6.0),
+                                        child: const Icon(
+                                          Icons.check,
+                                          color: Color(0xFFDBB342),
+                                          size: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        'Update',
+                                        style: TextStyle(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
-                              if (_selectedImage != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    'Selected: ${_selectedImage!.path.split('/').last}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
 
-                    const SizedBox(height: 18),
+                          const SizedBox(height: 16),
 
-                    // + Add People (Placeholder)
-                    // Row(
-                    //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    //   children: [
-                    //     SizedBox(
-                    //       width: constraints.maxWidth * 0.5,
-                    //       child: ElevatedButton.icon(
-                    //         onPressed: _isLoading
-                    //             ? null
-                    //             : _navigateToEditMembers,
-                    //         icon: const Icon(Icons.person_add, color: Colors.black),
-                    //         label: const Text(
-                    //           'Add People',
-                    //           style: TextStyle(color: Colors.black),
-                    //         ),
-                    //         style: ElevatedButton.styleFrom(
-                    //           backgroundColor: Colors.green,
-                    //           padding: const EdgeInsets.symmetric(
-                    //             horizontal: 12.0,
-                    //             vertical: 10.0,
-                    //           ),
-                    //           shape: RoundedRectangleBorder(
-                    //             borderRadius: BorderRadius.circular(16.0),
-                    //           ),
-                    //           elevation: 3,
-                    //         ),
-                    //       ),
-                    //     ),
-                    //     // Selected Members Display
-                    //     SizedBox(
-                    //       width: constraints.maxWidth * 0.5 - 8,
-                    //       child: _buildSelectedMembers(),
-                    //     ),
-                    //   ],
-                    // ),
-                    //
-                    // const SizedBox(height: 18),
+                          // Title
+                          const Text(
+                            'Title',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _titleController,
+                            decoration: const InputDecoration(
+                              hintText: 'Enter title',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.all(Radius.circular(8.0)),
+                              ),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                updatedTitle = value;
+                                isTitleEdited = true;
+                              });
+                            },
+                          ),
 
-                    // Description
-                    const Text(
-                      'Description',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      controller: _descriptionController,
-                      maxLines: 10,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter description',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(8.0)),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          updatedDescription = value;
-                          isDescriptionEdited = true;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 30),
-                  ],
-                );
-              },
+                          const SizedBox(height: 18),
+
+                          // Row: Status Dropdown + Upload Image
+                          Row(
+                            children: [
+                              // Status
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Status',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    DropdownButtonFormField<String>(
+                                      value: isStatusEdited ? updatedStatus : originalStatus,
+                                      decoration: const InputDecoration(
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.all(Radius.circular(8.0)),
+                                        ),
+                                      ),
+                                      items: ['Processing', 'Pending', 'Finished', 'Error'].map<DropdownMenuItem<String>>((String value) {
+                                        return DropdownMenuItem<String>(
+                                          value: value,
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.circle,
+                                                color: _getStatusColor(value),
+                                                size: 16,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(value),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (String? newValue) {
+                                        setState(() {
+                                          updatedStatus = newValue;
+                                          updatedStatusId = _statusMap[updatedStatus!] ?? '0a8d93f0-1c05-42b2-8e56-984a578ef077';
+                                          isStatusEdited = true;
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              // Upload Image
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 25),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [Colors.green, Colors.lightGreen],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(16.0),
+                                      ),
+                                      child: ElevatedButton(
+                                        onPressed: _pickImage,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          shadowColor: Colors.transparent,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8.0),
+                                          ),
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 17.0,
+                                            horizontal: (MediaQuery.of(context).size.width < 400) ? 40 : 53,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Upload Image',
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontSize: (MediaQuery.of(context).size.width < 400) ? 12 : 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    if (_selectedImage != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8.0),
+                                        child: Text(
+                                          'Selected: ${_selectedImage!.path.split('/').last}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 18),
+
+                          // + Add People (Placeholder)
+                          // Row(
+                          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          //   children: [
+                          //     SizedBox(
+                          //       width: constraints.maxWidth * 0.5,
+                          //       child: ElevatedButton.icon(
+                          //         onPressed: _isLoading
+                          //             ? null
+                          //             : _navigateToEditMembers,
+                          //         icon: const Icon(Icons.person_add, color: Colors.black),
+                          //         label: const Text(
+                          //           'Add People',
+                          //           style: TextStyle(color: Colors.black),
+                          //         ),
+                          //         style: ElevatedButton.styleFrom(
+                          //           backgroundColor: Colors.green,
+                          //           padding: const EdgeInsets.symmetric(
+                          //             horizontal: 12.0,
+                          //             vertical: 10.0,
+                          //           ),
+                          //           shape: RoundedRectangleBorder(
+                          //             borderRadius: BorderRadius.circular(16.0),
+                          //           ),
+                          //           elevation: 3,
+                          //         ),
+                          //       ),
+                          //     ),
+                          //     // Selected Members Display
+                          //     SizedBox(
+                          //       width: constraints.maxWidth * 0.5 - 8,
+                          //       child: _buildSelectedMembers(),
+                          //     ),
+                          //   ],
+                          // ),
+                          //
+                          // const SizedBox(height: 18),
+
+                          // Description
+                          const Text(
+                            'Description',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _descriptionController,
+                            maxLines: 10,
+                            decoration: const InputDecoration(
+                              hintText: 'Enter description',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.all(Radius.circular(8.0)),
+                              ),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                updatedDescription = value;
+                                isDescriptionEdited = true;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 30),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }

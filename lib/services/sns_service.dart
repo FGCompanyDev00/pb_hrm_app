@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'aws_config.dart';
 
@@ -34,12 +35,12 @@ class SNSService {
       );
 
       if (response.statusCode == 200) {
-        print('Notification sent successfully');
+        debugPrint('Notification sent successfully');
       } else {
-        print('Failed to send notification: ${response.body}');
+        debugPrint('Failed to send notification: ${response.body}');
       }
     } catch (e) {
-      print('Error sending notification: $e');
+      debugPrint('Error sending notification: $e');
     }
   }
 }

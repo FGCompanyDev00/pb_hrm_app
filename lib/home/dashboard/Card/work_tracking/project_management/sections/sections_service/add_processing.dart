@@ -22,10 +22,10 @@ class AddProcessingPage extends StatefulWidget {
   });
 
   @override
-  _AddProcessingPageState createState() => _AddProcessingPageState();
+  AddProcessingPageState createState() => AddProcessingPageState();
 }
 
-class _AddProcessingPageState extends State<AddProcessingPage> {
+class AddProcessingPageState extends State<AddProcessingPage> {
   final _formKey = GlobalKey<FormState>();
 
   // Fields for the form
@@ -60,7 +60,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
   @override
   void initState() {
     super.initState();
-    print('[_AddProcessingPageState] Initializing with projectId: ${widget.projectId}, baseUrl: ${widget.baseUrl}');
+    debugPrint('[_AddProcessingPageState] Initializing with projectId: ${widget.projectId}, baseUrl: ${widget.baseUrl}');
     // Initialize fromDate/toDate, fromTime/toTime as null
     fromDate = null;
     toDate = null;
@@ -292,16 +292,16 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       }
 
       // Debugging
-      print('Sending request to: $uri');
-      print('Request Fields: ${request.fields}');
-      print('Number of files: ${request.files.length}');
+      debugPrint('Sending request to: $uri');
+      debugPrint('Request Fields: ${request.fields}');
+      debugPrint('Number of files: ${request.files.length}');
 
       // Send the request
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
 
-      print('Response Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      debugPrint('Response Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       // Show success *only* if 200 <= statusCode < 300
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -326,7 +326,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
         content: 'An error occurred: $e',
         isError: true,
       );
-      print('Unexpected error: $e');
+      debugPrint('Unexpected error: $e');
     }
 
     setState(() {
@@ -374,7 +374,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
 
   /// Navigates to SelectProcessingMembersPage to pick members
   void _navigateToSelectMembers() async {
-    print('[_AddProcessingPageState] Navigating to SelectProcessingMembersPage with projectId: ${widget.projectId}');
+    debugPrint('[_AddProcessingPageState] Navigating to SelectProcessingMembersPage with projectId: ${widget.projectId}');
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -390,7 +390,7 @@ class _AddProcessingPageState extends State<AddProcessingPage> {
       setState(() {
         selectedMembers = result;
       });
-      print('[_AddProcessingPageState] Members selected: '
+      debugPrint('[_AddProcessingPageState] Members selected: '
           '${selectedMembers.map((m) => m['employee_id']).toList()}');
     }
   }

@@ -23,10 +23,10 @@ class ChatSection extends StatefulWidget {
   });
 
   @override
-  _ChatSectionState createState() => _ChatSectionState();
+  ChatSectionState createState() => ChatSectionState();
 }
 
-class _ChatSectionState extends State<ChatSection> {
+class ChatSectionState extends State<ChatSection> {
   List<Map<String, dynamic>> _messages = [];
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -194,9 +194,11 @@ class _ChatSectionState extends State<ChatSection> {
     final token = prefs.getString('token');
 
     if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Token is null. Please log in again.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Token is null. Please log in again.')),
+        );
+      }
       return;
     }
 
@@ -214,14 +216,18 @@ class _ChatSectionState extends State<ChatSection> {
       setState(() {
         _messages.removeWhere((message) => message['comment_id'] == commentId);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Message deleted successfully')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Message deleted successfully')),
+        );
+      }
     } else {
       final responseData = jsonDecode(response.body);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete message: ${responseData['error'] ?? 'Unknown error'}')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete message: ${responseData['error'] ?? 'Unknown error'}')),
+        );
+      }
     }
   }
 
@@ -239,8 +245,7 @@ class _ChatSectionState extends State<ChatSection> {
               final nextMessage = index + 1 < _messages.length ? _messages[index + 1] : null;
 
               // Check if the date of the current message is different from the next one (since list is reversed)
-              final bool isNewDate = nextMessage == null ||
-                  _formatDate(message['created_at']) != _formatDate(nextMessage['created_at']);
+              final bool isNewDate = nextMessage == null || _formatDate(message['created_at']) != _formatDate(nextMessage['created_at']);
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

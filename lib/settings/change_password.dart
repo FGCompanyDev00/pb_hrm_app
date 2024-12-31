@@ -9,10 +9,10 @@ class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
 
   @override
-  _ChangePasswordPageState createState() => _ChangePasswordPageState();
+  ChangePasswordPageState createState() => ChangePasswordPageState();
 }
 
-class _ChangePasswordPageState extends State<ChangePasswordPage> {
+class ChangePasswordPageState extends State<ChangePasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
@@ -53,7 +53,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         });
       }
     } else {
-      _showDialog(context, 'Error', 'Failed to fetch profile image');
+      if (mounted) _showDialog(context, 'Error', 'Failed to fetch profile image');
     }
   }
 
@@ -88,7 +88,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     } else {
       Map<String, dynamic> responseData = jsonDecode(response.body);
       String errorMessage = responseData['message'] ?? 'Failed to change password';
-      _showDialog(context, 'Error', errorMessage);
+      if (mounted) _showDialog(context, 'Error', errorMessage);
     }
   }
 
@@ -184,9 +184,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 ),
                 CircleAvatar(
                   radius: 46,
-                  backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty
-                      ? NetworkImage(_profileImageUrl!)
-                      : const AssetImage('assets/avatar_placeholder.png') as ImageProvider,
+                  backgroundImage: _profileImageUrl != null && _profileImageUrl!.isNotEmpty ? NetworkImage(_profileImageUrl!) : const AssetImage('assets/avatar_placeholder.png') as ImageProvider,
                   backgroundColor: Colors.white,
                 ),
                 const SizedBox(height: 20),
@@ -194,8 +192,8 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.black87  // Dark mode background color
-                          : Colors.white,   // Light mode background color
+                          ? Colors.black87 // Dark mode background color
+                          : Colors.white, // Light mode background color
                       borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
                     ),
                     padding: const EdgeInsets.all(20.0),
@@ -257,19 +255,17 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                               ),
                               child: _isLoading
                                   ? CircularProgressIndicator(
-                                color: Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.black // Black for dark mode
-                                    : Colors.white, // White for light mode
-                              )
+                                      color: Theme.of(context).brightness == Brightness.dark
+                                          ? Colors.black // Black for dark mode
+                                          : Colors.white, // White for light mode
+                                    )
                                   : Text(
-                                'Change Password',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Theme.of(context).brightness == Brightness.dark
-                                      ? Colors.black
-                                      : Colors.white,
-                                ),
-                              ),
+                                      'Change Password',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white,
+                                      ),
+                                    ),
                             ),
                             const SizedBox(height: 8),
                             Center(

@@ -12,7 +12,7 @@ class WorkTrackingService {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token') ?? '';
     if (kDebugMode) {
-      print('Retrieved Token: $token');
+      debugPrint('Retrieved Token: $token');
     } // Debug line
 
     return {
@@ -67,7 +67,7 @@ class WorkTrackingService {
     final headers = await _getHeaders();
     const url = '$baseUrl/api/work-tracking/proj/projects';
     if (kDebugMode) {
-      print('Fetching All Projects from: $url');
+      debugPrint('Fetching All Projects from: $url');
     }
 
     try {
@@ -77,8 +77,8 @@ class WorkTrackingService {
       );
 
       if (kDebugMode) {
-        print('Response Status Code: ${response.statusCode}');
-        print('Response Body: ${response.body}');
+        debugPrint('Response Status Code: ${response.statusCode}');
+        debugPrint('Response Body: ${response.body}');
       }
 
       if (response.statusCode == 200) {
@@ -86,7 +86,7 @@ class WorkTrackingService {
         if (body['result'] != null && body['result'] is List) {
           List<Map<String, dynamic>> projects = List<Map<String, dynamic>>.from(body['result']);
           if (kDebugMode) {
-            print('Fetched ${projects.length} all projects.');
+            debugPrint('Fetched ${projects.length} all projects.');
           }
           return projects;
         } else {
@@ -97,7 +97,7 @@ class WorkTrackingService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error in fetchAllProjects: $e');
+        debugPrint('Error in fetchAllProjects: $e');
       }
       rethrow;
     }
@@ -108,8 +108,8 @@ class WorkTrackingService {
     final headers = await _getHeaders();
     const url = '$baseUrl/api/work-tracking/proj/insert';
     if (kDebugMode) {
-      print('Adding Project to: $url');
-      print('Project Data: ${jsonEncode(projectData)}');
+      debugPrint('Adding Project to: $url');
+      debugPrint('Project Data: ${jsonEncode(projectData)}');
     }
 
     try {
@@ -120,8 +120,8 @@ class WorkTrackingService {
       );
 
       if (kDebugMode) {
-        print('Response Status Code: ${response.statusCode}');
-        print('Response Body: ${response.body}');
+        debugPrint('Response Status Code: ${response.statusCode}');
+        debugPrint('Response Body: ${response.body}');
       }
 
       if (response.statusCode == 201 || response.statusCode == 200) {
@@ -129,12 +129,12 @@ class WorkTrackingService {
         if (responseBody != null && responseBody['id'] != null) {
           final String projectId = responseBody['id'];
           if (kDebugMode) {
-            print('Project successfully created with ID: $projectId');
+            debugPrint('Project successfully created with ID: $projectId');
           }
           return projectId;
         } else {
           if (kDebugMode) {
-            print('Project created but no project_id in response.');
+            debugPrint('Project created but no project_id in response.');
           }
           return null;
         }
@@ -143,7 +143,7 @@ class WorkTrackingService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error in addProject: $e');
+        debugPrint('Error in addProject: $e');
       }
       rethrow;
     }
@@ -154,8 +154,8 @@ class WorkTrackingService {
     final headers = await _getHeaders();
     final url = '$baseUrl/api/work-tracking/proj/update/$projectId';
     if (kDebugMode) {
-      print('Updating Project at: $url');
-      print('Update Data: ${jsonEncode(projectData)}');
+      debugPrint('Updating Project at: $url');
+      debugPrint('Update Data: ${jsonEncode(projectData)}');
     }
 
     try {
@@ -166,13 +166,13 @@ class WorkTrackingService {
       );
 
       if (kDebugMode) {
-        print('Response Status Code: ${response.statusCode}');
-        print('Response Body: ${response.body}');
+        debugPrint('Response Status Code: ${response.statusCode}');
+        debugPrint('Response Body: ${response.body}');
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (kDebugMode) {
-          print('Project successfully updated.');
+          debugPrint('Project successfully updated.');
         }
       } else {
         throw Exception('Failed to update project: ${response.reasonPhrase}');
@@ -181,7 +181,7 @@ class WorkTrackingService {
       return response; // Return the actual response
     } catch (e) {
       if (kDebugMode) {
-        print('Error in updateProject: $e');
+        debugPrint('Error in updateProject: $e');
       }
       rethrow;
     }
@@ -192,8 +192,8 @@ class WorkTrackingService {
     final headers = await _getHeaders();
     const url = '$baseUrl/api/work-tracking/proj/delete';
     if (kDebugMode) {
-      print('Deleting Project at: $url');
-      print('Project ID to Delete: $projectId');
+      debugPrint('Deleting Project at: $url');
+      debugPrint('Project ID to Delete: $projectId');
     }
 
     try {
@@ -208,13 +208,13 @@ class WorkTrackingService {
       );
 
       if (kDebugMode) {
-        print('Response Status Code: ${response.statusCode}');
-        print('Response Body: ${response.body}');
+        debugPrint('Response Status Code: ${response.statusCode}');
+        debugPrint('Response Body: ${response.body}');
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (kDebugMode) {
-          print('Project successfully deleted.');
+          debugPrint('Project successfully deleted.');
         }
         return true;
       } else {
@@ -222,7 +222,7 @@ class WorkTrackingService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error in deleteProject: $e');
+        debugPrint('Error in deleteProject: $e');
       }
       rethrow;
     }
@@ -233,7 +233,7 @@ class WorkTrackingService {
     final headers = await _getHeaders();
     final url = '$baseUrl/api/work-tracking/proj/find-Member-By-ProjectId/$projectId';
     if (kDebugMode) {
-      print('Fetching Members for Project ID: $projectId from: $url');
+      debugPrint('Fetching Members for Project ID: $projectId from: $url');
     }
 
     try {
@@ -243,8 +243,8 @@ class WorkTrackingService {
       );
 
       if (kDebugMode) {
-        print('Response Status Code: ${response.statusCode}');
-        print('Response Body: ${response.body}');
+        debugPrint('Response Status Code: ${response.statusCode}');
+        debugPrint('Response Body: ${response.body}');
       }
 
       if (response.statusCode == 200) {
@@ -252,7 +252,7 @@ class WorkTrackingService {
         if (body['results'] != null && body['results'] is List) {
           List<Map<String, dynamic>> members = List<Map<String, dynamic>>.from(body['results']);
           if (kDebugMode) {
-            print('Fetched ${members.length} members for Project ID: $projectId');
+            debugPrint('Fetched ${members.length} members for Project ID: $projectId');
           }
           return members;
         } else {
@@ -263,7 +263,7 @@ class WorkTrackingService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error in fetchMembersByProjectId: $e');
+        debugPrint('Error in fetchMembersByProjectId: $e');
       }
       rethrow;
     }
@@ -344,7 +344,7 @@ class WorkTrackingService {
 
     if (response.statusCode == 201) {
       if (kDebugMode) {
-        print('Message sent successfully.');
+        debugPrint('Message sent successfully.');
       }
     } else {
       throw Exception('Failed to send chat message: ${response
@@ -440,7 +440,7 @@ class WorkTrackingService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Exception in addAssignment: $e');
+        debugPrint('Exception in addAssignment: $e');
       }
       throw Exception('Failed to add assignment: $e');
     }
@@ -458,11 +458,11 @@ class WorkTrackingService {
 
     if (response.statusCode == 200) {
       if (kDebugMode) {
-        print('Assignment successfully updated.');
+        debugPrint('Assignment successfully updated.');
       }
     } else {
       if (kDebugMode) {
-        print('Failed to update assignment: ${response.statusCode} ${response
+        debugPrint('Failed to update assignment: ${response.statusCode} ${response
             .reasonPhrase}. Details: ${response.body}');
       }
       throw Exception('Failed to update assignment: ${response
@@ -480,11 +480,11 @@ class WorkTrackingService {
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       if (kDebugMode) {
-        print('Assignment successfully deleted.');
+        debugPrint('Assignment successfully deleted.');
       }
     } else if (response.statusCode == 404) {
       if (kDebugMode) {
-        print('Assignment not found: $asId');
+        debugPrint('Assignment not found: $asId');
       }
       throw Exception('Assignment not found.');
     } else {
@@ -531,7 +531,7 @@ class WorkTrackingService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Exception in addFilesToAssignment: $e');
+        debugPrint('Exception in addFilesToAssignment: $e');
       }
       throw Exception('Failed to upload files: $e');
     }
@@ -550,7 +550,7 @@ class WorkTrackingService {
 
     if (response.statusCode == 200) {
       if (kDebugMode) {
-        print('File deleted successfully.');
+        debugPrint('File deleted successfully.');
       }
     } else {
       throw Exception('Failed to delete file from assignment: ${response
@@ -671,13 +671,13 @@ class WorkTrackingService {
 
       // Handle the response
       if (response.statusCode == 201 || response.statusCode == 200) {
-        print('Members successfully added to the assignment.');
+        debugPrint('Members successfully added to the assignment.');
       } else {
         throw Exception(
             'Failed to add members to the assignment: ${response.reasonPhrase}');
       }
     } catch (e) {
-      print('Error adding members to assignment: $e');
+      debugPrint('Error adding members to assignment: $e');
       throw Exception('Failed to add members to the assignment');
     }
   }
@@ -704,27 +704,27 @@ class WorkTrackingService {
 
       // Log the response for debugging purposes
       if (kDebugMode) {
-        print('API Response Status Code: ${response.statusCode}');
-        print('API Response Body: ${response.body}');
+        debugPrint('API Response Status Code: ${response.statusCode}');
+        debugPrint('API Response Body: ${response.body}');
       }
 
       // Handle 201 (Created), 200 (OK), and 202 (Accepted) as success
       if (response.statusCode == 201 || response.statusCode == 200 || response.statusCode == 202) {
         if (kDebugMode) {
-          print('Members successfully added to the project.');
+          debugPrint('Members successfully added to the project.');
         }
       } else {
         // If status code is not 2xx, log error details and throw an exception
         String errorMessage = 'Failed to add members to the project: Status Code ${response.statusCode}, ${response.reasonPhrase}';
         if (kDebugMode) {
-          print('Error Response: ${response.body}');
+          debugPrint('Error Response: ${response.body}');
         }
         throw Exception(errorMessage);
       }
     } catch (error) {
       // Log the error and throw it again so the calling function can handle it
       if (kDebugMode) {
-        print('An error occurred while adding members: $error');
+        debugPrint('An error occurred while adding members: $error');
       }
       throw Exception('An error occurred: $error');
     }

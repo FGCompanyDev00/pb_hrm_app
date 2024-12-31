@@ -20,10 +20,10 @@ class WorkTrackingPage extends StatefulWidget {
   static const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
   @override
-  _WorkTrackingPageState createState() => _WorkTrackingPageState();
+  WorkTrackingPageState createState() => WorkTrackingPageState();
 }
 
-class _WorkTrackingPageState extends State<WorkTrackingPage> {
+class WorkTrackingPageState extends State<WorkTrackingPage> {
   bool _isMyProjectsSelected = true;
   String _searchText = '';
   String _selectedStatus = 'All Status';
@@ -47,20 +47,20 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
       List<Map<String, dynamic>> fetchedProjects = [];
 
       if (_isMyProjectsSelected) {
-        print('Fetching My Projects...');
+        debugPrint('Fetching My Projects...');
         fetchedProjects = await _workTrackingService.fetchMyProjects();
-        print('Fetched My Projects: $fetchedProjects');
+        debugPrint('Fetched My Projects: $fetchedProjects');
       } else {
-        print('Fetching All Projects...');
+        debugPrint('Fetching All Projects...');
         final allProjects = await _workTrackingService.fetchAllProjects();
         final prefs = await SharedPreferences.getInstance();
         final currentUser = prefs.getString('user_id');
-        print('Current User ID: $currentUser');
+        debugPrint('Current User ID: $currentUser');
 
         fetchedProjects = allProjects.where((project) {
           return project['create_project_by'] != currentUser;
         }).toList();
-        print('Filtered All Projects: $fetchedProjects');
+        debugPrint('Filtered All Projects: $fetchedProjects');
       }
 
       // Sort the fetched projects based on 'update_project_at' in descending order
@@ -69,16 +69,14 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
         DateTime bDate;
 
         try {
-          aDate = DateTime.parse(a['created_project_at'] ?? '')
-              .toLocal();
+          aDate = DateTime.parse(a['created_project_at'] ?? '').toLocal();
         } catch (e) {
           aDate = DateTime.fromMillisecondsSinceEpoch(0); // Default date if parsing fails
         }
 
         try {
           // Parse 'update_project_at' and convert to local time
-          bDate = DateTime.parse(b['created_project_at'] ?? '')
-              .toLocal();
+          bDate = DateTime.parse(b['created_project_at'] ?? '').toLocal();
         } catch (e) {
           bDate = DateTime.fromMillisecondsSinceEpoch(0); // Default date if parsing fails
         }
@@ -90,7 +88,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
         _projects = fetchedProjects;
       });
     } catch (e) {
-      print('Error in _fetchProjects: $e');
+      debugPrint('Error in _fetchProjects: $e');
       _showErrorDialog('Failed to fetch projects: $e');
     } finally {
       setState(() {
@@ -100,12 +98,12 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
   }
 
   void _refreshProjects() {
-    print('Refreshing Projects...');
+    debugPrint('Refreshing Projects...');
     _fetchProjects();
   }
 
   void _showErrorDialog(String message) {
-    print('Showing Error Dialog: $message');
+    debugPrint('Showing Error Dialog: $message');
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -203,13 +201,13 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
                 child: IconButton(
                   icon: const Icon(Icons.add, color: Colors.white, size: 24),
                   onPressed: () {
-                    print('Add Project button pressed.');
+                    debugPrint('Add Project button pressed.');
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const AddProjectPage()),
                     ).then((value) {
                       if (value == true) {
-                        print('Project added successfully. Refreshing projects...');
+                        debugPrint('Project added successfully. Refreshing projects...');
                         _refreshProjects();
                       }
                     });
@@ -316,46 +314,45 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
               border: Border.all(color: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade300),
             ),
             child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedStatus,
-                icon: Icon(Icons.arrow_drop_down, color: isDarkMode ? Colors.white : Colors.grey),
-                iconSize: 24,
-                elevation: 16,
-                style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedStatus = newValue!;
-                  });
-                },
-                items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Row(
-                      children: [
-                        if (value != 'All Status') ...[
-                          Container(
-                            width: 8,
-                            height: 8,
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              color: value == 'Processing'
-                                  ? Colors.blue
-                                  : value == 'Pending'
-                                  ? Colors.orange
-                                  : value == 'Finished'
-                                  ? Colors.green
-                                  : Colors.transparent,
-                              shape: BoxShape.circle,
-                            ),
+                child: DropdownButton<String>(
+              value: _selectedStatus,
+              icon: Icon(Icons.arrow_drop_down, color: isDarkMode ? Colors.white : Colors.grey),
+              iconSize: 24,
+              elevation: 16,
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedStatus = newValue!;
+                });
+              },
+              items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Row(
+                    children: [
+                      if (value != 'All Status') ...[
+                        Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: value == 'Processing'
+                                ? Colors.blue
+                                : value == 'Pending'
+                                    ? Colors.orange
+                                    : value == 'Finished'
+                                        ? Colors.green
+                                        : Colors.transparent,
+                            shape: BoxShape.circle,
                           ),
-                        ],
-                        Text(value),
+                        ),
                       ],
-                    ),
-                  );
-                }).toList(),
-              )
-            ),
+                      Text(value),
+                    ],
+                  ),
+                );
+              }).toList(),
+            )),
           ),
         ],
       ),
@@ -374,7 +371,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
     }).toList();
 
     if (kDebugMode) {
-      print('Filtered Projects Count: ${filteredProjects.length}');
+      debugPrint('Filtered Projects Count: ${filteredProjects.length}');
     }
 
     if (filteredProjects.isEmpty) {
@@ -416,7 +413,7 @@ class _WorkTrackingPageState extends State<WorkTrackingPage> {
         // Format the date
         return DateFormat('dd MMM yyyy').format(localDate);
       } catch (e) {
-        print('Error parsing date: $e');
+        debugPrint('Error parsing date: $e');
         return date; // Fallback to original string if parsing fails
       }
     }

@@ -21,10 +21,10 @@ class AddAssignmentPage extends StatefulWidget {
   });
 
   @override
-  _AddAssignmentPageState createState() => _AddAssignmentPageState();
+  AddAssignmentPageState createState() => AddAssignmentPageState();
 }
 
-class _AddAssignmentPageState extends State<AddAssignmentPage> {
+class AddAssignmentPageState extends State<AddAssignmentPage> {
   final _formKey = GlobalKey<FormState>();
   String title = '';
   String description = '';
@@ -55,7 +55,7 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
   @override
   void initState() {
     super.initState();
-    print('[_AddAssignmentPageState] Initializing with projectId: ${widget.projectId}, baseUrl: ${widget.baseUrl}');
+    debugPrint('[_AddAssignmentPageState] Initializing with projectId: ${widget.projectId}, baseUrl: ${widget.baseUrl}');
     // Initialize fromDate/toDate, fromTime/toTime as null
     fromDate = null;
     toDate = null;
@@ -176,16 +176,16 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
       }
 
       // Debugging
-      print('Sending request to: $uri');
-      print('Request Fields: ${request.fields}');
-      print('Number of files: ${request.files.length}');
+      debugPrint('Sending request to: $uri');
+      debugPrint('Request Fields: ${request.fields}');
+      debugPrint('Number of files: ${request.files.length}');
 
       // Send the request
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
 
-      print('Response Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      debugPrint('Response Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       // Show success *only* if 200 <= statusCode < 300
       if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -210,7 +210,7 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
         content: 'An error occurred: $e',
         isError: true,
       );
-      print('Unexpected error: $e');
+      debugPrint('Unexpected error: $e');
     }
 
     setState(() {
@@ -256,7 +256,7 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
 
   /// Navigates to AddAssignmentMembersPage to pick members
   void _navigateToSelectMembers() async {
-    print('[_AddAssignmentPageState] Navigating to AddAssignmentMembersPage with projectId: ${widget.projectId}');
+    debugPrint('[_AddAssignmentPageState] Navigating to AddAssignmentMembersPage with projectId: ${widget.projectId}');
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -272,7 +272,7 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
       setState(() {
         selectedMembers = result;
       });
-      print('[_AddAssignmentPageState] Members selected: '
+      debugPrint('[_AddAssignmentPageState] Members selected: '
           '${selectedMembers.map((m) => m['employee_id']).toList()}');
     }
   }
@@ -404,239 +404,239 @@ class _AddAssignmentPageState extends State<AddAssignmentPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: horizontalPadding,
-            vertical: 18.0,
-          ),
-          child: Form(
-            key: _formKey,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // + Add Button at Top Right
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: _buildAddButton(160),
-                    ),
-                    const SizedBox(height: 6),
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: 18.0,
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // + Add Button at Top Right
+                          Align(
+                            alignment: Alignment.topRight,
+                            child: _buildAddButton(160),
+                          ),
+                          const SizedBox(height: 6),
 
-                    // Title
-                    const Text(
-                      'Title',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      decoration: const InputDecoration(
-                        hintText: 'Enter title',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(8.0)),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Title is required.';
-                        }
-                        return null;
-                      },
-                      onChanged: (value) {
-                        setState(() {
-                          title = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Row: Status Dropdown + Upload Image Button
-                    Row(
-                      children: [
-                        // Status
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Status',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                          // Title
+                          const Text(
+                            'Title',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            decoration: const InputDecoration(
+                              hintText: 'Enter title',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.all(Radius.circular(8.0)),
                               ),
-                              const SizedBox(height: 6),
-                              DropdownButtonFormField<String>(
-                                value: status, // "Processing" by default
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(8.0),
-                                    ),
-                                  ),
-                                ),
-                                items: ['Processing', 'Pending', 'Finished', 'Error'].map<DropdownMenuItem<String>>(
-                                      (String value) {
-                                    return DropdownMenuItem<String>(
-                                      value: value,
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.circle,
-                                            color: _getStatusColor(value),
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(value),
-                                        ],
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Title is required.';
+                              }
+                              return null;
+                            },
+                            onChanged: (value) {
+                              setState(() {
+                                title = value;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 18),
+
+                          // Row: Status Dropdown + Upload Image Button
+                          Row(
+                            children: [
+                              // Status
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Status',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                    );
-                                  },
-                                ).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    status = newValue!;
-                                    statusId = _statusMap[status]!;
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Status is required.';
-                                  }
-                                  return null;
-                                },
+                                    ),
+                                    const SizedBox(height: 6),
+                                    DropdownButtonFormField<String>(
+                                      value: status, // "Processing" by default
+                                      decoration: const InputDecoration(
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.all(
+                                            Radius.circular(8.0),
+                                          ),
+                                        ),
+                                      ),
+                                      items: ['Processing', 'Pending', 'Finished', 'Error'].map<DropdownMenuItem<String>>(
+                                        (String value) {
+                                          return DropdownMenuItem<String>(
+                                            value: value,
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.circle,
+                                                  color: _getStatusColor(value),
+                                                  size: 16,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(value),
+                                              ],
+                                            ),
+                                          );
+                                        },
+                                      ).toList(),
+                                      onChanged: (String? newValue) {
+                                        setState(() {
+                                          status = newValue!;
+                                          statusId = _statusMap[status]!;
+                                        });
+                                      },
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Status is required.';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+
+                              // Upload Image
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 25),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [Colors.green, Colors.lightGreen],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(16.0),
+                                      ),
+                                      child: ElevatedButton(
+                                        onPressed: _isLoading ? null : _pickImage,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          shadowColor: Colors.transparent,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8.0),
+                                          ),
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 17.0,
+                                            horizontal: MediaQuery.of(context).size.width < 400 ? 40 : 53,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Upload Image',
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    if (_selectedImage != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8.0),
+                                        child: Text(
+                                          'Selected: ${_selectedImage!.path.split('/').last}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(width: 10),
-
-                        // Upload Image
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(height: 20),
+                          // Row: Add People Button + Avatars
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const SizedBox(height: 25),
-                              Container(
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Colors.green, Colors.lightGreen],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
+                              SizedBox(
+                                width: constraints.maxWidth * 0.45,
+                                child: ElevatedButton.icon(
+                                  onPressed: _isLoading ? null : _navigateToSelectMembers,
+                                  icon: const Icon(Icons.person_add, color: Colors.black),
+                                  label: const Text(
+                                    'Add People',
+                                    style: TextStyle(color: Colors.black),
                                   ),
-                                  borderRadius: BorderRadius.circular(16.0),
-                                ),
-                                child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _pickImage,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
+                                    backgroundColor: Colors.green,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12.0,
+                                      vertical: 10.0,
+                                    ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8.0),
+                                      borderRadius: BorderRadius.circular(16.0),
                                     ),
-                                    padding: EdgeInsets.symmetric(
-                                      vertical: 17.0,
-                                      horizontal: MediaQuery.of(context).size.width < 400 ? 40 : 53,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Upload Image',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: MediaQuery.of(context).size.width < 400 ? 12 : 14,
-                                    ),
+                                    elevation: 3,
                                   ),
                                 ),
                               ),
-                              if (_selectedImage != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    'Selected: ${_selectedImage!.path.split('/').last}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ),
+                              SizedBox(
+                                width: constraints.maxWidth * 0.5 - 8,
+                                child: _buildSelectedMembers(),
+                              ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    // Row: Add People Button + Avatars
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        SizedBox(
-                          width: constraints.maxWidth * 0.45,
-                          child: ElevatedButton.icon(
-                            onPressed: _isLoading ? null : _navigateToSelectMembers,
-                            icon: const Icon(Icons.person_add, color: Colors.black),
-                            label: const Text(
-                              'Add People',
-                              style: TextStyle(color: Colors.black),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12.0,
-                                vertical: 10.0,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16.0),
-                              ),
-                              elevation: 3,
+                          const SizedBox(height: 18),
+
+                          // Description
+                          const Text(
+                            'Description',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                        SizedBox(
-                          width: constraints.maxWidth * 0.5 - 8,
-                          child: _buildSelectedMembers(),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Description
-                    const Text(
-                      'Description',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      decoration: const InputDecoration(
-                        hintText: 'Enter description',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(8.0)),
-                        ),
-                      ),
-                      maxLines: 7,
-                      onChanged: (value) {
-                        setState(() {
-                          description = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                );
-              },
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            decoration: const InputDecoration(
+                              hintText: 'Enter description',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.all(Radius.circular(8.0)),
+                              ),
+                            ),
+                            maxLines: 7,
+                            onChanged: (value) {
+                              setState(() {
+                                description = value;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }

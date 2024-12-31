@@ -14,10 +14,10 @@ class ApprovalsMainPage extends StatefulWidget {
   const ApprovalsMainPage({super.key});
 
   @override
-  _ApprovalsMainPageState createState() => _ApprovalsMainPageState();
+  ApprovalsMainPageState createState() => ApprovalsMainPageState();
 }
 
-class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
+class ApprovalsMainPageState extends State<ApprovalsMainPage> {
   // Tab selection flag: true for Approvals, false for History
   bool _isPendingSelected = true;
 
@@ -33,9 +33,6 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
   // Leave Types Map: leave_type_id -> name
   Map<int, String> _leaveTypesMap = {};
-
-  // Base URL for images
-  final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
   @override
   void initState() {
@@ -55,13 +52,15 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         _fetchPendingItems(),
         _fetchHistoryItems(),
       ]);
-      print('Initial data fetched successfully.');
+      debugPrint('Initial data fetched successfully.');
     } catch (e, stackTrace) {
-      print('Error during initial data fetch: $e');
-      print(stackTrace);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching data: $e')),
-      );
+      debugPrint('Error during initial data fetch: $e');
+      debugPrint(stackTrace.toString());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching data: $e')),
+        );
+      }
     } finally {
       setState(() {
         _isLoading = false;
@@ -90,7 +89,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         },
       );
 
-      print('Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
+      debugPrint('Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
 
       if (leaveTypesResponse.statusCode == 200) {
         final responseBody = jsonDecode(leaveTypesResponse.body);
@@ -99,7 +98,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           setState(() {
             _leaveTypesMap = {for (var item in leaveTypesData) item['leave_type_id'] as int: item['name'].toString()};
           });
-          print('Leave types loaded: $_leaveTypesMap');
+          debugPrint('Leave types loaded: $_leaveTypesMap');
         } else {
           throw Exception(responseBody['message'] ?? 'Failed to load leave types');
         }
@@ -107,11 +106,13 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         throw Exception('Failed to load leave types: ${leaveTypesResponse.statusCode}');
       }
     } catch (e, stackTrace) {
-      print('Error fetching leave types: $e');
-      print(stackTrace);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching leave types: $e')),
-      );
+      debugPrint('Error fetching leave types: $e');
+      debugPrint(stackTrace.toString());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching leave types: $e')),
+        );
+      }
       rethrow; // So that _fetchInitialData catches and handles
     }
   }
@@ -137,7 +138,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         },
       );
 
-      print('Fetching pending items: Status Code ${pendingResponse.statusCode}');
+      debugPrint('Fetching pending items: Status Code ${pendingResponse.statusCode}');
 
       if (pendingResponse.statusCode == 200) {
         final responseBody = jsonDecode(pendingResponse.body);
@@ -145,13 +146,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           final List<dynamic> pendingData = responseBody['results'];
 
           // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = pendingData
-              .where((item) => item != null)
-              .map((item) => Map<String, dynamic>.from(item))
-              .where((item) =>
-          item['types'] != null &&
-              _knownTypes.contains(item['types'].toString().toLowerCase()))
-              .toList();
+          final List<Map<String, dynamic>> filteredData = pendingData.where((item) => item != null).map((item) => Map<String, dynamic>.from(item)).where((item) => item['types'] != null && _knownTypes.contains(item['types'].toString().toLowerCase())).toList();
 
           // Sort the filtered data by 'updated_at' in descending order
           filteredData.sort((a, b) {
@@ -163,7 +158,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           setState(() {
             _pendingItems = filteredData;
           });
-          print('Pending items loaded and sorted: ${_pendingItems.length} items.');
+          debugPrint('Pending items loaded and sorted: ${_pendingItems.length} items.');
         } else {
           throw Exception(responseBody['message'] ?? 'Failed to load pending data');
         }
@@ -171,11 +166,13 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         throw Exception('Failed to load pending data: ${pendingResponse.statusCode}');
       }
     } catch (e, stackTrace) {
-      print('Error fetching pending data: $e');
-      print(stackTrace);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching pending data: $e')),
-      );
+      debugPrint('Error fetching pending data: $e');
+      debugPrint(stackTrace.toString());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching pending data: $e')),
+        );
+      }
       rethrow;
     }
   }
@@ -201,7 +198,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         },
       );
 
-      print('Fetching history items: Status Code ${historyResponse.statusCode}');
+      debugPrint('Fetching history items: Status Code ${historyResponse.statusCode}');
 
       if (historyResponse.statusCode == 200) {
         final responseBody = jsonDecode(historyResponse.body);
@@ -209,13 +206,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           final List<dynamic> historyData = responseBody['results'];
 
           // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = historyData
-              .where((item) => item != null)
-              .map((item) => Map<String, dynamic>.from(item))
-              .where((item) =>
-          item['types'] != null &&
-              _knownTypes.contains(item['types'].toString().toLowerCase()))
-              .toList();
+          final List<Map<String, dynamic>> filteredData = historyData.where((item) => item != null).map((item) => Map<String, dynamic>.from(item)).where((item) => item['types'] != null && _knownTypes.contains(item['types'].toString().toLowerCase())).toList();
 
           // Sort the filtered data by 'updated_at' in descending order
           filteredData.sort((a, b) {
@@ -227,7 +218,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           setState(() {
             _historyItems = filteredData;
           });
-          print('History items loaded and sorted: ${_historyItems.length} items.');
+          debugPrint('History items loaded and sorted: ${_historyItems.length} items.');
         } else {
           throw Exception(responseBody['message'] ?? 'Failed to load history data');
         }
@@ -235,11 +226,13 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
         throw Exception('Failed to load history data: ${historyResponse.statusCode}');
       }
     } catch (e, stackTrace) {
-      print('Error fetching history data: $e');
-      print(stackTrace);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching history data: $e')),
-      );
+      debugPrint('Error fetching history data: $e');
+      debugPrint(stackTrace.toString());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching history data: $e')),
+        );
+      }
       rethrow;
     }
   }
@@ -252,103 +245,103 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
     return WillPopScope(
         onWillPop: () async {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const Dashboard()),
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const Dashboard()),
             (route) => false,
-      );
-      return false;
-    },
-    child: Scaffold(
-      backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
-      body: Column(
-        children: [
-          _buildHeader(isDarkMode, screenSize),
-          SizedBox(height: screenSize.height * 0.005),
-          _buildTabBar(screenSize),
-          SizedBox(height: screenSize.height * 0.005),
-          _isLoading
-              ? const Expanded(
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              : Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _fetchInitialData, // Refreshes all data
-                    child: _isPendingSelected
-                        ? _pendingItems.isEmpty
-                            ? Center(
-                                child: Text(
-                                  'No Pending Items',
-                                  style: TextStyle(
-                                    fontSize: screenSize.width * 0.04,
+          );
+          return false;
+        },
+        child: Scaffold(
+          backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
+          body: Column(
+            children: [
+              _buildHeader(isDarkMode, screenSize),
+              SizedBox(height: screenSize.height * 0.005),
+              _buildTabBar(screenSize),
+              SizedBox(height: screenSize.height * 0.005),
+              _isLoading
+                  ? const Expanded(
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: _fetchInitialData, // Refreshes all data
+                        child: _isPendingSelected
+                            ? _pendingItems.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      'No Pending Items',
+                                      style: TextStyle(
+                                        fontSize: screenSize.width * 0.04,
+                                      ),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenSize.width * 0.04,
+                                      vertical: screenSize.height * 0.008,
+                                    ),
+                                    itemCount: _pendingItems.length,
+                                    itemBuilder: (context, index) {
+                                      final item = _pendingItems[index];
+                                      return _buildItemCard(
+                                        context,
+                                        item,
+                                        isHistory: false,
+                                        screenSize: screenSize,
+                                      );
+                                    },
+                                  )
+                            : _historyItems.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      'No History Items',
+                                      style: TextStyle(
+                                        fontSize: screenSize.width * 0.04,
+                                      ),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenSize.width * 0.04,
+                                      vertical: screenSize.height * 0.008,
+                                    ),
+                                    itemCount: _historyItems.length,
+                                    itemBuilder: (context, index) {
+                                      final item = _historyItems[index];
+                                      return _buildItemCard(
+                                        context,
+                                        item,
+                                        isHistory: true,
+                                        screenSize: screenSize,
+                                      );
+                                    },
                                   ),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: screenSize.width * 0.04,
-                                  vertical: screenSize.height * 0.008,
-                                ),
-                                itemCount: _pendingItems.length,
-                                itemBuilder: (context, index) {
-                                  final item = _pendingItems[index];
-                                  return _buildItemCard(
-                                    context,
-                                    item,
-                                    isHistory: false,
-                                    screenSize: screenSize,
-                                  );
-                                },
-                              )
-                        : _historyItems.isEmpty
-                            ? Center(
-                                child: Text(
-                                  'No History Items',
-                                  style: TextStyle(
-                                    fontSize: screenSize.width * 0.04,
-                                  ),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: screenSize.width * 0.04,
-                                  vertical: screenSize.height * 0.008,
-                                ),
-                                itemCount: _historyItems.length,
-                                itemBuilder: (context, index) {
-                                  final item = _historyItems[index];
-                                  return _buildItemCard(
-                                    context,
-                                    item,
-                                    isHistory: true,
-                                    screenSize: screenSize,
-                                  );
-                                },
-                              ),
-                  ),
-                ),
-        ],
-      ),
-    ));
+                      ),
+                    ),
+            ],
+          ),
+        ));
   }
 
   /// Builds the header section with background image and title.
   Widget _buildHeader(bool isDarkMode, Size screenSize) {
     return Container(
-      height: screenSize.height * 0.17,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage(
-            isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png',
+        height: screenSize.height * 0.17,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage(
+              isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png',
+            ),
+            fit: BoxFit.cover,
           ),
-          fit: BoxFit.cover,
+          borderRadius: const BorderRadius.only(
+            bottomLeft: Radius.circular(30),
+            bottomRight: Radius.circular(30),
+          ),
         ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-      ),
         child: SafeArea(
           child: Padding(
             padding: EdgeInsets.symmetric(
@@ -378,8 +371,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
               ],
             ),
           ),
-        )
-    );
+        ));
   }
 
   /// Builds the tab bar for toggling between Approvals and History.
@@ -422,17 +414,13 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                       'assets/pending.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: _isPendingSelected
-                          ? (isDarkMode ? Colors.white : Colors.white)
-                          : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                      color: _isPendingSelected ? (isDarkMode ? Colors.white : Colors.white) : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Approvals',
                       style: TextStyle(
-                        color: _isPendingSelected
-                            ? (isDarkMode ? Colors.white : Colors.white)
-                            : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                        color: _isPendingSelected ? (isDarkMode ? Colors.white : Colors.white) : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -472,17 +460,13 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
                       'assets/history.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: !_isPendingSelected
-                          ? (isDarkMode ? Colors.white : Colors.white)
-                          : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                      color: !_isPendingSelected ? (isDarkMode ? Colors.white : Colors.white) : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'History',
                       style: TextStyle(
-                        color: !_isPendingSelected
-                            ? (isDarkMode ? Colors.white : Colors.white)
-                            : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                        color: !_isPendingSelected ? (isDarkMode ? Colors.white : Colors.white) : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -511,7 +495,6 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
     }
     String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
     String requestorName = (item['requestor_name']?.toString() ?? 'N/A').trim();
-    String id = item['uid']?.toString().trim() ?? '';
     String imgName = item['img_name']?.toString().trim() ?? '';
     String imgPath = item['img_path']?.toString().trim() ?? '';
 
@@ -774,7 +757,7 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
           height: screenSize.width * 0.14, // 14% of screen width
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            print('Error loading employee image from $imageUrl: $error');
+            debugPrint('Error loading employee image from $imageUrl: $error');
             return Icon(
               Icons.person,
               color: Colors.grey.shade600,
@@ -816,8 +799,8 @@ class _ApprovalsMainPageState extends State<ApprovalsMainPage> {
       // Format the date to 'dd-MM-yyyy' or modify as needed
       return DateFormat('dd-MM-yyyy').format(parsedDate);
     } catch (e, stackTrace) {
-      print('Date parsing error for "$dateStr": $e');
-      print(stackTrace);
+      debugPrint('Date parsing error for "$dateStr": $e');
+      debugPrint(stackTrace.toString());
       return 'Invalid Date';
     }
   }

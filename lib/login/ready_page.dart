@@ -8,10 +8,10 @@ class ReadyPage extends StatefulWidget {
   const ReadyPage({super.key});
 
   @override
-  _ReadyPageState createState() => _ReadyPageState();
+  ReadyPageState createState() => ReadyPageState();
 }
 
-class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMixin {
+class ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _slideAnimation;
   late Animation<double> _arrowAnimation;
@@ -37,10 +37,10 @@ class _ReadyPageState extends State<ReadyPage> with SingleTickerProviderStateMix
     ).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     )..addListener(() {
-      setState(() {
-        _slidePosition = _slideAnimation.value;
+        setState(() {
+          _slidePosition = _slideAnimation.value;
+        });
       });
-    });
 
     // Define the arrow animation (used for the logo bounce, if desired)
     _arrowAnimation = Tween<double>(
@@ -331,10 +331,10 @@ class FadeInText extends StatefulWidget {
   });
 
   @override
-  _FadeInTextState createState() => _FadeInTextState();
+  FadeInTextState createState() => FadeInTextState();
 }
 
-class _FadeInTextState extends State<FadeInText> with SingleTickerProviderStateMixin {
+class FadeInTextState extends State<FadeInText> with SingleTickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
@@ -391,10 +391,10 @@ class SlideInImage extends StatefulWidget {
   });
 
   @override
-  _SlideInImageState createState() => _SlideInImageState();
+  SlideInImageState createState() => SlideInImageState();
 }
 
-class _SlideInImageState extends State<SlideInImage> with SingleTickerProviderStateMixin {
+class SlideInImageState extends State<SlideInImage> with SingleTickerProviderStateMixin {
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
 

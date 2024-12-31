@@ -89,10 +89,10 @@ class UserProvider extends ChangeNotifier {
 
         updateUser(loggedInUser);
       } else {
-        print('Failed to fetch user data. Status code: ${response.statusCode}, Body: ${response.body}');
+        debugPrint('Failed to fetch user data. Status code: ${response.statusCode}, Body: ${response.body}');
       }
     } catch (e) {
-      print('Error occurred while fetching user data: $e');
+      debugPrint('Error occurred while fetching user data: $e');
     }
   }
 

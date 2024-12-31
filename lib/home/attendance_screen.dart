@@ -329,11 +329,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   // Method to show notification for check-out
-  Future<void> _showCheckOutNotification(
-      String checkOutTime, Duration workingHours) async {
+  Future<void> _showCheckOutNotification(String checkOutTime, Duration workingHours) async {
     if (kDebugMode) {
-      print(
-          'Attempting to show Check-out notification with time: $checkOutTime and working hours: $workingHours');
+      print('Attempting to show Check-out notification with time: $checkOutTime and working hours: $workingHours');
     }
 
     try {
@@ -376,7 +374,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       }
     }
   }
-
 
   Future<bool> _sendCheckInOutRequest(AttendanceRecord record) async {
     // If offline mode is forcibly on, do nothing and return false
@@ -426,8 +423,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         }
         // Return false => do NOT proceed with local setState, notifications, etc.
         return false;
-      }
-      else {
+      } else {
         // Some other error from the server
         throw Exception('Failed with status code ${response.statusCode}');
       }
@@ -436,11 +432,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         // If sending fails, save to local storage
         await offlineProvider.addPendingAttendance(record);
         // Show a dialog or just keep silent
-        _showCustomDialog(
-          AppLocalizations.of(context)!.error,
-          '${AppLocalizations.of(context)!.failedToCheckInOut}: $error',
-          isSuccess: false,
-        );
+        if (mounted) {
+          _showCustomDialog(
+            AppLocalizations.of(context)!.error,
+            '${AppLocalizations.of(context)!.failedToCheckInOut}: $error',
+            isSuccess: false,
+          );
+        }
       }
       return false;
     }
@@ -636,8 +634,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     setState(() {
       if (distanceToOffice <= _officeRange) {
-      } else {
-      }
+      } else {}
     });
   }
 
@@ -671,11 +668,14 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     bool biometricEnabled = (biometricEnabledStored == 'true') && canCheckBiometrics && isDeviceSupported;
 
     if (!biometricEnabled) {
-      _showCustomDialog(
-        AppLocalizations.of(context)!.biometricNotEnabled,
-        AppLocalizations.of(context)!.enableBiometricFirst,
-        isSuccess: false,
-      );
+      if (context.mounted) {
+        _showCustomDialog(
+          AppLocalizations.of(context)!.biometricNotEnabled,
+          AppLocalizations.of(context)!.enableBiometricFirst,
+          isSuccess: false,
+        );
+      }
+
       return;
     }
 
@@ -847,18 +847,20 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     return RefreshIndicator(
       onRefresh: () async {
         await _fetchWeeklyRecords();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Your attendance data has been refreshed successfully",
-              style: TextStyle(fontSize: 13, color: Colors.white),
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Your attendance data has been refreshed successfully",
+                style: TextStyle(fontSize: 13, color: Colors.white),
+              ),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.green,
+              margin: EdgeInsets.all(20),
+              duration: Duration(seconds: 3),
             ),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.green,
-            margin: EdgeInsets.all(20),
-            duration: Duration(seconds: 3),
-          ),
-        );
+          );
+        }
       },
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -956,9 +958,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                           children: [
                             Icon(
                               isSuccess ? Icons.check_circle_outline : Icons.error_outline,
-                              color: isSuccess
-                                  ? (isDarkMode ? Colors.greenAccent : Colors.green)
-                                  : (isDarkMode ? Colors.redAccent : Colors.red),
+                              color: isSuccess ? (isDarkMode ? Colors.greenAccent : Colors.green) : (isDarkMode ? Colors.redAccent : Colors.red),
                               size: constraints.maxWidth < 400 ? 40 : 50,
                             ),
                             const SizedBox(width: 12),
@@ -1368,7 +1368,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-
   Widget _buildWeeklyRecordsList() {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
@@ -1458,14 +1457,10 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     // Only Offsite button:
-    Color offsiteBgColor = _isOffsite
-        ? Colors.red
-        : (isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200);
+    Color offsiteBgColor = _isOffsite ? Colors.red : (isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200);
 
     Color offsiteIconColor = _isOffsite ? Colors.white : Colors.red;
-    Color offsiteTextColor = _isOffsite
-        ? Colors.white
-        : (isDarkMode ? Colors.white : Colors.black);
+    Color offsiteTextColor = _isOffsite ? Colors.white : (isDarkMode ? Colors.white : Colors.black);
 
     return Center(
       child: FittedBox(

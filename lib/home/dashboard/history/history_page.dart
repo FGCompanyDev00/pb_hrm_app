@@ -15,10 +15,10 @@ class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
 
   @override
-  _HistoryPageState createState() => _HistoryPageState();
+  HistoryPageState createState() => HistoryPageState();
 }
 
-class _HistoryPageState extends State<HistoryPage> {
+class HistoryPageState extends State<HistoryPage> {
   bool _isPendingSelected = true;
   List<Map<String, dynamic>> _pendingItems = [];
   List<Map<String, dynamic>> _historyItems = [];
@@ -147,14 +147,14 @@ class _HistoryPageState extends State<HistoryPage> {
         _isLoading = false;
       });
 
-      print('Pending items loaded and sorted: ${_pendingItems.length} items.');
-      print('History items loaded and sorted: ${_historyItems.length} items.');
+      debugPrint('Pending items loaded and sorted: ${_pendingItems.length} items.');
+      debugPrint('History items loaded and sorted: ${_historyItems.length} items.');
     } catch (e, stackTrace) {
       setState(() {
         _isLoading = false;
       });
-      print('Error fetching data: $e');
-      print(stackTrace);
+      debugPrint('Error fetching data: $e');
+      debugPrint(stackTrace.toString());
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching data: $e')),
       );
@@ -226,7 +226,7 @@ class _HistoryPageState extends State<HistoryPage> {
         });
         break;
       default:
-      // Handle unknown types if necessary
+        // Handle unknown types if necessary
         break;
     }
 

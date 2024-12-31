@@ -15,10 +15,10 @@ class ReturnCarPageDetails extends StatefulWidget {
   const ReturnCarPageDetails({super.key, required this.uid});
 
   @override
-  _ReturnCarPageDetailsState createState() => _ReturnCarPageDetailsState();
+  ReturnCarPageDetailsState createState() => ReturnCarPageDetailsState();
 }
 
-class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
+class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   bool isLoading = true;
   Map<String, dynamic>? eventData;
   final TextEditingController recipientNameController = TextEditingController();
@@ -116,8 +116,7 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
 
     var request = http.MultipartRequest(
       'PUT',
-      Uri.parse(
-          '$baseUrl/api/office-administration/car_permit/complete/${widget.uid}'),
+      Uri.parse('$baseUrl/api/office-administration/car_permit/complete/${widget.uid}'),
     );
 
     request.headers['Authorization'] = 'Bearer $token';
@@ -151,19 +150,19 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
     if (response.statusCode == 200 && responseData != null) {
       if (responseData['statusCode'] == 200 || responseData['statusCode'] == 201) {
         // Success
-        showResponseModal(context, success: true, message: responseData['message']);
+        if (mounted) showResponseModal(context, success: true, message: responseData['message']);
       } else {
         // API returned an error
         String errorMessage = responseData['message'] ?? 'An error occurred.';
-        showResponseModal(context, success: false, message: errorMessage);
+        if (mounted) showResponseModal(context, success: false, message: errorMessage);
       }
     } else if (responseData != null && responseData['message'] != null) {
       // Handle error message from API payload
       String errorMessage = responseData['message'];
-      showResponseModal(context, success: false, message: errorMessage);
+      if (mounted) showResponseModal(context, success: false, message: errorMessage);
     } else {
       // HTTP error without specific API error message
-      showResponseModal(context, success: false, message: 'Failed to confirm return. Please try again.');
+      if (mounted) showResponseModal(context, success: false, message: 'Failed to confirm return. Please try again.');
     }
   }
 
@@ -229,7 +228,6 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   Widget buildBody(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
-    final ColorScheme colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
       padding: const EdgeInsets.all(12.0),
@@ -242,10 +240,7 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  eventData?['created_date'] != null
-                      ? DateFormat('MMMM dd, yyyy').format(
-                      DateTime.parse(eventData!['created_date']).toLocal())
-                      : '',
+                  eventData?['created_date'] != null ? DateFormat('MMMM dd, yyyy').format(DateTime.parse(eventData!['created_date']).toLocal()) : '',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -284,11 +279,9 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                     isDarkMode: isDarkMode,
                   ),
                   const SizedBox(height: 12),
-                  buildDateField(
-                      context, 'Departure Date *', departureDateController, isDarkMode),
+                  buildDateField(context, 'Departure Date *', departureDateController, isDarkMode),
                   const SizedBox(height: 12),
-                  buildDateField(
-                      context, 'Return Date *', returnDateController, isDarkMode),
+                  buildDateField(context, 'Return Date *', returnDateController, isDarkMode),
                   const SizedBox(height: 12),
                   Text(
                     'File',
@@ -303,16 +296,13 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                     children: [
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isDarkMode
-                              ? Colors.green
-                              : Colors.blue,
+                          backgroundColor: isDarkMode ? Colors.green : Colors.blue,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
                         onPressed: () async {
-                          FilePickerResult? result = await FilePicker.platform
-                              .pickFiles(type: FileType.any);
+                          FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.any);
 
                           if (result != null) {
                             setState(() {
@@ -378,9 +368,7 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: BorderSide(
-                          color: isDarkMode
-                              ? Colors.orangeAccent
-                              : const Color(0xFFE2AD30),
+                          color: isDarkMode ? Colors.orangeAccent : const Color(0xFFE2AD30),
                         ),
                       ),
                     ),
@@ -393,9 +381,7 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                       confirmReturn();
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isDarkMode
-                          ? Colors.orangeAccent
-                          : const Color(0xFFE2AD30),
+                      backgroundColor: isDarkMode ? Colors.orangeAccent : const Color(0xFFE2AD30),
                       minimumSize: const Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -420,11 +406,11 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   }
 
   Widget buildTextField(
-      String label,
-      TextEditingController controller, {
-        TextInputType keyboardType = TextInputType.text,
-        required bool isDarkMode,
-      }) {
+    String label,
+    TextEditingController controller, {
+    TextInputType keyboardType = TextInputType.text,
+    required bool isDarkMode,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -465,9 +451,7 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: isDarkMode
-                    ? Colors.orangeAccent
-                    : const Color(0xFFE2AD30),
+                color: isDarkMode ? Colors.orangeAccent : const Color(0xFFE2AD30),
               ),
             ),
           ),
@@ -476,8 +460,7 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
     );
   }
 
-  Widget buildDateField(
-      BuildContext context, String label, TextEditingController controller, bool isDarkMode) {
+  Widget buildDateField(BuildContext context, String label, TextEditingController controller, bool isDarkMode) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -505,22 +488,20 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
               onPressed: () async {
                 DateTime? pickedDate = await showDatePicker(
                   context: context,
-                  initialDate: controller.text.isNotEmpty
-                      ? DateTime.parse(controller.text)
-                      : DateTime.now(),
+                  initialDate: controller.text.isNotEmpty ? DateTime.parse(controller.text) : DateTime.now(),
                   firstDate: DateTime(2000),
                   lastDate: DateTime(2101),
                   builder: (context, child) {
                     return Theme(
                       data: isDarkMode
                           ? ThemeData.dark().copyWith(
-                        colorScheme: ColorScheme.dark(
-                          primary: Colors.orangeAccent,
-                          onPrimary: Colors.black,
-                          surface: Colors.grey[800]!,
-                          onSurface: Colors.white,
-                        ),
-                      )
+                              colorScheme: ColorScheme.dark(
+                                primary: Colors.orangeAccent,
+                                onPrimary: Colors.black,
+                                surface: Colors.grey[800]!,
+                                onSurface: Colors.white,
+                              ),
+                            )
                           : ThemeData.light(),
                       child: child!,
                     );
@@ -548,9 +529,7 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: isDarkMode
-                    ? Colors.orangeAccent
-                    : const Color(0xFFE2AD30),
+                color: isDarkMode ? Colors.orangeAccent : const Color(0xFFE2AD30),
               ),
             ),
           ),
@@ -560,10 +539,10 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   }
 
   void showResponseModal(
-      BuildContext context, {
-        required bool success,
-        required String message,
-      }) {
+    BuildContext context, {
+    required bool success,
+    required String message,
+  }) {
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
@@ -611,10 +590,10 @@ class _ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
       appBar: buildAppBar(context),
       body: isLoading
           ? Center(
-        child: CircularProgressIndicator(
-          color: isDarkMode ? Colors.orangeAccent : Colors.blue,
-        ),
-      )
+              child: CircularProgressIndicator(
+                color: isDarkMode ? Colors.orangeAccent : Colors.blue,
+              ),
+            )
           : buildBody(context),
       backgroundColor: isDarkMode ? Colors.black : Colors.white,
     );

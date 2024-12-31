@@ -23,10 +23,10 @@ class UpdateProcessingPage extends StatefulWidget {
   });
 
   @override
-  _UpdateProcessingPageState createState() => _UpdateProcessingPageState();
+  UpdateProcessingPageState createState() => UpdateProcessingPageState();
 }
 
-class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
+class UpdateProcessingPageState extends State<UpdateProcessingPage> {
   final _formKey = GlobalKey<FormState>();
   List<Map<String, dynamic>> selectedMembers = [];
 
@@ -261,8 +261,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
     }
     try {
       final response = await http.get(
-        Uri.parse(
-            '${widget.baseUrl}/api/work-tracking/meeting/get-all-meeting'),
+        Uri.parse('${widget.baseUrl}/api/work-tracking/meeting/get-all-meeting'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -270,7 +269,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
         final meeting = (data['results'] as List).firstWhere(
-              (item) => item['meeting_id'] == widget.meetingId,
+          (item) => item['meeting_id'] == widget.meetingId,
           orElse: () => null,
         );
         if (meeting != null) {
@@ -278,44 +277,32 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
             originalTitle = meeting['title'] ?? '';
             originalDescription = meeting['description'] ?? '';
             originalStatus = meeting['s_name'] ?? 'Processing';
-            originalStatusId = _statusMap[originalStatus] ??
-                '0a8d93f0-1c05-42b2-8e56-984a578ef077';
-            originalFromDate = meeting['from_date'] != null
-                ? DateTime.parse(meeting['from_date'])
-                : null;
-            originalToDate = meeting['to_date'] != null
-                ? DateTime.parse(meeting['to_date'])
-                : null;
-            originalStartTime = meeting['start_time'] != null &&
-                meeting['start_time'] != ''
+            originalStatusId = _statusMap[originalStatus] ?? '0a8d93f0-1c05-42b2-8e56-984a578ef077';
+            originalFromDate = meeting['from_date'] != null ? DateTime.parse(meeting['from_date']) : null;
+            originalToDate = meeting['to_date'] != null ? DateTime.parse(meeting['to_date']) : null;
+            originalStartTime = meeting['start_time'] != null && meeting['start_time'] != ''
                 ? TimeOfDay(
-              hour: int.parse(meeting['start_time'].split(':')[0]),
-              minute: int.parse(meeting['start_time'].split(':')[1]),
-            )
+                    hour: int.parse(meeting['start_time'].split(':')[0]),
+                    minute: int.parse(meeting['start_time'].split(':')[1]),
+                  )
                 : null;
-            originalEndTime = meeting['end_time'] != null &&
-                meeting['end_time'] != ''
+            originalEndTime = meeting['end_time'] != null && meeting['end_time'] != ''
                 ? TimeOfDay(
-              hour: int.parse(meeting['end_time'].split(':')[0]),
-              minute: int.parse(meeting['end_time'].split(':')[1]),
-            )
+                    hour: int.parse(meeting['end_time'].split(':')[0]),
+                    minute: int.parse(meeting['end_time'].split(':')[1]),
+                  )
                 : null;
 
             // Initialize controllers with original data
             _titleController.text = originalTitle;
             _descriptionController.text = originalDescription;
-            _startDateController.text = originalFromDate != null
-                ? DateFormat('dd-MM-yyyy').format(originalFromDate!)
-                : '';
-            _endDateController.text = originalToDate != null
-                ? DateFormat('dd-MM-yyyy').format(originalToDate!)
-                : '';
-            _startTimeController.text = originalStartTime != null
-                ? originalStartTime!.format(context)
-                : '';
-            _endTimeController.text = originalEndTime != null
-                ? originalEndTime!.format(context)
-                : '';
+            _startDateController.text = originalFromDate != null ? DateFormat('dd-MM-yyyy').format(originalFromDate!) : '';
+            _endDateController.text = originalToDate != null ? DateFormat('dd-MM-yyyy').format(originalToDate!) : '';
+            _startTimeController.text = originalStartTime != null ? originalStartTime!.format(context) : '';
+            _endTimeController.text = originalEndTime != null ? originalEndTime!.format(context) : '';
+            if (meeting['file_name'] != null) {
+              _selectedImage = File(meeting['file_name']);
+            }
           });
         } else {
           _showAlertDialog(
@@ -342,10 +329,9 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
       _isLoading = false;
     });
   }
+
   Future<void> _selectStartDate() async {
-    final DateTime initialDate = isFromDateEdited && updatedFromDate != null
-        ? updatedFromDate!
-        : originalFromDate ?? DateTime.now();
+    final DateTime initialDate = isFromDateEdited && updatedFromDate != null ? updatedFromDate! : originalFromDate ?? DateTime.now();
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -362,9 +348,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
   }
 
   Future<void> _selectStartTime() async {
-    final TimeOfDay initialTime = isStartTimeEdited && updatedStartTime != null
-        ? updatedStartTime!
-        : originalStartTime ?? TimeOfDay.now();
+    final TimeOfDay initialTime = isStartTimeEdited && updatedStartTime != null ? updatedStartTime! : originalStartTime ?? TimeOfDay.now();
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: initialTime,
@@ -379,9 +363,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
   }
 
   Future<void> _selectEndDate() async {
-    final DateTime initialDate = isToDateEdited && updatedToDate != null
-        ? updatedToDate!
-        : originalToDate ?? DateTime.now();
+    final DateTime initialDate = isToDateEdited && updatedToDate != null ? updatedToDate! : originalToDate ?? DateTime.now();
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
@@ -398,9 +380,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
   }
 
   Future<void> _selectEndTime() async {
-    final TimeOfDay initialTime = isEndTimeEdited && updatedEndTime != null
-        ? updatedEndTime!
-        : originalEndTime ?? TimeOfDay.now();
+    final TimeOfDay initialTime = isEndTimeEdited && updatedEndTime != null ? updatedEndTime! : originalEndTime ?? TimeOfDay.now();
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: initialTime,
@@ -420,13 +400,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
     }
 
     // Check if any field has been edited
-    if (!isTitleEdited &&
-        !isDescriptionEdited &&
-        !isStatusEdited &&
-        !isFromDateEdited &&
-        !isToDateEdited &&
-        !isStartTimeEdited &&
-        !isEndTimeEdited) {
+    if (!isTitleEdited && !isDescriptionEdited && !isStatusEdited && !isFromDateEdited && !isToDateEdited && !isStartTimeEdited && !isEndTimeEdited) {
       _showSnackBar(
         message: 'No fields have been updated.',
         isError: false,
@@ -504,27 +478,24 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
       // Prepare the request body with updated or original data
       Map<String, dynamic> body = {
         'title': isTitleEdited ? updatedTitle : originalTitle,
-        'descriptions':
-        isDescriptionEdited ? updatedDescription : originalDescription,
+        'descriptions': isDescriptionEdited ? updatedDescription : originalDescription,
         'status_id': isStatusEdited ? updatedStatusId : originalStatusId,
         'fromdate': DateFormat('yyyy-MM-dd HH:mm:ss').format(fromDateTime),
         'todate': DateFormat('yyyy-MM-dd HH:mm:ss').format(toDateTime),
         'start_time': isStartTimeEdited && updatedStartTime != null
             ? _formatTime(updatedStartTime!)
             : originalStartTime != null
-            ? _formatTime(originalStartTime!)
-            : '',
+                ? _formatTime(originalStartTime!)
+                : '',
         'end_time': isEndTimeEdited && updatedEndTime != null
             ? _formatTime(updatedEndTime!)
             : originalEndTime != null
-            ? _formatTime(originalEndTime!)
-            : '',
+                ? _formatTime(originalEndTime!)
+                : '',
       };
 
       final response = await http.put(
-        Uri.parse(
-            '${widget.baseUrl}/api/work-tracking/meeting/update/${widget
-                .meetingId}'),
+        Uri.parse('${widget.baseUrl}/api/work-tracking/meeting/update/${widget.meetingId}'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -574,9 +545,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
         Positioned(
           left: i * 24.0,
           child: CircleAvatar(
-            backgroundImage: selectedMembers[i]['image_url'] != null && selectedMembers[i]['image_url'].isNotEmpty
-                ? NetworkImage(selectedMembers[i]['image_url'])
-                : const AssetImage('assets/default_avatar.png') as ImageProvider,
+            backgroundImage: selectedMembers[i]['image_url'] != null && selectedMembers[i]['image_url'].isNotEmpty ? NetworkImage(selectedMembers[i]['image_url']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
             radius: 18,
             backgroundColor: Colors.white,
             child: Container(
@@ -656,11 +625,9 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors
-                    .redAccent,
+                backgroundColor: Colors.redAccent,
               ),
-              child: const Text(
-                  'Delete', style: TextStyle(color: Colors.white)),
+              child: const Text('Delete', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -689,9 +656,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
 
     try {
       final response = await http.put(
-        Uri.parse(
-            '${widget.baseUrl}/api/work-tracking/meeting/delete/${widget
-                .meetingId}'),
+        Uri.parse('${widget.baseUrl}/api/work-tracking/meeting/delete/${widget.meetingId}'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -702,7 +667,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
           message: 'Meeting deleted successfully.',
           isError: false,
         );
-        Navigator.pop(context); // Navigate back after deletion
+        if (mounted) Navigator.pop(context); // Navigate back after deletion
       } else {
         String errorMessage = 'Failed to delete meeting.';
         try {
@@ -738,18 +703,13 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(title,
-              style: TextStyle(
-                  color: isError ? Colors.red : Colors.green,
-                  fontWeight: FontWeight.bold)),
+          title: Text(title, style: TextStyle(color: isError ? Colors.red : Colors.green, fontWeight: FontWeight.bold)),
           content: Text(content),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                if (!isError &&
-                    (title.toLowerCase().contains('success') ||
-                        title.toLowerCase().contains('deleted'))) {
+                if (!isError && (title.toLowerCase().contains('success') || title.toLowerCase().contains('deleted'))) {
                   Navigator.of(context).pop(); // Navigate back on success
                 }
               },
@@ -834,9 +794,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
         title: Text(
           'Edit Processing',
           style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white
-                : Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
             fontSize: 22,
             fontWeight: FontWeight.w500,
           ),
@@ -844,9 +802,7 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white
-                : Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
             size: 20,
           ),
           onPressed: () => Navigator.pop(context),
@@ -858,478 +814,472 @@ class _UpdateProcessingPageState extends State<UpdateProcessingPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: SingleChildScrollView(
-          padding:
-          EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 18.0),
-          child: Form(
-            key: _formKey,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Row of Delete and Update Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _deleteMeeting,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFC2C2C2),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12.0),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white,
-                                  ),
-                                  padding: const EdgeInsets.all(6.0),
-                                  child: const Icon(
-                                    Icons.close,
-                                    color: Colors.grey,
-                                    size: 16,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Delete',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _updateMeeting,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFDBB342),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 12.0),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white,
-                                  ),
-                                  padding: const EdgeInsets.all(6.0),
-                                  child: const Icon(
-                                    Icons.check,
-                                    color: Color(0xFFDBB342),
-                                    size: 16,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Update',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Title
-                    const Text(
-                      'Title',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter title',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(8.0)),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          updatedTitle = value;
-                          isTitleEdited = true;
-                        });
-                      },
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    // Row: Status Dropdown + Upload Image
-                    Row(
-                      children: [
-                        // Status
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 18.0),
+                child: Form(
+                  key: _formKey,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Row of Delete and Update Buttons
+                          Row(
                             children: [
-                              const Text(
-                                'Status',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              DropdownButtonFormField<String>(
-                                value:
-                                isStatusEdited ? updatedStatus : originalStatus,
-                                decoration: const InputDecoration(
-                                  border: OutlineInputBorder(
-                                    borderRadius:
-                                    BorderRadius.all(Radius.circular(8.0)),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: _deleteMeeting,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFC2C2C2),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 12.0),
                                   ),
-                                ),
-                                items: ['Processing', 'Pending', 'Finished', 'Error']
-                                    .map<DropdownMenuItem<String>>((String value) {
-                                  return DropdownMenuItem<String>(
-                                    value: value,
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.circle,
-                                          color: _getStatusColor(value),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.white,
+                                        ),
+                                        padding: const EdgeInsets.all(6.0),
+                                        child: const Icon(
+                                          Icons.close,
+                                          color: Colors.grey,
                                           size: 16,
                                         ),
-                                        const SizedBox(width: 8),
-                                        Text(value),
-                                      ],
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    updatedStatus = newValue;
-                                    updatedStatusId =
-                                        _statusMap[updatedStatus!] ??
-                                            '0a8d93f0-1c05-42b2-8e56-984a578ef077';
-                                    isStatusEdited = true;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        // Upload Image
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 25),
-                              Container(
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Colors.green, Colors.lightGreen],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        'Delete',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  borderRadius: BorderRadius.circular(16.0),
                                 ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
                                 child: ElevatedButton(
-                                  onPressed: _pickImage,
+                                  onPressed: _updateMeeting,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
+                                    backgroundColor: const Color(0xFFDBB342),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8.0),
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
-                                    padding: EdgeInsets.symmetric(
-                                      vertical: 17.0,
-                                      horizontal: (MediaQuery.of(context).size.width < 400) ? 40 : 53,
-                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 12.0),
                                   ),
-                                  child: Text(
-                                    'Upload Image',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: (MediaQuery.of(context).size.width < 400) ? 12 : 14,
-                                    ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.white,
+                                        ),
+                                        padding: const EdgeInsets.all(6.0),
+                                        child: const Icon(
+                                          Icons.check,
+                                          color: Color(0xFFDBB342),
+                                          size: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Text(
+                                        'Update',
+                                        style: TextStyle(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
-                              if (_selectedImage != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
-                                  child: Text(
-                                    'Selected: ${_selectedImage!.path.split('/').last}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
 
-                    const SizedBox(height: 18),
+                          const SizedBox(height: 16),
 
-                    // Start Date & Time
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          // Title
+                          const Text(
+                            'Title',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _titleController,
+                            decoration: const InputDecoration(
+                              hintText: 'Enter title',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.all(Radius.circular(8.0)),
+                              ),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                updatedTitle = value;
+                                isTitleEdited = true;
+                              });
+                            },
+                          ),
+
+                          const SizedBox(height: 18),
+
+                          // Row: Status Dropdown + Upload Image
+                          Row(
                             children: [
-                              const Text(
-                                'Start Date',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
+                              // Status
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Status',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    DropdownButtonFormField<String>(
+                                      value: isStatusEdited ? updatedStatus : originalStatus,
+                                      decoration: const InputDecoration(
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.all(Radius.circular(8.0)),
+                                        ),
+                                      ),
+                                      items: ['Processing', 'Pending', 'Finished', 'Error'].map<DropdownMenuItem<String>>((String value) {
+                                        return DropdownMenuItem<String>(
+                                          value: value,
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.circle,
+                                                color: _getStatusColor(value),
+                                                size: 16,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(value),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (String? newValue) {
+                                        setState(() {
+                                          updatedStatus = newValue;
+                                          updatedStatusId = _statusMap[updatedStatus!] ?? '0a8d93f0-1c05-42b2-8e56-984a578ef077';
+                                          isStatusEdited = true;
+                                        });
+                                      },
+                                    ),
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              GestureDetector(
-                                onTap: _selectStartDate,
-                                child: AbsorbPointer(
-                                  child: TextFormField(
-                                    controller: _startDateController,
-                                    decoration: InputDecoration(
-                                      hintText: 'yyyy-MM-dd',
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8.0),
+                              const SizedBox(width: 10),
+                              // Upload Image
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const SizedBox(height: 25),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [Colors.green, Colors.lightGreen],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(16.0),
                                       ),
-                                      prefixIcon: Padding(
-                                        padding: const EdgeInsets.all(12.0),
-                                        child: Image.asset(
-                                          'assets/calendar-icon.png',
-                                          width: 22,
-                                          height: 22,
-                                          color: Colors.grey,
+                                      child: ElevatedButton(
+                                        onPressed: _pickImage,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          shadowColor: Colors.transparent,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8.0),
+                                          ),
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 17.0,
+                                            horizontal: (MediaQuery.of(context).size.width < 400) ? 40 : 53,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Upload Image',
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontSize: (MediaQuery.of(context).size.width < 400) ? 12 : 14,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
+                                    if (_selectedImage != null)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 8.0),
+                                        child: Text(
+                                          'Selected: ${_selectedImage!.path.split('/').last}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+
+                          const SizedBox(height: 18),
+
+                          // Start Date & Time
+                          Row(
                             children: [
-                              const Text(
-                                'Start Time',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              GestureDetector(
-                                onTap: _selectStartTime,
-                                child: AbsorbPointer(
-                                  child: TextFormField(
-                                    controller: _startTimeController,
-                                    decoration: InputDecoration(
-                                      hintText: 'HH:MM',
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8.0),
-                                      ),
-                                      prefixIcon: const Icon(
-                                        Icons.access_time,
-                                        color: Colors.grey,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Start Date',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 18),
-
-                    // End Date & Time
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'End Date',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              GestureDetector(
-                                onTap: _selectEndDate,
-                                child: AbsorbPointer(
-                                  child: TextFormField(
-                                    controller: _endDateController,
-                                    decoration: InputDecoration(
-                                      hintText: 'yyyy-MM-dd',
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8.0),
-                                      ),
-                                      prefixIcon: Padding(
-                                        padding: const EdgeInsets.all(12.0),
-                                        child: Image.asset(
-                                          'assets/calendar-icon.png',
-                                          width: 22,
-                                          height: 22,
-                                          color: Colors.grey,
+                                    const SizedBox(height: 6),
+                                    GestureDetector(
+                                      onTap: _selectStartDate,
+                                      child: AbsorbPointer(
+                                        child: TextFormField(
+                                          controller: _startDateController,
+                                          decoration: InputDecoration(
+                                            hintText: 'yyyy-MM-dd',
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8.0),
+                                            ),
+                                            prefixIcon: Padding(
+                                              padding: const EdgeInsets.all(12.0),
+                                              child: Image.asset(
+                                                'assets/calendar-icon.png',
+                                                width: 22,
+                                                height: 22,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'End Time',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              GestureDetector(
-                                onTap: _selectEndTime,
-                                child: AbsorbPointer(
-                                  child: TextFormField(
-                                    controller: _endTimeController,
-                                    decoration: InputDecoration(
-                                      hintText: 'HH:MM',
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8.0),
-                                      ),
-                                      prefixIcon: const Icon(
-                                        Icons.access_time,
-                                        color: Colors.grey,
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Start Time',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                  ),
+                                    const SizedBox(height: 6),
+                                    GestureDetector(
+                                      onTap: _selectStartTime,
+                                      child: AbsorbPointer(
+                                        child: TextFormField(
+                                          controller: _startTimeController,
+                                          decoration: InputDecoration(
+                                            hintText: 'HH:MM',
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8.0),
+                                            ),
+                                            prefixIcon: const Icon(
+                                              Icons.access_time,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
 
-                    const SizedBox(height: 18),
+                          const SizedBox(height: 18),
 
-                    // + Add People (Placeholder)
-                    // Row(
-                    //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    //   children: [
-                    //     SizedBox(
-                    //       width: constraints.maxWidth * 0.5,
-                    //       child: ElevatedButton.icon(
-                    //         onPressed: _isLoading
-                    //             ? null
-                    //             : _navigateToEditMembers,
-                    //         icon: const Icon(Icons.person_add, color: Colors.black),
-                    //         label: const Text(
-                    //           'Add People',
-                    //           style: TextStyle(color: Colors.black),
-                    //         ),
-                    //         style: ElevatedButton.styleFrom(
-                    //           backgroundColor: Colors.green,
-                    //           padding: const EdgeInsets.symmetric(
-                    //             horizontal: 12.0,
-                    //             vertical: 10.0,
-                    //           ),
-                    //           shape: RoundedRectangleBorder(
-                    //             borderRadius: BorderRadius.circular(16.0),
-                    //           ),
-                    //           elevation: 3,
-                    //         ),
-                    //       ),
-                    //     ),
-                    //     // Selected Members Display
-                    //     SizedBox(
-                    //       width: constraints.maxWidth * 0.5 - 8,
-                    //       child: _buildSelectedMembers(),
-                    //     ),
-                    //   ],
-                    // ),
-                    //
-                    // const SizedBox(height: 18),
+                          // End Date & Time
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'End Date',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    GestureDetector(
+                                      onTap: _selectEndDate,
+                                      child: AbsorbPointer(
+                                        child: TextFormField(
+                                          controller: _endDateController,
+                                          decoration: InputDecoration(
+                                            hintText: 'yyyy-MM-dd',
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8.0),
+                                            ),
+                                            prefixIcon: Padding(
+                                              padding: const EdgeInsets.all(12.0),
+                                              child: Image.asset(
+                                                'assets/calendar-icon.png',
+                                                width: 22,
+                                                height: 22,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'End Time',
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    GestureDetector(
+                                      onTap: _selectEndTime,
+                                      child: AbsorbPointer(
+                                        child: TextFormField(
+                                          controller: _endTimeController,
+                                          decoration: InputDecoration(
+                                            hintText: 'HH:MM',
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8.0),
+                                            ),
+                                            prefixIcon: const Icon(
+                                              Icons.access_time,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
 
-                    // Description
-                    const Text(
-                      'Description',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextFormField(
-                      controller: _descriptionController,
-                      maxLines: 5,
-                      decoration: const InputDecoration(
-                        hintText: 'Enter description',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(Radius.circular(8.0)),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          updatedDescription = value;
-                          isDescriptionEdited = true;
-                        });
-                      },
-                    ),
+                          const SizedBox(height: 18),
 
-                    const SizedBox(height: 30),
-                  ],
-                );
-              },
+                          // + Add People (Placeholder)
+                          // Row(
+                          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          //   children: [
+                          //     SizedBox(
+                          //       width: constraints.maxWidth * 0.5,
+                          //       child: ElevatedButton.icon(
+                          //         onPressed: _isLoading
+                          //             ? null
+                          //             : _navigateToEditMembers,
+                          //         icon: const Icon(Icons.person_add, color: Colors.black),
+                          //         label: const Text(
+                          //           'Add People',
+                          //           style: TextStyle(color: Colors.black),
+                          //         ),
+                          //         style: ElevatedButton.styleFrom(
+                          //           backgroundColor: Colors.green,
+                          //           padding: const EdgeInsets.symmetric(
+                          //             horizontal: 12.0,
+                          //             vertical: 10.0,
+                          //           ),
+                          //           shape: RoundedRectangleBorder(
+                          //             borderRadius: BorderRadius.circular(16.0),
+                          //           ),
+                          //           elevation: 3,
+                          //         ),
+                          //       ),
+                          //     ),
+                          //     // Selected Members Display
+                          //     SizedBox(
+                          //       width: constraints.maxWidth * 0.5 - 8,
+                          //       child: _buildSelectedMembers(),
+                          //     ),
+                          //   ],
+                          // ),
+                          //
+                          // const SizedBox(height: 18),
+
+                          // Description
+                          const Text(
+                            'Description',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          TextFormField(
+                            controller: _descriptionController,
+                            maxLines: 5,
+                            decoration: const InputDecoration(
+                              hintText: 'Enter description',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.all(Radius.circular(8.0)),
+                              ),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                updatedDescription = value;
+                                isDescriptionEdited = true;
+                              });
+                            },
+                          ),
+
+                          const SizedBox(height: 30),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }

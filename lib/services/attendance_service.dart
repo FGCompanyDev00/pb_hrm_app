@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,19 +16,13 @@ class AttendanceService {
 
     try {
       // Determine which endpoint to use
-      final String endpoint = isCheckIn
-          ? '$baseUrl/api/attendance/checkin-checkout/office'
-          : '$baseUrl/api/attendance/checkin-checkout/offsite';
+      final String endpoint = isCheckIn ? '$baseUrl/api/attendance/checkin-checkout/office' : '$baseUrl/api/attendance/checkin-checkout/offsite';
 
       // Construct the payload
-      final Map<String, dynamic> attendanceData = {
-        "device_id": deviceId,
-        "latitude": latitude.toString(),
-        "longitude": longitude.toString()
-      };
+      final Map<String, dynamic> attendanceData = {"device_id": deviceId, "latitude": latitude.toString(), "longitude": longitude.toString()};
 
-      // Print the payload for debugging
-      print('API Payload: $attendanceData');
+      // debugPrint the payload for debugging
+      debugPrint('API Payload: $attendanceData');
 
       // Make the POST request
       final response = await http.post(
@@ -39,17 +34,17 @@ class AttendanceService {
         body: jsonEncode(attendanceData),
       );
 
-      // Print the response for debugging
-      print('Response Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      // debugPrint the response for debugging
+      debugPrint('Response Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       if (response.statusCode == 201 || response.statusCode == 202) {
-        print('Check-In/Out successful.');
+        debugPrint('Check-In/Out successful.');
       } else {
         throw Exception('Failed with status code ${response.statusCode}');
       }
     } catch (e) {
-      print('Error during the API call: $e');
+      debugPrint('Error during the API call: $e');
       throw Exception('Error during the API call: $e');
     }
   }

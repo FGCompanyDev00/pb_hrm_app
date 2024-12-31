@@ -13,17 +13,13 @@ class DetailsPage extends StatefulWidget {
   final String id;
   final String status;
 
-  const DetailsPage(
-      {super.key,
-        required this.types,
-        required this.id,
-        required this.status});
+  const DetailsPage({super.key, required this.types, required this.id, required this.status});
 
   @override
-  _DetailsPageState createState() => _DetailsPageState();
+  DetailsPageState createState() => DetailsPageState();
 }
 
-class _DetailsPageState extends State<DetailsPage> {
+class DetailsPageState extends State<DetailsPage> {
   Map<String, dynamic>? data;
   Map<int, String> _leaveTypes = {};
   bool isFinalized = false;
@@ -53,8 +49,7 @@ class _DetailsPageState extends State<DetailsPage> {
     try {
       final String? tokenValue = await _getToken();
       if (tokenValue == null) {
-        _showErrorDialog('Authentication Error',
-            'Token not found. Please log in again.');
+        _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
         setState(() {
           _errorMessage = 'Token not found. Please log in again.';
         });
@@ -69,32 +64,29 @@ class _DetailsPageState extends State<DetailsPage> {
       );
 
       if (kDebugMode) {
-        print('Fetching Leave Types from URL: $leaveTypesUrl');
-        print('Response Status Code: ${response.statusCode}');
-        print('Response Body: ${response.body}');
+        debugPrint('Fetching Leave Types from URL: $leaveTypesUrl');
+        debugPrint('Response Status Code: ${response.statusCode}');
+        debugPrint('Response Body: ${response.body}');
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         if (data['statusCode'] == 200 && data['results'] is List) {
           setState(() {
-            _leaveTypes = {
-              for (var lt in data['results']) lt['leave_type_id']: lt['name']
-            };
+            _leaveTypes = {for (var lt in data['results']) lt['leave_type_id']: lt['name']};
           });
         } else {
           throw Exception('Failed to fetch leave types');
         }
       } else {
-        throw Exception(
-            'Failed to fetch leave types: ${response.statusCode}');
+        throw Exception('Failed to fetch leave types: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
         _errorMessage = 'Error fetching leave types: $e';
       });
       if (kDebugMode) {
-        print('Error fetching leave types: $e');
+        debugPrint('Error fetching leave types: $e');
       }
     }
   }
@@ -145,7 +137,7 @@ class _DetailsPageState extends State<DetailsPage> {
       };
 
       if (kDebugMode) {
-        print('Sending POST request to $apiUrl with body: $requestBody');
+        debugPrint('Sending POST request to $apiUrl with body: $requestBody');
       }
 
       // Sending POST request for all types (meeting, leave, car)
@@ -159,8 +151,8 @@ class _DetailsPageState extends State<DetailsPage> {
       );
 
       if (kDebugMode) {
-        print('Received response with status code: ${response.statusCode}');
-        print('Response body: ${response.body}');
+        debugPrint('Received response with status code: ${response.statusCode}');
+        debugPrint('Response body: ${response.body}');
       }
 
       if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 202) {
@@ -225,7 +217,7 @@ class _DetailsPageState extends State<DetailsPage> {
         });
       }
     } catch (e) {
-      print('Error fetching details: $e');
+      debugPrint('Error fetching details: $e');
       setState(() {
         isLoading = false;
         _errorMessage = 'An unexpected error occurred while fetching details.';
@@ -242,8 +234,7 @@ class _DetailsPageState extends State<DetailsPage> {
     try {
       final String? tokenValue = await _getToken();
       if (tokenValue == null) {
-        _showErrorDialog('Authentication Error',
-            'Token not found. Please log in again.');
+        _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
         setState(() {
           imageUrl = _defaultAvatarUrl();
           _errorMessage = 'Token not found. Please log in again.';
@@ -252,7 +243,7 @@ class _DetailsPageState extends State<DetailsPage> {
       }
 
       if (kDebugMode) {
-        print('Fetching profile image from: $profileApiUrl');
+        debugPrint('Fetching profile image from: $profileApiUrl');
       }
 
       final response = await http.get(
@@ -264,21 +255,16 @@ class _DetailsPageState extends State<DetailsPage> {
       );
 
       if (kDebugMode) {
-        print('Profile API Response Status Code: ${response.statusCode}');
-        print('Profile API Response Body: ${response.body}');
+        debugPrint('Profile API Response Status Code: ${response.statusCode}');
+        debugPrint('Profile API Response Body: ${response.body}');
       }
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final Map<String, dynamic> profileData = jsonDecode(response.body);
 
-        if (profileData.containsKey('statusCode') &&
-            (profileData['statusCode'] == 200 ||
-                profileData['statusCode'] == 201 ||
-                profileData['statusCode'] == 202)) {
-          if (profileData.containsKey('results') &&
-              profileData['results'] is Map<String, dynamic>) {
-            String fetchedImageUrl =
-                profileData['results']['images'] ?? _defaultAvatarUrl();
+        if (profileData.containsKey('statusCode') && (profileData['statusCode'] == 200 || profileData['statusCode'] == 201 || profileData['statusCode'] == 202)) {
+          if (profileData.containsKey('results') && profileData['results'] is Map<String, dynamic>) {
+            String fetchedImageUrl = profileData['results']['images'] ?? _defaultAvatarUrl();
             setState(() {
               imageUrl = fetchedImageUrl;
             });
@@ -290,8 +276,7 @@ class _DetailsPageState extends State<DetailsPage> {
             _showErrorDialog('Error', 'Invalid profile API response.');
           }
         } else {
-          String errorMessage =
-              profileData['message'] ?? 'Unknown error fetching profile.';
+          String errorMessage = profileData['message'] ?? 'Unknown error fetching profile.';
           _showErrorDialog('Error', errorMessage);
           setState(() {
             imageUrl = _defaultAvatarUrl();
@@ -301,20 +286,17 @@ class _DetailsPageState extends State<DetailsPage> {
       } else {
         setState(() {
           imageUrl = _defaultAvatarUrl();
-          _errorMessage =
-          'Failed to fetch profile image: ${response.statusCode}';
+          _errorMessage = 'Failed to fetch profile image: ${response.statusCode}';
         });
-        _showErrorDialog('Error',
-            'Failed to fetch profile image: ${response.statusCode}');
+        _showErrorDialog('Error', 'Failed to fetch profile image: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching profile image: $e');
+      debugPrint('Error fetching profile image: $e');
       setState(() {
         imageUrl = _defaultAvatarUrl();
         _errorMessage = 'An error occurred while fetching profile image.';
       });
-      _showErrorDialog(
-          'Error', 'An unexpected error occurred while fetching profile image.');
+      _showErrorDialog('Error', 'An unexpected error occurred while fetching profile image.');
     }
   }
 
@@ -330,7 +312,7 @@ class _DetailsPageState extends State<DetailsPage> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       return prefs.getString('token');
     } catch (e) {
-      print('Error retrieving token: $e');
+      debugPrint('Error retrieving token: $e');
       return null;
     }
   }
@@ -342,11 +324,9 @@ class _DetailsPageState extends State<DetailsPage> {
         return 'N/A';
       }
       final DateTime parsedDate = DateTime.parse(dateStr);
-      return includeTime
-          ? DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate)
-          : DateFormat('dd-MM-yyyy').format(parsedDate);
+      return includeTime ? DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate) : DateFormat('dd-MM-yyyy').format(parsedDate);
     } catch (e) {
-      print('Date parsing error: $e');
+      debugPrint('Date parsing error: $e');
       return 'Invalid Date';
     }
   }
@@ -426,9 +406,7 @@ class _DetailsPageState extends State<DetailsPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircleAvatar(
-              backgroundImage: requestorImageUrl.isNotEmpty
-                  ? NetworkImage(requestorImageUrl)
-                  : NetworkImage(_defaultAvatarUrl()),
+              backgroundImage: requestorImageUrl.isNotEmpty ? NetworkImage(requestorImageUrl) : NetworkImage(_defaultAvatarUrl()),
               radius: 30, // Profile image size
               backgroundColor: Colors.grey[300],
               onBackgroundImageError: (_, __) {
@@ -533,13 +511,7 @@ class _DetailsPageState extends State<DetailsPage> {
       children: details.map((detail) {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: _buildInfoRow(
-              detail['icon'],
-              detail['title'],
-              detail['value'],
-              detail['color'],
-              isDarkMode
-          ),
+          child: _buildInfoRow(detail['icon'], detail['title'], detail['value'], detail['color'], isDarkMode),
         );
       }).toList(),
     );
@@ -629,9 +601,7 @@ class _DetailsPageState extends State<DetailsPage> {
   /// Build Action Buttons
   Widget _buildActionButtons(BuildContext context) {
     // Hide action buttons if status is approved, disapproved, or cancel
-    if (widget.status.toLowerCase() == 'approved' ||
-        widget.status.toLowerCase() == 'disapproved' ||
-        widget.status.toLowerCase() == 'cancel') {
+    if (widget.status.toLowerCase() == 'approved' || widget.status.toLowerCase() == 'disapproved' || widget.status.toLowerCase() == 'cancel') {
       return const SizedBox.shrink();
     }
 
@@ -725,9 +695,9 @@ class _DetailsPageState extends State<DetailsPage> {
       idToSend = data?['uid']?.toString() ?? widget.id;
     }
 
-    // Debug: Print the data and id before navigating to the edit page
+    // Debug: debugPrint the data and id before navigating to the edit page
     if (kDebugMode) {
-      print('Navigating to Edit Page with data: $data and id: $idToSend');
+      debugPrint('Navigating to Edit Page with data: $data and id: $idToSend');
     }
 
     // Navigate to OfficeBookingEventEditPage with id and type
@@ -740,9 +710,9 @@ class _DetailsPageState extends State<DetailsPage> {
         ),
       ),
     ).then((result) {
-      // Debug: Print the result from the edit page
+      // Debug: debugPrint the result from the edit page
       if (kDebugMode) {
-        print('Returned from Edit Page with result: $result');
+        debugPrint('Returned from Edit Page with result: $result');
       }
 
       // Refresh data after returning from edit page if result is true
@@ -795,8 +765,7 @@ class _DetailsPageState extends State<DetailsPage> {
 
     final String? tokenValue = await _getToken();
     if (tokenValue == null) {
-      _showErrorDialog(
-          'Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
       return;
     }
 
@@ -817,36 +786,30 @@ class _DetailsPageState extends State<DetailsPage> {
             },
           );
           if (response.statusCode == 200 || response.statusCode == 201) {
-            _showSuccessDialog(
-                'Success', 'Leave request deleted successfully.');
+            _showSuccessDialog('Success', 'Leave request deleted successfully.');
           } else {
-            _showErrorDialog('Error',
-                'Failed to delete leave request: ${response.reasonPhrase}\nResponse Body: ${response.body}');
+            _showErrorDialog('Error', 'Failed to delete leave request: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
           break;
 
         case 'car':
           response = await http.delete(
-            Uri.parse(
-                '$baseUrl/api/office-administration/car_permit/${data?['uid'] ?? id}'),
+            Uri.parse('$baseUrl/api/office-administration/car_permit/${data?['uid'] ?? id}'),
             headers: {
               'Authorization': 'Bearer $tokenValue',
               'Content-Type': 'application/json',
             },
           );
           if (response.statusCode == 200 || response.statusCode == 201) {
-            _showSuccessDialog(
-                'Success', 'Car permit deleted successfully.');
+            _showSuccessDialog('Success', 'Car permit deleted successfully.');
           } else {
-            _showErrorDialog('Error',
-                'Failed to delete car permit: ${response.reasonPhrase}\nResponse Body: ${response.body}');
+            _showErrorDialog('Error', 'Failed to delete car permit: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
           break;
 
         case 'meeting':
           response = await http.delete(
-            Uri.parse(
-                '$baseUrl/api/office-administration/book_meeting_room/${data?['uid'] ?? id}'),
+            Uri.parse('$baseUrl/api/office-administration/book_meeting_room/${data?['uid'] ?? id}'),
             headers: {
               'Authorization': 'Bearer $tokenValue',
               'Content-Type': 'application/json',
@@ -855,12 +818,11 @@ class _DetailsPageState extends State<DetailsPage> {
           if (response.statusCode == 200 || response.statusCode == 201) {
             _showSuccessDialog('Success', 'Meeting deleted successfully.');
           } else {
-            _showErrorDialog('Error',
-                'Failed to delete meeting: ${response.reasonPhrase}\nResponse Body: ${response.body}');
+            _showErrorDialog('Error', 'Failed to delete meeting: ${response.reasonPhrase}\nResponse Body: ${response.body}');
           }
 
           if (kDebugMode) {
-            print('Full response body: ${response.body}');
+            debugPrint('Full response body: ${response.body}');
           }
 
           break;
@@ -869,9 +831,8 @@ class _DetailsPageState extends State<DetailsPage> {
           _showErrorDialog('Error', 'Unknown request type.');
       }
     } catch (e) {
-      print('Error deleting request: $e');
-      _showErrorDialog(
-          'Error', 'An unexpected error occurred while deleting the request.');
+      debugPrint('Error deleting request: $e');
+      _showErrorDialog('Error', 'An unexpected error occurred while deleting the request.');
     }
 
     setState(() {
@@ -930,56 +891,56 @@ class _DetailsPageState extends State<DetailsPage> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-          ? Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            _errorMessage!,
-            style: TextStyle(
-              fontSize: 16,
-              color: isDarkMode ? Colors.redAccent : Colors.red, // Error color for dark mode
-            ),
-          ),
-        ),
-      )
-          : RefreshIndicator(
-        onRefresh: _handleRefresh, // Pull down to refresh
-        child: data == null
-            ? Center(
-          child: Text(
-            'No Data Available',
-            style: TextStyle(
-              fontSize: 16,
-              color: isDarkMode ? Colors.grey[400] : Colors.red, // Adapt color for dark mode
-            ),
-          ),
-        )
-            : SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Center( // Wrapped content in Center widget
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding, vertical: 12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 8),
-                  _buildRequestorSection(),
-                  _buildBlueSection(),
-                  const SizedBox(height: 16),
-                  _buildDetailsSection(),
-                  const SizedBox(height: 16),
-                  _buildWorkflowSection(),
-                  SizedBox(
-                    height: screenHeight * 0.02,
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: isDarkMode ? Colors.redAccent : Colors.red, // Error color for dark mode
+                      ),
+                    ),
                   ),
-                  _buildActionButtons(context),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _handleRefresh, // Pull down to refresh
+                  child: data == null
+                      ? Center(
+                          child: Text(
+                            'No Data Available',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: isDarkMode ? Colors.grey[400] : Colors.red, // Adapt color for dark mode
+                            ),
+                          ),
+                        )
+                      : SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Center(
+                            // Wrapped content in Center widget
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  const SizedBox(height: 8),
+                                  _buildRequestorSection(),
+                                  _buildBlueSection(),
+                                  const SizedBox(height: 16),
+                                  _buildDetailsSection(),
+                                  const SizedBox(height: 16),
+                                  _buildWorkflowSection(),
+                                  SizedBox(
+                                    height: screenHeight * 0.02,
+                                  ),
+                                  _buildActionButtons(context),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                ),
     );
   }
 }

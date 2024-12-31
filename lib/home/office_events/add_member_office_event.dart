@@ -12,10 +12,10 @@ class AddMemberPage extends StatefulWidget {
   const AddMemberPage({super.key});
 
   @override
-  _AddMemberPageState createState() => _AddMemberPageState();
+  AddMemberPageState createState() => AddMemberPageState();
 }
 
-class _AddMemberPageState extends State<AddMemberPage> {
+class AddMemberPageState extends State<AddMemberPage> {
   List<Map<String, dynamic>> _members = [];
   List<Map<String, dynamic>> _filteredMembers = [];
   final List<Map<String, dynamic>> _selectedMembers = [];
@@ -56,14 +56,14 @@ class _AddMemberPageState extends State<AddMemberPage> {
           _members = data
               .where((item) => item['employee_id'] != currentUserEmployeeId)
               .map((item) => {
-            'id': item['id'],
-            'name': item['name'],
-            'surname': item['surname'],
-            'email': item['email'],
-            'employee_id': item['employee_id'],
-            // Combine name and surname to form employee_name
-            'employee_name': '${item['name']} ${item['surname']}'.trim(),
-          })
+                    'id': item['id'],
+                    'name': item['name'],
+                    'surname': item['surname'],
+                    'email': item['email'],
+                    'employee_id': item['employee_id'],
+                    // Combine name and surname to form employee_name
+                    'employee_name': '${item['name']} ${item['surname']}'.trim(),
+                  })
               .toList();
           _filteredMembers = _members;
         });
@@ -91,11 +91,11 @@ class _AddMemberPageState extends State<AddMemberPage> {
         setState(() {
           _groups = data
               .map((item) => {
-            'id': item['id'],
-            'groupId': item['groupId'],
-            'group_name': item['group_name'],
-            'employees': item['employees'],
-          })
+                    'id': item['id'],
+                    'groupId': item['groupId'],
+                    'group_name': item['group_name'],
+                    'employees': item['employees'],
+                  })
               .toList();
         });
       } else {
@@ -202,9 +202,9 @@ class _AddMemberPageState extends State<AddMemberPage> {
       value: _selectedGroupId,
       items: _groups
           .map((group) => DropdownMenuItem<String>(
-        value: group['groupId'],
-        child: Text(group['group_name']),
-      ))
+                value: group['groupId'],
+                child: Text(group['group_name']),
+              ))
           .toList(),
       onChanged: (String? newValue) {
         if (newValue != null) {
@@ -228,7 +228,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                 clipBehavior: Clip.none,
                 children: List.generate(
                   _selectedMembers.length > 5 ? 6 : _selectedMembers.length,
-                      (index) {
+                  (index) {
                     if (index == 5) {
                       return Positioned(
                         left: index * 30.0,
@@ -250,9 +250,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
                             return CircleAvatar(
-                              backgroundImage: snapshot.data != null
-                                  ? NetworkImage(snapshot.data!)
-                                  : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                              backgroundImage: snapshot.data != null ? NetworkImage(snapshot.data!) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
                               radius: 25,
                             );
                           } else {
@@ -388,7 +386,10 @@ class _AddMemberPageState extends State<AddMemberPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Add Members', style: TextStyle(color: isDarkMode ? Colors.white : Colors.black,)),
+        title: Text('Add Members',
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black,
+            )),
         backgroundColor: Colors.transparent,
         elevation: 0,
         toolbarHeight: 80,
@@ -405,7 +406,9 @@ class _AddMemberPageState extends State<AddMemberPage> {
           ),
         ),
         centerTitle: true,
-        iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black,),
+        iconTheme: IconThemeData(
+          color: isDarkMode ? Colors.white : Colors.black,
+        ),
       ),
       body: Padding(
         padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),

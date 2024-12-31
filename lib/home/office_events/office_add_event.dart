@@ -14,10 +14,10 @@ class OfficeAddEventPage extends StatefulWidget {
   const OfficeAddEventPage({super.key});
 
   @override
-  _OfficeAddEventPageState createState() => _OfficeAddEventPageState();
+  OfficeAddEventPageState createState() => OfficeAddEventPageState();
 }
 
-class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
+class OfficeAddEventPageState extends State<OfficeAddEventPage> {
   // Booking type selected by the user
   String? _selectedBookingType;
 
@@ -184,7 +184,7 @@ class _OfficeAddEventPageState extends State<OfficeAddEventPage> {
         } else {
           String errorMsg = 'Failed to add event.';
           if (response.body.isNotEmpty) {
-            print('Error response body: ${response.body}');
+            debugPrint('Error response body: ${response.body}');
             try {
               final errorResponse = jsonDecode(response.body);
               errorMsg = 'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';

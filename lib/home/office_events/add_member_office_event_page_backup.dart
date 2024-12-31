@@ -15,10 +15,10 @@ class AddMemberPage extends StatefulWidget {
   const AddMemberPage({super.key});
 
   @override
-  _AddMemberPageState createState() => _AddMemberPageState();
+  AddMemberPageState createState() => AddMemberPageState();
 }
 
-class _AddMemberPageState extends State<AddMemberPage> {
+class AddMemberPageState extends State<AddMemberPage> {
   List<Map<String, dynamic>> _members = [];
   List<Map<String, dynamic>> _filteredMembers = [];
   final List<Map<String, dynamic>> _selectedMembers = [];

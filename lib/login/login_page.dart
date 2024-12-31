@@ -25,10 +25,10 @@ class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
-  _LoginPageState createState() => _LoginPageState();
+  LoginPageState createState() => LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
+class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
   bool _gradientAnimation = false;
   String _selectedLanguage = 'English';
   final List<String> _languages = ['English', 'Laos', 'Chinese'];
@@ -694,21 +694,19 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
         decoration: BoxDecoration(
           gradient: isDarkMode
               ? const LinearGradient(
-            colors: [Color(0xFF2C2C2C), Color(0xFF3A3A3A)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          )
+                  colors: [Color(0xFF2C2C2C), Color(0xFF3A3A3A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
               : const LinearGradient(
-            colors: [Color(0xFFFEE9C3), Color(0xFFFFF3D6)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+                  colors: [Color(0xFFFEE9C3), Color(0xFFFFF3D6)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
           borderRadius: BorderRadius.circular(screenWidth * 0.04),
           boxShadow: [
             BoxShadow(
-              color: isDarkMode
-                  ? Colors.black.withOpacity(0.5)
-                  : Colors.black.withOpacity(0.1),
+              color: isDarkMode ? Colors.black.withOpacity(0.5) : Colors.black.withOpacity(0.1),
               offset: Offset(screenWidth * 0.005, screenWidth * 0.005),
               blurRadius: screenWidth * 0.01,
             ),
@@ -846,10 +844,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
             child: Container(
               width: screenWidth * 0.35,
               height: screenWidth * 0.125,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                  color: isDarkMode ? Colors.grey : Colors.white
-              ),
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(screenWidth * 0.03), color: isDarkMode ? Colors.grey : Colors.white),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

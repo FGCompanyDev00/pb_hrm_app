@@ -18,11 +18,12 @@ class ApprovalsDetailsPage extends StatefulWidget {
   });
 
   @override
-  _ApprovalsDetailsPageState createState() => _ApprovalsDetailsPageState();
+  ApprovalsDetailsPageState createState() => ApprovalsDetailsPageState();
 }
 
-class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
+class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   final TextEditingController _descriptionController = TextEditingController();
+
   /// A separate controller for the reason typed in the bottom sheet
   final TextEditingController _rejectReasonController = TextEditingController();
 
@@ -32,8 +33,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   String? requestorImage;
 
   // Base URL for images
-  final String _imageBaseUrl =
-      'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
+  final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
   @override
   void initState() {
@@ -71,20 +71,16 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         },
       );
 
-      print('Response Status Code: ${response.statusCode}');
+      debugPrint('Response Status Code: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if ((data['statusCode'] == 200 || data['statusCode'] == 201) &&
-            data['results'] != null) {
+        if ((data['statusCode'] == 200 || data['statusCode'] == 201) && data['results'] != null) {
           setState(() {
-            approvalData = widget.type == 'leave'
-                ? Map<String, dynamic>.from(data['results'][0])
-                : Map<String, dynamic>.from(data['results']);
+            approvalData = widget.type == 'leave' ? Map<String, dynamic>.from(data['results'][0]) : Map<String, dynamic>.from(data['results']);
 
             if (widget.type == 'leave') {
-              final employeeId =
-                  approvalData?['employee_id'] ?? approvalData?['requestor_id'] ?? '';
+              final employeeId = approvalData?['employee_id'] ?? approvalData?['requestor_id'] ?? '';
               if (employeeId.isNotEmpty) {
                 // Fetch the profile image using the employee_id
                 _fetchProfileImage(employeeId).then((imageUrl) {
@@ -112,7 +108,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
               isLoading = false;
             }
           });
-          print('Approval details loaded successfully.');
+          debugPrint('Approval details loaded successfully.');
         } else {
           throw Exception(data['message'] ?? 'Failed to load approval details.');
         }
@@ -124,8 +120,8 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         throw Exception('Failed to load approval details: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
-      print('Error fetching approval details: $e');
-      print(stackTrace);
+      debugPrint('Error fetching approval details: $e');
+      debugPrint(stackTrace.toString());
       _showErrorDialog('Error', e.toString());
       setState(() {
         isLoading = false;
@@ -163,18 +159,14 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       }
     } catch (e) {
       // Log the error or handle it as per your requirement
-      print('Error fetching profile image: $e');
+      debugPrint('Error fetching profile image: $e');
       return 'https://via.placeholder.com/150'; // Fallback image
     }
   }
 
   /// Utility to check if status is "Waiting"/"Pending"/"Processing"/etc.
   bool isPendingStatus(String status) {
-    return status.toLowerCase() == 'waiting' ||
-        status.toLowerCase() == 'pending' ||
-        status.toLowerCase() == 'processing' ||
-        status.toLowerCase() == 'branch waiting' ||
-        status.toLowerCase() == 'branch processing';
+    return status.toLowerCase() == 'waiting' || status.toLowerCase() == 'pending' || status.toLowerCase() == 'processing' || status.toLowerCase() == 'branch waiting' || status.toLowerCase() == 'branch processing';
   }
 
   /// Format date string for display
@@ -205,8 +197,8 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate);
       }
     } catch (e, stackTrace) {
-      print('Date parsing error for "$dateStr": $e');
-      print(stackTrace);
+      debugPrint('Date parsing error for "$dateStr": $e');
+      debugPrint(stackTrace.toString());
       return 'Invalid Date';
     }
   }
@@ -217,8 +209,8 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       final prefs = await SharedPreferences.getInstance();
       return prefs.getString('token');
     } catch (e, stackTrace) {
-      print('Error retrieving token: $e');
-      print(stackTrace);
+      debugPrint('Error retrieving token: $e');
+      debugPrint(stackTrace.toString());
       return null;
     }
   }
@@ -226,42 +218,37 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final status = (approvalData?['status']?.toString() ??
-        approvalData?['is_approve']?.toString() ??
-        'Pending')
-        .trim();
+    final status = (approvalData?['status']?.toString() ?? approvalData?['is_approve']?.toString() ?? 'Pending').trim();
 
     return Scaffold(
       appBar: _buildAppBar(context),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            const SizedBox(height: 10),
-            _buildRequestorSection(isDarkMode),
-            const SizedBox(height: 20),
-            _buildBlueSection(isDarkMode),
-            const SizedBox(height: 5),
-            _buildDetailsSection(),
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 10),
+                  _buildRequestorSection(isDarkMode),
+                  const SizedBox(height: 20),
+                  _buildBlueSection(isDarkMode),
+                  const SizedBox(height: 5),
+                  _buildDetailsSection(),
 
-            // Show comment input & action buttons only for 'leave'/'meeting'
-            if (widget.type == 'leave' || widget.type == 'meeting') ...[
-              const SizedBox(height: 10),
-              if (isPendingStatus(status)) ...[
-                _buildCommentInputSection(),
-                const SizedBox(height: 22),
-                _buildActionButtons(context),
-              ],
-              if (!isPendingStatus(status) &&
-                  status.toLowerCase() == 'reject')
-                _buildDenyReasonSection(),
-            ],
-          ],
-        ),
-      ),
+                  // Show comment input & action buttons only for 'leave'/'meeting'
+                  if (widget.type == 'leave' || widget.type == 'meeting') ...[
+                    const SizedBox(height: 10),
+                    if (isPendingStatus(status)) ...[
+                      _buildCommentInputSection(),
+                      const SizedBox(height: 22),
+                      _buildActionButtons(context),
+                    ],
+                    if (!isPendingStatus(status) && status.toLowerCase() == 'reject') _buildDenyReasonSection(),
+                  ],
+                ],
+              ),
+            ),
     );
   }
 
@@ -307,22 +294,16 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   }
 
   Widget _buildRequestorSection(bool isDarkMode) {
-    final requestorName = approvalData?['employee_name'] ??
-        approvalData?['requestor_name'] ??
-        'No Name';
+    final requestorName = approvalData?['employee_name'] ?? approvalData?['requestor_name'] ?? 'No Name';
 
     String submittedOn = 'N/A';
-    if (approvalData?['created_at'] != null &&
-        approvalData!['created_at'].toString().isNotEmpty) {
+    if (approvalData?['created_at'] != null && approvalData!['created_at'].toString().isNotEmpty) {
       submittedOn = formatDate(approvalData!['created_at']);
-    } else if ((widget.type == 'car' || widget.type == 'meeting') &&
-        approvalData?['created_date'] != null &&
-        approvalData!['created_date'].toString().isNotEmpty) {
+    } else if ((widget.type == 'car' || widget.type == 'meeting') && approvalData?['created_date'] != null && approvalData!['created_date'].toString().isNotEmpty) {
       submittedOn = formatDate(approvalData!['created_date']);
     }
 
-    final profileImage = requestorImage ??
-        'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+    final profileImage = requestorImage ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -342,8 +323,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
             CircleAvatar(
               backgroundImage: NetworkImage(profileImage),
               radius: 35,
-              backgroundColor:
-              isDarkMode ? Colors.grey[700] : Colors.grey[300],
+              backgroundColor: isDarkMode ? Colors.grey[700] : Colors.grey[300],
               onBackgroundImageError: (error, stackTrace) {
                 setState(() {
                   requestorImage = 'https://via.placeholder.com/150';
@@ -383,9 +363,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: isDarkMode
-              ? Colors.blueGrey.withOpacity(0.4)
-              : Colors.lightBlueAccent.withOpacity(0.4),
+          color: isDarkMode ? Colors.blueGrey.withOpacity(0.4) : Colors.lightBlueAccent.withOpacity(0.4),
           borderRadius: BorderRadius.circular(25),
         ),
         child: Text(
@@ -494,9 +472,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     // Show them only if status is NOT "Approved", "Rejected", or "Deleted".
     final currentStatus = approvalData?['status']?.toString().toLowerCase() ?? '';
-    final canShowButtons = (currentStatus != 'approved' &&
-        currentStatus != 'disapproved' &&
-        currentStatus != 'deleted');
+    final canShowButtons = (currentStatus != 'approved' && currentStatus != 'disapproved' && currentStatus != 'deleted');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,8 +724,8 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         body: jsonEncode(requestBody),
       );
 
-      print('[Car Reject] Status: ${response.statusCode}');
-      print('[Car Reject] Body: ${response.body}');
+      debugPrint('[Car Reject] Status: ${response.statusCode}');
+      debugPrint('[Car Reject] Body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         // success
@@ -760,8 +736,8 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         _showErrorDialog('Error', errorMessage);
       }
     } catch (e, stackTrace) {
-      print('Error rejecting car: $e');
-      print(stackTrace);
+      debugPrint('Error rejecting car: $e');
+      debugPrint(stackTrace.toString());
       _showErrorDialog('Error', 'An unexpected error occurred while rejecting.');
     } finally {
       setState(() {
@@ -829,12 +805,12 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
   /// Common UI row with icon + label + content
   Widget _buildInfoRow(
-      String title,
-      String content,
-      IconData icon,
-      Color color,
-      bool isDarkMode,
-      ) {
+    String title,
+    String content,
+    IconData icon,
+    Color color,
+    bool isDarkMode,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1032,7 +1008,7 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       return;
     }
 
-    print('Sending $action request to $endpoint with body: $body');
+    debugPrint('Sending $action request to $endpoint with body: $body');
 
     try {
       http.Response response;
@@ -1056,21 +1032,19 @@ class _ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         );
       }
 
-      print('Approval response status: ${response.statusCode}');
-      print('Approval response body: ${response.body}');
+      debugPrint('Approval response status: ${response.statusCode}');
+      debugPrint('Approval response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _showSuccessDialog(
-            'Success', 'Request has been $action successfully.');
+        _showSuccessDialog('Success', 'Request has been $action successfully.');
       } else {
         final responseBody = jsonDecode(response.body);
-        final errorMessage =
-            responseBody['message'] ?? 'Failed to $action the request.';
+        final errorMessage = responseBody['message'] ?? 'Failed to $action the request.';
         _showErrorDialog('Error', errorMessage);
       }
     } catch (e, stackTrace) {
-      print('Error sending $action request: $e');
-      print(stackTrace);
+      debugPrint('Error sending $action request: $e');
+      debugPrint(stackTrace.toString());
       _showErrorDialog('Error', 'An unexpected error occurred.');
     } finally {
       setState(() {

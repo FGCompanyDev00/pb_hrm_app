@@ -18,10 +18,10 @@ class NotificationDetailPage extends StatefulWidget {
   });
 
   @override
-  _NotificationDetailPageState createState() => _NotificationDetailPageState();
+  NotificationDetailPageState createState() => NotificationDetailPageState();
 }
 
-class _NotificationDetailPageState extends State<NotificationDetailPage> {
+class NotificationDetailPageState extends State<NotificationDetailPage> {
   final TextEditingController _descriptionController = TextEditingController();
   bool isLoading = true;
   bool isFinalized = false;
@@ -142,7 +142,7 @@ class _NotificationDetailPageState extends State<NotificationDetailPage> {
       }
     } catch (e) {
       // Log the error or handle it as per your requirement
-      print('Error fetching profile image: $e');
+      debugPrint('Error fetching profile image: $e');
       return 'https://via.placeholder.com/150'; // Fallback image
     }
   }

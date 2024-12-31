@@ -5,7 +5,6 @@ import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 
 class ViewAssignmentPage extends StatefulWidget {
@@ -21,10 +20,10 @@ class ViewAssignmentPage extends StatefulWidget {
   });
 
   @override
-  _ViewAssignmentPageState createState() => _ViewAssignmentPageState();
+  ViewAssignmentPageState createState() => ViewAssignmentPageState();
 }
 
-class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
+class ViewAssignmentPageState extends State<ViewAssignmentPage> {
   bool _isLoading = true;
   bool _hasError = false;
   Map<String, dynamic>? _assignment;
@@ -73,8 +72,8 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
           _assignment = (data['result'] is List && data['result'].isNotEmpty)
               ? data['result'][0] as Map<String, dynamic>
               : (data['result'] is Map)
-              ? data['result'] as Map<String, dynamic>
-              : null;
+                  ? data['result'] as Map<String, dynamic>
+                  : null;
           _files = _parseFiles(data['files']);
           _members = _parseMembers(data['members']);
           _isLoading = false;
@@ -115,7 +114,7 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
         if (file is Map<String, dynamic>) {
           files.add({
             'file_name': file['file_name']?.toString() ?? 'Unnamed File',
-            'file_url': file['file_url']?.toString() ?? '',
+            'file_url': file['images'][0]?.toString() ?? '',
           });
         }
       }
@@ -154,7 +153,7 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
         return data['results']?['images']?.toString();
       }
     } catch (e) {
-      print('Error fetching image for $employeeId: $e');
+      debugPrint('Error fetching image for $employeeId: $e');
     }
     return null;
   }
@@ -172,13 +171,17 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
       final path = '${directory.path}/description.txt';
       final file = File(path);
       await file.writeAsString(description);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Description downloaded to $path')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Description downloaded to $path')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to download description: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to download description: $e')),
+        );
+      }
     }
   }
 
@@ -197,42 +200,52 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
       String fileName = file['file_name']?.toString() ?? 'unknown_file';
 
       if (fileUrl.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid URL for file: $fileName')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Invalid URL for file: $fileName')),
+          );
+        }
         allSuccess = false;
         continue;
       }
 
       try {
         final response = await http.get(Uri.parse(fileUrl));
+        final directory = await getApplicationDocumentsDirectory();
+        final path = '${directory.path}/$fileName';
         if (response.statusCode == 200) {
-          final directory = await getApplicationDocumentsDirectory();
-          final path = '${directory.path}/$fileName';
           final fileToSave = File(path);
           await fileToSave.writeAsBytes(response.bodyBytes);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to download $fileName')),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to download $fileName')),
+            );
+          }
           allSuccess = false;
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error downloading $fileName: $e')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error downloading $fileName: $e')),
+          );
+        }
         allSuccess = false;
       }
     }
 
     if (allSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('All files downloaded successfully')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All files downloaded successfully')),
+        );
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Some files failed to download')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Some files failed to download')),
+        );
+      }
     }
   }
 
@@ -358,26 +371,26 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
             const SizedBox(height: 10),
             _members != null && _members!.isNotEmpty
                 ? Wrap(
-              spacing: 12,
-              children: _members!.map((member) {
-                String imageUrl = member['image_url']?.toString() ?? 'https://via.placeholder.com/50';
-                String memberName = member['name']?.toString() ?? 'Member';
-                return Column(
-                  children: [
-                    CircleAvatar(
-                      backgroundImage: NetworkImage(imageUrl),
-                      radius: 20,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      memberName,
-                      style: const TextStyle(fontSize: 12),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                );
-              }).toList(),
-            )
+                    spacing: 12,
+                    children: _members!.map((member) {
+                      String imageUrl = member['image_url']?.toString() ?? 'https://via.placeholder.com/50';
+                      String memberName = member['name']?.toString() ?? 'Member';
+                      return Column(
+                        children: [
+                          CircleAvatar(
+                            backgroundImage: NetworkImage(imageUrl),
+                            radius: 20,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            memberName,
+                            style: const TextStyle(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  )
                 : const Text('No members assigned'),
             const SizedBox(height: 20),
 
@@ -417,17 +430,17 @@ class _ViewAssignmentPageState extends State<ViewAssignmentPage> {
             const SizedBox(height: 10),
             _files != null && _files!.isNotEmpty
                 ? Column(
-              children: _files!.map((file) {
-                return ListTile(
-                  leading: const Icon(Icons.file_present, color: Colors.blue), // Modern file icon
-                  title: Text(file['file_name'] ?? 'File', style: const TextStyle(fontSize: 14)),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.download_rounded, color: Colors.green), // Modern download icon
-                    onPressed: _downloadFiles,
-                  ),
-                );
-              }).toList(),
-            )
+                    children: _files!.map((file) {
+                      return ListTile(
+                        leading: const Icon(Icons.file_present, color: Colors.blue), // Modern file icon
+                        title: Text(file['file_name'] ?? 'File', style: const TextStyle(fontSize: 14)),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.download_rounded, color: Colors.green), // Modern download icon
+                          onPressed: _downloadFiles,
+                        ),
+                      );
+                    }).toList(),
+                  )
                 : const Text('No files available'),
           ],
         ),

@@ -20,12 +20,10 @@ class SelectProcessingMembersPage extends StatefulWidget {
   });
 
   @override
-  _SelectProcessingMembersPageState createState() =>
-      _SelectProcessingMembersPageState();
+  SelectProcessingMembersPageState createState() => SelectProcessingMembersPageState();
 }
 
-class _SelectProcessingMembersPageState
-    extends State<SelectProcessingMembersPage> {
+class SelectProcessingMembersPageState extends State<SelectProcessingMembersPage> {
   List<Map<String, dynamic>> _members = [];
   List<Map<String, dynamic>> _filteredMembers = [];
   List<Map<String, dynamic>> _selectedMembers = [];
@@ -42,7 +40,7 @@ class _SelectProcessingMembersPageState
   Future<String> _fetchToken() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
-    print('[_SelectProcessingMembersPageState] Retrieved token: $token');
+    debugPrint('[_SelectProcessingMembersPageState] Retrieved token: $token');
     return token ?? '';
   }
 
@@ -51,8 +49,7 @@ class _SelectProcessingMembersPageState
     setState(() {
       _isLoading = true;
     });
-    print(
-        '[_SelectProcessingMembersPageState] Fetching members for projectId: ${widget.projectId}, baseUrl: ${widget.baseUrl}');
+    debugPrint('[_SelectProcessingMembersPageState] Fetching members for projectId: ${widget.projectId}, baseUrl: ${widget.baseUrl}');
 
     try {
       String token = await _fetchToken();
@@ -60,9 +57,8 @@ class _SelectProcessingMembersPageState
         throw Exception('Token not found. Please log in again.');
       }
 
-      String apiUrl =
-          '${widget.baseUrl}/api/work-tracking/proj/find-Member-By-ProjectId/${widget.projectId}';
-      print('[_SelectProcessingMembersPageState] API URL: $apiUrl');
+      String apiUrl = '${widget.baseUrl}/api/work-tracking/proj/find-Member-By-ProjectId/${widget.projectId}';
+      debugPrint('[_SelectProcessingMembersPageState] API URL: $apiUrl');
 
       final response = await http.get(
         Uri.parse(apiUrl),
@@ -71,17 +67,15 @@ class _SelectProcessingMembersPageState
         },
       );
 
-      print(
-          '[_SelectProcessingMembersPageState] API Response Status Code: ${response.statusCode}');
-      print('[_SelectProcessingMembersPageState] API Response Body: ${response.body}');
+      debugPrint('[_SelectProcessingMembersPageState] API Response Status Code: ${response.statusCode}');
+      debugPrint('[_SelectProcessingMembersPageState] API Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseBody = jsonDecode(response.body);
-        print('[_SelectProcessingMembersPageState] Parsed response body.');
+        debugPrint('[_SelectProcessingMembersPageState] Parsed response body.');
 
         final List<dynamic> data = responseBody['Members'] ?? [];
-        print(
-            '[_SelectProcessingMembersPageState] Number of members fetched: ${data.length}');
+        debugPrint('[_SelectProcessingMembersPageState] Number of members fetched: ${data.length}');
 
         final uniqueMembers = <String, Map<String, dynamic>>{};
         for (var item in data) {
@@ -106,14 +100,12 @@ class _SelectProcessingMembersPageState
           _filteredMembers = _members;
         });
 
-        print(
-            '[_SelectProcessingMembersPageState] Unique members count after filtering: ${_members.length}');
+        debugPrint('[_SelectProcessingMembersPageState] Unique members count after filtering: ${_members.length}');
 
         // Fetch images for each member
         await _fetchMembersImages(token);
       } else {
-        throw Exception(
-            'Failed to load members: ${response.statusCode}, ${response.reasonPhrase}');
+        throw Exception('Failed to load members: ${response.statusCode}, ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorMessage('Error fetching members: $e');
@@ -131,20 +123,18 @@ class _SelectProcessingMembersPageState
       setState(() {
         member['image_url'] = imageUrl ?? '';
       });
-      print(
-          '[_SelectProcessingMembersPageState] Member: $employeeId, Image URL: ${member['image_url']}');
+      debugPrint('[_SelectProcessingMembersPageState] Member: $employeeId, Image URL: ${member['image_url']}');
     }).toList();
 
     await Future.wait(imageFetchFutures);
-    print('[_SelectProcessingMembersPageState] Completed fetching member images.');
+    debugPrint('[_SelectProcessingMembersPageState] Completed fetching member images.');
   }
 
   // Fetch individual member image
   Future<String?> _fetchMemberImage(String employeeId, String token) async {
     try {
       String apiUrl = '${widget.baseUrl}/api/profile/$employeeId';
-      print(
-          '[_SelectProcessingMembersPageState] Fetching image for employeeId: $employeeId, API URL: $apiUrl');
+      debugPrint('[_SelectProcessingMembersPageState] Fetching image for employeeId: $employeeId, API URL: $apiUrl');
 
       final response = await http.get(
         Uri.parse(apiUrl),
@@ -153,24 +143,22 @@ class _SelectProcessingMembersPageState
         },
       );
 
-      print(
-          '[_SelectProcessingMembersPageState] Image API Response Status Code: ${response.statusCode}');
-      print('[_SelectProcessingMembersPageState] Image API Response Body: ${response.body}');
+      debugPrint('[_SelectProcessingMembersPageState] Image API Response Status Code: ${response.statusCode}');
+      debugPrint('[_SelectProcessingMembersPageState] Image API Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['results'] != null && data['results']['images'] != null) {
-          print('[_SelectProcessingMembersPageState] Found image URL for $employeeId');
+          debugPrint('[_SelectProcessingMembersPageState] Found image URL for $employeeId');
           return data['results']['images'];
         } else {
-          print('[_SelectProcessingMembersPageState] No image found for $employeeId');
+          debugPrint('[_SelectProcessingMembersPageState] No image found for $employeeId');
         }
       } else {
-        print(
-            '[_SelectProcessingMembersPageState] Failed to fetch image for $employeeId: ${response.statusCode}');
+        debugPrint('[_SelectProcessingMembersPageState] Failed to fetch image for $employeeId: ${response.statusCode}');
       }
     } catch (e) {
-      print('[_SelectProcessingMembersPageState] Exception while fetching image for $employeeId: $e');
+      debugPrint('[_SelectProcessingMembersPageState] Exception while fetching image for $employeeId: $e');
     }
     return null;
   }
@@ -179,25 +167,20 @@ class _SelectProcessingMembersPageState
   void _onMemberSelected(bool? selected, Map<String, dynamic> member) {
     setState(() {
       if (selected == true) {
-        if (!_selectedMembers
-            .any((m) => m['employee_id'] == member['employee_id'])) {
+        if (!_selectedMembers.any((m) => m['employee_id'] == member['employee_id'])) {
           _selectedMembers.add(member);
-          print(
-              '[_SelectProcessingMembersPageState] Selected member: ${member['employee_id']}');
+          debugPrint('[_SelectProcessingMembersPageState] Selected member: ${member['employee_id']}');
         }
       } else {
-        _selectedMembers
-            .removeWhere((m) => m['employee_id'] == member['employee_id']);
-        print(
-            '[_SelectProcessingMembersPageState] Deselected member: ${member['employee_id']}');
+        _selectedMembers.removeWhere((m) => m['employee_id'] == member['employee_id']);
+        debugPrint('[_SelectProcessingMembersPageState] Deselected member: ${member['employee_id']}');
       }
     });
   }
 
   // Handle Add button press
   void _onAddButtonPressed() {
-    print(
-        '[_SelectProcessingMembersPageState] Adding selected members: ${_selectedMembers.map((m) => m['employee_id']).toList()}');
+    debugPrint('[_SelectProcessingMembersPageState] Adding selected members: ${_selectedMembers.map((m) => m['employee_id']).toList()}');
     Navigator.pop(context, _selectedMembers);
   }
 
@@ -206,23 +189,20 @@ class _SelectProcessingMembersPageState
     List<Map<String, dynamic>> filteredList = _members.where((member) {
       String name = member['name']?.toLowerCase() ?? '';
       String surname = member['surname']?.toLowerCase() ?? '';
-      return name.contains(query.trim().toLowerCase()) ||
-          surname.contains(query.trim().toLowerCase());
+      return name.contains(query.trim().toLowerCase()) || surname.contains(query.trim().toLowerCase());
     }).toList();
     setState(() {
       _filteredMembers = filteredList;
     });
-    print(
-        '[_SelectProcessingMembersPageState] Filtered members count: ${_filteredMembers.length}');
+    debugPrint('[_SelectProcessingMembersPageState] Filtered members count: ${_filteredMembers.length}');
   }
 
   // Display error messages
   void _showErrorMessage(String message) {
-    print('[_SelectProcessingMembersPageState] $message');
+    debugPrint('[_SelectProcessingMembersPageState] $message');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message,
-            style: const TextStyle(color: Colors.white)),
+        content: Text(message, style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.red,
       ),
     );
@@ -238,10 +218,7 @@ class _SelectProcessingMembersPageState
         Padding(
           padding: const EdgeInsets.only(right: 4.0),
           child: CircleAvatar(
-            backgroundImage: _selectedMembers[i]['image_url'] != null &&
-                _selectedMembers[i]['image_url'].isNotEmpty
-                ? NetworkImage(_selectedMembers[i]['image_url'])
-                : const AssetImage('assets/default_avatar.png') as ImageProvider,
+            backgroundImage: _selectedMembers[i]['image_url'] != null && _selectedMembers[i]['image_url'].isNotEmpty ? NetworkImage(_selectedMembers[i]['image_url']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
             radius: 20,
             backgroundColor: Colors.grey[200],
           ),
@@ -331,102 +308,92 @@ class _SelectProcessingMembersPageState
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
-        children: [
-          if (_selectedMembers.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              height: 80,
-              child: Row(
-                children: [
-                  _buildSelectedMembers(),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16.0),
-                    child: ElevatedButton(
-                      onPressed: _onAddButtonPressed,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.yellow[700],
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 40.0, vertical: 15.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20.0),
+              children: [
+                if (_selectedMembers.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    height: 80,
+                    child: Row(
+                      children: [
+                        _buildSelectedMembers(),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16.0),
+                          child: ElevatedButton(
+                            onPressed: _onAddButtonPressed,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.yellow[700],
+                              padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 15.0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20.0),
+                              ),
+                            ),
+                            child: const Text(
+                              '+ Add',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                      child: const Text(
-                        '+ Add',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 18,
-                        ),
-                      ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              onChanged: (value) {
-                _filterMembers(value);
-              },
-              decoration: InputDecoration(
-                labelText: 'Search',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30.0),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: _filteredMembers.isEmpty
-                ? const Center(child: Text('No members found.'))
-                : ListView.builder(
-              itemCount: _filteredMembers.length,
-              itemBuilder: (context, index) {
-                final member = _filteredMembers[index];
-                String fullName = _constructFullName(member);
-                String email = member['email']?.isNotEmpty == true
-                    ? member['email']
-                    : 'No Email';
-                String? imageUrl = member['image_url'];
-
-                bool isSelected = _selectedMembers.any((m) =>
-                m['employee_id'] ==
-                    member['employee_id']);
-
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: imageUrl != null &&
-                        imageUrl.isNotEmpty
-                        ? NetworkImage(imageUrl)
-                        : const AssetImage('assets/default_avatar.png') as ImageProvider,
-                    radius: 25,
-                    backgroundColor: Colors.grey[200],
-                  ),
-                  title: Text(
-                    fullName,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: member['name'] == 'Error'
-                          ? Colors.red
-                          : Colors.black,
-                    ),
-                  ),
-                  subtitle: Text(email),
-                  trailing: Checkbox(
-                    value: isSelected,
-                    activeColor: Colors.green,
-                    onChanged: (bool? selected) {
-                      _onMemberSelected(selected, member);
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: TextField(
+                    onChanged: (value) {
+                      _filterMembers(value);
                     },
+                    decoration: InputDecoration(
+                      labelText: 'Search',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30.0),
+                      ),
+                    ),
                   ),
-                );
-              },
+                ),
+                Expanded(
+                  child: _filteredMembers.isEmpty
+                      ? const Center(child: Text('No members found.'))
+                      : ListView.builder(
+                          itemCount: _filteredMembers.length,
+                          itemBuilder: (context, index) {
+                            final member = _filteredMembers[index];
+                            String fullName = _constructFullName(member);
+                            String email = member['email']?.isNotEmpty == true ? member['email'] : 'No Email';
+                            String? imageUrl = member['image_url'];
+
+                            bool isSelected = _selectedMembers.any((m) => m['employee_id'] == member['employee_id']);
+
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage: imageUrl != null && imageUrl.isNotEmpty ? NetworkImage(imageUrl) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                                radius: 25,
+                                backgroundColor: Colors.grey[200],
+                              ),
+                              title: Text(
+                                fullName,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: member['name'] == 'Error' ? Colors.red : Colors.black,
+                                ),
+                              ),
+                              subtitle: Text(email),
+                              trailing: Checkbox(
+                                value: isSelected,
+                                activeColor: Colors.green,
+                                onChanged: (bool? selected) {
+                                  _onMemberSelected(selected, member);
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }

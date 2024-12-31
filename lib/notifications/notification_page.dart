@@ -16,10 +16,10 @@ class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
 
   @override
-  _NotificationPageState createState() => _NotificationPageState();
+  NotificationPageState createState() => NotificationPageState();
 }
 
-class _NotificationPageState extends State<NotificationPage> {
+class NotificationPageState extends State<NotificationPage> {
   bool _isMeetingSelected = true;
   List<Map<String, dynamic>> _meetingInvites = [];
   List<Map<String, dynamic>> _pendingItems = [];
@@ -56,14 +56,14 @@ class _NotificationPageState extends State<NotificationPage> {
         _fetchHistoryItems(),
       ]);
       if (kDebugMode) {
-        print('Initial data fetched successfully.');
+        debugPrint('Initial data fetched successfully.');
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
-        print('Error during initial data fetch: $e');
+        debugPrint('Error during initial data fetch: $e');
       }
       if (kDebugMode) {
-        print(stackTrace);
+        debugPrint(stackTrace.toString());
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching data: $e')),
@@ -97,7 +97,7 @@ class _NotificationPageState extends State<NotificationPage> {
       );
 
       if (kDebugMode) {
-        print('Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
+        debugPrint('Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
       }
 
       if (leaveTypesResponse.statusCode == 200) {
@@ -108,7 +108,7 @@ class _NotificationPageState extends State<NotificationPage> {
             _leaveTypesMap = {for (var item in leaveTypesData) item['leave_type_id'] as int: item['name'].toString()};
           });
           if (kDebugMode) {
-            print('Leave types loaded: $_leaveTypesMap');
+            debugPrint('Leave types loaded: $_leaveTypesMap');
           }
         } else {
           throw Exception(responseBody['message'] ?? 'Failed to load leave types');
@@ -118,10 +118,10 @@ class _NotificationPageState extends State<NotificationPage> {
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
-        print('Error fetching leave types: $e');
+        debugPrint('Error fetching leave types: $e');
       }
       if (kDebugMode) {
-        print(stackTrace);
+        debugPrint(stackTrace.toString());
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching leave types: $e')),
@@ -152,7 +152,7 @@ class _NotificationPageState extends State<NotificationPage> {
       );
 
       if (kDebugMode) {
-        print('Fetching pending items: Status Code ${pendingResponse.statusCode}');
+        debugPrint('Fetching pending items: Status Code ${pendingResponse.statusCode}');
       }
 
       if (pendingResponse.statusCode == 200) {
@@ -167,7 +167,7 @@ class _NotificationPageState extends State<NotificationPage> {
             _pendingItems = filteredData;
           });
           if (kDebugMode) {
-            print('Pending items loaded: ${_pendingItems.length} items.');
+            debugPrint('Pending items loaded: ${_pendingItems.length} items.');
           }
         } else {
           throw Exception(responseBody['message'] ?? 'Failed to load pending data');
@@ -177,10 +177,10 @@ class _NotificationPageState extends State<NotificationPage> {
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
-        print('Error fetching pending data: $e');
+        debugPrint('Error fetching pending data: $e');
       }
       if (kDebugMode) {
-        print(stackTrace);
+        debugPrint(stackTrace.toString());
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching pending data: $e')),
@@ -211,7 +211,7 @@ class _NotificationPageState extends State<NotificationPage> {
       );
 
       if (kDebugMode) {
-        print('Fetching history items: Status Code ${historyResponse.statusCode}');
+        debugPrint('Fetching history items: Status Code ${historyResponse.statusCode}');
       }
 
       if (historyResponse.statusCode == 200) {
@@ -226,7 +226,7 @@ class _NotificationPageState extends State<NotificationPage> {
             _historyItems = filteredData;
           });
           if (kDebugMode) {
-            print('History items loaded: ${_historyItems.length} items.');
+            debugPrint('History items loaded: ${_historyItems.length} items.');
           }
         } else {
           throw Exception(responseBody['message'] ?? 'Failed to load history data');
@@ -236,14 +236,16 @@ class _NotificationPageState extends State<NotificationPage> {
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
-        print('Error fetching history data: $e');
+        debugPrint('Error fetching history data: $e');
       }
       if (kDebugMode) {
-        print(stackTrace);
+        debugPrint(stackTrace.toString());
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching history data: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching history data: $e')),
+        );
+      }
       rethrow;
     }
   }
@@ -270,7 +272,7 @@ class _NotificationPageState extends State<NotificationPage> {
       );
 
       if (kDebugMode) {
-        print('Fetching meeting invites: Status Code ${response.statusCode}');
+        debugPrint('Fetching meeting invites: Status Code ${response.statusCode}');
       }
 
       if (response.statusCode == 200) {
@@ -286,7 +288,7 @@ class _NotificationPageState extends State<NotificationPage> {
           setState(() {
             _meetingInvites = formattedMeetingData;
           });
-          print('Meeting invites loaded: ${_meetingInvites.length} items.');
+          debugPrint('Meeting invites loaded: ${_meetingInvites.length} items.');
         } else {
           throw Exception(responseBody['message'] ?? 'Failed to load meeting invites');
         }
@@ -294,11 +296,14 @@ class _NotificationPageState extends State<NotificationPage> {
         throw Exception('Failed to load meeting invites: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
-      print('Error fetching meeting invites: $e');
-      print(stackTrace);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching meeting invites: $e')),
-      );
+      debugPrint('Error fetching meeting invites: $e');
+      debugPrint(stackTrace.toString());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching meeting invites: $e')),
+        );
+      }
+
       rethrow;
     }
   }
@@ -887,7 +892,7 @@ class _NotificationPageState extends State<NotificationPage> {
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             if (kDebugMode) {
-              print('Error loading employee image from $imageUrl: $error');
+              debugPrint('Error loading employee image from $imageUrl: $error');
             }
             return Icon(
               Icons.person,
@@ -930,9 +935,9 @@ class _NotificationPageState extends State<NotificationPage> {
       // Format the date to 'dd-MM-yyyy' or modify as needed
       return DateFormat('dd-MM-yyyy').format(parsedDate);
     } catch (e, stackTrace) {
-      print('Date parsing error for "$dateStr": $e');
+      debugPrint('Date parsing error for "$dateStr": $e');
       if (kDebugMode) {
-        print(stackTrace);
+        debugPrint(stackTrace.toString());
       }
       return 'Invalid Date';
     }

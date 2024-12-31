@@ -29,10 +29,10 @@ class EditProjectPage extends StatefulWidget {
   });
 
   @override
-  _EditProjectPageState createState() => _EditProjectPageState();
+  EditProjectPageState createState() => EditProjectPageState();
 }
 
-class _EditProjectPageState extends State<EditProjectPage> {
+class EditProjectPageState extends State<EditProjectPage> {
   List<Map<String, dynamic>> projectMembers = [];
   late TextEditingController _nameController;
   late TextEditingController _deadline1Controller;
@@ -44,11 +44,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
 
   final List<String> _statusOptions = ['Pending', 'Processing', 'Finished'];
   final List<String> _branchOptions = ['HQ office', 'Branch office'];
-  final List<String> _departmentOptions = [
-    'Digital Banking Dept',
-    'HR Dept',
-    'Finance Dept'
-  ];
+  final List<String> _departmentOptions = ['Digital Banking Dept', 'HR Dept', 'Finance Dept'];
 
   final Map<String, String> statusMap = {
     'Pending': '40d2ba5e-a978-47ce-bc48-caceca8668e9',
@@ -67,9 +63,8 @@ class _EditProjectPageState extends State<EditProjectPage> {
     _status = statusMap.entries
         .firstWhere(
           (entry) => entry.value == widget.project['status_id'],
-      orElse: () => const MapEntry(
-          'Pending', '40d2ba5e-a978-47ce-bc48-caceca8668e9'),
-    )
+          orElse: () => const MapEntry('Pending', '40d2ba5e-a978-47ce-bc48-caceca8668e9'),
+        )
         .key;
     _branch = 'HQ office'; // You may want to initialize based on project data
     _department = 'Digital Banking Dept'; // Initialize based on project data
@@ -78,10 +73,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
     String formattedExtended = _formatDateForDisplay(widget.project['extend']);
     _deadline1Controller = TextEditingController(text: formattedDeadline);
     _deadline2Controller = TextEditingController(text: formattedExtended);
-    _progress =
-        (double.tryParse(widget.project['precent']?.toString() ?? '0') ??
-            0) /
-            100;
+    _progress = (double.tryParse(widget.project['precent']?.toString() ?? '0') ?? 0) / 100;
 
     // Fetch existing project members
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -100,8 +92,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
     }
   }
 
-  Future<void> _selectDate(
-      BuildContext context, TextEditingController controller) async {
+  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
@@ -116,18 +107,14 @@ class _EditProjectPageState extends State<EditProjectPage> {
   }
 
   Future<void> _updateProject() async {
-    if (_nameController.text.isEmpty ||
-        _deadline1Controller.text.isEmpty ||
-        _deadline2Controller.text.isEmpty) {
+    if (_nameController.text.isEmpty || _deadline1Controller.text.isEmpty || _deadline2Controller.text.isEmpty) {
       _showErrorDialog('All fields are required');
       return;
     }
 
     // Convert display dates back to yyyy-MM-dd
-    String formattedDeadline =
-    _convertToBackendFormat(_deadline1Controller.text.trim());
-    String formattedExtended =
-    _convertToBackendFormat(_deadline2Controller.text.trim());
+    String formattedDeadline = _convertToBackendFormat(_deadline1Controller.text.trim());
+    String formattedExtended = _convertToBackendFormat(_deadline2Controller.text.trim());
 
     final updatedProject = {
       "project_name": _nameController.text.trim(),
@@ -140,22 +127,21 @@ class _EditProjectPageState extends State<EditProjectPage> {
     };
 
     try {
-      final response = await WorkTrackingService()
-          .updateProject(widget.project['project_id'], updatedProject);
+      final response = await WorkTrackingService().updateProject(widget.project['project_id'], updatedProject);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         widget.onUpdate(updatedProject);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Project "${_nameController.text}" has been successfully updated.'),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-        Navigator.pop(context);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Project "${_nameController.text}" has been successfully updated.'),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          Navigator.pop(context);
+        }
       } else {
-        _showErrorDialog(
-            'Failed to update project: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to update project: ${response.reasonPhrase}');
       }
     } catch (e) {
       _showErrorDialog(e.toString());
@@ -179,8 +165,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Confirm Deletion'),
-          content: Text(
-              'Are you sure you want to delete the project "${widget.project['p_name']}"?'),
+          content: Text('Are you sure you want to delete the project "${widget.project['p_name']}"?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -200,15 +185,16 @@ class _EditProjectPageState extends State<EditProjectPage> {
         await WorkTrackingService().deleteProject(widget.project['project_id']);
         widget.onDelete();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Project "${widget.project['p_name']}" has been successfully deleted.'),
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Project "${widget.project['p_name']}" has been successfully deleted.'),
+              duration: const Duration(seconds: 3),
+            ),
+          );
 
-        Navigator.pop(context);
+          Navigator.pop(context);
+        }
       } catch (e) {
         _showErrorDialog(e.toString());
       }
@@ -276,8 +262,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
 
           for (var member in data) {
             final employeeId = member['employee_id'].toString();
-            final profileImageUrl =
-            await _fetchMemberProfileImage(employeeId, headers);
+            final profileImageUrl = await _fetchMemberProfileImage(employeeId, headers);
 
             String name = '';
 
@@ -307,8 +292,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
         if (kDebugMode) {
           print('Failed to load project members: ${response.statusCode}');
         }
-        _showErrorDialog(
-            'Failed to load project members: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to load project members: ${response.reasonPhrase}');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -322,17 +306,14 @@ class _EditProjectPageState extends State<EditProjectPage> {
     }
   }
 
-  Future<String> _fetchMemberProfileImage(
-      String employeeId, Map<String, String> headers) async {
-    final url =
-        'https://demo-application-api.flexiflows.co/api/profile/$employeeId';
+  Future<String> _fetchMemberProfileImage(String employeeId, Map<String, String> headers) async {
+    final url = 'https://demo-application-api.flexiflows.co/api/profile/$employeeId';
     try {
       final response = await http.get(Uri.parse(url), headers: headers);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         // Adjust according to actual API response structure
-        return data['results']?['images'] ??
-            'https://via.placeholder.com/150'; // Use null-aware operator
+        return data['results']?['images'] ?? 'https://via.placeholder.com/150'; // Use null-aware operator
       } else {
         if (kDebugMode) {
           print('Failed to load profile image: ${response.statusCode}');
@@ -387,8 +368,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
           flexibleSpace: Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image:
-                AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
                 fit: BoxFit.cover,
               ),
               borderRadius: const BorderRadius.only(
@@ -402,203 +382,199 @@ class _EditProjectPageState extends State<EditProjectPage> {
       body: _isFetchingMembers
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(22.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Update and Delete Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _deleteProject,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFC2C2C2),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.all(22.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Update and Delete Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _deleteProject,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFC2C2C2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12.0),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                  ),
+                                  padding: const EdgeInsets.all(6.0),
+                                  child: const Icon(
+                                    Icons.close, // X icon
+                                    color: Colors.grey,
+                                    size: 16,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Delete',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        padding:
-                        const EdgeInsets.symmetric(vertical: 12.0),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _updateProject,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFDBB342),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12.0),
                             ),
-                            padding: const EdgeInsets.all(6.0),
-                            child: const Icon(
-                              Icons.close, // X icon
-                              color: Colors.grey,
-                              size: 16,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                  ),
+                                  padding: const EdgeInsets.all(6.0),
+                                  child: const Icon(
+                                    Icons.check, // Tick icon
+                                    color: Color(0xFFDBB342),
+                                    size: 16,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Update',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Delete',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _updateProject,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFDBB342),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
                         ),
-                        padding:
-                        const EdgeInsets.symmetric(vertical: 12.0),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white,
-                            ),
-                            padding: const EdgeInsets.all(6.0),
-                            child: const Icon(
-                              Icons.check, // Tick icon
-                              color: Color(0xFFDBB342),
-                              size: 16,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Update',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // Project Details
-              _buildTextField('Name of Project', _nameController),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildDropdownField(
-                      'Status',
-                      _status,
-                      _statusOptions,
-                          (value) {
+                    const SizedBox(height: 20),
+                    // Project Details
+                    _buildTextField('Name of Project', _nameController),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDropdownField(
+                            'Status',
+                            _status,
+                            _statusOptions,
+                            (value) {
+                              setState(() {
+                                _status = value!;
+                              });
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildDropdownField(
+                            'Branch',
+                            _branch,
+                            _branchOptions,
+                            (value) {
+                              setState(() {
+                                _branch = value!;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    _buildDropdownField(
+                      'Department',
+                      _department,
+                      _departmentOptions,
+                      (value) {
                         setState(() {
-                          _status = value!;
+                          _department = value!;
                         });
                       },
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildDropdownField(
-                      'Branch',
-                      _branch,
-                      _branchOptions,
-                          (value) {
-                        setState(() {
-                          _branch = value!;
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _buildDropdownField(
-                'Department',
-                _department,
-                _departmentOptions,
-                    (value) {
-                  setState(() {
-                    _department = value!;
-                  });
-                },
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildDateField(
-                      'Deadline',
-                      _deadline1Controller,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildDateField(
-                      'Extended Deadline',
-                      _deadline2Controller,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Percent *',
-                style: TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 10),
-              _buildProgressBar(),
-              const SizedBox(height: 20),
-              // Add People Button
-              Row(
-                children: [
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.35,
-                    child: ElevatedButton(
-                      onPressed: _navigateToEditPeoplePage,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDateField(
+                            'Deadline',
+                            _deadline1Controller,
+                          ),
                         ),
-                        padding:
-                        const EdgeInsets.symmetric(vertical: 13.0),
-                      ),
-                      child: const Text(
-                        '+ Add People',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildDateField(
+                            'Extended Deadline',
+                            _deadline2Controller,
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Percent *',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildProgressBar(),
+                    const SizedBox(height: 20),
+                    // Add People Button
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width * 0.35,
+                          child: ElevatedButton(
+                            onPressed: _navigateToEditPeoplePage,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 13.0),
+                            ),
+                            child: const Text(
+                              '+ Add People',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Display Project Members
+                    const Text(
+                      'Project Members',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildProjectMembersDisplay(),
+                  ],
+                ),
               ),
-              const SizedBox(height: 20),
-              // Display Project Members
-              const Text(
-                'Project Members',
-                style:
-                TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              _buildProjectMembersDisplay(),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 
@@ -623,8 +599,7 @@ class _EditProjectPageState extends State<EditProjectPage> {
     );
   }
 
-  Widget _buildDropdownField(
-      String label, String value, List<String> options, ValueChanged<String?> onChanged) {
+  Widget _buildDropdownField(String label, String value, List<String> options, ValueChanged<String?> onChanged) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -784,14 +759,8 @@ class _EditProjectPageState extends State<EditProjectPage> {
                   child: CircleAvatar(
                     radius: 25,
                     backgroundColor: Colors.grey[300],
-                    backgroundImage: displayedMembers[i]['img_name'] != null &&
-                        displayedMembers[i]['img_name'].isNotEmpty
-                        ? NetworkImage(displayedMembers[i]['img_name'])
-                        : null,
-                    child: displayedMembers[i]['img_name'] == null ||
-                        displayedMembers[i]['img_name'].isEmpty
-                        ? const Icon(Icons.person, color: Colors.white)
-                        : null,
+                    backgroundImage: displayedMembers[i]['img_name'] != null && displayedMembers[i]['img_name'].isNotEmpty ? NetworkImage(displayedMembers[i]['img_name']) : null,
+                    child: displayedMembers[i]['img_name'] == null || displayedMembers[i]['img_name'].isEmpty ? const Icon(Icons.person, color: Colors.white) : null,
                   ),
                 ),
               ),

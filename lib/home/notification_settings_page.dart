@@ -12,11 +12,10 @@ class NotificationSettingsPage extends StatefulWidget {
   const NotificationSettingsPage({super.key});
 
   @override
-  _NotificationSettingsPageState createState() =>
-      _NotificationSettingsPageState();
+  NotificationSettingsPageState createState() => NotificationSettingsPageState();
 }
 
-class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
+class NotificationSettingsPageState extends State<NotificationSettingsPage> {
   final ApiService _apiService = ApiService();
   final LocalAuthentication auth = LocalAuthentication();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
@@ -65,8 +64,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       device.isUpdating = true;
     });
     try {
-      bool updated =
-      await _apiService.updateDeviceStatus(device, !device.status);
+      bool updated = await _apiService.updateDeviceStatus(device, !device.status);
       if (updated) {
         setState(() {
           device.status = !device.status;
@@ -85,15 +83,13 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
   }
 
   /// Adds a new device by interacting with the API.
-  Future<void> _addDevice(
-      String deviceId, String deviceToken, String platform) async {
+  Future<void> _addDevice(String deviceId, String deviceToken, String platform) async {
     Navigator.of(context).pop(); // Close the dialog
     setState(() {
       _isLoading = true;
     });
     try {
-      bool added =
-      await _apiService.addDevice(deviceId, deviceToken, platform);
+      bool added = await _apiService.addDevice(deviceId, deviceToken, platform);
       if (added) {
         _showSnackBar('Device added successfully');
         _loadDevices();
@@ -128,8 +124,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextFormField(
-                    decoration:
-                    const InputDecoration(labelText: 'Device ID'),
+                    decoration: const InputDecoration(labelText: 'Device ID'),
                     onChanged: (value) {
                       deviceId = value.trim();
                     },
@@ -141,8 +136,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                     },
                   ),
                   TextFormField(
-                    decoration:
-                    const InputDecoration(labelText: 'Device Token'),
+                    decoration: const InputDecoration(labelText: 'Device Token'),
                     onChanged: (value) {
                       deviceToken = value.trim();
                     },
@@ -216,8 +210,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       builder: (context) {
         return AlertDialog(
           title: const Text('Biometric Authentication Required'),
-          content: const Text(
-              'Please enable biometric authentication in Settings to add a new device.'),
+          content: const Text('Please enable biometric authentication in Settings to add a new device.'),
           actions: [
             TextButton(
               onPressed: () {
@@ -311,40 +304,37 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _devices.isEmpty
-                    ? const Center(child: Text('No devices found.'))
-                    : ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: _devices.length,
-                  itemBuilder: (context, index) {
-                    final device = _devices[index];
-                    return ListTile(
-                      leading: Image.asset(
-                        device.platform == 'android'
-                            ? 'assets/android_device.png'
-                            : 'assets/ios_device.png',
-                        width: 30,
-                        height: 40,
-                      ),
-                      title: Text(device.deviceId),
-                      subtitle:
-                      Text('Last login: ${device.lastLoginFormatted}'),
-                      trailing: device.isUpdating
-                          ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
-                      )
-                          : Switch(
-                        value: device.status,
-                        onChanged: (value) {
-                          _toggleNotification(device);
-                        },
-                      ),
-                    );
-                  },
-                ),
+                        ? const Center(child: Text('No devices found.'))
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16.0),
+                            itemCount: _devices.length,
+                            itemBuilder: (context, index) {
+                              final device = _devices[index];
+                              return ListTile(
+                                leading: Image.asset(
+                                  device.platform == 'android' ? 'assets/android_device.png' : 'assets/ios_device.png',
+                                  width: 30,
+                                  height: 40,
+                                ),
+                                title: Text(device.deviceId),
+                                subtitle: Text('Last login: ${device.lastLoginFormatted}'),
+                                trailing: device.isUpdating
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Switch(
+                                        value: device.status,
+                                        onChanged: (value) {
+                                          _toggleNotification(device);
+                                        },
+                                      ),
+                              );
+                            },
+                          ),
               ),
             ),
             // Removed Biometric Settings Toggle from here
@@ -381,12 +371,7 @@ class Device {
     String platform = json['platform'] ?? 'android';
     if (platform.isEmpty) {
       // Fallback to determining platform based on device_id if 'platform' is not provided
-      platform = json['device_id']
-          .toString()
-          .toLowerCase()
-          .contains('iphone')
-          ? 'ios'
-          : 'android';
+      platform = json['device_id'].toString().toLowerCase().contains('iphone') ? 'ios' : 'android';
     }
     return Device(
       deviceId: json['device_id'],
@@ -428,9 +413,7 @@ class ApiService {
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       if (data['statusCode'] == 200 && data['results'] != null) {
-        List<Device> devices = (data['results'] as List)
-            .map((e) => Device.fromJson(e))
-            .toList();
+        List<Device> devices = (data['results'] as List).map((e) => Device.fromJson(e)).toList();
         return devices;
       } else {
         throw Exception(data['message'] ?? 'Failed to load devices');
@@ -470,8 +453,7 @@ class ApiService {
   }
 
   /// Adds a new device to the user's notification settings.
-  Future<bool> addDevice(
-      String deviceId, String deviceToken, String platform) async {
+  Future<bool> addDevice(String deviceId, String deviceToken, String platform) async {
     final token = await _getToken();
     if (token == null) {
       throw Exception('Authentication token not found.');

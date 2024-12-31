@@ -13,10 +13,10 @@ class NotificationPermissionPage extends StatefulWidget {
   const NotificationPermissionPage({super.key});
 
   @override
-  _NotificationPermissionPageState createState() => _NotificationPermissionPageState();
+  NotificationPermissionPageState createState() => NotificationPermissionPageState();
 }
 
-class _NotificationPermissionPageState extends State<NotificationPermissionPage> {
+class NotificationPermissionPageState extends State<NotificationPermissionPage> {
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
   @override
@@ -66,17 +66,21 @@ class _NotificationPermissionPageState extends State<NotificationPermissionPage>
       final status = await Permission.notification.status;
 
       if (status.isGranted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LocationInformationPage()),
-        );
-      } else {
-        final newStatus = await Permission.notification.request();
-        if (newStatus.isGranted) {
+        if (mounted) {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const LocationInformationPage()),
           );
+        }
+      } else {
+        final newStatus = await Permission.notification.request();
+        if (newStatus.isGranted) {
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LocationInformationPage()),
+            );
+          }
         } else if (newStatus.isDenied) {
           _showPermissionDeniedDialog();
         } else if (newStatus.isPermanentlyDenied) {

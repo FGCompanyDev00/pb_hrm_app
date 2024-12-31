@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -51,33 +52,28 @@ class AssignmentService {
     }
   }
 
+  Future<void> deleteAssignment(String asId) async {
+    final headers = await _getHeaders();
 
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/work-tracking/ass/delete/$asId'),
+      headers: headers,
+    );
 
-Future<void> deleteAssignment(String asId) async {
-  final headers = await _getHeaders();
-  
-  final response = await http.delete(
-    Uri.parse('$baseUrl/api/work-tracking/ass/delete/$asId'),
-    headers: headers,
-  );
-
-  if (response.statusCode == 200) {
-    print('Assignment deleted successfully.');
-  } else {
-    // Log the response body for more details
-    final responseBody = response.body;
-    print('Failed to delete assignment. Status Code: ${response.statusCode}, Response: $responseBody');
-
-    if (response.statusCode == 404) {
-      throw Exception('Assignment not found.');
+    if (response.statusCode == 200) {
+      debugPrint('Assignment deleted successfully.');
     } else {
-      throw Exception('Failed to delete assignment: ${response.reasonPhrase}');
+      // Log the response body for more details
+      final responseBody = response.body;
+      debugPrint('Failed to delete assignment. Status Code: ${response.statusCode}, Response: $responseBody');
+
+      if (response.statusCode == 404) {
+        throw Exception('Assignment not found.');
+      } else {
+        throw Exception('Failed to delete assignment: ${response.reasonPhrase}');
+      }
     }
   }
-}
-
-
-
 
   // Add files to an assignment
   Future<void> addFilesToAssignment(String asId, List<String> fileNames) async {

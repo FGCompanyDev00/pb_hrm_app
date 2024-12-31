@@ -20,10 +20,10 @@ class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  _SettingsPageState createState() => _SettingsPageState();
+  SettingsPageState createState() => SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class SettingsPageState extends State<SettingsPage> {
   final LocalAuthentication auth = LocalAuthentication();
   final _storage = const FlutterSecureStorage();
   bool _biometricEnabled = false;
@@ -61,12 +61,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _saveBiometricSetting(bool enabled) async {
     await _storage.write(key: 'biometricEnabled', value: enabled.toString());
-    print('Saved biometric, Enabled as: $enabled'); // Debugging
-  }
-
-  Future<bool> _onWillPop() async {
-    Navigator.pop(context);
-    return true;
+    debugPrint('Saved biometric, Enabled as: $enabled'); // Debugging
   }
 
   Future<void> _showBiometricModal() async {
@@ -151,11 +146,13 @@ class _SettingsPageState extends State<SettingsPage> {
     if (enable) {
       bool canCheckBiometrics = await auth.canCheckBiometrics;
       if (!canCheckBiometrics) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.biometricNotAvailable),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.biometricNotAvailable),
+            ),
+          );
+        }
         return;
       }
       try {
@@ -176,11 +173,13 @@ class _SettingsPageState extends State<SettingsPage> {
         if (kDebugMode) {
           print('Error enabling biometrics: $e');
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.errorEnablingBiometrics(e.toString())),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.errorEnablingBiometrics(e.toString())),
+            ),
+          );
+        }
       }
     } else {
       setState(() {
@@ -223,7 +222,7 @@ class _SettingsPageState extends State<SettingsPage> {
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => const Dashboard()),
-                (route) => false,
+            (route) => false,
           );
         });
         // Prevent the default pop action
@@ -397,12 +396,12 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildSettingsTile(
-      BuildContext context, {
-        required String title,
-        Widget? trailing,
-        IconData? icon,
-        void Function()? onTap,
-      }) {
+    BuildContext context, {
+    required String title,
+    Widget? trailing,
+    IconData? icon,
+    void Function()? onTap,
+  }) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 

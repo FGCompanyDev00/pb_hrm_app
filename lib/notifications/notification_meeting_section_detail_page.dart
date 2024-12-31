@@ -16,10 +16,10 @@ class NotificationMeetingDetailsPage extends StatefulWidget {
   });
 
   @override
-  _NotificationMeetingDetailsPageState createState() => _NotificationMeetingDetailsPageState();
+  NotificationMeetingDetailsPageState createState() => NotificationMeetingDetailsPageState();
 }
 
-class _NotificationMeetingDetailsPageState extends State<NotificationMeetingDetailsPage> with SingleTickerProviderStateMixin {
+class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetailsPage> with SingleTickerProviderStateMixin {
   bool isLoading = true;
   bool isFinalized = false;
   Map<String, dynamic>? meetingData;

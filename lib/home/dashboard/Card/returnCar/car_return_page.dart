@@ -7,15 +7,14 @@ import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class ReturnCarPage extends StatefulWidget {
   const ReturnCarPage({super.key});
 
   @override
-  _ReturnCarPageState createState() => _ReturnCarPageState();
+  ReturnCarPageState createState() => ReturnCarPageState();
 }
 
-class _ReturnCarPageState extends State<ReturnCarPage> {
+class ReturnCarPageState extends State<ReturnCarPage> {
   List<dynamic> events = [];
   List<dynamic> filteredEvents = [];
   bool isLoading = true;
@@ -181,203 +180,225 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : Column(
-        children: [
-          Container(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.black
-                : Colors.white, // Background color based on theme
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: searchController,
-                    style: TextStyle(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white // Text color in dark mode
-                          : Colors.black, // Text color in light mode
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Search',
-                      hintStyle: TextStyle(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white70 // Lighter hint color in dark mode
-                            : Colors.black54, // Lighter hint color in light mode
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white70 // Icon color in dark mode
-                            : Colors.black54, // Icon color in light mode
-                      ),
-                      suffixIcon: DropdownButton<String>(
-                        value: searchOption,
-                        icon: Icon(
-                          Icons.arrow_drop_down,
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white // Dropdown icon in dark mode
-                              : Colors.black, // Dropdown icon in light mode
-                        ),
-                        onChanged: _onSearchOptionChanged,
-                        items: const [
-                          DropdownMenuItem<String>(
-                            value: 'requestor_name',
-                            child: Text('Requestor Name'),
-                          ),
-                          DropdownMenuItem<String>(
-                            value: 'license_plate',
-                            child: Text('License Plate'),
-                          ),
-                        ],
-                        dropdownColor: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.black // Dropdown menu background in dark mode
-                            : Colors.white, // Dropdown menu background in light mode
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(60),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (filteredEvents.isEmpty)
-            const Expanded(
-              child: Center(
-                child: Text(
-                  'No results found',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(8.0),
-                itemCount: filteredEvents.length,
-                itemBuilder: (context, index) {
-                  final event = filteredEvents[index];
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              ReturnCarPageDetails(uid: event['uid']),
-                        ),
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
+                Container(
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white, // Background color based on theme
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: searchController,
+                          style: TextStyle(
                             color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.blueGrey // Dark mode border color
-                                : Colors.blueAccent, // Light mode border color
+                                ? Colors.white // Text color in dark mode
+                                : Colors.black, // Text color in light mode
                           ),
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.black45 // Dark mode background color
-                              : Colors.white, // Light mode background color
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Row(
-                            children: [
-                              // Left section for car image and text
-                              Column(
-                                children: [
-                                  Image.asset(
-                                    'assets/car.png',
-                                    width: 40,
-                                    height: 40,
-                                  ),
-                                  const SizedBox(height: 6),
-                                  const Text(
-                                    'Car',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blueAccent,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
+                          decoration: InputDecoration(
+                            hintText: 'Search',
+                            hintStyle: TextStyle(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white70 // Lighter hint color in dark mode
+                                  : Colors.black54, // Lighter hint color in light mode
+                            ),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white70 // Icon color in dark mode
+                                  : Colors.black54, // Icon color in light mode
+                            ),
+                            suffixIcon: DropdownButton<String>(
+                              value: searchOption,
+                              icon: Icon(
+                                Icons.arrow_drop_down,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white // Dropdown icon in dark mode
+                                    : Colors.black, // Dropdown icon in light mode
                               ),
-                              const SizedBox(width: 12),
-                              // Main content section
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              onChanged: _onSearchOptionChanged,
+                              items: const [
+                                DropdownMenuItem<String>(
+                                  value: 'requestor_name',
+                                  child: Text('Requestor Name'),
+                                ),
+                                DropdownMenuItem<String>(
+                                  value: 'license_plate',
+                                  child: Text('License Plate'),
+                                ),
+                              ],
+                              dropdownColor: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.black // Dropdown menu background in dark mode
+                                  : Colors.white, // Dropdown menu background in light mode
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(60),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (filteredEvents.isEmpty)
+                  const Expanded(
+                    child: Center(
+                      child: Text(
+                        'No results found',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(8.0),
+                      itemCount: filteredEvents.length,
+                      itemBuilder: (context, index) {
+                        final event = filteredEvents[index];
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ReturnCarPageDetails(uid: event['uid']),
+                              ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Theme.of(context).brightness == Brightness.dark
+                                      ? Colors.blueGrey // Dark mode border color
+                                      : Colors.blueAccent, // Light mode border color
+                                ),
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.black45 // Dark mode background color
+                                    : Colors.white, // Light mode background color
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
                                   children: [
-                                    Text(
-                                      event['requestor_name'] ?? '',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                        color: Theme.of(context).brightness == Brightness.dark
-                                            ? Colors.white // Dark mode text color
-                                            : Colors.black, // Light mode text color
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Date: ${event['date_out']} To ${event['date_in']}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(context).brightness == Brightness.dark
-                                            ? Colors.white70 // Lighter text in dark mode
-                                            : Colors.grey[600], // Grey text in light mode
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Res ID: ${event['id']}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(context).brightness == Brightness.dark
-                                            ? Colors.white70 // Lighter text in dark mode
-                                            : Colors.grey[600], // Grey text in light mode
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Tel: ${event['license_plate']}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(context).brightness == Brightness.dark
-                                            ? Colors.white70 // Lighter text in dark mode
-                                            : Colors.grey[600], // Grey text in light mode
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Row(
+                                    // Left section for car image and text
+                                    Column(
                                       children: [
+                                        Image.asset(
+                                          'assets/car.png',
+                                          width: 40,
+                                          height: 40,
+                                        ),
+                                        const SizedBox(height: 6),
                                         const Text(
-                                          'Status: ',
+                                          'Car',
                                           style: TextStyle(
-                                            fontSize: 12,
                                             fontWeight: FontWeight.bold,
+                                            color: Colors.blueAccent,
+                                            fontSize: 12,
                                           ),
                                         ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: _getStatusColor(event['status'] ?? ''),
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: Text(
-                                            event['status'] ?? '',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 10,
+                                      ],
+                                    ),
+                                    const SizedBox(width: 12),
+                                    // Main content section
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            event['requestor_name'] ?? '',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: Theme.of(context).brightness == Brightness.dark
+                                                  ? Colors.white // Dark mode text color
+                                                  : Colors.black, // Light mode text color
                                             ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Date: ${event['date_out']} To ${event['date_in']}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Theme.of(context).brightness == Brightness.dark
+                                                  ? Colors.white70 // Lighter text in dark mode
+                                                  : Colors.grey[600], // Grey text in light mode
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Res ID: ${event['id']}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Theme.of(context).brightness == Brightness.dark
+                                                  ? Colors.white70 // Lighter text in dark mode
+                                                  : Colors.grey[600], // Grey text in light mode
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Tel: ${event['license_plate']}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Theme.of(context).brightness == Brightness.dark
+                                                  ? Colors.white70 // Lighter text in dark mode
+                                                  : Colors.grey[600], // Grey text in light mode
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              const Text(
+                                                'Status: ',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: _getStatusColor(event['status'] ?? ''),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  event['status'] ?? '',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    // Right section for image
+                                    Column(
+                                      children: [
+                                        ClipOval(
+                                          child: Image.network(
+                                            event['img_name'] ?? '',
+                                            width: 40,
+                                            height: 40,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        const Text(
+                                          'View Detail',
+                                          style: TextStyle(
+                                            color: Colors.orangeAccent,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
                                           ),
                                         ),
                                       ],
@@ -385,40 +406,14 @@ class _ReturnCarPageState extends State<ReturnCarPage> {
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              // Right section for image
-                              Column(
-                                children: [
-                                  ClipOval(
-                                    child: Image.network(
-                                      event['img_name'] ?? '',
-                                      width: 40,
-                                      height: 40,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  const Text(
-                                    'View Detail',
-                                    style: TextStyle(
-                                      color: Colors.orangeAccent,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
+                  ),
+              ],
             ),
-        ],
-      ),
     );
   }
 }

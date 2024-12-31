@@ -132,7 +132,7 @@ class Events {
         return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
       } catch (e) {
         // Handle invalid JSON strings gracefully
-        print('Error decoding members: $e');
+        debugPrint('Error decoding members: $e');
         return null;
       }
     } else if (members is List) {

@@ -12,11 +12,10 @@ class CustomBottomNavBar extends StatefulWidget {
   });
 
   @override
-  _CustomBottomNavBarState createState() => _CustomBottomNavBarState();
+  CustomBottomNavBarState createState() => CustomBottomNavBarState();
 }
 
-class _CustomBottomNavBarState extends State<CustomBottomNavBar>
-    with SingleTickerProviderStateMixin {
+class CustomBottomNavBarState extends State<CustomBottomNavBar> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<Color?> _colorAnimation;
 
@@ -65,9 +64,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
         TabItem(
           icon: Icon(
             Icons.fingerprint,
-            color: widget.currentIndex == 0
-                ? (isDarkMode ? Colors.green : Colors.orangeAccent)
-                : (isDarkMode ? Colors.grey : Colors.grey),
+            color: widget.currentIndex == 0 ? (isDarkMode ? Colors.green : Colors.orangeAccent) : (isDarkMode ? Colors.grey : Colors.grey),
             size: iconSize.clamp(28, 35),
           ),
         ),
@@ -80,9 +77,7 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
 
               // If it's dark mode, just use a fixed orange color
               Color borderColor = isDarkMode ? Colors.orange : _colorAnimation.value!;
-              Color shadowColor = isDarkMode
-                  ? Colors.orange.withOpacity(0.7)
-                  : _colorAnimation.value!.withOpacity(0.7);
+              Color shadowColor = isDarkMode ? Colors.orange.withOpacity(0.7) : _colorAnimation.value!.withOpacity(0.7);
 
               return Container(
                 width: homeIconSize,
@@ -91,18 +86,18 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
                   shape: BoxShape.circle,
                   border: widget.currentIndex == 1
                       ? Border.all(
-                    color: borderColor,
-                    width: 3.0,
-                  )
+                          color: borderColor,
+                          width: 3.0,
+                        )
                       : null,
                   boxShadow: widget.currentIndex == 1
                       ? [
-                    BoxShadow(
-                      color: shadowColor,
-                      blurRadius: 8.0,
-                      spreadRadius: 2.0,
-                    ),
-                  ]
+                          BoxShadow(
+                            color: shadowColor,
+                            blurRadius: 8.0,
+                            spreadRadius: 2.0,
+                          ),
+                        ]
                       : null,
                 ),
                 child: const Icon(
@@ -114,13 +109,10 @@ class _CustomBottomNavBarState extends State<CustomBottomNavBar>
             },
           ),
         ),
-
         TabItem(
           icon: Icon(
             Icons.apps,
-            color: widget.currentIndex == 2
-                ? (isDarkMode ? Colors.green : Colors.orangeAccent)
-                : (isDarkMode ? Colors.grey : Colors.grey),
+            color: widget.currentIndex == 2 ? (isDarkMode ? Colors.green : Colors.orangeAccent) : (isDarkMode ? Colors.grey : Colors.grey),
             size: iconSize.clamp(28, 35),
           ),
         ),

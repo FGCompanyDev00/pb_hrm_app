@@ -7,12 +7,10 @@ class ChatCommentApprovalSection extends StatefulWidget {
   const ChatCommentApprovalSection({super.key});
 
   @override
-  _ChatCommentApprovalSectionState createState() =>
-      _ChatCommentApprovalSectionState();
+  ChatCommentApprovalSectionState createState() => ChatCommentApprovalSectionState();
 }
 
-class _ChatCommentApprovalSectionState
-    extends State<ChatCommentApprovalSection> {
+class ChatCommentApprovalSectionState extends State<ChatCommentApprovalSection> {
   // A sample list of chat messages for UI demonstration
   final List<Map<String, dynamic>> _messages = [
     {
@@ -85,9 +83,7 @@ class _ChatCommentApprovalSectionState
 
   // Helper to check if two dates are the same calendar day
   bool _isSameDay(DateTime date1, DateTime date2) {
-    return date1.year == date2.year &&
-        date1.month == date2.month &&
-        date1.day == date2.day;
+    return date1.year == date2.year && date1.month == date2.month && date1.day == date2.day;
   }
 
   // Format the time portion (e.g., "10:00 AM")
@@ -104,78 +100,72 @@ class _ChatCommentApprovalSectionState
 
     return Scaffold(
         appBar: AppBar(
-        title: const Text(
-        'Comment',
-        style: TextStyle(fontWeight: FontWeight.bold),
-    ),
-      centerTitle: true, automaticallyImplyLeading: false,
-      backgroundColor: isDarkMode ? Colors.black : Colors.white,
-      foregroundColor: isDarkMode ? Colors.white : Colors.black,
-      elevation: 0,
-    ),
-    body: Column(
-      children: [
-        // Expanded chat message list
-        Expanded(
-          child: ListView.builder(
-            reverse: true, // Show latest message at the bottom
-            controller: _scrollController,
-            padding: const EdgeInsets.all(16.0),
-            itemCount: _messages.length,
-            itemBuilder: (context, index) {
-              final message = _messages[index];
-              final nextMessage =
-              index + 1 < _messages.length ? _messages[index + 1] : null;
+          title: const Text(
+            'Comment',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          centerTitle: true,
+          automaticallyImplyLeading: false,
+          backgroundColor: isDarkMode ? Colors.black : Colors.white,
+          foregroundColor: isDarkMode ? Colors.white : Colors.black,
+          elevation: 0,
+        ),
+        body: Column(
+          children: [
+            // Expanded chat message list
+            Expanded(
+              child: ListView.builder(
+                reverse: true, // Show latest message at the bottom
+                controller: _scrollController,
+                padding: const EdgeInsets.all(16.0),
+                itemCount: _messages.length,
+                itemBuilder: (context, index) {
+                  final message = _messages[index];
+                  final nextMessage = index + 1 < _messages.length ? _messages[index + 1] : null;
 
-              // Next Message is the latest one to display
-              final bool isNewDate = nextMessage == null ||
-                  _formatDate(message['created_at']) !=
-                      _formatDate(nextMessage['created_at']);
+                  // Next Message is the latest one to display
+                  final bool isNewDate = nextMessage == null || _formatDate(message['created_at']) != _formatDate(nextMessage['created_at']);
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (isNewDate)
-                  // Date header
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12.0),
-                        child: Text(
-                          _formatDate(message['created_at']),
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey,
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (isNewDate)
+                        // Date header
+                        Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12.0),
+                            child: Text(
+                              _formatDate(message['created_at']),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  _buildChatBubble(message, isDarkMode),
-                ],
-              );
-            },
-          ),
-        ),
+                      _buildChatBubble(message, isDarkMode),
+                    ],
+                  );
+                },
+              ),
+            ),
 
-        // Bottom input field
-        _buildChatInput(isDarkMode),
-      ],
-    ));
+            // Bottom input field
+            _buildChatInput(isDarkMode),
+          ],
+        ));
   }
 
   Widget _buildChatBubble(Map<String, dynamic> message, bool isDarkMode) {
     final bool isSentByMe = (message['created_by'] == _currentUserId);
-    final String senderName =
-    isSentByMe ? 'You' : (message['createBy_name'] ?? 'Unknown');
+    final String senderName = isSentByMe ? 'You' : (message['createBy_name'] ?? 'Unknown');
 
     // My own bubble is light blue, others get a random pastel
-    final Color bubbleColor = isSentByMe
-        ? Colors.blue.shade200
-        : _assignChatBubbleColor(message['created_by']);
+    final Color bubbleColor = isSentByMe ? Colors.blue.shade200 : _assignChatBubbleColor(message['created_by']);
 
     final Color textColor = isDarkMode ? Colors.white : Colors.black;
-    final Alignment bubbleAlignment =
-    isSentByMe ? Alignment.centerRight : Alignment.centerLeft;
+    final Alignment bubbleAlignment = isSentByMe ? Alignment.centerRight : Alignment.centerLeft;
 
     return Align(
       alignment: bubbleAlignment,
@@ -185,19 +175,14 @@ class _ChatCommentApprovalSectionState
         decoration: BoxDecoration(
           color: bubbleColor,
           borderRadius: BorderRadius.only(
-            topLeft: isSentByMe
-                ? const Radius.circular(12.0)
-                : const Radius.circular(0),
-            topRight: isSentByMe
-                ? const Radius.circular(0)
-                : const Radius.circular(12.0),
+            topLeft: isSentByMe ? const Radius.circular(12.0) : const Radius.circular(0),
+            topRight: isSentByMe ? const Radius.circular(0) : const Radius.circular(12.0),
             bottomLeft: const Radius.circular(12.0),
             bottomRight: const Radius.circular(12.0),
           ),
         ),
         child: Column(
-          crossAxisAlignment:
-          isSentByMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isSentByMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             if (!isSentByMe)
               Text(
@@ -224,8 +209,7 @@ class _ChatCommentApprovalSectionState
   }
 
   Widget _buildChatInput(bool isDarkMode) {
-    final Color backgroundColor =
-    isDarkMode ? Colors.grey[850]! : Colors.white;
+    final Color backgroundColor = isDarkMode ? Colors.grey[850]! : Colors.white;
     final Color textColor = isDarkMode ? Colors.white : Colors.black;
 
     return Padding(

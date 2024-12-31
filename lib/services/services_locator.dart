@@ -1,5 +1,6 @@
 // lib/services/services_locator.dart
 
+import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/services/offline_service.dart';
@@ -13,11 +14,10 @@ Future<void> setupServiceLocator() async {
     final prefs = await SharedPreferences.getInstance();
 
     sl.registerLazySingleton<UserPreferences>(() => UserPreferences(prefs));
-    print('UserPreferences service registered');
+    debugPrint('UserPreferences service registered');
     sl.registerLazySingleton<Connectivity>(() => Connectivity());
     sl.registerLazySingleton<OfflineProvider>(() => OfflineProvider());
   } catch (e) {
-    print("Error during service locator setup: $e");
+    debugPrint("Error during service locator setup: $e");
   }
 }
-

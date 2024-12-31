@@ -17,10 +17,10 @@ class OfficeEditMembersPage extends StatefulWidget {
   });
 
   @override
-  _OfficeEditMembersPageState createState() => _OfficeEditMembersPageState();
+  OfficeEditMembersPageState createState() => OfficeEditMembersPageState();
 }
 
-class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
+class OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
   List<Map<String, dynamic>> _allMembers = [];
   List<Map<String, dynamic>> _filteredMembers = [];
   List<Map<String, dynamic>> _selectedMembers = [];
@@ -58,8 +58,7 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
 
     try {
       String token = await _fetchToken();
-      String url =
-          'https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees';
+      String url = 'https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees';
 
       final response = await http.get(
         Uri.parse(url),
@@ -80,14 +79,13 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
         if (data is List) {
           setState(() {
             _allMembers = List<Map<String, dynamic>>.from(data.map((item) => {
-              'employee_id': item['employee_id'],
-              'employee_name': '${item['name']} ${item['surname']}',
-              'img_name': null, // Placeholder, will fetch actual image later
-            }));
+                  'employee_id': item['employee_id'],
+                  'employee_name': '${item['name']} ${item['surname']}',
+                  'img_name': null, // Placeholder, will fetch actual image later
+                }));
 
             // Exclude the current user from the list
-            _allMembers.removeWhere(
-                    (member) => member['employee_id'] == _currentUserId);
+            _allMembers.removeWhere((member) => member['employee_id'] == _currentUserId);
 
             _filteredMembers = List<Map<String, dynamic>>.from(_allMembers);
             _fetchImages();
@@ -116,8 +114,7 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
     for (var member in _allMembers) {
       try {
         String token = await _fetchToken();
-        String url =
-            'https://demo-application-api.flexiflows.co/api/profile/${member['employee_id']}';
+        String url = 'https://demo-application-api.flexiflows.co/api/profile/${member['employee_id']}';
 
         final response = await http.get(
           Uri.parse(url),
@@ -130,8 +127,7 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
         if (response.statusCode == 200) {
           final profileData = jsonDecode(response.body)['results'];
           setState(() {
-            member['img_name'] =
-                profileData['images'] ?? 'https://www.w3schools.com/howto/img_avatar.png';
+            member['img_name'] = profileData['images'] ?? 'https://www.w3schools.com/howto/img_avatar.png';
           });
         } else {
           if (kDebugMode) {
@@ -147,10 +143,7 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
   }
 
   void _filterMembers(String query) {
-    List<Map<String, dynamic>> filteredList = _allMembers
-        .where((member) =>
-        member['employee_name'].toLowerCase().contains(query.toLowerCase()))
-        .toList();
+    List<Map<String, dynamic>> filteredList = _allMembers.where((member) => member['employee_name'].toLowerCase().contains(query.toLowerCase())).toList();
     setState(() {
       _filteredMembers = filteredList;
     });
@@ -159,13 +152,11 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
   void _onMemberSelected(bool? selected, Map<String, dynamic> member) {
     setState(() {
       if (selected == true) {
-        if (!_selectedMembers
-            .any((m) => m['employee_id'] == member['employee_id'])) {
+        if (!_selectedMembers.any((m) => m['employee_id'] == member['employee_id'])) {
           _selectedMembers.add(member);
         }
       } else {
-        _selectedMembers
-            .removeWhere((m) => m['employee_id'] == member['employee_id']);
+        _selectedMembers.removeWhere((m) => m['employee_id'] == member['employee_id']);
       }
     });
   }
@@ -177,42 +168,38 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
   Widget _buildMembersList() {
     return _filteredMembers.isNotEmpty
         ? ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _filteredMembers.length,
-      itemBuilder: (context, index) {
-        final member = _filteredMembers[index];
-        bool isSelected = _selectedMembers
-            .any((m) => m['employee_id'] == member['employee_id']);
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundImage: NetworkImage(
-                member['img_name'] ??
-                    'https://www.w3schools.com/howto/img_avatar.png'),
-            onBackgroundImageError: (_, __) {
-              setState(() {
-                member['img_name'] =
-                'https://www.w3schools.com/howto/img_avatar.png';
-              });
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _filteredMembers.length,
+            itemBuilder: (context, index) {
+              final member = _filteredMembers[index];
+              bool isSelected = _selectedMembers.any((m) => m['employee_id'] == member['employee_id']);
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundImage: NetworkImage(member['img_name'] ?? 'https://www.w3schools.com/howto/img_avatar.png'),
+                  onBackgroundImageError: (_, __) {
+                    setState(() {
+                      member['img_name'] = 'https://www.w3schools.com/howto/img_avatar.png';
+                    });
+                  },
+                ),
+                title: Text(member['employee_name'] ?? 'No Name'),
+                trailing: Checkbox(
+                  value: isSelected,
+                  onChanged: (bool? selected) {
+                    _onMemberSelected(selected, member);
+                  },
+                ),
+                onTap: () {
+                  _onMemberSelected(!isSelected, member);
+                },
+              );
             },
-          ),
-          title: Text(member['employee_name'] ?? 'No Name'),
-          trailing: Checkbox(
-            value: isSelected,
-            onChanged: (bool? selected) {
-              _onMemberSelected(selected, member);
-            },
-          ),
-          onTap: () {
-            _onMemberSelected(!isSelected, member);
-          },
-        );
-      },
-    )
+          )
         : const Text(
-      'No members found.',
-      style: TextStyle(color: Colors.grey),
-    );
+            'No members found.',
+            style: TextStyle(color: Colors.grey),
+          );
   }
 
   @override
@@ -248,57 +235,55 @@ class _OfficeEditMembersPageState extends State<OfficeEditMembersPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-          ? Center(
-        child: Text(
-          _errorMessage!,
-          style: const TextStyle(color: Colors.red, fontSize: 16.0),
-        ),
-      )
-          : Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: _onAddButtonPressed,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFDBB342),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 40.0, vertical: 15.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20.0),
+              ? Center(
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red, fontSize: 16.0),
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: ElevatedButton(
+                          onPressed: _onAddButtonPressed,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFDBB342),
+                            padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 15.0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20.0),
+                            ),
+                          ),
+                          child: const Text(
+                            '+ Add',
+                            style: TextStyle(color: Colors.black, fontSize: 18),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16.0),
+                      TextField(
+                        onChanged: (value) {
+                          _filterMembers(value);
+                        },
+                        decoration: InputDecoration(
+                          labelText: 'Search',
+                          prefixIcon: const Icon(Icons.search),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30.0),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16.0),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: _buildMembersList(),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: const Text(
-                  '+ Add',
-                  style:
-                  TextStyle(color: Colors.black, fontSize: 18),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16.0),
-            TextField(
-              onChanged: (value) {
-                _filterMembers(value);
-              },
-              decoration: InputDecoration(
-                labelText: 'Search',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30.0),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16.0),
-            Expanded(
-              child: SingleChildScrollView(
-                child: _buildMembersList(),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

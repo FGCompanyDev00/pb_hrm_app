@@ -35,9 +35,7 @@ class EventRecordAdapter extends TypeAdapter<EventRecord> {
       leaveType: fields[15] as String?,
       category: fields[16] as String,
       days: fields[17] as double?,
-      members: (fields[18] as List?)
-          ?.map((dynamic e) => (e as Map).cast<String, dynamic>())
-          ?.toList(),
+      members: (fields[18] as List?)?.map((dynamic e) => (e as Map).cast<String, dynamic>()).toList(),
     );
   }
 
@@ -89,9 +87,5 @@ class EventRecordAdapter extends TypeAdapter<EventRecord> {
   int get hashCode => typeId.hashCode;
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is EventRecordAdapter &&
-          runtimeType == other.runtimeType &&
-          typeId == other.typeId;
+  bool operator ==(Object other) => identical(this, other) || other is EventRecordAdapter && runtimeType == other.runtimeType && typeId == other.typeId;
 }

@@ -22,11 +22,10 @@ class ProjectManagementPage extends StatefulWidget {
   });
 
   @override
-  _ProjectManagementPageState createState() => _ProjectManagementPageState();
+  ProjectManagementPageState createState() => ProjectManagementPageState();
 }
 
-class _ProjectManagementPageState extends State<ProjectManagementPage>
-    with TickerProviderStateMixin, RouteAware {
+class ProjectManagementPageState extends State<ProjectManagementPage> with TickerProviderStateMixin, RouteAware {
   late TabController _tabController;
   String _currentUserId = '';
   bool _isRefreshing = false;
@@ -35,7 +34,7 @@ class _ProjectManagementPageState extends State<ProjectManagementPage>
   @override
   void initState() {
     super.initState();
-    print('[_ProjectManagementPageState] Received projectId: ${widget.projectId}');
+    debugPrint('[_ProjectManagementPageState] Received projectId: ${widget.projectId}');
     _loadUserData().then((_) {
       _refreshData();
     });

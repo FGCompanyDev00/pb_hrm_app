@@ -18,10 +18,10 @@ class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
 
   @override
-  _EditProfilePageState createState() => _EditProfilePageState();
+  EditProfilePageState createState() => EditProfilePageState();
 }
 
-class _EditProfilePageState extends State<EditProfilePage> {
+class EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
   String _initialProvince = '';
   String _initialCity = '';
@@ -77,15 +77,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
 
       // Fetch profile details
-      final profileResponse = await http
-          .get(
+      final profileResponse = await http.get(
         Uri.parse(profileEndpoint),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      )
-          .timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 10));
 
       if (profileResponse.statusCode == 200) {
         final Map<String, dynamic> userProfile = jsonDecode(profileResponse.body)['results'];
@@ -137,15 +135,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
   /// Fetches user profile image from the API
   Future<void> _fetchUserProfile(String token) async {
     try {
-      final imageResponse = await http
-          .get(
+      final imageResponse = await http.get(
         Uri.parse(displayMeEndpoint),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      )
-          .timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 10));
 
       if (imageResponse.statusCode == 200) {
         final List<dynamic> results = jsonDecode(imageResponse.body)['results'];
@@ -192,7 +188,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
         File file = File(pickedFile.path);
         final fileSize = await file.length();
 
-        if (fileSize > 5 * 1024 * 1024) { // 5MB limit
+        if (fileSize > 5 * 1024 * 1024) {
+          // 5MB limit
           // Compress the image
           final compressedFile = await _compressImage(file);
           if (compressedFile != null) {
@@ -257,11 +254,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       return;
     }
 
-    if (_province == _initialProvince &&
-        _city == _initialCity &&
-        _village == _initialVillage &&
-        _phoneNumber == _initialPhoneNumber &&
-        _image == null) {
+    if (_province == _initialProvince && _city == _initialCity && _village == _initialVillage && _phoneNumber == _initialPhoneNumber && _image == null) {
       _showDialog('Info', 'No changes to update.');
       return;
     }
@@ -384,26 +377,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
               Icon(
                 title == 'Success'
                     ? Icons.check_circle
-                    : title == 'Error' ||
-                    title == 'Network Error' ||
-                    title == 'Authentication Error' ||
-                    title == 'Timeout' ||
-                    title == 'No Internet' ||
-                    title == 'File Size Error' ||
-                    title == 'Compression Error'
-                    ? Icons.error
-                    : Icons.info,
+                    : title == 'Error' || title == 'Network Error' || title == 'Authentication Error' || title == 'Timeout' || title == 'No Internet' || title == 'File Size Error' || title == 'Compression Error'
+                        ? Icons.error
+                        : Icons.info,
                 color: title == 'Success'
                     ? Colors.green
-                    : title == 'Error' ||
-                    title == 'Network Error' ||
-                    title == 'Authentication Error' ||
-                    title == 'Timeout' ||
-                    title == 'No Internet' ||
-                    title == 'File Size Error' ||
-                    title == 'Compression Error'
-                    ? Colors.red
-                    : Colors.blue,
+                    : title == 'Error' || title == 'Network Error' || title == 'Authentication Error' || title == 'Timeout' || title == 'No Internet' || title == 'File Size Error' || title == 'Compression Error'
+                        ? Colors.red
+                        : Colors.blue,
               ),
               const SizedBox(width: 10),
               Text(
@@ -427,15 +408,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: title == 'Success'
                     ? Colors.green
-                    : title == 'Error' ||
-                    title == 'Network Error' ||
-                    title == 'Authentication Error' ||
-                    title == 'Timeout' ||
-                    title == 'No Internet' ||
-                    title == 'File Size Error' ||
-                    title == 'Compression Error'
-                    ? Colors.red
-                    : Colors.blue,
+                    : title == 'Error' || title == 'Network Error' || title == 'Authentication Error' || title == 'Timeout' || title == 'No Internet' || title == 'File Size Error' || title == 'Compression Error'
+                        ? Colors.red
+                        : Colors.blue,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8.0),
                 ),
@@ -480,194 +455,187 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final double appBarHeight = mediaQuery.size.height * 0.16;
 
     return Scaffold(
-      body: Stack(
-        children: [
+        body: Stack(children: [
       Positioned.fill(
-      child: Column(
-      children: [
-        // Customized AppBar
-        Container(
-        height: appBarHeight,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
-            fit: BoxFit.cover,
-          ),
-          borderRadius: const BorderRadius.only(
-            bottomLeft: Radius.circular(20),
-            bottomRight: Radius.circular(20),
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6.0),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.arrow_back,
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white // White icon for dark mode
-                        : Colors.black, // Black icon for light mode
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
+        child: Column(
+          children: [
+            // Customized AppBar
+            Container(
+              height: appBarHeight,
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+                  fit: BoxFit.cover,
                 ),
-                const Expanded(
-                  child: Center(
-                    child: Text(
-                      'Edit Profile',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
                 ),
-                const SizedBox(width: 48),
-              ],
-            ),
-          ),
-        ),
-      ),
-      const SizedBox(height: 20),
-      _isLoading
-          ? const Expanded(
-        child: Center(child: CircularProgressIndicator()),
-      )
-          : Expanded(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: mediaQuery.size.width * 0.05,
-            vertical: mediaQuery.size.height * 0.02,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Profile Image
-                GestureDetector(
-                  onTap: _getImage,
-                  child: Stack(
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                  child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 45,
-                        backgroundImage: _image != null
-                            ? FileImage(_image!)
-                            : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty
-                            ? NetworkImage(_profileImageUrl!) as ImageProvider
-                            : const AssetImage('assets/default_avatar.jpg')),
+                      IconButton(
+                        icon: Icon(
+                          Icons.arrow_back,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white // White icon for dark mode
+                              : Colors.black, // Black icon for light mode
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
                       ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(8.0),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFDBB342),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 24,
+                      const Expanded(
+                        child: Center(
+                          child: Text(
+                            'Edit Profile',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
+                      const SizedBox(width: 48),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                // Province Field
-                buildTextField(
-                  label: 'Province',
-                  value: _province,
-                  onChanged: (val) => _province = val ?? '',
-                  validator: (val) {
-                    if (val == null || val.isEmpty) {
-                      return 'Please enter your province.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 10),
-                // City Field
-                buildTextField(
-                  label: 'City',
-                  value: _city,
-                  onChanged: (val) => _city = val ?? '',
-                  validator: (val) {
-                    if (val == null || val.isEmpty) {
-                      return 'Please enter your city.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 10),
-                // Village Field
-                buildTextField(
-                  label: 'Village',
-                  value: _village,
-                  onChanged: (val) => _village = val ?? '',
-                  validator: (val) {
-                    if (val == null || val.isEmpty) {
-                      return 'Please enter your village.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 10),
-                // Phone Number Field
-                buildTextField(
-                  label: 'Phone Number',
-                  value: _phoneNumber,
-                  onChanged: (val) => _phoneNumber = val ?? '',
-                  keyboardType: TextInputType.phone,
-                  validator: (val) {
-                    if (val == null || val.isEmpty) {
-                      return 'Please enter your phone number.';
-                    }
-                    final phoneRegExp = RegExp(r'^\+?[0-9]{7,15}$');
-                    if (!phoneRegExp.hasMatch(val)) {
-                      return 'Please enter a valid phone number.';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 18),
-                // Update Profile Button
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _saveProfile,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).brightness == Brightness.dark
-                        ? const Color(0xFFDBB342) // Keep same color for dark mode
-                        : const Color(0xFFE3B200), // A different color for light mode if needed
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30.0),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                  ),
-                  child: Text(
-                    'Update Profile',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white
-                          : Colors.black,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: 20),
+            _isLoading
+                ? const Expanded(
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                : Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: mediaQuery.size.width * 0.05,
+                        vertical: mediaQuery.size.height * 0.02,
+                      ),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Profile Image
+                            GestureDetector(
+                              onTap: _getImage,
+                              child: Stack(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 45,
+                                    backgroundImage: _image != null ? FileImage(_image!) : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty ? NetworkImage(_profileImageUrl!) as ImageProvider : const AssetImage('assets/default_avatar.jpg')),
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8.0),
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFDBB342),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.camera_alt,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            // Province Field
+                            buildTextField(
+                              label: 'Province',
+                              value: _province,
+                              onChanged: (val) => _province = val ?? '',
+                              validator: (val) {
+                                if (val == null || val.isEmpty) {
+                                  return 'Please enter your province.';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 10),
+                            // City Field
+                            buildTextField(
+                              label: 'City',
+                              value: _city,
+                              onChanged: (val) => _city = val ?? '',
+                              validator: (val) {
+                                if (val == null || val.isEmpty) {
+                                  return 'Please enter your city.';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 10),
+                            // Village Field
+                            buildTextField(
+                              label: 'Village',
+                              value: _village,
+                              onChanged: (val) => _village = val ?? '',
+                              validator: (val) {
+                                if (val == null || val.isEmpty) {
+                                  return 'Please enter your village.';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 10),
+                            // Phone Number Field
+                            buildTextField(
+                              label: 'Phone Number',
+                              value: _phoneNumber,
+                              onChanged: (val) => _phoneNumber = val ?? '',
+                              keyboardType: TextInputType.phone,
+                              validator: (val) {
+                                if (val == null || val.isEmpty) {
+                                  return 'Please enter your phone number.';
+                                }
+                                final phoneRegExp = RegExp(r'^\+?[0-9]{7,15}$');
+                                if (!phoneRegExp.hasMatch(val)) {
+                                  return 'Please enter a valid phone number.';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 18),
+                            // Update Profile Button
+                            ElevatedButton(
+                              onPressed: _isLoading ? null : _saveProfile,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                                    ? const Color(0xFFDBB342) // Keep same color for dark mode
+                                    : const Color(0xFFE3B200), // A different color for light mode if needed
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30.0),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                              ),
+                              child: Text(
+                                'Update Profile',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+          ],
         ),
       ),
-      ],
-    ),
-    ),
     ]));
   }
 }

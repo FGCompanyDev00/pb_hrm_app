@@ -48,7 +48,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
       _hasError = false;
     });
 
-    print('[_AssignmentSection] Fetching assignments for projectId: ${widget.projectId}');
+    debugPrint('[_AssignmentSection] Fetching assignments for projectId: ${widget.projectId}');
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -83,7 +83,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
           _isLoading = false;
         });
 
-        print('[_AssignmentSection] Successfully fetched assignments.');
+        debugPrint('[_AssignmentSection] Successfully fetched assignments.');
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -94,19 +94,21 @@ class _AssignmentSectionState extends State<AssignmentSection> {
           _hasError = true;
         });
 
-        print('[_AssignmentSection] Failed to load assignments: ${response.body}');
+        debugPrint('[_AssignmentSection] Failed to load assignments: ${response.body}');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('[_AssignmentSection] Failed to load assignment data: $e');
+        debugPrint('[_AssignmentSection] Failed to load assignment data: $e');
       }
       setState(() {
         _isLoading = false;
         _hasError = true;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('An error occurred while loading assignments.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('An error occurred while loading assignments.')),
+        );
+      }
     }
   }
 
@@ -124,7 +126,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
   }
 
   void _showAddAssignmentPage() async {
-    print('[_AssignmentSection] Navigating to AddAssignmentPage with projectId: ${widget.projectId}');
+    debugPrint('[_AssignmentSection] Navigating to AddAssignmentPage with projectId: ${widget.projectId}');
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -135,7 +137,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
       ),
     );
     if (result == true) {
-      print('[_AssignmentSection] New assignment added. Refreshing data.');
+      debugPrint('[_AssignmentSection] New assignment added. Refreshing data.');
       _fetchAssignmentData();
     }
   }
@@ -154,9 +156,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
   }
 
   Widget _buildAssignmentCard(Map<String, dynamic> assignment) {
-    final createdAt = assignment['created_at'] != null
-        ? DateTime.parse(assignment['created_at'])
-        : DateTime.now();
+    final createdAt = assignment['created_at'] != null ? DateTime.parse(assignment['created_at']) : DateTime.now();
     final now = DateTime.now();
 
     DateTime dueDate;
@@ -189,7 +189,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
       child: Container(
         margin: const EdgeInsets.only(top: 6.0, left: 8.0, right: 8.0, bottom: 14.0),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark ? Colors.black87 : Colors.white,  // Dark mode background
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.black87 : Colors.white, // Dark mode background
           boxShadow: [
             BoxShadow(
               color: statusColor.withOpacity(0.4),
@@ -214,7 +214,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                       Text(
                         'Status: ',
                         style: TextStyle(
-                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dark mode text color
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -298,7 +298,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dark mode text color
                     ),
                   ),
                   Expanded(
@@ -306,7 +306,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                       assignment['title'] ?? 'No Title',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dark mode text color
                       ),
                     ),
                   ),
@@ -327,14 +327,14 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dark mode text color
                         ),
                       ),
                       Text(
                         DateFormat('yyyy-MM-dd').format(createdAt),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dark mode text color
                         ),
                       ),
                     ],
@@ -355,14 +355,14 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dark mode text color
                         ),
                       ),
                       Text(
                         DateFormat('yyyy-MM-dd').format(dueDate),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dark mode text color
                         ),
                       ),
                     ],
@@ -403,7 +403,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                         text: assignment['create_by'] ?? 'Unknown',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,  // Dark mode text color
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, // Dark mode text color
                         ),
                       ),
                     ],
@@ -438,15 +438,15 @@ class _AssignmentSectionState extends State<AssignmentSection> {
                   decoration: BoxDecoration(
                     gradient: isDarkMode
                         ? const LinearGradient(
-                      colors: [Color(0xFF424242), Color(0xFF303030)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
+                            colors: [Color(0xFF424242), Color(0xFF303030)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
                         : const LinearGradient(
-                      colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                            colors: [Color(0xFFFFFFFF), Color(0xFFFFFFFF)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.1),
@@ -523,27 +523,27 @@ class _AssignmentSectionState extends State<AssignmentSection> {
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _hasError
-              ? Center(
-            child: Text(
-              'Failed to load assignments.',
-              style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black,
-                fontSize: 16,
-              ),
-            ),
-          )
-              : filteredAssignments.isEmpty
-              ? const Center(child: Text('No assignment data to display'))
-              : RefreshIndicator(
-            onRefresh: _fetchAssignmentData,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(8.0),
-              itemCount: filteredAssignments.length,
-              itemBuilder: (context, index) {
-                return _buildAssignmentCard(filteredAssignments[index]);
-              },
-            ),
-          ),
+                  ? Center(
+                      child: Text(
+                        'Failed to load assignments.',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black,
+                          fontSize: 16,
+                        ),
+                      ),
+                    )
+                  : filteredAssignments.isEmpty
+                      ? const Center(child: Text('No assignment data to display'))
+                      : RefreshIndicator(
+                          onRefresh: _fetchAssignmentData,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(8.0),
+                            itemCount: filteredAssignments.length,
+                            itemBuilder: (context, index) {
+                              return _buildAssignmentCard(filteredAssignments[index]);
+                            },
+                          ),
+                        ),
         ),
       ],
     );

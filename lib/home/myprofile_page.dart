@@ -11,10 +11,10 @@ class MyProfilePage extends StatefulWidget {
   const MyProfilePage({super.key});
 
   @override
-  _MyProfilePageState createState() => _MyProfilePageState();
+  MyProfilePageState createState() => MyProfilePageState();
 }
 
-class _MyProfilePageState extends State<MyProfilePage> {
+class MyProfilePageState extends State<MyProfilePage> {
   late Future<UserProfile> futureUserProfile;
 
   @override

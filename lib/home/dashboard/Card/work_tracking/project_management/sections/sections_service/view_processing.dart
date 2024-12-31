@@ -21,10 +21,10 @@ class ViewProcessingPage extends StatefulWidget {
   });
 
   @override
-  _ViewProcessingPageState createState() => _ViewProcessingPageState();
+  ViewProcessingPageState createState() => ViewProcessingPageState();
 }
 
-class _ViewProcessingPageState extends State<ViewProcessingPage> {
+class ViewProcessingPageState extends State<ViewProcessingPage> {
   bool _isLoading = true;
   bool _hasError = false;
   Map<String, dynamic>? _meeting;
@@ -115,7 +115,7 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
         if (file is Map<String, dynamic>) {
           files.add({
             'file_name': file['file_name']?.toString() ?? 'Unnamed File',
-            'file_url': file['file_url']?.toString() ?? '',
+            'file_url': file['images'][0]?.toString() ?? '',
           });
         }
       }
@@ -154,7 +154,7 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
         return data['results']?['images']?.toString();
       }
     } catch (e) {
-      print('Error fetching image for $employeeId: $e');
+      debugPrint('Error fetching image for $employeeId: $e');
     }
     return null;
   }
@@ -172,13 +172,17 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
       final path = '${directory.path}/description.txt';
       final file = File(path);
       await file.writeAsString(description);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Description downloaded to $path')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Description downloaded to $path')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to download description: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to download description: $e')),
+        );
+      }
     }
   }
 
@@ -197,9 +201,11 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
       String fileName = file['file_name']?.toString() ?? 'unknown_file';
 
       if (fileUrl.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid URL for file: $fileName')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Invalid URL for file: $fileName')),
+          );
+        }
         allSuccess = false;
         continue;
       }
@@ -212,27 +218,35 @@ class _ViewProcessingPageState extends State<ViewProcessingPage> {
           final fileToSave = File(path);
           await fileToSave.writeAsBytes(response.bodyBytes);
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to download $fileName')),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to download $fileName')),
+            );
+          }
           allSuccess = false;
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error downloading $fileName: $e')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error downloading $fileName: $e')),
+          );
+        }
         allSuccess = false;
       }
     }
 
     if (allSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('All files downloaded successfully')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All files downloaded successfully')),
+        );
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Some files failed to download')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Some files failed to download')),
+        );
+      }
     }
   }
 

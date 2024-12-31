@@ -8,11 +8,10 @@ class MonthlyAttendanceReport extends StatefulWidget {
   const MonthlyAttendanceReport({super.key});
 
   @override
-  _MonthlyAttendanceReportState createState() =>
-      _MonthlyAttendanceReportState();
+  MonthlyAttendanceReportState createState() => MonthlyAttendanceReportState();
 }
 
-class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
+class MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
   List<Map<String, String>> _attendanceRecords = [];
   DateTime _currentMonth = DateTime.now();
   bool _errorFetchingData = false;
@@ -26,13 +25,11 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
   Future<void> _fetchAttendanceRecords() async {
     String? token = await _getToken();
     if (token == null || token.isEmpty) {
-      _showCustomDialog(
-          context, 'Error', 'Unable to retrieve authentication token.');
+      _showCustomDialog(context, 'Error', 'Unable to retrieve authentication token.');
       return;
     }
 
-    const String url =
-        'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offices/months/me';
+    const String url = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offices/months/me';
 
     String formattedMonth = DateFormat('yyyy-MM').format(_currentMonth);
 
@@ -57,8 +54,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
             String checkInDate = item['check_in_date']?.toString() ?? '';
             if (checkInDate.isEmpty) return false;
             DateTime parsedDate = DateFormat('yyyy-MM-dd').parse(checkInDate);
-            return parsedDate.year == _currentMonth.year &&
-                parsedDate.month == _currentMonth.month;
+            return parsedDate.year == _currentMonth.year && parsedDate.month == _currentMonth.month;
           }).map<Map<String, String>>((item) {
             return {
               'checkIn': item['check_in_time']?.toString() ?? '--:--:--',
@@ -69,8 +65,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
                   item['check_in_date']?.toString() ?? '',
                 ),
               ),
-              'officeStatus':
-              item['office_status']?.toString() ?? 'office',
+              'officeStatus': item['office_status']?.toString() ?? 'office',
               'checkInStatus': item['check_in_status']?.toString() ?? 'unknown',
               'checkOutStatus': item['check_out_status']?.toString() ?? 'unknown',
             };
@@ -82,15 +77,13 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
         setState(() {
           _errorFetchingData = true;
         });
-        _showCustomDialog(context, 'Error',
-            'Failed to retrieve data: ${response.statusCode} - ${response.reasonPhrase}');
+        _showCustomDialog(context, 'Error', 'Failed to retrieve data: ${response.statusCode} - ${response.reasonPhrase}');
       }
     } catch (e) {
       setState(() {
         _errorFetchingData = true;
       });
-      _showCustomDialog(
-          context, 'Error', 'An error occurred while fetching data: $e');
+      _showCustomDialog(context, 'Error', 'An error occurred while fetching data: $e');
     }
   }
 
@@ -104,8 +97,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -171,11 +163,9 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
       child: ListTile(
         title: Center(
             child: Text(
-              record['date']!,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: isDarkMode ? Colors.white : Colors.black),
-            )),
+          record['date']!,
+          style: TextStyle(fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black),
+        )),
         subtitle: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
@@ -183,8 +173,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
             _buildAttendanceItem('Check In', record['checkIn']!, checkInColor),
             // Pass checkOutColor for Check Out
             _buildAttendanceItem('Check Out', record['checkOut']!, checkOutColor),
-            _buildAttendanceItem(
-                'Working Hours', record['workDuration']!, Colors.blue),
+            _buildAttendanceItem('Working Hours', record['workDuration']!, Colors.blue),
           ],
         ),
       ),
@@ -235,8 +224,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () {
                   setState(() {
-                    _currentMonth = DateTime(
-                        _currentMonth.year, _currentMonth.month - 1);
+                    _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
                     _fetchAttendanceRecords();
                   });
                 },
@@ -251,16 +239,14 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
               ),
               IconButton(
                 icon: const Icon(Icons.arrow_forward),
-                onPressed: _currentMonth.month == DateTime.now().month &&
-                    _currentMonth.year == DateTime.now().year
+                onPressed: _currentMonth.month == DateTime.now().month && _currentMonth.year == DateTime.now().year
                     ? null
                     : () {
-                  setState(() {
-                    _currentMonth = DateTime(
-                        _currentMonth.year, _currentMonth.month + 1);
-                    _fetchAttendanceRecords();
-                  });
-                },
+                        setState(() {
+                          _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+                          _fetchAttendanceRecords();
+                        });
+                      },
               ),
             ],
           ),
@@ -268,8 +254,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color:
-              isDarkMode ? Colors.lightGreen : const Color(0xFFDAA520),
+              color: isDarkMode ? Colors.lightGreen : const Color(0xFFDAA520),
               borderRadius: BorderRadius.circular(20),
               boxShadow: const [
                 BoxShadow(
@@ -286,8 +271,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
                   child: Center(
                     child: Text(
                       'Check In',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.black),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
                     ),
                   ),
                 ),
@@ -295,8 +279,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
                   child: Center(
                     child: Text(
                       'Check Out',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.black),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
                     ),
                   ),
                 ),
@@ -304,8 +287,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
                   child: Center(
                     child: Text(
                       'Working Hours',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.black),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
                     ),
                   ),
                 ),
@@ -329,32 +311,27 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
               onRefresh: _fetchAttendanceRecords,
               child: _errorFetchingData
                   ? ListView(
-                // To enable pull-to-refresh when there's an error,
-                // wrap the Center widget in a ListView
-                children: [
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.4,
-                    child: Center(
-                      child: Text(
-                        "No attendance record data for this month.",
-                        style: TextStyle(
-                            color: Theme.of(context)
-                                .textTheme
-                                .bodyLarge
-                                ?.color),
-                      ),
-                    ),
-                  ),
-                ],
-              )
+                      // To enable pull-to-refresh when there's an error,
+                      // wrap the Center widget in a ListView
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.4,
+                          child: Center(
+                            child: Text(
+                              "No attendance record data for this month.",
+                              style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
                   : ListView.builder(
-                physics:
-                const AlwaysScrollableScrollPhysics(), // Ensures the list can always be scrolled to trigger refresh
-                itemCount: _attendanceRecords.length,
-                itemBuilder: (context, index) {
-                  return _buildAttendanceRow(_attendanceRecords[index]);
-                },
-              ),
+                      physics: const AlwaysScrollableScrollPhysics(), // Ensures the list can always be scrolled to trigger refresh
+                      itemCount: _attendanceRecords.length,
+                      itemBuilder: (context, index) {
+                        return _buildAttendanceRow(_attendanceRecords[index]);
+                      },
+                    ),
             ),
           ),
         ],
@@ -369,9 +346,7 @@ class _MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
       flexibleSpace: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(isDarkMode
-                ? 'assets/darkbg.png'
-                : 'assets/ready_bg.png'),
+            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
             fit: BoxFit.cover,
           ),
           borderRadius: const BorderRadius.only(

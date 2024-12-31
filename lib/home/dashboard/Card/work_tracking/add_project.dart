@@ -70,10 +70,12 @@ class AddProjectPageState extends State<AddProjectPage> {
       try {
         final projectId = await WorkTrackingService().addProject(newProject);
         if (projectId != null) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => AddPeoplePage(projectId: projectId)),
-          );
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => AddPeoplePage(projectId: projectId)),
+            );
+          }
         } else {
           _showErrorDialog('Project created but failed to retrieve project ID.');
         }
@@ -149,9 +151,7 @@ class AddProjectPageState extends State<AddProjectPage> {
                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                   child: ElevatedButton.icon(
                     onPressed: _isLoading ? null : _createProjectAndProceed,
-                    icon: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.black)
-                        : const Icon(Icons.arrow_forward, color: Colors.black),
+                    icon: _isLoading ? const CircularProgressIndicator(color: Colors.black) : const Icon(Icons.arrow_forward, color: Colors.black),
                     label: const Text(
                       'Next',
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),
@@ -332,15 +332,15 @@ class AddProjectPageState extends State<AddProjectPage> {
   }) {
     // Add numbering to the options
     final numberedOptions = options.asMap().entries.map((entry) {
-      final index = entry.key + 1;  // Start numbering from 1
+      final index = entry.key + 1; // Start numbering from 1
       final text = entry.value;
-      return '$index. $text';  // Combine number and text
+      return '$index. $text'; // Combine number and text
     }).toList();
 
     return DropdownButtonFormField<String>(
-      value: numberedOptions.firstWhere((element) => element.contains(value)),  // Ensure selected value maps correctly
+      value: numberedOptions.firstWhere((element) => element.contains(value)), // Ensure selected value maps correctly
       onChanged: (newValue) {
-        final selectedText = newValue!.substring(newValue.indexOf(' ') + 1);  // Extract text without number
+        final selectedText = newValue!.substring(newValue.indexOf(' ') + 1); // Extract text without number
         onChanged(selectedText);
       },
       icon: Padding(
@@ -348,7 +348,7 @@ class AddProjectPageState extends State<AddProjectPage> {
         child: Image.asset(assetIconPath, width: 20, height: 20, color: isDarkMode ? Colors.white : Colors.black),
       ),
       decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),  // Lower height
+        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12), // Lower height
         filled: true,
         fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
@@ -365,7 +365,6 @@ class AddProjectPageState extends State<AddProjectPage> {
       }).toList(),
     );
   }
-
 
   Widget _buildDateField({
     required TextEditingController controller,

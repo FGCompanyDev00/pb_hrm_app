@@ -48,7 +48,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
       _hasError = false;
     });
 
-    print('[_ProcessingSection] Fetching meetings for projectId: ${widget.projectId}');
+    debugPrint('[_ProcessingSection] Fetching meetings for projectId: ${widget.projectId}');
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -94,7 +94,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Failed to load meeting data: $e');
+        debugPrint('Failed to load meeting data: $e');
       }
       setState(() {
         _isLoading = false;
@@ -117,7 +117,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
   }
 
   void _showAddProcessingPage() async {
-    print('[_ProcessingSection] Navigating to AddProcessingPage with projectId: ${widget.projectId}');
+    debugPrint('[_ProcessingSection] Navigating to AddProcessingPage with projectId: ${widget.projectId}');
     final result = await Navigator.push(
       context,
       MaterialPageRoute(

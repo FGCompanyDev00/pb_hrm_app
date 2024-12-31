@@ -9,10 +9,10 @@ class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  _SplashScreenState createState() => _SplashScreenState();
+  SplashScreenState createState() => SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -42,47 +42,51 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       await userProvider.loadUser();
 
       if (userProvider.isLoggedIn && userProvider.isSessionValid) {
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const MainScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(1.0, 0.0);
-              const end = Offset.zero;
-              const curve = Curves.easeInOut;
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) => const MainScreen(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                const begin = Offset(1.0, 0.0);
+                const end = Offset.zero;
+                const curve = Curves.easeInOut;
 
-              final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-              final offsetAnimation = animation.drive(tween);
+                final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                final offsetAnimation = animation.drive(tween);
 
-              return SlideTransition(
-                position: offsetAnimation,
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(seconds: 1),
-          ),
-        );
+                return SlideTransition(
+                  position: offsetAnimation,
+                  child: child,
+                );
+              },
+              transitionDuration: const Duration(seconds: 1),
+            ),
+          );
+        }
       } else {
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const LoginPage(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              const begin = Offset(1.0, 0.0);
-              const end = Offset.zero;
-              const curve = Curves.easeInOut;
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) => const LoginPage(),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                const begin = Offset(1.0, 0.0);
+                const end = Offset.zero;
+                const curve = Curves.easeInOut;
 
-              final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-              final offsetAnimation = animation.drive(tween);
+                final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                final offsetAnimation = animation.drive(tween);
 
-              return SlideTransition(
-                position: offsetAnimation,
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(seconds: 1),
-          ),
-        );
+                return SlideTransition(
+                  position: offsetAnimation,
+                  child: child,
+                );
+              },
+              transitionDuration: const Duration(seconds: 1),
+            ),
+          );
+        }
       }
     });
   }

@@ -9,10 +9,10 @@ class PinEntryPage extends StatefulWidget {
   const PinEntryPage({super.key});
 
   @override
-  _PinEntryPageState createState() => _PinEntryPageState();
+  PinEntryPageState createState() => PinEntryPageState();
 }
 
-class _PinEntryPageState extends State<PinEntryPage> {
+class PinEntryPageState extends State<PinEntryPage> {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   final TextEditingController _pinController = TextEditingController();
   final bool _obscurePin = true;

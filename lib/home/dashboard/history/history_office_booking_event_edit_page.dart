@@ -20,10 +20,10 @@ class OfficeBookingEventEditPage extends StatefulWidget {
   });
 
   @override
-  _OfficeBookingEventEditPageState createState() => _OfficeBookingEventEditPageState();
+  OfficeBookingEventEditPageState createState() => OfficeBookingEventEditPageState();
 }
 
-class _OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> {
+class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> {
   // Loading and Error States
   bool _isLoading = false;
   String? _errorMessage;

@@ -14,10 +14,10 @@ class ViewProjectPage extends StatefulWidget {
   const ViewProjectPage({super.key, required this.project});
 
   @override
-  _ViewProjectPageState createState() => _ViewProjectPageState();
+  ViewProjectPageState createState() => ViewProjectPageState();
 }
 
-class _ViewProjectPageState extends State<ViewProjectPage> {
+class ViewProjectPageState extends State<ViewProjectPage> {
   List<Map<String, dynamic>> projectMembers = [];
   String? token; // Store the token once
 
@@ -52,8 +52,7 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
     }
 
     final projectId = widget.project['project_id'];
-    final url =
-        'https://demo-application-api.flexiflows.co/api/work-tracking/proj/find-Member-By-ProjectId/$projectId';
+    final url = 'https://demo-application-api.flexiflows.co/api/work-tracking/proj/find-Member-By-ProjectId/$projectId';
 
     try {
       final headers = {
@@ -78,8 +77,7 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
           for (var member in data) {
             final employeeId = member['employee_id'].toString();
 
-            final profileImageUrl =
-            await _fetchMemberProfileImage(employeeId, headers);
+            final profileImageUrl = await _fetchMemberProfileImage(employeeId, headers);
 
             String name = '';
 
@@ -115,15 +113,13 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
     }
   }
 
-  Future<String> _fetchMemberProfileImage(
-      String employeeId, Map<String, String> headers) async {
+  Future<String> _fetchMemberProfileImage(String employeeId, Map<String, String> headers) async {
     final url = 'https://demo-application-api.flexiflows.co/api/profile/$employeeId';
     try {
       final response = await http.get(Uri.parse(url), headers: headers);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['results']?['images'] ??
-            'https://via.placeholder.com/150';
+        return data['results']?['images'] ?? 'https://via.placeholder.com/150';
       } else {
         if (kDebugMode) {
           print('Failed to load profile image: ${response.statusCode}');
@@ -175,7 +171,6 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
           ),
         ),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(12.0),
         child: Column(
@@ -200,9 +195,9 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
             const SizedBox(height: 8),
             projectMembers.isEmpty
                 ? const Text(
-              'No project members found',
-              style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
-            )
+                    'No project members found',
+                    style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+                  )
                 : _buildProjectMembersGrid(projectMembers),
           ],
         ),
@@ -234,8 +229,7 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
                   children: [
                     const Text(
                       'Name of Project',
-                      style:
-                      TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -255,8 +249,7 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     decoration: BoxDecoration(
                       color: statusColor.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
@@ -342,8 +335,7 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
       children: [
         Text(
           label,
-          style:
-          const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
         Row(
@@ -368,16 +360,16 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
-      // Orange/yellow for Pending
+        // Orange/yellow for Pending
         return Colors.orange;
       case 'processing':
-      // Blue for Processing
+        // Blue for Processing
         return Colors.blue;
       case 'finished':
-      // Green for Finished
+        // Green for Finished
         return Colors.green;
       default:
-      // Gray if unknown status
+        // Gray if unknown status
         return Colors.grey;
     }
   }
@@ -428,8 +420,7 @@ class _ViewProjectPageState extends State<ViewProjectPage> {
             children: [
               CircleAvatar(
                 backgroundImage: NetworkImage(
-                  member['profileImage'] ??
-                      'https://via.placeholder.com/150',
+                  member['profileImage'] ?? 'https://via.placeholder.com/150',
                 ),
                 radius: 22,
               ),

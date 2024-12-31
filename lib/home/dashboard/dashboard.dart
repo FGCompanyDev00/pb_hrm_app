@@ -166,6 +166,7 @@ class DashboardState extends State<Dashboard> {
         if (kDebugMode) {
           print("Error: No cached profile data available in Hive.");
         }
+
         throw Exception(AppLocalizations.of(context)!.noDataAvailable);
       }
     } finally {

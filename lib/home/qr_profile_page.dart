@@ -24,7 +24,7 @@ class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  _ProfileScreenState createState() => _ProfileScreenState();
+  ProfileScreenState createState() => ProfileScreenState();
 }
 
 class DashedLine extends StatelessWidget {
@@ -122,7 +122,7 @@ class TicketShapeClipper extends CustomClipper<Path> {
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class ProfileScreenState extends State<ProfileScreen> {
   late Future<Map<String, dynamic>> _profileData;
   late Future<Map<String, dynamic>> _displayData;
   final GlobalKey qrKey = GlobalKey();

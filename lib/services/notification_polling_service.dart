@@ -34,14 +34,14 @@
 //           onNewNotifications(notifications);
 //         } else {
 //           // Handle case where response is not JSON
-//           print('Error: Expected JSON response but got $contentType');
+//           debugPrint('Error: Expected JSON response but got $contentType');
 //         }
 //       } else {
-//         print('Error: ${response.statusCode} - ${response.reasonPhrase}');
+//         debugPrint('Error: ${response.statusCode} - ${response.reasonPhrase}');
 //       }
 //     } catch (e) {
 //       // Handle any other exceptions, such as network errors
-//       print('Error fetching notifications: $e');
+//       debugPrint('Error fetching notifications: $e');
 //     }
 //   }
 
@@ -51,10 +51,10 @@
 // }
 
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:pb_hrsystem/notifications/notification_model.dart';
 import 'dart:convert';
-
 
 class NotificationPollingService {
   final String apiUrl;
@@ -87,14 +87,14 @@ class NotificationPollingService {
           onNewNotifications(notifications);
         } else {
           // Handle case where response is not JSON
-          print('Error: Expected JSON response but got $contentType');
+          debugPrint('Error: Expected JSON response but got $contentType');
         }
       } else {
-        print('Error: ${response.statusCode} - ${response.reasonPhrase}');
+        debugPrint('Error: ${response.statusCode} - ${response.reasonPhrase}');
       }
     } catch (e) {
       // Handle any other exceptions, such as network errors
-      print('Error fetching notifications: $e');
+      debugPrint('Error fetching notifications: $e');
     }
   }
 
@@ -112,8 +112,8 @@ Future<void> insertNotification(Map<String, dynamic> data) async {
   );
 
   if (response.statusCode == 200) {
-    print('Notification inserted successfully.');
+    debugPrint('Notification inserted successfully.');
   } else {
-    print('Failed to insert notification. Status: ${response.statusCode}');
+    debugPrint('Failed to insert notification. Status: ${response.statusCode}');
   }
 }

@@ -8,11 +8,10 @@ class TestNotificationWidget extends StatefulWidget {
   const TestNotificationWidget({super.key});
 
   @override
-  _TestNotificationWidgetState createState() => _TestNotificationWidgetState();
+  TestNotificationWidgetState createState() => TestNotificationWidgetState();
 }
 
-class _TestNotificationWidgetState extends State<TestNotificationWidget>
-    with SingleTickerProviderStateMixin {
+class TestNotificationWidgetState extends State<TestNotificationWidget> with SingleTickerProviderStateMixin {
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   late AnimationController _controller;
   late Animation<Color?> _colorTween;
@@ -28,11 +27,9 @@ class _TestNotificationWidgetState extends State<TestNotificationWidget>
   void _initializeNotificationPlugin() {
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
-    const AndroidInitializationSettings initializationSettingsAndroid =
-    AndroidInitializationSettings('@mipmap/ic_launcher');
+    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    const InitializationSettings initializationSettings =
-    InitializationSettings(android: initializationSettingsAndroid);
+    const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
 
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
@@ -48,9 +45,7 @@ class _TestNotificationWidgetState extends State<TestNotificationWidget>
   }
 
   void _initializeAnimation() {
-    _controller = AnimationController(
-        vsync: this, duration: const Duration(seconds: 3))
-      ..repeat(reverse: true);
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat(reverse: true);
 
     _colorTween = _controller.drive(
       ColorTween(
@@ -61,8 +56,7 @@ class _TestNotificationWidgetState extends State<TestNotificationWidget>
   }
 
   Future<void> _showTestNotification() async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-    AndroidNotificationDetails(
+    const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
       'test_channel',
       'Test Notifications',
       importance: Importance.max,
@@ -71,8 +65,7 @@ class _TestNotificationWidgetState extends State<TestNotificationWidget>
       icon: '@mipmap/ic_launcher',
     );
 
-    const NotificationDetails platformChannelSpecifics =
-    NotificationDetails(android: androidPlatformChannelSpecifics);
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
 
     await flutterLocalNotificationsPlugin.show(
       0,
@@ -121,8 +114,7 @@ class _TestNotificationWidgetState extends State<TestNotificationWidget>
                 onPressed: _showTestNotification,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _colorTween.value,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 50, vertical: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
                   textStyle: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
