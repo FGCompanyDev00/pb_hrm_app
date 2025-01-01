@@ -28,7 +28,7 @@ class SettingsPageState extends State<SettingsPage> {
   final _storage = const FlutterSecureStorage();
   bool _biometricEnabled = false;
   late Future<UserProfile> futureUserProfile;
-  String _appVersion = 'PSBV Next Demo v1.0.45(45)';
+  String _appVersion = 'PSBV Next Demo v1.0.46(46)';
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -43,7 +43,7 @@ class SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadAppVersion() async {
     setState(() {
-      _appVersion = 'PSBV Next Demo v1.0.44(44)';
+      _appVersion = 'PSBV Next Demo v1.0.46(46)';
       // _appVersion = 'PSBV Next v${packageInfo.version}';
     });
   }

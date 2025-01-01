@@ -35,6 +35,10 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   List<Map<String, dynamic>> _fetchedVehicles = [];
   String? _selectedVehicleUid;
   bool _isFetchingVehicles = false;
+  List<Map<String, dynamic>> _waitingList = [];
+  bool _isFetchingWaitingList = false;
+  String? _selectedWaitingUid;
+  String? _selectedMergeVehicleUid;
 
   // Base URL for images
   final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
@@ -129,6 +133,127 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       _showErrorDialog('Error', e.toString());
       setState(() {
         isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _handleMerge(BuildContext context) async {
+    final String? token = await _getToken();
+    if (token == null) {
+      _showErrorDialog(
+          'Authentication Error', 'Token not found. Please log in again.');
+      return;
+    }
+
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    final String endpoint =
+        '$baseUrl/api/office-administration/car_permit/approved/merge/${widget.id}';
+
+    final String? selectedWaitingUid = _selectedWaitingUid;
+    final String? selectedVehicleUid = _selectedMergeVehicleUid;
+
+    if (selectedWaitingUid == null || selectedVehicleUid == null) {
+      _showErrorDialog('Error', 'Please select both options.');
+      return;
+    }
+
+    final Map<String, dynamic> body = {
+      "merges": [
+        {
+          "topic_uid": selectedWaitingUid,
+        }
+      ],
+      "vehicle_id": selectedVehicleUid,
+    };
+
+    setState(() {
+      isFinalized = true;
+    });
+
+    try {
+      final response = await http.put(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      debugPrint('[Merge] Status: ${response.statusCode}');
+      debugPrint('[Merge] Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Success
+        _showSuccessDialog('Success', 'Car permits have been merged successfully.');
+        // Optionally, refresh the approval details
+        _fetchApprovalDetails();
+      } else {
+        final responseBody = jsonDecode(response.body);
+        final errorMessage =
+            responseBody['message'] ?? 'Failed to merge car permits.';
+        _showErrorDialog('Error', errorMessage);
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error merging car permits: $e');
+      debugPrint(stackTrace.toString());
+      _showErrorDialog('Error', 'An unexpected error occurred while merging.');
+    } finally {
+      setState(() {
+        isFinalized = false;
+      });
+    }
+  }
+
+  Future<void> _fetchWaitingList() async {
+    setState(() {
+      _isFetchingWaitingList = true;
+    });
+
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    final String apiUrl =
+        '$baseUrl/api/office-administration/car_permits/waiting/merge/${widget.id}';
+
+    try {
+      final String? token = await _getToken();
+      if (token == null) {
+        _showErrorDialog(
+            'Authentication Error', 'Token not found. Please log in again.');
+        return;
+      }
+
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('Fetch Waiting List Status Code: ${response.statusCode}');
+      debugPrint('Fetch Waiting List Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['statusCode'] == 200 && data['results'] != null) {
+          setState(() {
+            _waitingList =
+            List<Map<String, dynamic>>.from(data['results']);
+          });
+        } else {
+          throw Exception(data['message'] ?? 'Failed to load waiting list.');
+        }
+      } else {
+        throw Exception(
+            'Failed to load waiting list: ${response.statusCode}');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error fetching waiting list: $e');
+      debugPrint(stackTrace.toString());
+      _showErrorDialog('Error', e.toString());
+    } finally {
+      setState(() {
+        _isFetchingWaitingList = false;
       });
     }
   }
@@ -593,7 +718,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
               backgroundColor: const Color(0xFF4CAF50),
               icon: Icons.description,
               onPressed: () {
-                // No function yet
+                _openMergeBottomSheet(context);
               },
             ),
             _buildCarButton(
@@ -603,7 +728,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
-                  isScrollControlled: true, // Allows the bottom sheet to be full-screen if necessary
+                  isScrollControlled: true,
                   shape: const RoundedRectangleBorder(
                     borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                   ),
@@ -670,6 +795,285 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           style: const TextStyle(color: Colors.white, fontSize: 16),
         ),
       ),
+    );
+  }
+
+  void _openMergeBottomSheet(BuildContext context) async {
+    // Clear previous selections
+    setState(() {
+      _selectedWaitingUid = null;
+      _selectedMergeVehicleUid = null;
+    });
+
+    // Fetch waiting list and vehicles before showing the bottom sheet
+    await _fetchWaitingList();
+    await _fetchMyVehicles();
+
+    // Show bottom sheet after data is fetched
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final mediaQuery = MediaQuery.of(ctx);
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: mediaQuery.viewInsets.bottom + 20,
+          ),
+          child: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              // Validation Check
+              bool _isFormValid = _selectedWaitingUid != null &&
+                  _selectedMergeVehicleUid != null;
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Title
+                  const Text(
+                    'Merge Car Permits',
+                    style:
+                    TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // First Dropdown - Waiting List
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Select Waiting Permit *',
+                      style:
+                      TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _isFetchingWaitingList
+                      ? const Center(child: CircularProgressIndicator())
+                      : DropdownButtonFormField<String>(
+                    value: _selectedWaitingUid,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[700]
+                          : Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    hint: const Text('Select Waiting Permit'),
+                    items: _waitingList.map<DropdownMenuItem<String>>((item) {
+                      String displayText =
+                          '${item['requestor_name']} (${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(item['created_date']))} - ...)';
+                      return DropdownMenuItem<String>(
+                        value: item['uid'] as String,
+                        child: Text(displayText),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedWaitingUid = value;
+                        _isFormValid = _selectedWaitingUid != null &&
+                            _selectedMergeVehicleUid != null;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Second Dropdown - Company Vehicle
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Select Company Vehicle *',
+                      style:
+                      TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _isFetchingVehicles
+                      ? const Center(child: CircularProgressIndicator())
+                      : DropdownButtonFormField<String>(
+                    value: _selectedMergeVehicleUid,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[700]
+                          : Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    hint: const Text('Select Company Vehicle'),
+                    items: _fetchedVehicles.map<DropdownMenuItem<String>>((vehicle) {
+                      String displayText =
+                          '${vehicle['branch_name']} (${vehicle['brand_name']} - ${vehicle['model_name']} - ${vehicle['province_name']})';
+                      return DropdownMenuItem<String>(
+                        value: vehicle['uid'] as String,
+                        child: Text(displayText),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedMergeVehicleUid = value;
+                        _isFormValid = _selectedWaitingUid != null &&
+                            _selectedMergeVehicleUid != null;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 30),
+
+                  // Save & Approve Button (Center)
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: _isFormValid
+                          ? () {
+                        Navigator.of(ctx).pop();
+                        _showConfirmMergeDialog(context);
+                      }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _isFormValid
+                            ? const Color(0xFFDBB342)
+                            : Colors.grey, // Disabled state
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 60, vertical: 14),
+                      ),
+                      child: const Text(
+                        'Save & Approve',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+// Confirmation Dialog for Merge
+  Future<void> _showConfirmMergeDialog(BuildContext context) async {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: isDarkMode ? Colors.grey[800] : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Warning Icon (Centered)
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      size: 80,
+                      color: Color(0xFFE2BD30),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Text "Confirm Merge"
+                    Text(
+                      'Confirm Merge',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Cancel Button (Left)
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8F9BB3),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 12),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        // Confirm Button (Right)
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            _handleMerge(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE2BD30),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 12),
+                          ),
+                          child: const Text(
+                            'Confirm',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // X Button (Top Right)
+              Positioned(
+                top: 15,
+                right: 10,
+                child: IconButton(
+                  icon: Icon(
+                    Icons.close,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
