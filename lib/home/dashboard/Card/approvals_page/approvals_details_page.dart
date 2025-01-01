@@ -26,11 +26,15 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
   /// A separate controller for the reason typed in the bottom sheet
   final TextEditingController _rejectReasonController = TextEditingController();
+  final TextEditingController _approveReasonController = TextEditingController();
 
   bool isLoading = true;
   bool isFinalized = false;
   Map<String, dynamic>? approvalData;
   String? requestorImage;
+  List<Map<String, dynamic>> _fetchedVehicles = [];
+  String? _selectedVehicleUid;
+  bool _isFetchingVehicles = false;
 
   // Base URL for images
   final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
@@ -125,6 +129,55 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       _showErrorDialog('Error', e.toString());
       setState(() {
         isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchMyVehicles() async {
+    final String? token = await _getToken();
+    if (token == null) {
+      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      return;
+    }
+
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    const String apiUrl = '$baseUrl/api/office-administration/my-vehicles';
+
+    setState(() {
+      _isFetchingVehicles = true;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('Fetch Vehicles Status Code: ${response.statusCode}');
+      debugPrint('Fetch Vehicles Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['statusCode'] == 200 && data['results'] != null) {
+          setState(() {
+            _fetchedVehicles = List<Map<String, dynamic>>.from(data['results']);
+          });
+        } else {
+          throw Exception(data['message'] ?? 'Failed to load vehicles.');
+        }
+      } else {
+        throw Exception('Failed to load vehicles: ${response.statusCode}');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error fetching vehicles: $e');
+      debugPrint(stackTrace.toString());
+      _showErrorDialog('Error', e.toString());
+    } finally {
+      setState(() {
+        _isFetchingVehicles = false;
       });
     }
   }
@@ -555,9 +608,9 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                     borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                   ),
                   builder: (ctx) {
-                    return const FractionallySizedBox(
+                    return FractionallySizedBox(
                       heightFactor: 0.8,
-                      child: ChatCommentApprovalSection(),
+                      child: ChatCommentApprovalSection(id:widget.id),
                     );
                   },
                 );
@@ -573,16 +626,14 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
             _buildCarButton(
               label: 'Reject',
               backgroundColor: const Color(0xFF9E9E9E),
-              icon: Icons.close,
+              icon: Icons.close_rounded,
               onPressed: () => _openRejectBottomSheet(context),
             ),
             _buildCarButton(
               label: 'Approve',
               backgroundColor: const Color(0xFFDBB342),
               icon: Icons.check_circle,
-              onPressed: () {
-                // Approve logic here if needed
-              },
+              onPressed: () => _openApproveBottomSheet(context),
             ),
           ],
         ),
@@ -598,13 +649,13 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     required VoidCallback onPressed,
   }) {
     return SizedBox(
-      width: 130,
-      height: 56,
+      width: 140,
+      height: 50,
       child: ElevatedButton.icon(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           elevation: 4,
           shadowColor: Colors.black.withOpacity(0.2),
@@ -612,19 +663,292 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         icon: Icon(
           icon,
           color: Colors.white,
-          size: 20,
+          size: 24,
         ),
         label: Text(
           label,
-          style: const TextStyle(color: Colors.white, fontSize: 15),
+          style: const TextStyle(color: Colors.white, fontSize: 16),
         ),
       ),
     );
   }
 
+  void _openApproveBottomSheet(BuildContext context) async {
+    // Fetch vehicles BEFORE showing the bottom sheet
+    await _fetchMyVehicles();
+
+    _approveReasonController.clear();
+
+    // Show bottom sheet after data is available
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.6,
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) {
+              return _isFetchingVehicles
+                  ? const Center(child: CircularProgressIndicator())
+                  : Column(
+                children: [
+                  // Title
+                  const Text(
+                    'Select Company Vehicle',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Vehicle List
+                  _fetchedVehicles.isNotEmpty
+                      ? Expanded(
+                    child: ListView.builder(
+                      itemCount: _fetchedVehicles.length,
+                      itemBuilder: (context, index) {
+                        final vehicle = _fetchedVehicles[index];
+                        final displayText =
+                            '${vehicle['branch_name']} (${vehicle['brand_name']} - ${vehicle['model_name']} - ${vehicle['province_name']})';
+                        return RadioListTile<String>(
+                          title: Text(displayText),
+                          value: vehicle['uid'],
+                          groupValue: _selectedVehicleUid,
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedVehicleUid = value;
+                            });
+                          },
+                        );
+                      },
+                    ),
+                  )
+                      : const Text('No vehicles available.'),
+
+                  const SizedBox(height: 20),
+
+                  // Approve Button
+                  Center(
+                    child: ElevatedButton.icon(
+                      onPressed: _selectedVehicleUid == null ? null : () {
+                        Navigator.of(ctx).pop();
+                        _showConfirmApproveDialog(context);
+                        _fetchMyVehicles();  // Refetch after approval
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFDBB342),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 44, vertical: 12),
+                      ),
+                      icon: const CircleAvatar(
+                        radius: 12,
+                        backgroundColor: Colors.white,
+                        child: Icon(
+                          Icons.check,
+                          color: Color(0xFFDBB342),
+                          size: 18,
+                        ),
+                      ),
+                      label: const Text(
+                        'Approve',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showConfirmApproveDialog(BuildContext context) async {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: isDarkMode ? Colors.grey[800] : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Warning Icon (Centered)
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      size: 80,
+                      color: Color(0xFFE2BD30),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Text "Confirm"
+                    Text(
+                      'Confirm',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Cancel Button (Left)
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8F9BB3),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 12),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        // Confirm Button (Right)
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            _handleApproveCar(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE2BD30),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 12),
+                          ),
+                          child: const Text(
+                            'Confirm',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // X Button (Top Right)
+              Positioned(
+                top: 15,
+                right: 10,
+                child: IconButton(
+                  icon: Icon(
+                    Icons.close,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleApproveCar(BuildContext context) async {
+    final String? token = await _getToken();
+    if (token == null) {
+      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      return;
+    }
+
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    final String endpoint = '$baseUrl/api/office-administration/car_permit/approved/${widget.id}';
+
+    setState(() {
+      isFinalized = true;
+    });
+
+    final body = {
+      "vehicle_id": {
+        "vehicle_uid": _selectedVehicleUid ?? "",
+      },
+      "branch_vehicle": {
+        "vehicle_uid": "",
+        "permit_id": ""
+      }
+    };
+
+    try {
+      final response = await http.put(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      debugPrint('[Car Approve] Status: ${response.statusCode}');
+      debugPrint('[Car Approve] Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Sukses
+        _showSuccessDialog('Success', 'Car booking has been approved.');
+        // Reset selected vehicle
+        setState(() {
+          _selectedVehicleUid = null;
+        });
+      } else {
+        final responseBody = jsonDecode(response.body);
+        final errorMessage = responseBody['message'] ?? 'Failed to approve the car booking.';
+        _showErrorDialog('Error', errorMessage);
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Error approving car: $e');
+      debugPrint(stackTrace.toString());
+      _showErrorDialog('Error', 'An unexpected error occurred while approving.');
+    } finally {
+      setState(() {
+        isFinalized = false;
+      });
+    }
+  }
+
   /// Show a bottom sheet that slides up with a reason text field + Reject button
   void _openRejectBottomSheet(BuildContext context) {
-    _rejectReasonController.clear(); // Clear previous input if any
+    _rejectReasonController.clear();
 
     showModalBottomSheet(
       context: context,
@@ -639,14 +963,13 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
             left: 20,
             right: 20,
             top: 20,
-            // Ensure the keyboard doesn't cover the bottom sheet
             bottom: mediaQuery.viewInsets.bottom + 20,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               // Icon + Title
-              const Icon(Icons.question_answer, size: 52, color: Colors.amber),
+              const Icon(Icons.question_answer, size: 52, color: Color(0xFFDBB342)),
               const SizedBox(height: 6),
               const Text(
                 'Reason',
@@ -657,7 +980,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
               // Text Field
               TextField(
                 controller: _rejectReasonController,
-                minLines: 3,
+                minLines: 4,
                 maxLines: 8,
                 decoration: InputDecoration(
                   hintText: 'Reason for reject',
@@ -673,13 +996,14 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                 width: 130,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    backgroundColor: const Color(0xFFDB5E42),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   onPressed: () {
-                    Navigator.of(ctx).pop(); // close bottom sheet
-                    _handleCarReject(context); // then perform the reject call
+                    Navigator.of(ctx).pop();
+                    _showConfirmRejectDialog(context);
                   },
                   child: const Text(
                     'Reject',
@@ -695,6 +1019,118 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     );
   }
 
+  Future<void> _showConfirmRejectDialog(BuildContext context) async {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return showDialog(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: isDarkMode ? Colors.grey[800] : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+
+                    // Warning Icon (Centered)
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      size: 80,
+                      color: Color(0xFFE2BD30),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Text "Confirm"
+                    Text(
+                      'Confirm',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Cancel Button (Left)
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8F9BB3),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 12),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        // Confirm Button (Right)
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            _handleCarReject(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE2BD30),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 12),
+                          ),
+                          child: const Text(
+                            'Confirm',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // X Button (Top Right)
+              Positioned(
+                top: 15,
+                right: 10,
+                child: IconButton(
+                  icon: Icon(
+                    Icons.close,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   /// Actually call the disapprove API for the car
   Future<void> _handleCarReject(BuildContext context) async {
     final String? token = await _getToken();
@@ -703,7 +1139,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       return;
     }
 
-    final baseUrl = 'https://demo-application-api.flexiflows.co';
+    const baseUrl = 'https://demo-application-api.flexiflows.co';
     final endpoint = '$baseUrl/api/office-administration/car_permit/disapproved/${widget.id}';
     final reason = _rejectReasonController.text.trim();
 
@@ -712,7 +1148,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     });
 
     try {
-      // Build the request body only if a reason was entered
+      // Build the request body hanya jika alasan diisi
       final requestBody = reason.isNotEmpty ? {"comment": reason} : {};
 
       final response = await http.put(
@@ -728,7 +1164,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       debugPrint('[Car Reject] Body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        // success
+        // Sukses
         _showSuccessDialog('Rejected', 'Car booking has been rejected.');
       } else {
         final responseBody = jsonDecode(response.body);

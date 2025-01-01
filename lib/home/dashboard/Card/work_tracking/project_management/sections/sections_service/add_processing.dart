@@ -218,16 +218,6 @@ class AddProcessingPageState extends State<AddProcessingPage> {
       return;
     }
 
-    // Validate that at least one member is chosen
-    if (selectedMembers.isEmpty) {
-      _showAlertDialog(
-        title: 'No Members Selected',
-        content: 'Please select at least one member.',
-        isError: true,
-      );
-      return;
-    }
-
     setState(() {
       _isLoading = true;
     });
@@ -521,7 +511,7 @@ class AddProcessingPageState extends State<AddProcessingPage> {
 
     final Size screenSize = MediaQuery.of(context).size;
     double horizontalPadding = screenSize.width * 0.04; // 4% of screen width
-    double verticalPadding = screenSize.height * 0.05; // 5% of screen height
+// 5% of screen height
 
     // Ensure we have at least 16.0 px horizontally on very narrow screens
     horizontalPadding = horizontalPadding < 16.0 ? 16.0 : horizontalPadding;

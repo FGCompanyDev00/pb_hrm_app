@@ -123,13 +123,6 @@ class AddPeoplePageState extends State<AddPeoplePage> {
   }
 
   Future<void> _addMembersToProject() async {
-    debugPrint('Attempting to add selected members to project...');
-    if (_selectedPeople.isEmpty) {
-      debugPrint('No members selected. Displaying error.');
-      _showDialog('Error', 'Please select at least one member.');
-      return;
-    }
-
     setState(() {
       _isLoading = true;
     });
