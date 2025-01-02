@@ -94,7 +94,7 @@ class SettingsPageState extends State<SettingsPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Do you want to use Fingerprint as a preferred login method for the next time?',
+                  'Do you want to use biometric authentication as a preferred login method for the next time?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -121,7 +121,7 @@ class SettingsPageState extends State<SettingsPage> {
                     ElevatedButton(
                       onPressed: () {
                         Navigator.of(context).pop();
-                        _enableBiometrics(true); // Call the function to enable biometrics
+                        _enableBiometrics(true);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFDBB342),
