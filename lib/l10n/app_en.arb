@@ -416,5 +416,7 @@
       "pinSetSuccessfully": "PIN has been set successfully.",
       "submit": "Submit",
       "set": "Set",
-      "pin": "PIN"
+      "pin": "PIN",
+      "tokenExpiredTitle": "Session Expired",
+      "tokenExpiredMessage": "Your session has expired. Please log in again."
 }

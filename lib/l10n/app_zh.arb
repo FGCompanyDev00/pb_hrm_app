@@ -455,5 +455,7 @@
   "pinSetSuccessfully": "PIN码设置成功。",
   "submit": "提交",
   "set": "设置",
-  "pin": "PIN码"
+  "pin": "PIN码",
+  "tokenExpiredTitle": "会话已过期",
+  "tokenExpiredMessage": "您的会话已过期，请重新登录。"
 }

@@ -100,7 +100,12 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
     final String password = _passwordController.text.trim();
 
     if (username.isEmpty || password.isEmpty) {
-      if (mounted) _showCustomDialog(AppLocalizations.of(context)!.loginFailed, AppLocalizations.of(context)!.emptyFieldsMessage);
+      if (mounted) {
+        _showCustomDialog(
+        AppLocalizations.of(context)!.loginFailed,
+        AppLocalizations.of(context)!.emptyFieldsMessage,
+      );
+      }
       return;
     }
 
@@ -118,69 +123,32 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
         );
 
         if (response.statusCode == 200) {
-          final Map<String, dynamic> responseBody = jsonDecode(response.body);
-          final String token = responseBody['token'];
-          final String employeeId = responseBody['id']; // Get the employee id
-
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('employee_id', employeeId); // Save employee id as current user id
-          sl<UserPreferences>().setToken(token);
-          sl<UserPreferences>().setLoggedIn(true);
-
-          if (_rememberMe) {
-            await _saveCredentials(username, password, token);
-          } else {
-            await _clearCredentials();
-          }
-
-          await _storage.write(key: 'username', value: username);
-          await _storage.write(key: 'password', value: password);
-
-          if (_biometricEnabled) {
-            await _storage.write(key: 'biometricEnabled', value: 'true');
-          }
-
-          if (mounted) Provider.of<UserProvider>(context, listen: false).login(token);
-
-          bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
-
-          if (isFirstLogin) {
-            if (mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const NotificationPermissionPage()),
-              );
-            }
-
-            await prefs.setBool('isFirstLogin', false);
-          } else {
-            if (mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const MainScreen()),
-              );
-            }
-          }
+          // Successful login
+          await _handleSuccessfulLogin(response, username, password);
         } else if (response.statusCode == 401) {
           // Unauthorized (Incorrect Password)
           _showCustomDialog(
             AppLocalizations.of(context)!.loginFailed,
             AppLocalizations.of(context)!.incorrectPassword,
           );
-        } else if (response.statusCode == 500 || response.statusCode == 502 || response.statusCode == 403) {
-          // API Error
-          _showCustomDialog(
+        } else if (response.statusCode == 500 ||
+            response.statusCode == 502 ||
+            response.statusCode == 403) {
+          // API Error - Offer Offline Login
+          _showOfflineOptionModal(
             AppLocalizations.of(context)!.apiError,
             AppLocalizations.of(context)!.apiErrorMessage,
           );
         } else {
+          // Other Errors
           _showCustomDialog(
             AppLocalizations.of(context)!.loginFailed,
             AppLocalizations.of(context)!.unknownError,
           );
         }
       } catch (e) {
-        _showCustomDialog(
+        // Network or Parsing Error - Offer Offline Login
+        _showOfflineOptionModal(
           AppLocalizations.of(context)!.serverError,
           AppLocalizations.of(context)!.serverErrorMessage,
         );
@@ -194,8 +162,59 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
     }
   }
 
+  Future<void> _handleSuccessfulLogin(http.Response response, String username, String password) async {
+    final Map<String, dynamic> responseBody = jsonDecode(response.body);
+    final String token = responseBody['token'];
+    final String employeeId = responseBody['id']; // Get the employee id
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('employee_id', employeeId); // Save employee id as current user id
+    sl<UserPreferences>().setToken(token);
+    sl<UserPreferences>().setLoggedIn(true);
+
+    if (_rememberMe) {
+      await _saveCredentials(username, password, token);
+    } else {
+      await _clearCredentials();
+    }
+
+    await _storage.write(key: 'username', value: username);
+    await _storage.write(key: 'password', value: password);
+
+    if (_biometricEnabled) {
+      await _storage.write(key: 'biometricEnabled', value: 'true');
+    }
+
+    // Store the token issuance time
+    final box = await Hive.openBox('loginBox');
+    final DateTime now = DateTime.now().toUtc();
+    await box.put('tokenIssueTime', now.millisecondsSinceEpoch);
+
+    if (mounted) Provider.of<UserProvider>(context, listen: false).login(token);
+
+    bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
+
+    if (isFirstLogin) {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const NotificationPermissionPage()),
+        );
+      }
+
+      await prefs.setBool('isFirstLogin', false);
+    } else {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainScreen()),
+        );
+      }
+    }
+  }
+
   Future<void> _showOfflineOptionModal(String title, String message) async {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
     showDialog(
       context: context,
@@ -255,7 +274,7 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                         TextButton(
                           onPressed: () => Navigator.pop(context),
                           child: Text(
-                            'Cancel',
+                            AppLocalizations.of(context)!.cancel,
                             style: TextStyle(
                               fontSize: buttonFontSize,
                               color: Colors.black,
@@ -265,9 +284,17 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                         ElevatedButton(
                           onPressed: () async {
                             Navigator.pop(context);
-                            if (title == AppLocalizations.of(context)!.noInternet) {
+                            if (title == AppLocalizations.of(context)!.noInternet ||
+                                title == AppLocalizations.of(context)!.apiError ||
+                                title == AppLocalizations.of(context)!.serverError) {
                               // Allow offline login
                               await _offlineLogin();
+                            } else if (title == AppLocalizations.of(context)!.tokenExpiredTitle) {
+                              // Token has expired, prompt to log in online
+                              _showCustomDialog(
+                                AppLocalizations.of(context)!.tokenExpiredTitle,
+                                AppLocalizations.of(context)!.tokenExpiredMessage,
+                              );
                             } else {
                               // Prevent offline login if unauthorized
                               _showCustomDialog(
@@ -283,7 +310,7 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                             ),
                           ),
                           child: Text(
-                            "Okay",
+                            AppLocalizations.of(context)!.okay,
                             style: TextStyle(
                               fontSize: buttonFontSize,
                               color: Colors.white,
@@ -307,13 +334,31 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
     final storedUsername = box.get('username');
     final storedPassword = box.get('password');
     final token = box.get('token');
+    final tokenIssueTimeMillis = box.get('tokenIssueTime');
 
-    if (storedUsername == _usernameController.text.trim() && storedPassword == _passwordController.text.trim() && token != null) {
-      if (mounted) {
-        Provider.of<UserProvider>(context, listen: false).login(token);
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainScreen()),
+    if (storedUsername == _usernameController.text.trim() &&
+        storedPassword == _passwordController.text.trim() &&
+        token != null &&
+        tokenIssueTimeMillis != null) {
+
+      final DateTime tokenIssueTime = DateTime.fromMillisecondsSinceEpoch(tokenIssueTimeMillis, isUtc: true);
+      final DateTime now = DateTime.now().toUtc();
+      final Duration difference = now.difference(tokenIssueTime);
+
+      if (difference.inHours < 8) {
+        // Token is still valid
+        if (mounted) {
+          Provider.of<UserProvider>(context, listen: false).login(token);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const MainScreen()),
+          );
+        }
+      } else {
+        // Token has expired
+        _showCustomDialog(
+          AppLocalizations.of(context)!.tokenExpiredTitle,
+          AppLocalizations.of(context)!.tokenExpiredMessage,
         );
       }
     } else {
@@ -404,17 +449,23 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
             children: [
               const Icon(Icons.info, color: Colors.red, size: 50),
               const SizedBox(height: 16),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+              Center(
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                message,
-                style: const TextStyle(fontSize: 18),
+              Center(
+                child: Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 18),
+                ),
               ),
               const SizedBox(height: 16),
               ElevatedButton(

@@ -422,5 +422,7 @@
       "pinSetSuccessfully": "ຕັ້ງລະຫັດ PIN ສຳເລັດແລ້ວ.",
       "submit": "ສົ່ງ",
       "set": "ຕັ້ງ",
-      "pin": "ລະຫັດ PIN"
+      "pin": "ລະຫັດ PIN",
+    "tokenExpiredTitle": "ໄລຍະເວລາສິ້ນສຸດ",
+    "tokenExpiredMessage": "ໄລຍະເວລາຂອງທ່ານໄດ້ສິ້ນສຸດ. ກະລຸນາເຂົ້າລະບົບໃໝ່."
 }
