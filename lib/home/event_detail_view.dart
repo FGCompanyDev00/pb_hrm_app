@@ -620,7 +620,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           children: [
             CircleAvatar(
                 radius: 30,
-                backgroundImage: details['imageUrl']!.isNotEmpty ? NetworkImage(details['imageUrl']!) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                backgroundImage: details['imageUrl']!.isNotEmpty ? NetworkImage(details['imageUrl']!) : const AssetImage('assets/avatar_placeholder.png') as ImageProvider,
                 onBackgroundImageError: (_, __) {
                   const AssetImage('assets/default_avatar.png');
                 }),
@@ -632,7 +632,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  details['creatorName']!,
+                  (details['creatorName']?.isEmpty ?? true) ? 'No Name' : details['creatorName']!,
                   style: const TextStyle(
                     fontSize: 18,
                   ),
