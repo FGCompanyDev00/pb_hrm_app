@@ -82,16 +82,16 @@ class CalendarDaySwitchView extends HookWidget {
 
       for (var e in eventsCalendar) {
         DateTime startTimeDisplay = DateTime(
-          selectedDay!.year,
-          selectedDay!.month,
-          selectedDay!.day,
+          e.start.year,
+          e.start.month,
+          e.start.day,
           e.start.hour == 0 ? currentHourDisplay.value : e.start.hour,
           e.start.hour == 0 ? 0 : e.start.minute,
         );
         DateTime endTimeDisplay = DateTime(
-          selectedDay!.year,
-          selectedDay!.month,
-          selectedDay!.day,
+          e.end.year,
+          e.end.month,
+          e.end.day,
           e.end.hour == 0 ? untilEndDisplay.value : e.end.hour,
           e.end.hour == 0
               ? untilEndDisplay.value == 23
@@ -145,16 +145,16 @@ class CalendarDaySwitchView extends HookWidget {
           );
 
           startTimeDisplay = DateTime(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
+            e.start.year,
+            e.start.month,
+            e.start.day,
             currentHourDisplay.value,
             0,
           );
           endTimeDisplay = DateTime(
-            selectedDay!.year,
-            selectedDay!.month,
-            selectedDay!.day,
+            e.end.year,
+            e.end.month,
+            e.end.day,
             untilEndDisplay.value,
             0,
           );
@@ -326,8 +326,8 @@ class CalendarDaySwitchView extends HookWidget {
                                 event: {
                                   'title': event.title,
                                   'description': eventsCalendar[itemIndex].desc,
-                                  'startDateTime': event.start.toString(),
-                                  'endDateTime': event.end.toString(),
+                                  'startDateTime': event.startDisplay.toString(),
+                                  'endDateTime': event.endDisplay.toString(),
                                   'isMeeting': eventsCalendar[itemIndex].isMeeting,
                                   'createdBy': eventsCalendar[itemIndex].createdBy ?? '',
                                   'location': eventsCalendar[itemIndex].location ?? '',
@@ -376,8 +376,8 @@ class CalendarDaySwitchView extends HookWidget {
                                 event: {
                                   'title': event.title,
                                   'description': eventsCalendar[itemIndex].desc,
-                                  'startDateTime': event.start.toString(),
-                                  'endDateTime': event.end.toString(),
+                                  'startDateTime': event.startDisplay.toString(),
+                                  'endDateTime': event.endDisplay.toString(),
                                   'isMeeting': eventsCalendar[itemIndex].isMeeting,
                                   'createdBy': eventsCalendar[itemIndex].createdBy ?? '',
                                   'location': eventsCalendar[itemIndex].location ?? '',
@@ -419,43 +419,39 @@ class CalendarDaySwitchView extends HookWidget {
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                 children: [
-                                                  Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Row(
-                                                        children: [
-                                                          const Icon(Icons.window_rounded, size: 15),
-                                                          const SizedBox(width: 5),
-                                                          Text(eventCategory),
-                                                        ],
-                                                      ),
-                                                      const SizedBox(height: 6),
-                                                      Row(
-                                                        children: [
-                                                          iconCategory != null ? Image.asset(iconCategory, width: 15) : const SizedBox.shrink(),
-                                                          const SizedBox(width: 5),
-                                                          Text(event.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                                        ],
-                                                      ),
-                                                      // Text(event.desc, style: const TextStyle(fontSize: 10)),
-                                                    ],
-                                                  ),
-                                                  Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Row(children: _buildMembersAvatars(event, context)),
-                                                      const SizedBox(height: 20),
-                                                      Row(
-                                                        children: [
-                                                          const Icon(Icons.access_time, size: 15),
-                                                          const SizedBox(width: 5),
-                                                          Text(
-                                                            '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
-                                                            style: const TextStyle(fontSize: 10),
-                                                          ),
-                                                        ],
-                                                      )
-                                                    ],
+                                                  SingleChildScrollView(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Row(
+                                                          children: [
+                                                            const Icon(Icons.window_rounded, size: 15),
+                                                            const SizedBox(width: 5),
+                                                            Text(eventCategory),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(height: 6),
+                                                        Row(
+                                                          children: [
+                                                            iconCategory != null ? Image.asset(iconCategory, width: 15) : const SizedBox.shrink(),
+                                                            const SizedBox(width: 5),
+                                                            Text(event.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                                          ],
+                                                        ),
+                                                        // Text(event.desc, style: const TextStyle(fontSize: 10)),
+                                                        Row(children: _buildMembersAvatars(event, context)),
+                                                        Row(
+                                                          children: [
+                                                            const Icon(Icons.access_time, size: 15),
+                                                            const SizedBox(width: 5),
+                                                            Text(
+                                                              '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                              style: const TextStyle(fontSize: 10),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
                                                 ],
                                               )
@@ -529,48 +525,45 @@ class CalendarDaySwitchView extends HookWidget {
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                                     children: [
-                                                      Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        children: [
-                                                          Row(
-                                                            children: [
-                                                              const Icon(Icons.window_rounded, size: 15),
-                                                              const SizedBox(width: 5),
-                                                              Text(eventCategory),
-                                                            ],
-                                                          ),
-                                                          const SizedBox(height: 8),
-                                                          Row(
-                                                            children: [
-                                                              const Icon(Icons.title, size: 15),
-                                                              const SizedBox(width: 5),
-                                                              Text(event.desc, style: const TextStyle(fontSize: 10)),
-                                                            ],
-                                                          ),
-                                                        ],
-                                                      ),
-                                                      Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        children: [
-                                                          Row(children: _buildMembersAvatars(event, context)),
-                                                          const SizedBox(height: 20),
-                                                          Row(
-                                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                            children: [
-                                                              const SizedBox(width: 20),
-                                                              Row(
-                                                                children: [
-                                                                  const Icon(Icons.access_time, size: 15),
-                                                                  const SizedBox(width: 5),
-                                                                  Text(
-                                                                    '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
-                                                                    style: const TextStyle(fontSize: 10),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            ],
-                                                          )
-                                                        ],
+                                                      SingleChildScrollView(
+                                                        child: Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            Row(
+                                                              children: [
+                                                                const Icon(Icons.window_rounded, size: 15),
+                                                                const SizedBox(width: 5),
+                                                                Text(eventCategory),
+                                                              ],
+                                                            ),
+                                                            const SizedBox(height: 8),
+                                                            Row(
+                                                              children: [
+                                                                const Icon(Icons.title, size: 15),
+                                                                const SizedBox(width: 5),
+                                                                Text(event.desc, style: const TextStyle(fontSize: 10)),
+                                                              ],
+                                                            ),
+                                                            Row(children: _buildMembersAvatars(event, context)),
+                                                            const SizedBox(height: 20),
+                                                            Row(
+                                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                              children: [
+                                                                const SizedBox(width: 20),
+                                                                Row(
+                                                                  children: [
+                                                                    const Icon(Icons.access_time, size: 15),
+                                                                    const SizedBox(width: 5),
+                                                                    Text(
+                                                                      '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                                      style: const TextStyle(fontSize: 10),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ],
+                                                        ),
                                                       ),
                                                     ],
                                                   )
