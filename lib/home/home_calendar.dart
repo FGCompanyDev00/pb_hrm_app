@@ -312,7 +312,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (status == 'Cancelled') continue;
 
         final event = Events(
-          title: item['title'] ?? 'Add Meeting',
+          title: item['title'] ?? 'Minutes Of Meeting',
+          // title: item['title'] ?? 'Add Meeting',
           start: startDateTime,
           end: endDateTime,
           desc: item['description'] ?? '',
@@ -327,7 +328,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
-          category: 'Add Meeting',
+          category: 'Minutes Of Meeting',
+          // category: 'Add Meeting',
           members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
         );
 
@@ -405,7 +407,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (status == 'Cancelled') continue;
 
         final event = Events(
-          title: item['title'] ?? ' Minutes Of Meeting',
+          // title: item['title'] ?? 'Minutes Of Meeting',
+          title: item['title'] ?? 'Add Meeting',
           start: startDateTime,
           end: endDateTime,
           desc: item['description'] ?? '',
@@ -420,7 +423,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
-          category: 'Minutes Of Meeting',
+          // category: 'Minutes Of Meeting',
+          category: 'Add Meeting',
           members: item['guests'] != null ? List<Map<String, dynamic>>.from(item['guests']) : [],
         );
 
