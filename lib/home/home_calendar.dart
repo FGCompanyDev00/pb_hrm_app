@@ -49,10 +49,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   late final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
   // Filters and Search
-  final bool _showFiltersAndSearchBar = false;
-  String _selectedCategory = 'All';
-  final List<String> _categories = ['All', 'Add Meeting', 'Leave', 'Meeting Room Bookings', 'Booking Car'];
-  String _searchQuery = '';
+  final String _selectedCategory = 'All';
+  final String _searchQuery = '';
 
   // Animation Controller
   late final AnimationController _animationController;
@@ -67,6 +65,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   @override
   void initState() {
     super.initState();
+    _fetchData();
     _selectedDay = _focusedDay;
     switchTime.value = (_focusedDay.hour < 18 && _focusedDay.hour > 6) ? false : true;
 
@@ -160,9 +159,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         _fetchCarBookingsInvite(),
         _fetchMinutesOfMeeting(),
         _fetchMinutesOfMeetingMembers(),
-      ]).whenComplete(() {
-        _filterAndSearchEvents();
-      });
+      ]);
     } catch (e) {
       showSnackBar('Error fetching data: $e');
     } finally {
@@ -1306,93 +1303,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     );
   }
 
-  /// Builds the filter chips for event categories
-  Widget _buildFilters() {
-    // Get the current theme brightness
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Wrap(
-        spacing: 8.0,
-        children: _categories.map((category) {
-          return FilterChip(
-            label: Text(category),
-            selected: _selectedCategory == category,
-            onSelected: (bool selected) {
-              setState(() {
-                _selectedCategory = category;
-                _filterAndSearchEvents();
-              });
-            },
-            selectedColor: getEventColor(
-              Events(
-                title: '',
-                start: DateTime.now(),
-                end: DateTime.now(),
-                desc: '',
-                status: '',
-                isMeeting: false,
-                category: category,
-                uid: '',
-              ),
-            ),
-            checkmarkColor: isDarkMode ? Colors.black : Colors.white,
-            labelStyle: TextStyle(
-              color: _selectedCategory == category
-                  ? Colors.white
-                  : isDarkMode
-                      ? Colors.white70
-                      : Colors.black87, // Adjust text color for dark mode
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  /// Builds the search bar for filtering events
-  Widget _buildSearchBar() {
-    // Get the current theme brightness
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: TextField(
-        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black), // Dynamic text color
-        decoration: InputDecoration(
-          labelText: AppLocalizations.of(context)!.searchEvents,
-          labelStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54), // Label color in dark mode
-          prefixIcon: const Icon(Icons.search),
-          prefixIconColor: isDarkMode ? Colors.white : Colors.black, // Icon color in dark mode
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            borderSide: BorderSide(
-              color: isDarkMode ? Colors.white54 : Colors.black12, // Border color
-            ),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            borderSide: BorderSide(
-              color: isDarkMode ? Colors.white54 : Colors.black12, // Border color when enabled
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8.0),
-            borderSide: BorderSide(
-              color: isDarkMode ? Colors.blueAccent : Colors.blue, // Focused border color
-            ),
-          ),
-        ),
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value;
-            _filterAndSearchEvents();
-          });
-        },
-      ),
-    );
-  }
 
   /// Builds the TableCalendar widget with customized navigation arrows
   Widget _buildCalendar(BuildContext context, bool isDarkMode) {
