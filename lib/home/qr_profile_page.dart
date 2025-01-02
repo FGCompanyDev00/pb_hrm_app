@@ -549,6 +549,7 @@ END:VCARD
                                             size: 24,
                                             color: isDarkMode ? Colors.white : Colors.black,
                                           ),
+                                          const SizedBox(height: 10),
                                           Text(
                                             AppLocalizations.of(context)!.more,
                                             style: TextStyle(
