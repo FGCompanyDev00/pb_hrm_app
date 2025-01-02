@@ -322,8 +322,8 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
   void _populateMeetingData(Map<String, dynamic> data) {
     setState(() {
       _meetingTitleController.text = data['title'] ?? '';
-      _meetingFromController.text = data['from_date_time'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(data['from_date_time'])) : '';
-      _meetingToController.text = data['to_date_time'] != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(data['to_date_time'])) : '';
+      _meetingFromController.text = data['from_date_time'] != null ? DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(data['from_date_time'])) : '';
+      _meetingToController.text = data['to_date_time'] != null ? DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(data['to_date_time'])) : '';
       _selectedRoomId = data['room_id']?.toString();
       _meetingTelController.text = data['employee_tel'] ?? '';
       _meetingRemarkController.text = data['remark'] ?? '';
