@@ -263,6 +263,15 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           continue;
         }
 
+        final responseMember = await getRequest('/api/work-tracking/meeting/Meetig-Member/${item['id']}');
+
+        dynamic dataMember;
+        List<dynamic> resultsMember = [];
+        if (responseMember != null) {
+          dataMember = json.decode(responseMember.body);
+          resultsMember = dataMember['results'];
+        }
+
         // Combine 'from_date' with 'start_time' and 'to_date' with 'end_time'
         DateTime startDateTime;
         DateTime endDateTime;
@@ -318,7 +327,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           isMeeting: true,
           location: item['location'] ?? '',
           createdBy: item['create_by'] ?? '',
-          imgName: item['file_name'] ?? '',
+          // imgName: item['file_name'] ?? '',
           createdAt: item['created_at'] ?? '',
           uid: uid,
           isRepeat: item['is_repeat']?.toString(),
@@ -326,8 +335,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
           category: 'Minutes Of Meeting',
+          fileName: item['file_name'],
           // category: 'Add Meeting',
-          members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
+          members: List<Map<String, dynamic>>.from(resultsMember),
         );
 
         // Normalize the start and end dates for event mapping
@@ -1302,8 +1312,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       ],
     );
   }
-
-
 
   /// Builds the TableCalendar widget with customized navigation arrows
   Widget _buildCalendar(BuildContext context, bool isDarkMode) {

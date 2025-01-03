@@ -39,6 +39,7 @@ class Events {
     this.videoConference,
     this.backgroundColor,
     this.outmeetingUid,
+    this.fileName,
     this.members,
     this.leaveType,
   });
@@ -67,6 +68,7 @@ class Events {
   final Color? backgroundColor;
   final String? outmeetingUid;
   final String? leaveType;
+  final String? fileName;
   final List<Map<String, dynamic>>? members;
 
   Map<String, dynamic> toJson() => {
@@ -86,6 +88,7 @@ class Events {
         'backgroundColor': backgroundColor?.value,
         'outmeetingUid': outmeetingUid,
         'leaveType': leaveType,
+        'fileName': fileName,
         'category': category,
         'days': days,
         'members': jsonEncode(members),
@@ -109,6 +112,7 @@ class Events {
       backgroundColor: json['backgroundColor'] != null ? parseColorTime(json['backgroundColor']) : null,
       outmeetingUid: json['outmeetingUid'],
       leaveType: json['leaveType'],
+      fileName: json['fileName'],
       category: json['category'],
       days: (json['days'] as num?)?.toDouble(),
       members: parseMembers(json['members']),

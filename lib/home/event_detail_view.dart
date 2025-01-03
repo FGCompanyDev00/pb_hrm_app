@@ -1,7 +1,10 @@
 // event_detail_view.dart
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
@@ -393,7 +396,68 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     };
   }
 
-  Widget _buildMembersList(List<dynamic> members, {bool isDownload = false}) {
+  Future<void> _downloadFiles() async {
+    if (widget.event['file_name'] == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No files to download')),
+      );
+      return;
+    }
+
+    bool allSuccess = true;
+
+    String fileUrl = widget.event['file_name']?.toString() ?? '';
+    String fileName = 'unknown_file';
+
+    if (fileUrl.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invalid URL for file: $fileName')),
+        );
+      }
+      allSuccess = false;
+
+      try {
+        final response = await http.get(Uri.parse(fileUrl));
+        final directory = await getApplicationDocumentsDirectory();
+        final path = '${directory.path}/$fileName';
+        if (response.statusCode == 200) {
+          final fileToSave = File(path);
+          await fileToSave.writeAsBytes(response.bodyBytes);
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to download $fileName')),
+            );
+          }
+          allSuccess = false;
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error downloading $fileName: $e')),
+          );
+        }
+        allSuccess = false;
+      }
+    }
+
+    if (allSuccess) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All files downloaded successfully')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Some files failed to download')),
+        );
+      }
+    }
+  }
+
+  Widget _buildMembersList(List<dynamic> members, {bool isDownload = true}) {
     if (members.isEmpty) return const SizedBox.shrink();
 
     List<Widget> membersList = [];
@@ -407,26 +471,46 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: membersList,
-              )),
+          Text(
+            '${AppLocalizations.of(context)!.member}:',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 90,
+            child: GridView.count(
+              crossAxisCount: 7,
+              children: membersList,
+            ),
+          ),
+          // SingleChildScrollView(
+          //     scrollDirection: Axis.horizontal,
+          //     child: Row(
+          //       children: membersList,
+          //     )),
           const SizedBox(height: 15),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                AppLocalizations.of(context)!.description,
-                textAlign: TextAlign.left,
-                style: const TextStyle(
-                  fontSize: 16,
-                ),
+              Row(
+                children: [
+                  const Icon(Icons.folder_open),
+                  Text(
+                    AppLocalizations.of(context)!.description,
+                    textAlign: TextAlign.left,
+                    style: const TextStyle(
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
               ),
               Visibility(
                 visible: isDownload,
                 child: ElevatedButton(
                   style: const ButtonStyle(backgroundColor: WidgetStatePropertyAll<Color>(Colors.green)),
-                  onPressed: () {},
+                  onPressed: _downloadFiles,
                   child: Text(AppLocalizations.of(context)!.download),
                 ),
               )
@@ -463,7 +547,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       ),
       margin: const EdgeInsets.only(right: 3),
       child: CircleAvatar(
-          radius: 15,
+          radius: 20,
           backgroundImage: link.isNotEmpty ? NetworkImage(link) : const AssetImage('assets/default_avatar.png') as ImageProvider,
           onBackgroundImageError: (_, __) {
             const AssetImage('assets/default_avatar.png');
@@ -692,37 +776,59 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     return Column(
       children: [
         if (eventStatus != "")
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              const Text(
-                'Status:',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
+          Padding(
+            padding: const EdgeInsets.only(left: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Expanded(
+                      flex: 2,
+                      child: Row(
+                        children: [
+                          Icon(Icons.bookmark_add_outlined),
+                          SizedBox(width: 10),
+                          Text('Title'),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Status:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: Icon(
+                              Icons.access_time,
+                              color: ColorStandardization().colorDarkGold,
+                            ),
+                          ),
+                          Text(
+                            eventStatus,
+                            style: TextStyle(
+                              color: ColorStandardization().colorDarkGold,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Icon(
-                  Icons.access_time,
-                  color: ColorStandardization().colorDarkGold,
-                ),
-              ),
-              Text(
-                eventStatus,
-                style: TextStyle(
-                  color: ColorStandardization().colorDarkGold,
-                  fontWeight: FontWeight.bold,
-                ),
-              )
-            ],
+                Text(title ?? ''),
+              ],
+            ),
           ),
         const SizedBox(height: 20),
-        if (title != null)
-          titleCustom(
-            'Title : ${widget.event['title']}',
-            Icons.bookmark_add_outlined,
-          ),
         if (details['formattedStartDate']!.isNotEmpty)
           titleCustom(
             'Date : ${startDate.year}-${startDate.month}-${startDate.day} - ${endDate.year}-${endDate.month}-${endDate.day}',
@@ -873,7 +979,8 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
         autoLanguageType, // 'Event Details' (localized)
         style: TextStyle(
           color: isDarkMode ? Colors.white : Colors.black,
-          fontSize: 22,
+          fontSize: 28,
+          fontWeight: FontWeight.bold,
         ),
       ),
       leading: IconButton(
