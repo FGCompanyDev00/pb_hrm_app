@@ -53,37 +53,47 @@ const FlutterSecureStorage secureStorage = FlutterSecureStorage();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize secure HTTP client
-  final Dio dio = createSecureDio();
-  sl.registerSingleton<Dio>(dio);
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  try {
-    await setupServiceLocator();
-  } catch (e) {
-    if (kDebugMode) {
-      logger.e("Error during service locator setup: $e");
+  // Run entire app inside runZonedGuarded:
+  runZonedGuarded(() async {
+    // Initialize secure HTTP client
+    final Dio dio = createSecureDio();
+    sl.registerSingleton<Dio>(dio);
+
+    // Setup service locator
+    try {
+      await setupServiceLocator();
+    } catch (e) {
+      if (kDebugMode) {
+        logger.e("Error during service locator setup: $e");
+      }
     }
-  }
-  await initializeHive();
-  sl<OfflineProvider>().initializeCalendar();
+    await initializeHive();
+    sl<OfflineProvider>().initializeCalendar();
 
-  /// ----------------------------------------------
-  /// 2) Initialize local notifications
-  /// ----------------------------------------------
-  await _initializeLocalNotifications();
+    // Initialize local notifications
+    await _initializeLocalNotifications();
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ThemeNotifier()),
-        ChangeNotifierProvider(create: (_) => LanguageNotifier()),
-        ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => DateProvider()),
-        ChangeNotifierProvider(create: (_) => OfflineProvider()),
-      ],
-      child: const MyApp(),
-    ),
-  );
+    runApp(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ThemeNotifier()),
+          ChangeNotifierProvider(create: (_) => LanguageNotifier()),
+          ChangeNotifierProvider(create: (_) => UserProvider()),
+          ChangeNotifierProvider(create: (_) => DateProvider()),
+          ChangeNotifierProvider(create: (_) => OfflineProvider()),
+        ],
+        child: const MyApp(),
+      ),
+    );
+  }, (error, stack) {
+    // Catch all global asynchronous errors here
+    if (kDebugMode) {
+      logger.e("Uncaught error: $error");
+      logger.e(stack);
+    }
+  });
 }
 
 /// ------------------------------------------
@@ -369,20 +379,14 @@ class MainScreenState extends State<MainScreen> {
 
 Future<void> initializeHive() async {
   await Hive.initFlutter();
-
-  // Register Hive adapters
   Hive.registerAdapter(AttendanceRecordAdapter());
   Hive.registerAdapter(UserProfileRecordAdapter());
   Hive.registerAdapter(QRRecordAdapter());
-  // Hive.registerAdapter(MaterialColorAdapter());
 
-  // Retrieve or generate encryption key
   final String? storedKey = await secureStorage.read(key: 'hive_encryption_key');
   final List<int> encryptionKey = storedKey != null
       ? base64Url.decode(storedKey)
       : encrypt.Key.fromSecureRandom(32).bytes;
-
-  // If key was newly generated, store it securely
   if (storedKey == null) {
     final String encodedKey = base64UrlEncode(encryptionKey);
     await secureStorage.write(key: 'hive_encryption_key', value: encodedKey);
@@ -390,32 +394,14 @@ Future<void> initializeHive() async {
 
   final HiveAesCipher cipher = HiveAesCipher(encryptionKey);
 
-  // Open encrypted Hive boxes
-  await Hive.openBox<AttendanceRecord>(
-    'pending_attendance',
-    encryptionCipher: cipher,
-  );
-  await Hive.openBox<UserProfileRecord>(
-    'user_profile',
-    encryptionCipher: cipher,
-  );
-  await Hive.openBox<QRRecord>(
-    'qr_profile',
-    encryptionCipher: cipher,
-  );
-  await Hive.openBox<String>(
-    'userProfileBox',
-    encryptionCipher: cipher,
-  );
-  await Hive.openBox<List<String>>(
-    'bannersBox',
-    encryptionCipher: cipher,
-  );
-  await Hive.openBox(
-    'loginBox',
-    encryptionCipher: cipher,
-  );
-  // await Hive.openBox('calendarEventsRecordBox');
+  await Future.wait([
+    Hive.openBox<AttendanceRecord>('pending_attendance', encryptionCipher: cipher),
+    Hive.openBox<UserProfileRecord>('user_profile', encryptionCipher: cipher),
+    Hive.openBox<QRRecord>('qr_profile', encryptionCipher: cipher),
+    Hive.openBox<String>('userProfileBox', encryptionCipher: cipher),
+    Hive.openBox<List<String>>('bannersBox', encryptionCipher: cipher),
+    Hive.openBox('loginBox', encryptionCipher: cipher),
+  ]);
 }
 
 Dio createSecureDio() {

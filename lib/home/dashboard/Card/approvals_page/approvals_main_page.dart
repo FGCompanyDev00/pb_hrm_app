@@ -577,7 +577,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
         );
       },
       child: Card(
-        color: isDarkMode ? Colors.grey.shade900 : Colors.white, // Card background color changes based on dark mode
+        color: isDarkMode ? Colors.grey.shade900 : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(screenSize.width * 0.03),
           side: BorderSide(color: typeColor, width: screenSize.width * 0.002),

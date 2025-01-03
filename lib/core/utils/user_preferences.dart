@@ -17,6 +17,7 @@ class UserPreferences {
   static const String _checkInTime = "CHECK_IN_TIME";
   static const String _checkOutTime = "CHECK_OUT_TIME";
   static const String _workingHours = "WORKING_HOURS";
+  static const languageKey = 'preferred_language';
 
   // Store the token
   Future<void> setToken(String token) => prefs.setString(_token, token);

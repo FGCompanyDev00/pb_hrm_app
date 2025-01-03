@@ -79,9 +79,20 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
 
   Future<void> _checkLocale() async {
     String? defaultLanguage = sl<UserPreferences>().getDefaultLanguage();
-    setState(() {
-      _selectedLanguage = defaultLanguage ?? 'English';
-    });
+
+    if (defaultLanguage != null && defaultLanguage.isNotEmpty) {
+      setState(() {
+        _selectedLanguage = defaultLanguage;
+      });
+
+      final languageNotifier = Provider.of<LanguageNotifier>(context, listen: false);
+      languageNotifier.changeLanguage(defaultLanguage);
+    } else {
+      // If nothing saved, default to English
+      setState(() {
+        _selectedLanguage = 'English';
+      });
+    }
   }
 
   Future<void> _loadBiometricSetting() async {
@@ -195,8 +206,9 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
   }
 
   Future<void> _showOfflineOptionModal(String title, String message) async {
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -213,7 +225,6 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
             padding: const EdgeInsets.all(20),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // Set text sizes based on screen width
                 double titleFontSize = constraints.maxWidth < 400 ? 18 : 24;
                 double messageFontSize = constraints.maxWidth < 400 ? 14 : 18;
                 double buttonFontSize = constraints.maxWidth < 400 ? 14 : 16;
@@ -235,7 +246,7 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                       style: TextStyle(
                         fontSize: titleFontSize,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                        color: isDarkMode ? Colors.white : Colors.black,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -245,7 +256,7 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: messageFontSize,
-                        color: Colors.blueGrey,
+                        color: isDarkMode ? Colors.grey[300] : Colors.blueGrey,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -258,7 +269,7 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                             'Cancel',
                             style: TextStyle(
                               fontSize: buttonFontSize,
-                              color: Colors.black,
+                              color: isDarkMode ? Colors.white : Colors.black,
                             ),
                           ),
                         ),
@@ -445,7 +456,7 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
   @override
   Widget build(BuildContext context) {
     var languageNotifier = Provider.of<LanguageNotifier>(context);
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     final Size screenSize = MediaQuery.of(context).size;
@@ -527,7 +538,6 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                           children: [
                             Text(
                               AppLocalizations.of(context)!.chooseLanguage,
-                              // Localized Text
                               style: TextStyle(
                                 fontSize: screenWidth * 0.045,
                                 fontWeight: FontWeight.bold,
@@ -560,11 +570,17 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                                   fontSize: screenWidth * 0.04,
                                 ),
                               ),
-                              onTap: () {
+                              onTap: () async {
+                                // 1) Update local state
                                 setState(() {
                                   _selectedLanguage = language;
                                 });
+                                // 2) Notify language change
                                 languageNotifier.changeLanguage(language);
+                                // 3) Save the new default language in UserPreferences
+                                sl<UserPreferences>().setDefaultLanguage(language);
+
+                                // Finally close the bottom sheet
                                 Navigator.pop(context);
                               },
                             );
