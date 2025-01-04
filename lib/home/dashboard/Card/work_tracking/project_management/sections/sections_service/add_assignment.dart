@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:mime/mime.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:pb_hrsystem/core/standard/constant_map.dart';
+import 'package:pb_hrsystem/hive_helper/model/add_assignment_record.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_assignment_members.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
@@ -61,6 +64,13 @@ class AddAssignmentPageState extends State<AddAssignmentPage> {
     toDate = null;
     fromTime = null;
     toTime = null;
+
+    connectivityResult.onConnectivityChanged.listen((source) {
+      if (source.contains(ConnectivityResult.wifi) || source.contains(ConnectivityResult.mobile)) {
+        offlineProvider.autoOffline(false);
+        offlineProvider.syncAddAssignment();
+      }
+    });
   }
 
   /// For displaying status colors in the dropdown
@@ -129,93 +139,110 @@ class AddAssignmentPageState extends State<AddAssignmentPage> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    // 3) Check connectivity
+    final hasConnection = await connectivityResult.checkConnectivity();
+    final isOffline = hasConnection.contains(ConnectivityResult.none);
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      if (token == null) {
-        _showAlertDialog(
-          title: 'Authentication Error',
-          content: 'Token is null. Please log in again.',
-          isError: true,
-        );
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // Build the request
-      var uri = Uri.parse('${widget.baseUrl}/api/work-tracking/ass/insert');
-      var request = http.MultipartRequest('POST', uri);
-      request.headers['Authorization'] = 'Bearer $token';
-
-      // Fill the fields
-      request.fields['project_id'] = widget.projectId;
-      request.fields['title'] = title;
-      request.fields['descriptions'] = description;
-      request.fields['status_id'] = _statusMap[status]!;
-
-      List<Map<String, String>> membersDetails = selectedMembers.map((member) => {"employee_id": member['employee_id'].toString()}).toList();
-      request.fields['memberDetails'] = jsonEncode(membersDetails);
-
-      // If there's an image
-      if (_selectedImage != null && await _selectedImage!.exists()) {
-        final mimeType = lookupMimeType(_selectedImage!.path) ?? 'application/octet-stream';
-        final mimeSplit = mimeType.split('/');
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'file_name',
-            _selectedImage!.path,
-            contentType: MediaType(mimeSplit[0], mimeSplit[1]),
-          ),
-        );
-      }
-
-      // Debugging
-      debugPrint('Sending request to: $uri');
-      debugPrint('Request Fields: ${request.fields}');
-      debugPrint('Number of files: ${request.files.length}');
-
-      // Send the request
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
-
-      debugPrint('Response Status Code: ${response.statusCode}');
-      debugPrint('Response Body: ${response.body}');
-
-      // Show success *only* if 200 <= statusCode < 300
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        _showAlertDialog(
-          title: 'Success',
-          content: 'Item added successfully.',
-          isError: false,
-          onOk: () {
-            Navigator.pop(context, true);
-          },
-        );
-      } else {
-        _showAlertDialog(
-          title: 'Error',
-          content: 'Failed to add item.\n\nAPI Response:\n${response.body}',
-          isError: true,
-        );
-      }
-    } catch (e) {
-      _showAlertDialog(
-        title: 'Unexpected Error',
-        content: 'An error occurred: $e',
-        isError: true,
+    if (isOffline) {
+      AddAssignmentRecord record = AddAssignmentRecord(
+        projectId: widget.projectId,
+        title: title,
+        descriptions: description,
+        statusId: _statusMap[status]!,
+        members: selectedMembers.map((member) => {"employee_id": member['employee_id'].toString()}).toList(),
       );
-      debugPrint('Unexpected error: $e');
-    }
+      await offlineProvider.addAssignment(record);
+      await offlineProvider.autoOffline(true);
+      debugPrint('No internet. Check-in stored locally.');
+    } else {
+      setState(() {
+        _isLoading = true;
+      });
 
-    setState(() {
-      _isLoading = false;
-    });
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('token');
+        if (token == null) {
+          _showAlertDialog(
+            title: 'Authentication Error',
+            content: 'Token is null. Please log in again.',
+            isError: true,
+          );
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+
+        // Build the request
+        var uri = Uri.parse('${widget.baseUrl}/api/work-tracking/ass/insert');
+        var request = http.MultipartRequest('POST', uri);
+        request.headers['Authorization'] = 'Bearer $token';
+
+        // Fill the fields
+        request.fields['project_id'] = widget.projectId;
+        request.fields['title'] = title;
+        request.fields['descriptions'] = description;
+        request.fields['status_id'] = _statusMap[status]!;
+
+        List<Map<String, String>> membersDetails = selectedMembers.map((member) => {"employee_id": member['employee_id'].toString()}).toList();
+        request.fields['memberDetails'] = jsonEncode(membersDetails);
+
+        // If there's an image
+        if (_selectedImage != null && await _selectedImage!.exists()) {
+          final mimeType = lookupMimeType(_selectedImage!.path) ?? 'application/octet-stream';
+          final mimeSplit = mimeType.split('/');
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'file_name',
+              _selectedImage!.path,
+              contentType: MediaType(mimeSplit[0], mimeSplit[1]),
+            ),
+          );
+        }
+
+        // Debugging
+        debugPrint('Sending request to: $uri');
+        debugPrint('Request Fields: ${request.fields}');
+        debugPrint('Number of files: ${request.files.length}');
+
+        // Send the request
+        var streamedResponse = await request.send();
+        var response = await http.Response.fromStream(streamedResponse);
+
+        debugPrint('Response Status Code: ${response.statusCode}');
+        debugPrint('Response Body: ${response.body}');
+
+        // Show success *only* if 200 <= statusCode < 300
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          _showAlertDialog(
+            title: 'Success',
+            content: 'Item added successfully.',
+            isError: false,
+            onOk: () {
+              Navigator.pop(context, true);
+            },
+          );
+        } else {
+          _showAlertDialog(
+            title: 'Error',
+            content: 'Failed to add item.\n\nAPI Response:\n${response.body}',
+            isError: true,
+          );
+        }
+      } catch (e) {
+        _showAlertDialog(
+          title: 'Unexpected Error',
+          content: 'An error occurred: $e',
+          isError: true,
+        );
+        debugPrint('Unexpected error: $e');
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   /// Reusable AlertDialog for error/success

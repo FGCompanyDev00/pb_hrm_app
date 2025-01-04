@@ -18,6 +18,7 @@ import 'package:logger/logger.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
+import 'package:pb_hrsystem/hive_helper/model/add_assignment_record.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/models/qr_profile_page.dart';
@@ -39,8 +40,7 @@ import 'package:encrypt/encrypt.dart' as encrypt;
 /// ------------------------------------------------------------
 /// 1) Global instance of FlutterLocalNotificationsPlugin
 /// ------------------------------------------------------------
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-FlutterLocalNotificationsPlugin();
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 // Initialize Logger with a custom filter for production
 final Logger logger = Logger(
@@ -101,12 +101,10 @@ void main() async {
 /// ------------------------------------------
 Future<void> _initializeLocalNotifications() async {
   // For Android
-  const AndroidInitializationSettings initializationSettingsAndroid =
-  AndroidInitializationSettings('@mipmap/playstore');
+  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
 
   // For iOS
-  const DarwinInitializationSettings initializationSettingsIOS =
-  DarwinInitializationSettings(
+  const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
     requestAlertPermission: true,
     requestBadgePermission: true,
     requestSoundPermission: true,
@@ -132,19 +130,16 @@ Future<void> _initializeLocalNotifications() async {
     importance: Importance.high,
   );
 
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<
-      AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(channel);
+  await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
 }
 
 /// iOS < 10 local notification callback
 void onDidReceiveLocalNotification(
-    int id,
-    String? title,
-    String? body,
-    String? payload,
-    ) {
+  int id,
+  String? title,
+  String? body,
+  String? payload,
+) {
   debugPrint('iOS (<10) local notification: title=$title, body=$body');
 }
 
@@ -168,8 +163,7 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             primarySwatch: Colors.green,
             visualDensity: VisualDensity.adaptivePlatformDensity,
-            textTheme:
-            GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme),
+            textTheme: GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
@@ -183,9 +177,9 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: Colors.black,
             textTheme: GoogleFonts.oxaniumTextTheme(
               Theme.of(context).textTheme.apply(
-                bodyColor: Colors.white,
-                displayColor: Colors.white,
-              ),
+                    bodyColor: Colors.white,
+                    displayColor: Colors.white,
+                  ),
             ),
           ),
           themeMode: themeNotifier.currentTheme,
@@ -268,8 +262,7 @@ class MainScreen extends StatefulWidget {
 class MainScreenState extends State<MainScreen> {
   int _selectedIndex = 1;
   bool _enableConnection = false;
-  final List<GlobalKey<NavigatorState>> _navigatorKeys =
-  List.generate(4, (index) => GlobalKey<NavigatorState>());
+  final List<GlobalKey<NavigatorState>> _navigatorKeys = List.generate(4, (index) => GlobalKey<NavigatorState>());
 
   @override
   void initState() {
@@ -277,8 +270,7 @@ class MainScreenState extends State<MainScreen> {
     BackButtonInterceptor.add(_routeInterceptor);
     offlineProvider.initialize();
     connectivityResult.onConnectivityChanged.listen((source) async {
-      Future.delayed(const Duration(seconds: 20))
-          .whenComplete(() => _enableConnection = true);
+      Future.delayed(const Duration(seconds: 20)).whenComplete(() => _enableConnection = true);
       if (_enableConnection) {
         if (source.contains(ConnectivityResult.none)) {
           showToast('No internet', Colors.red, Icons.mobiledata_off_rounded);
@@ -380,13 +372,12 @@ class MainScreenState extends State<MainScreen> {
 Future<void> initializeHive() async {
   await Hive.initFlutter();
   Hive.registerAdapter(AttendanceRecordAdapter());
+  Hive.registerAdapter(AddAssignmentRecordAdapter());
   Hive.registerAdapter(UserProfileRecordAdapter());
   Hive.registerAdapter(QRRecordAdapter());
 
   final String? storedKey = await secureStorage.read(key: 'hive_encryption_key');
-  final List<int> encryptionKey = storedKey != null
-      ? base64Url.decode(storedKey)
-      : encrypt.Key.fromSecureRandom(32).bytes;
+  final List<int> encryptionKey = storedKey != null ? base64Url.decode(storedKey) : encrypt.Key.fromSecureRandom(32).bytes;
   if (storedKey == null) {
     final String encodedKey = base64UrlEncode(encryptionKey);
     await secureStorage.write(key: 'hive_encryption_key', value: encodedKey);
@@ -396,6 +387,7 @@ Future<void> initializeHive() async {
 
   await Future.wait([
     Hive.openBox<AttendanceRecord>('pending_attendance', encryptionCipher: cipher),
+    Hive.openBox<AddAssignmentRecord>('add_assignment', encryptionCipher: cipher),
     Hive.openBox<UserProfileRecord>('user_profile', encryptionCipher: cipher),
     Hive.openBox<QRRecord>('qr_profile', encryptionCipher: cipher),
     Hive.openBox<String>('userProfileBox', encryptionCipher: cipher),
@@ -433,7 +425,6 @@ Dio createSecureDio() {
       },
     ),
   );
-
 
   return dio;
 }
