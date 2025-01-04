@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/comment_approvals_reply.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -829,7 +828,7 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
           child: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
               // Validation Check
-              bool _isFormValid = _selectedWaitingUid != null &&
+              bool isFormValid = _selectedWaitingUid != null &&
                   _selectedMergeVehicleUid != null;
 
               return Column(
@@ -879,7 +878,7 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
                     onChanged: (value) {
                       setState(() {
                         _selectedWaitingUid = value;
-                        _isFormValid = _selectedWaitingUid != null &&
+                        isFormValid = _selectedWaitingUid != null &&
                             _selectedMergeVehicleUid != null;
                       });
                     },
@@ -922,7 +921,7 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
                     onChanged: (value) {
                       setState(() {
                         _selectedMergeVehicleUid = value;
-                        _isFormValid = _selectedWaitingUid != null &&
+                        isFormValid = _selectedWaitingUid != null &&
                             _selectedMergeVehicleUid != null;
                       });
                     },
@@ -932,14 +931,14 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
                   // Save & Approve Button (Center)
                   Center(
                     child: ElevatedButton(
-                      onPressed: _isFormValid
+                      onPressed: isFormValid
                           ? () {
                         Navigator.of(ctx).pop();
                         _showConfirmMergeDialog(context);
                       }
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isFormValid
+                        backgroundColor: isFormValid
                             ? const Color(0xFFDBB342)
                             : Colors.grey, // Disabled state
                         shape: RoundedRectangleBorder(

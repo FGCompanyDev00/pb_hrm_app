@@ -828,7 +828,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           child: StatefulBuilder(
             builder: (BuildContext context, StateSetter setState) {
               // Validation Check
-              bool _isFormValid = _selectedWaitingUid != null &&
+              bool isFormValid = _selectedWaitingUid != null &&
                   _selectedMergeVehicleUid != null;
 
               return Column(
@@ -878,7 +878,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                     onChanged: (value) {
                       setState(() {
                         _selectedWaitingUid = value;
-                        _isFormValid = _selectedWaitingUid != null &&
+                        isFormValid = _selectedWaitingUid != null &&
                             _selectedMergeVehicleUid != null;
                       });
                     },
@@ -921,7 +921,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                     onChanged: (value) {
                       setState(() {
                         _selectedMergeVehicleUid = value;
-                        _isFormValid = _selectedWaitingUid != null &&
+                        isFormValid = _selectedWaitingUid != null &&
                             _selectedMergeVehicleUid != null;
                       });
                     },
@@ -931,14 +931,14 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                   // Save & Approve Button (Center)
                   Center(
                     child: ElevatedButton(
-                      onPressed: _isFormValid
+                      onPressed: isFormValid
                           ? () {
                         Navigator.of(ctx).pop();
                         _showConfirmMergeDialog(context);
                       }
                           : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _isFormValid
+                        backgroundColor: isFormValid
                             ? const Color(0xFFDBB342)
                             : Colors.grey, // Disabled state
                         shape: RoundedRectangleBorder(
