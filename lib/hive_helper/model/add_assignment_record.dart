@@ -4,7 +4,7 @@ import 'package:hive/hive.dart';
 
 part 'add_assignment_record.g.dart';
 
-@HiveType(typeId: 2)
+@HiveType(typeId: 3)
 class AddAssignmentRecord extends HiveObject {
   @HiveField(0)
   String projectId;

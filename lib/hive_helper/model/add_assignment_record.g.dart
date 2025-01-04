@@ -8,7 +8,7 @@ part of 'add_assignment_record.dart';
 
 class AddAssignmentRecordAdapter extends TypeAdapter<AddAssignmentRecord> {
   @override
-  final int typeId = 2;
+  final int typeId = 3;
 
   @override
   AddAssignmentRecord read(BinaryReader reader) {
