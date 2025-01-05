@@ -1,5 +1,3 @@
-// lib/return_car_page_details.dart
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -21,11 +19,17 @@ class ReturnCarPageDetails extends StatefulWidget {
 class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   bool isLoading = true;
   Map<String, dynamic>? eventData;
+
+  // Controllers
   final TextEditingController recipientNameController = TextEditingController();
   final TextEditingController distanceController = TextEditingController();
   final TextEditingController departureDateController = TextEditingController();
   final TextEditingController returnDateController = TextEditingController();
+
+  /// This controller will be set inside the comment modal
   final TextEditingController commentController = TextEditingController();
+
+  // File selection
   PlatformFile? selectedFile;
 
   @override
@@ -63,7 +67,7 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
       if (data['results'] != null) {
         eventData = data['results'];
 
-        // Map fields correctly
+        // Map fields
         recipientNameController.text = eventData?['requestor_name'] ?? '';
         distanceController.text = eventData?['distance_end']?.toString() ?? '';
         departureDateController.text = eventData?['date_out'] ?? '';
@@ -90,6 +94,7 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
     }
   }
 
+  /// Called when user finally confirms (in the Comment dialog).
   Future<void> confirmReturn() async {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
@@ -110,6 +115,7 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
       'driver_name': recipientNameController.text,
     };
 
+    // If user typed a comment in the dialog, attach it
     if (commentController.text.isNotEmpty) {
       body['comment'] = commentController.text;
     }
@@ -147,23 +153,200 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
       }
     }
 
+    // After the response, show success or error
     if (response.statusCode == 200 && responseData != null) {
       if (responseData['statusCode'] == 200 || responseData['statusCode'] == 201) {
         // Success
-        if (mounted) showResponseModal(context, success: true, message: responseData['message']);
+        if (mounted) {
+          showResultModal(context, success: true, message: responseData['message'] ?? 'Success!');
+        }
       } else {
         // API returned an error
         String errorMessage = responseData['message'] ?? 'An error occurred.';
-        if (mounted) showResponseModal(context, success: false, message: errorMessage);
+        if (mounted) {
+          showResultModal(context, success: false, message: errorMessage);
+        }
       }
     } else if (responseData != null && responseData['message'] != null) {
       // Handle error message from API payload
       String errorMessage = responseData['message'];
-      if (mounted) showResponseModal(context, success: false, message: errorMessage);
+      if (mounted) {
+        showResultModal(context, success: false, message: errorMessage);
+      }
     } else {
       // HTTP error without specific API error message
-      if (mounted) showResponseModal(context, success: false, message: 'Failed to confirm return. Please try again.');
+      if (mounted) {
+        showResultModal(context, success: false, message: 'Failed to confirm return. Please try again.');
+      }
     }
+  }
+
+  /// Show the Comment modal after user hits "Save". Then user hits "Confirm" to submit.
+  void showCommentModal() {
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
+    // Clear old comment each time we open the modal, if you like:
+    // commentController.clear();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false, // user must press Confirm or close
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
+          contentPadding: const EdgeInsets.all(20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  Text(
+                    'Comment',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: commentController,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText: 'Your request comment here (optional)',
+                      hintStyle: TextStyle(
+                        color: isDarkMode ? Colors.white54 : Colors.black54,
+                      ),
+                      fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                      filled: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // close the comment dialog
+                      confirmReturn();            // then call confirmReturn
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDarkMode
+                          ? Colors.orangeAccent
+                          : const Color(0xFFE2AD30),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 24,
+                      ),
+                    ),
+                    child: Text(
+                      'Confirm',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.black : Colors.white,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// After confirmReturn, we show a final result (success or error)
+  void showResultModal(
+      BuildContext context, {
+        required bool success,
+        required String message,
+      }) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogCtx) {
+        return AlertDialog(
+          backgroundColor:
+          success ? (isDarkMode ? Colors.grey[800] : Colors.white)
+              : Colors.red[400], // example: red if error
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          contentPadding: const EdgeInsets.all(20),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (success)
+                  Icon(
+                    Icons.check_circle,
+                    size: 48,
+                    color: isDarkMode ? Colors.white : Colors.green,
+                  )
+                else
+                  Icon(
+                    Icons.error,
+                    size: 48,
+                    color: Colors.white,
+                  ),
+                const SizedBox(height: 16),
+                Text(
+                  success ? 'SUCCESS' : 'ERROR',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: success
+                        ? (isDarkMode ? Colors.white : Colors.black)
+                        : Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: success
+                        ? (isDarkMode ? Colors.white70 : Colors.black87)
+                        : Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(dialogCtx).pop(); // close success/error dialog
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: success
+                        ? (isDarkMode ? Colors.orangeAccent : const Color(0xFFE2AD30))
+                        : Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text('Close'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -191,7 +374,9 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
           flexibleSpace: Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+                image: AssetImage(
+                  isDarkMode ? 'assets/darkbg.png' : 'assets/background.png',
+                ),
                 fit: BoxFit.cover,
               ),
             ),
@@ -235,12 +420,15 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Display the date
+            // Display the created_date (if any)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  eventData?['created_date'] != null ? DateFormat('MMMM dd, yyyy').format(DateTime.parse(eventData!['created_date']).toLocal()) : '',
+                  eventData?['created_date'] != null
+                      ? DateFormat('MMMM dd, yyyy')
+                      .format(DateTime.parse(eventData!['created_date']).toLocal())
+                      : '',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -252,7 +440,9 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                     Icons.add_circle,
                     color: Colors.green,
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    // TBD: any action you want
+                  },
                 ),
               ],
             ),
@@ -273,16 +463,28 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                   ),
                   const SizedBox(height: 12),
                   buildTextField(
-                    'Distance *',
+                    'Distance (km)*',
                     distanceController,
                     keyboardType: TextInputType.number,
                     isDarkMode: isDarkMode,
                   ),
                   const SizedBox(height: 12),
-                  buildDateField(context, 'Departure Date *', departureDateController, isDarkMode),
+                  buildDateField(
+                    context,
+                    'Departure Date *',
+                    departureDateController,
+                    isDarkMode,
+                  ),
                   const SizedBox(height: 12),
-                  buildDateField(context, 'Return Date *', returnDateController, isDarkMode),
+                  buildDateField(
+                    context,
+                    'Return Date *',
+                    returnDateController,
+                    isDarkMode,
+                  ),
                   const SizedBox(height: 12),
+
+                  // File pick design
                   Text(
                     'File',
                     style: TextStyle(
@@ -292,110 +494,99 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDarkMode ? Colors.green : Colors.blue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onPressed: () async {
-                          FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.any);
-
-                          if (result != null) {
-                            setState(() {
-                              selectedFile = result.files.first;
-                            });
-                          }
-                        },
-                        child: Text(
-                          'Select file',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.black : Colors.white,
-                          ),
-                        ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? Colors.grey[700] : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDarkMode ? Colors.grey : Colors.grey.shade400,
                       ),
-                      const SizedBox(width: 10),
-                      if (selectedFile != null) ...[
+                    ),
+                    child: Row(
+                      children: [
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                            isDarkMode ? Colors.green : Colors.orange,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () async {
+                            FilePickerResult? result = await FilePicker.platform
+                                .pickFiles(type: FileType.any);
+
+                            if (result != null) {
+                              setState(() {
+                                selectedFile = result.files.first;
+                              });
+                            }
+                          },
+                          child: Text(
+                            'Choose Files',
+                            style: TextStyle(
+                              color:
+                              isDarkMode ? Colors.black : Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            selectedFile!.name,
+                            selectedFile == null
+                                ? 'No file chosen'
+                                : selectedFile!.name,
                             style: TextStyle(
-                              color: isDarkMode ? Colors.white : Colors.black,
+                              color:
+                              isDarkMode ? Colors.white : Colors.black,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
-                    ],
+                    ),
                   ),
+
                   const SizedBox(height: 20),
+                  // We'll remove the direct comment field from here if you want
+                  // the user to add comment in the "Comment" modal only.
+                  // Otherwise, you can keep it. For now, let's remove it to match your flow:
+                  /*
                   Text(
                     'Comment',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : Colors.black,
-                    ),
+                    ...
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: commentController,
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.white : Colors.black,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Type your comment here',
-                      hintStyle: TextStyle(
-                        color: isDarkMode ? Colors.white54 : Colors.black54,
-                      ),
-                      fillColor: isDarkMode ? Colors.grey[700] : Colors.white,
-                      filled: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(
-                          color: isDarkMode ? Colors.grey : Colors.grey,
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(
-                          color: isDarkMode ? Colors.grey : Colors.grey,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(
-                          color: isDarkMode ? Colors.orangeAccent : const Color(0xFFE2AD30),
-                        ),
-                      ),
-                    ),
-                    minLines: 1,
-                    maxLines: 5,
-                  ),
+                  */
+
                   const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      confirmReturn();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isDarkMode ? Colors.orangeAccent : const Color(0xFFE2AD30),
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Instead of calling confirmReturn() directly,
+                        // show the comment modal first:
+                        showCommentModal();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDarkMode
+                            ? Colors.orangeAccent
+                            : const Color(0xFFE2AD30),
+                        minimumSize: const Size(180, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        'Save',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.black : Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    child: Text(
-                      'Confirm Return',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.black : Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                  )
                 ],
               ),
             ),
@@ -405,12 +596,13 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
     );
   }
 
+  /// TextField builder
   Widget buildTextField(
-    String label,
-    TextEditingController controller, {
-    TextInputType keyboardType = TextInputType.text,
-    required bool isDarkMode,
-  }) {
+      String label,
+      TextEditingController controller, {
+        TextInputType keyboardType = TextInputType.text,
+        required bool isDarkMode,
+      }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -451,7 +643,9 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: isDarkMode ? Colors.orangeAccent : const Color(0xFFE2AD30),
+                color: isDarkMode
+                    ? Colors.orangeAccent
+                    : const Color(0xFFE2AD30),
               ),
             ),
           ),
@@ -460,7 +654,13 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
     );
   }
 
-  Widget buildDateField(BuildContext context, String label, TextEditingController controller, bool isDarkMode) {
+  /// Date+Time picker builder
+  Widget buildDateField(
+      BuildContext context,
+      String label,
+      TextEditingController controller,
+      bool isDarkMode,
+      ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -486,30 +686,82 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                 color: isDarkMode ? Colors.white : Colors.black,
               ),
               onPressed: () async {
-                DateTime? pickedDate = await showDatePicker(
+                // 1) Date
+                DateTime initialDateTime;
+
+                if (controller.text.isNotEmpty) {
+                  try {
+                    initialDateTime =
+                        DateFormat('yyyy-MM-dd HH:mm:ss').parse(controller.text);
+                  } catch (_) {
+                    initialDateTime = DateTime.now();
+                  }
+                } else {
+                  initialDateTime = DateTime.now();
+                }
+
+                final DateTime? pickedDate = await showDatePicker(
                   context: context,
-                  initialDate: controller.text.isNotEmpty ? DateTime.parse(controller.text) : DateTime.now(),
+                  initialDate: initialDateTime,
                   firstDate: DateTime(2000),
                   lastDate: DateTime(2101),
                   builder: (context, child) {
                     return Theme(
                       data: isDarkMode
                           ? ThemeData.dark().copyWith(
-                              colorScheme: ColorScheme.dark(
-                                primary: Colors.orangeAccent,
-                                onPrimary: Colors.black,
-                                surface: Colors.grey[800]!,
-                                onSurface: Colors.white,
-                              ),
-                            )
+                        colorScheme: ColorScheme.dark(
+                          primary: Colors.orangeAccent,
+                          onPrimary: Colors.black,
+                          surface: Colors.grey[800]!,
+                          onSurface: Colors.white,
+                        ),
+                      )
                           : ThemeData.light(),
                       child: child!,
                     );
                   },
                 );
-                if (pickedDate != null) {
-                  controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
-                }
+                if (pickedDate == null) return;
+
+                // 2) Time
+                final TimeOfDay initialTime =
+                TimeOfDay.fromDateTime(initialDateTime);
+
+                final TimeOfDay? pickedTime = await showTimePicker(
+                  context: context,
+                  initialTime: initialTime,
+                  builder: (context, child) {
+                    return Theme(
+                      data: isDarkMode
+                          ? ThemeData.dark().copyWith(
+                        colorScheme: ColorScheme.dark(
+                          primary: Colors.orangeAccent,
+                          onPrimary: Colors.black,
+                          surface: Colors.grey[800]!,
+                          onSurface: Colors.white,
+                        ),
+                      )
+                          : ThemeData.light(),
+                      child: child!,
+                    );
+                  },
+                );
+                if (pickedTime == null) return;
+
+                final DateTime finalDateTime = DateTime(
+                  pickedDate.year,
+                  pickedDate.month,
+                  pickedDate.day,
+                  pickedTime.hour,
+                  pickedTime.minute,
+                );
+
+                final String formatted = DateFormat('yyyy-MM-dd HH:mm:ss')
+                    .format(finalDateTime);
+
+                setState(() {
+                  controller.text = formatted;
+                });
               },
             ),
             border: OutlineInputBorder(
@@ -529,55 +781,14 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: isDarkMode ? Colors.orangeAccent : const Color(0xFFE2AD30),
+                color: isDarkMode
+                    ? Colors.orangeAccent
+                    : const Color(0xFFE2AD30),
               ),
             ),
           ),
         ),
       ],
-    );
-  }
-
-  void showResponseModal(
-    BuildContext context, {
-    required bool success,
-    required String message,
-  }) {
-    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
-    final bool isDarkMode = themeNotifier.isDarkMode;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: isDarkMode ? Colors.grey[800] : Colors.white,
-          title: Text(
-            success ? 'Success' : 'Error',
-            style: TextStyle(
-              color: isDarkMode ? Colors.white : Colors.black,
-            ),
-          ),
-          content: Text(
-            message,
-            style: TextStyle(
-              color: isDarkMode ? Colors.white70 : Colors.black87,
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text(
-                'OK',
-                style: TextStyle(
-                  color: isDarkMode ? Colors.orangeAccent : Colors.blue,
-                ),
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -590,10 +801,10 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
       appBar: buildAppBar(context),
       body: isLoading
           ? Center(
-              child: CircularProgressIndicator(
-                color: isDarkMode ? Colors.orangeAccent : Colors.blue,
-              ),
-            )
+        child: CircularProgressIndicator(
+          color: isDarkMode ? Colors.orangeAccent : Colors.blue,
+        ),
+      )
           : buildBody(context),
       backgroundColor: isDarkMode ? Colors.black : Colors.white,
     );

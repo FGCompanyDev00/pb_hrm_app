@@ -183,7 +183,7 @@ class ReturnCarPageState extends State<ReturnCarPage> {
               children: [
                 Container(
                   color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white, // Background color based on theme
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                   child: Row(
                     children: [
                       Expanded(
@@ -231,7 +231,7 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                                   : Colors.white, // Dropdown menu background in light mode
                             ),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(60),
+                              borderRadius: BorderRadius.circular(40),
                             ),
                           ),
                         ),
@@ -291,8 +291,8 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                                       children: [
                                         Image.asset(
                                           'assets/car.png',
-                                          width: 40,
-                                          height: 40,
+                                          width: 35,
+                                          height: 35,
                                         ),
                                         const SizedBox(height: 6),
                                         const Text(
@@ -315,7 +315,7 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                                             event['requestor_name'] ?? '',
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 14,
+                                              fontSize: 15,
                                               color: Theme.of(context).brightness == Brightness.dark
                                                   ? Colors.white // Dark mode text color
                                                   : Colors.black, // Light mode text color
@@ -362,7 +362,7 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                                                 ),
                                               ),
                                               Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                                                 decoration: BoxDecoration(
                                                   color: _getStatusColor(event['status'] ?? ''),
                                                   borderRadius: BorderRadius.circular(8),
@@ -371,7 +371,7 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                                                   event['status'] ?? '',
                                                   style: const TextStyle(
                                                     color: Colors.white,
-                                                    fontSize: 10,
+                                                    fontSize: 12,
                                                   ),
                                                 ),
                                               ),
@@ -387,12 +387,12 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                                         ClipOval(
                                           child: Image.network(
                                             event['img_name'] ?? '',
-                                            width: 40,
-                                            height: 40,
+                                            width: 45,
+                                            height: 45,
                                             fit: BoxFit.cover,
                                           ),
                                         ),
-                                        const SizedBox(height: 6),
+                                        const SizedBox(height: 8),
                                         const Text(
                                           'View Detail',
                                           style: TextStyle(
