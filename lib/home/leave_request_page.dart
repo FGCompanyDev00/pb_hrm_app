@@ -1,5 +1,3 @@
-// leave_request_page.dart
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -35,6 +33,10 @@ class LeaveManagementPage extends HookWidget {
     final isLoadingLeaveTypes = useState<bool>(false);
     final isSubmitting = useState<bool>(false);
 
+    // Whether the user currently has selected a fractional day
+    // (This helps us skip auto-calculation when changing dates).
+    final isFractionalDay = useState<bool>(false);
+
     // Helper Method to Show Dialog
     void showCustomDialog(BuildContext context, String title, String content) {
       showDialog(
@@ -55,6 +57,7 @@ class LeaveManagementPage extends HookWidget {
                     endDateController.clear();
                     daysController.text = '0';
                     leaveTypeId.value = null;
+                    isFractionalDay.value = false;
                   }
                   Navigator.of(dialogContext).pop();
                 },
@@ -204,13 +207,16 @@ class LeaveManagementPage extends HookWidget {
     }, []);
 
     // Date Picker Method
-    Future<void> pickDate(BuildContext context, TextEditingController controller,
-        bool isStartDate) async {
+    Future<void> pickDate(
+        BuildContext context,
+        TextEditingController controller,
+        bool isStartDate,
+        ) async {
       DateTime initialDate = DateTime.now();
       DateTime firstDate = DateTime(2000);
       DateTime lastDate = DateTime(2100);
 
-      DateTime? pickedDate = await showDatePicker(
+      final pickedDate = await showDatePicker(
         context: context,
         initialDate: initialDate,
         firstDate: firstDate,
@@ -240,12 +246,19 @@ class LeaveManagementPage extends HookWidget {
       );
 
       if (pickedDate != null) {
+        // If user had picked fractional day before, reset it when picking new date
+        // because user is now picking a new date range
+        isFractionalDay.value = false;
+
         if (isStartDate) {
           if (endDateController.text.isNotEmpty) {
             final endDate = DateFormat('yyyy-MM-dd').parse(endDateController.text);
             if (pickedDate.isAfter(endDate)) {
               showCustomDialog(
-                  context, 'Invalid Date', 'Start date cannot be after the end date.');
+                context,
+                'Invalid Date',
+                'Start date cannot be after the end date.',
+              );
               return;
             }
           }
@@ -255,21 +268,90 @@ class LeaveManagementPage extends HookWidget {
             final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
             if (pickedDate.isBefore(startDate)) {
               showCustomDialog(
-                  context, 'Invalid Date', 'End date cannot be before the start date.');
+                context,
+                'Invalid Date',
+                'End date cannot be before the start date.',
+              );
               return;
             }
           }
           controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
         }
 
-        if (startDateController.text.isNotEmpty && endDateController.text.isNotEmpty) {
-          final startDate =
-          DateFormat('yyyy-MM-dd').parse(startDateController.text);
+        // Only auto-calculate days if not in fractional-day mode
+        if (!isFractionalDay.value &&
+            startDateController.text.isNotEmpty &&
+            endDateController.text.isNotEmpty) {
+          final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
           final endDate = DateFormat('yyyy-MM-dd').parse(endDateController.text);
           final difference = endDate.difference(startDate).inDays + 1;
           daysController.text = difference.toString();
         }
       }
+    }
+
+    // This method shows a dialog or bottom sheet
+    // for picking a fractional day: 0.25, 0.5, or 0.75
+    void showFractionalDayOptions() {
+      if (startDateController.text.isEmpty) {
+        showCustomDialog(
+          context,
+          'Error',
+          'Please select a start date first before choosing a partial day.',
+        );
+        return;
+      }
+
+      // Show a bottom sheet or simple dialog here
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (BuildContext ctx) {
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                const Text(
+                  'Select Partial Day',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const Divider(),
+                ListTile(
+                  title: const Text('0.25 Day (Quarter Day)'),
+                  onTap: () {
+                    endDateController.text = startDateController.text;
+                    daysController.text = '0.25';
+                    isFractionalDay.value = true;
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  title: const Text('0.5 Day (Half Day)'),
+                  onTap: () {
+                    endDateController.text = startDateController.text;
+                    daysController.text = '0.5';
+                    isFractionalDay.value = true;
+                    Navigator.pop(context);
+                  },
+                ),
+                ListTile(
+                  title: const Text('0.75 Day (Three-Quarter Day)'),
+                  onTap: () {
+                    endDateController.text = startDateController.text;
+                    daysController.text = '0.75';
+                    isFractionalDay.value = true;
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      );
     }
 
     // Save Data Method
@@ -284,6 +366,13 @@ class LeaveManagementPage extends HookWidget {
             showCustomDialog(context, 'Error', 'User not authenticated');
             isSubmitting.value = false;
             return;
+          }
+
+          // If user selected a fractional day, we expect Start Date == End Date
+          // but let's just ensure it in code. If isFractionalDay = true, forcibly
+          // set endDateController to match startDateController.
+          if (isFractionalDay.value) {
+            endDateController.text = startDateController.text;
           }
 
           final requestBody = {
@@ -306,8 +395,11 @@ class LeaveManagementPage extends HookWidget {
           if (response.statusCode == 200 ||
               response.statusCode == 201 ||
               response.statusCode == 204) {
-            showCustomDialog(context, 'Success',
-                'Your leave request has been submitted successfully.');
+            showCustomDialog(
+              context,
+              'Success',
+              'Your leave request has been submitted successfully.',
+            );
           } else if (response.statusCode == 400) {
             final responseBody = jsonDecode(response.body);
             String errorMessage = 'Failed to submit leave request.';
@@ -317,10 +409,16 @@ class LeaveManagementPage extends HookWidget {
             showCustomDialog(context, 'Error', errorMessage);
           } else if (response.statusCode == 401) {
             showCustomDialog(
-                context, 'Unauthorized', 'Your session has expired. Please log in again.');
+              context,
+              'Unauthorized',
+              'Your session has expired. Please log in again.',
+            );
           } else {
-            showCustomDialog(context, 'Error',
-                'Failed to submit leave request. Please try again.');
+            showCustomDialog(
+              context,
+              'Error',
+              'Failed to submit leave request. Please try again.',
+            );
           }
         } catch (e) {
           showCustomDialog(context, 'Error', 'An error occurred: $e');
@@ -328,8 +426,11 @@ class LeaveManagementPage extends HookWidget {
           isSubmitting.value = false;
         }
       } else {
-        showCustomDialog(context, 'Error',
-            'Please fill in all required fields to submit your leave request.');
+        showCustomDialog(
+          context,
+          'Error',
+          'Please fill in all required fields to submit your leave request.',
+        );
       }
     }
 
@@ -411,7 +512,9 @@ class LeaveManagementPage extends HookWidget {
               children: [
                 SingleChildScrollView(
                   padding: EdgeInsets.symmetric(
-                      horizontal: 20.0, vertical: constraints.maxWidth < 600 ? 180 : 60),
+                    horizontal: 20.0,
+                    vertical: constraints.maxWidth < 600 ? 180 : 60,
+                  ),
                   child: Form(
                     key: formKey,
                     child: Column(
@@ -425,9 +528,8 @@ class LeaveManagementPage extends HookWidget {
                             icon: const Icon(Icons.send),
                             label: const Text("Submit"),
                             style: ElevatedButton.styleFrom(
-                              foregroundColor: isDarkMode
-                                  ? Colors.black
-                                  : Colors.white,
+                              foregroundColor:
+                              isDarkMode ? Colors.black : Colors.white,
                               backgroundColor: isDarkMode
                                   ? Colors.orange.shade700
                                   : const Color(0xFFDBB342),
@@ -436,7 +538,9 @@ class LeaveManagementPage extends HookWidget {
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               padding: const EdgeInsets.symmetric(
-                                  vertical: 15.0, horizontal: 32.0),
+                                vertical: 15.0,
+                                horizontal: 32.0,
+                              ),
                             ),
                           ),
                         ),
@@ -484,8 +588,7 @@ class LeaveManagementPage extends HookWidget {
                                   }
                                   return null;
                                 },
-                                onTap: () =>
-                                    pickDate(context, startDateController, true),
+                                onTap: () => pickDate(context, startDateController, true),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -501,14 +604,13 @@ class LeaveManagementPage extends HookWidget {
                                   }
                                   return null;
                                 },
-                                onTap: () =>
-                                    pickDate(context, endDateController, false),
+                                onTap: () => pickDate(context, endDateController, false),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 20),
-                        // Days Field (Enhanced)
+                        // Days Field
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -528,10 +630,25 @@ class LeaveManagementPage extends HookWidget {
                                   IconButton(
                                     onPressed: () {
                                       int currentDays =
-                                          int.tryParse(daysController.text) ?? 0;
-                                      if (currentDays > 1) {
-                                        daysController.text =
-                                            (currentDays - 1).toString();
+                                          double.tryParse(daysController.text)?.toInt() ??
+                                              0;
+                                      // If we're already at 0 or fractional,
+                                      // you could show partial-day sheet or do nothing.
+                                      if (currentDays <= 0) {
+                                        // Show partial day options if user wants fractional
+                                        showFractionalDayOptions();
+                                      } else {
+                                        // Normal decrement logic
+                                        if (currentDays > 1) {
+                                          daysController.text =
+                                              (currentDays - 1).toString();
+                                          isFractionalDay.value = false; // back to full day
+                                        } else if (currentDays == 1) {
+                                          // If user tries to go below 1, show partial day?
+                                          // This is optional; or just set it to 0.
+                                          daysController.text = '0';
+                                          isFractionalDay.value = false;
+                                        }
                                       }
                                     },
                                     icon: const Icon(Icons.remove),
@@ -541,19 +658,21 @@ class LeaveManagementPage extends HookWidget {
                                   Expanded(
                                     child: TextFormField(
                                       controller: daysController,
-                                      readOnly: true,
+                                      readOnly: true, // user can't type manually
                                       textAlign: TextAlign.center,
                                       decoration: const InputDecoration(
                                         border: InputBorder.none,
                                         contentPadding: EdgeInsets.symmetric(
-                                            vertical: 16.0, horizontal: 12.0),
+                                          vertical: 16.0,
+                                          horizontal: 12.0,
+                                        ),
                                       ),
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
                                           return 'Days cannot be empty';
                                         }
-                                        if (int.tryParse(value) == null ||
-                                            int.parse(value) <= 0) {
+                                        final dVal = double.tryParse(value);
+                                        if (dVal == null || dVal < 0) {
                                           return 'Invalid number of days';
                                         }
                                         return null;
@@ -563,10 +682,14 @@ class LeaveManagementPage extends HookWidget {
                                   // Increment Button
                                   IconButton(
                                     onPressed: () {
+                                      // If user increments, we assume a full day approach
+                                      // So if we were in fractional mode, reset that
+                                      isFractionalDay.value = false;
+
                                       int currentDays =
-                                          int.tryParse(daysController.text) ?? 0;
-                                      daysController.text =
-                                          (currentDays + 1).toString();
+                                          double.tryParse(daysController.text)?.toInt() ??
+                                              0;
+                                      daysController.text = (currentDays + 1).toString();
                                     },
                                     icon: const Icon(Icons.add),
                                     tooltip: 'Increase days',
@@ -574,9 +697,7 @@ class LeaveManagementPage extends HookWidget {
                                 ],
                               ),
                             ),
-                            // Display Validation Error if any
-                            // Positioned below the container for better UX
-                            // Only show if there is an error
+                            const SizedBox(height: 10),
                           ],
                         ),
                         const SizedBox(height: 20),
