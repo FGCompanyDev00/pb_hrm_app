@@ -41,7 +41,6 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
   @override
   void initState() {
     super.initState();
-
     _initializeAnimations();
     _checkUserResponse();
   }
@@ -479,7 +478,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 90,
+            height: 97,
             child: GridView.count(
               crossAxisCount: 7,
               children: membersList,
@@ -490,7 +489,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           //     child: Row(
           //       children: membersList,
           //     )),
-          const SizedBox(height: 15),
+          const SizedBox(height: 25),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
