@@ -506,14 +506,14 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
                   ),
                 ],
               ),
-              Visibility(
-                visible: isDownload,
-                child: ElevatedButton(
-                  style: const ButtonStyle(backgroundColor: WidgetStatePropertyAll<Color>(Colors.green)),
-                  onPressed: _downloadFiles,
-                  child: Text(AppLocalizations.of(context)!.download),
-                ),
-              )
+              // Visibility(
+              //   visible: isDownload,
+              //   child: ElevatedButton(
+              //     style: const ButtonStyle(backgroundColor: WidgetStatePropertyAll<Color>(Colors.green)),
+              //     onPressed: _downloadFiles,
+              //     child: Text(AppLocalizations.of(context)!.download),
+              //   ),
+              // )
             ],
           ),
           const SizedBox(height: 15),
