@@ -456,7 +456,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     }
   }
 
-  Widget _buildMembersList(List<dynamic> members, {bool isDownload = true}) {
+  Widget _buildMembersList(List<dynamic> members) {
     if (members.isEmpty) return const SizedBox.shrink();
 
     List<Widget> membersList = [];

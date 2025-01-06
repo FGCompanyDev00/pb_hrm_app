@@ -303,7 +303,7 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                     color: isDarkMode ? Colors.white : Colors.green,
                   )
                 else
-                  Icon(
+                  const Icon(
                     Icons.error,
                     size: 48,
                     color: Colors.white,
