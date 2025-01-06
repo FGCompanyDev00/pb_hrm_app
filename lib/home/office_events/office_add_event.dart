@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:pb_hrsystem/home/home_calendar.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -321,6 +322,7 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
       _notification = null;
       _beforeEndDateTime.value = null;
     });
+    (HomeCalendarState() as Refreshable).refresh.call();
   }
 
   /// Validates the input fields based on the selected booking type
