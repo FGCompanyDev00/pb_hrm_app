@@ -186,12 +186,9 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    // Clear old comment each time we open the modal, if you like:
-    // commentController.clear();
-
     showDialog(
       context: context,
-      barrierDismissible: false, // user must press Confirm or close
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
@@ -204,6 +201,12 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
+                  Image.asset(
+                    'assets/chat_icon.png',
+                    width: 60,
+                    height: 60,
+                  ),
+                  const SizedBox(height: 16),
                   Text(
                     'Comment',
                     style: TextStyle(
@@ -236,8 +239,8 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.of(context).pop(); // close the comment dialog
-                      confirmReturn();            // then call confirmReturn
+                      Navigator.of(context).pop();
+                      confirmReturn();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isDarkMode
