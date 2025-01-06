@@ -594,10 +594,10 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         Text('${AppLocalizations.of(context)!.toDateLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _meetingFromController, true),
+          onTap: () => _selectDate(context, _meetingToController, true),
           child: AbsorbPointer(
             child: TextFormField(
-              controller: _meetingFromController,
+              controller: _meetingToController,
               decoration: InputDecoration(
                 contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
