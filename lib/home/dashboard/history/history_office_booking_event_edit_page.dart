@@ -372,6 +372,12 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
           _showErrorMessage('Please provide a reason for leave.');
           return false;
         }
+        if (_startDateTime != null && _endDateTime != null) {
+          if (_endDateTime!.isBefore(_startDateTime!)) {
+            _showErrorMessage('End date/time must be after start date/time.');
+            return false;
+          }
+        }
         break;
       case 'meeting':
         if (_meetingTitleController.text.isEmpty) {
@@ -390,11 +396,23 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
           _showErrorMessage('Please enter the employee telephone number.');
           return false;
         }
+        if (_startDateTime != null && _endDateTime != null) {
+          if (_endDateTime!.isBefore(_startDateTime!)) {
+            _showErrorMessage('End date/time must be after start date/time.');
+            return false;
+          }
+        }
         break;
       case 'car':
         if (_carPurposeController.text.isEmpty || _carPlaceController.text.isEmpty || _carDateInController.text.isEmpty || _carDateOutController.text.isEmpty) {
           _showErrorMessage('Please fill all required fields for Car Booking.');
           return false;
+        }
+        if (_startDateTime != null && _endDateTime != null) {
+          if (_endDateTime!.isBefore(_startDateTime!)) {
+            _showErrorMessage('End date/time must be after start date/time.');
+            return false;
+          }
         }
         break;
       default:
@@ -482,7 +500,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         Text('${AppLocalizations.of(context)!.fromDateLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _leaveFromController, AppLocalizations.of(context)!.fromDateLabel, true),
+          onTap: () => _selectDate(context, _leaveFromController, true),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _leaveFromController,
@@ -499,10 +517,10 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         Text('${AppLocalizations.of(context)!.toDateLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _leaveToController, AppLocalizations.of(context)!.toDateLabel, false),
+          onTap: () => _selectDate(context, _leaveFromController, true),
           child: AbsorbPointer(
             child: TextFormField(
-              controller: _leaveToController,
+              controller: _leaveFromController,
               decoration: InputDecoration(
                 contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
@@ -559,7 +577,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         Text('${AppLocalizations.of(context)!.fromDateLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _meetingFromController, AppLocalizations.of(context)!.fromDateLabel, true),
+          onTap: () => _selectDate(context, _meetingFromController, true),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _meetingFromController,
@@ -576,10 +594,10 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         Text('${AppLocalizations.of(context)!.toDateLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _meetingToController, AppLocalizations.of(context)!.toDateLabel, false),
+          onTap: () => _selectDate(context, _meetingFromController, true),
           child: AbsorbPointer(
             child: TextFormField(
-              controller: _meetingToController,
+              controller: _meetingFromController,
               decoration: InputDecoration(
                 contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0),
                 suffixIcon: const Icon(Icons.calendar_today),
@@ -735,7 +753,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         Text('${AppLocalizations.of(context)!.dateInLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _carDateInController, AppLocalizations.of(context)!.dateInLabel, true),
+          onTap: () => _selectDate(context, _carDateInController, true),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _carDateInController,
@@ -752,7 +770,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         Text('${AppLocalizations.of(context)!.dateOutLabel}*'),
         const SizedBox(height: 8.0),
         GestureDetector(
-          onTap: () => _selectDate(context, _carDateOutController, AppLocalizations.of(context)!.dateOutLabel, false),
+          onTap: () => _selectDate(context, _carDateOutController, true),
           child: AbsorbPointer(
             child: TextFormField(
               controller: _carDateOutController,
@@ -984,31 +1002,23 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
   }
 
   /// Selects a date and updates the controller
-  Future<void> _selectDate(BuildContext context, TextEditingController controller, String label, bool isStartDateTime) async {
-    final DateTime currentDay = DateTime.now();
-    DateTime initialDate;
-    DateTime selectedDate = controller.text.isNotEmpty ? DateTime.parse(controller.text) : currentDay;
-    TimeOfDay initialTime;
-
-    if (isStartDateTime) {
-      initialDate = DateTime(currentDay.year, currentDay.month, currentDay.day);
-      initialTime = TimeOfDay(hour: selectedDate.hour, minute: selectedDate.hour);
-    } else {
-      initialDate = _beforeEndDateTime.value ?? DateTime(currentDay.year, currentDay.month, currentDay.day);
-      initialTime = TimeOfDay(hour: (_beforeEndDateTime.value?.hour ?? currentDay.hour), minute: (_beforeEndDateTime.value?.minute ?? currentDay.minute));
-    }
+  Future<void> _selectDate(BuildContext context, TextEditingController dateController, bool isStartDate) async {
+    final DateTime currentDate = DateTime.now();
+    final DateTime initialDate = isStartDate ? (_startDateTime ?? currentDate) : (_endDateTime ?? currentDate);
+    final DateTime firstDate = currentDate.subtract(const Duration(days: 365));
+    final DateTime lastDate = currentDate.add(const Duration(days: 365 * 5));
 
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: initialDate.isAfter(selectedDate) ? initialDate : selectedDate,
-      firstDate: initialDate,
-      lastDate: DateTime(2101),
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
     );
 
     if (pickedDate != null) {
       final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
-        initialTime: isStartDateTime ? initialTime : const TimeOfDay(hour: 13, minute: 0),
+        initialTime: TimeOfDay.fromDateTime(initialDate),
       );
 
       if (pickedTime != null) {
@@ -1021,17 +1031,19 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         );
 
         setState(() {
-          if (isStartDateTime) {
+          if (isStartDate) {
             _startDateTime = pickedDateTime;
-            _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
+            _beforeEndDateTime.value = _startDateTime!.add(const Duration(hours: 1));
+            // Ensure end date/time is after start date/time
+            if (_endDateTime != null && _endDateTime!.isBefore(_startDateTime!)) {
+              _endDateTime = _startDateTime!.add(const Duration(hours: 1));
+              _carDateOutController.text = DateFormat('yyyy-MM-dd HH:mm').format(_endDateTime!);
+            }
           } else {
             _endDateTime = pickedDateTime;
           }
 
-          controller.text = DateFormat('yyyy-MM-dd HH:mm').format(pickedDateTime);
-          if (kDebugMode) {
-            print('Selected Date for $label: ${controller.text}');
-          }
+          dateController.text = DateFormat('yyyy-MM-dd HH:mm').format(pickedDateTime);
         });
       }
     }
