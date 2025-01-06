@@ -25,6 +25,10 @@ import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
+abstract class Refreshable {
+  void refresh();
+}
+
 class HomeCalendar extends StatefulWidget {
   const HomeCalendar({super.key});
 
@@ -32,7 +36,7 @@ class HomeCalendar extends StatefulWidget {
   HomeCalendarState createState() => HomeCalendarState();
 }
 
-class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin {
+class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin implements Refreshable {
   late Box eventsBox;
 
   // ValueNotifier to hold events mapped by date
@@ -65,7 +69,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    fetchData();
     _selectedDay = _focusedDay;
     switchTime.value = (_focusedDay.hour < 18 && _focusedDay.hour > 6) ? false : true;
 
@@ -84,7 +88,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (events.value.isEmpty) addEventOffline(eventsForDay);
       } else {
         // Fetch initial data
-        _fetchData();
+        fetchData();
       }
     });
   }
@@ -145,7 +149,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   }
 
   /// Fetches all required data concurrently
-  Future<void> _fetchData() async {
+  Future<void> fetchData() async {
     setState(() {
       _isLoading = true;
     });
@@ -167,6 +171,29 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         _isLoading = false;
       });
     }
+  }
+
+  /// Fetches all required data concurrently
+  Future<void> fetchDataPass() async {
+    try {
+      await Future.wait([
+        _fetchMeetingData(),
+        _fetchLeaveRequests(),
+        _fetchMeetingRoomBookings(),
+        _fetchMeetingRoomInvite(),
+        _fetchCarBookings(),
+        _fetchCarBookingsInvite(),
+        _fetchMinutesOfMeeting(),
+        _fetchMinutesOfMeetingMembers(),
+      ]);
+    } catch (e) {
+      showSnackBar('Error fetching data: $e');
+    } finally {}
+  }
+
+  @override
+  void refresh() async {
+    await fetchDataPass(); // Refresh data when triggered from the bottom navigation bar
   }
 
   /// Fetches leave requests from the API
@@ -611,25 +638,23 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (status == 'Cancelled') continue;
 
         Events? event;
-        if (mounted) {
-          event = Events(
-            title: item['project_name'] ?? 'Minutes  Of Meeting',
-            start: startDateTime,
-            end: endDateTime,
-            desc: item['descriptions'] ?? 'Minutes Of Meeting Pending',
-            status: status,
-            isMeeting: true,
-            category: 'Minutes Of Meeting',
-            uid: uid,
-            imgName: item['img_name'],
-            createdBy: item['member_name'],
-            createdAt: item['updated_at'],
-            // members: List<Map<String, dynamic>>.from(resultMembers),
-          );
-        }
+        event = Events(
+          title: item['project_name'] ?? 'Minutes  Of Meeting',
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['descriptions'] ?? 'Minutes Of Meeting Pending',
+          status: status,
+          isMeeting: true,
+          category: 'Minutes Of Meeting',
+          uid: uid,
+          imgName: item['img_name'],
+          createdBy: item['member_name'],
+          createdAt: item['updated_at'],
+          // members: List<Map<String, dynamic>>.from(resultMembers),
+        );
 
         for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
-          addEvent(day, event!);
+          addEvent(day, event);
         }
       }
     } catch (e) {
@@ -663,26 +688,24 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (status == 'Cancelled') continue;
 
         Events? event;
-        if (mounted) {
-          event = Events(
-            title: item['title'] ?? AppLocalizations.of(context)!.meetingRoomBookings,
-            start: startDateTime,
-            end: endDateTime,
-            desc: item['remark'] ?? 'Booking Pending',
-            status: status,
-            isMeeting: true,
-            category: 'Meeting Room Bookings',
-            uid: uid,
-            imgName: item['img_name'],
-            createdBy: item['employee_name'],
-            createdAt: item['date_create'],
-            location: item['room_name'] ?? 'Meeting Room',
-            members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
-          );
-        }
+        event = Events(
+          title: item['title'] ?? AppLocalizations.of(context)!.meetingRoomBookings,
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['remark'] ?? 'Booking Pending',
+          status: status,
+          isMeeting: true,
+          category: 'Meeting Room Bookings',
+          uid: uid,
+          imgName: item['img_name'],
+          createdBy: item['employee_name'],
+          createdAt: item['date_create'],
+          location: item['room_name'] ?? 'Meeting Room',
+          members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
+        );
 
         for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
-          addEvent(day, event!);
+          addEvent(day, event);
         }
       }
     } catch (e) {
@@ -757,25 +780,23 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         Events? event;
 
-        if (mounted) {
-          event = Events(
-            title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
-            start: startDateTime,
-            end: endDateTime,
-            desc: item['place'] ?? 'Car Booking Pending',
-            status: status,
-            isMeeting: false,
-            category: 'Booking Car',
-            uid: uid,
-            location: item['place'] ?? '',
-            imgName: item['img_name'],
-            createdBy: item['requestor_name'],
-            createdAt: item['updated_at'],
-          );
-        }
+        event = Events(
+          title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['place'] ?? 'Car Booking Pending',
+          status: status,
+          isMeeting: false,
+          category: 'Booking Car',
+          uid: uid,
+          location: item['place'] ?? '',
+          imgName: item['img_name'],
+          createdBy: item['requestor_name'],
+          createdAt: item['updated_at'],
+        );
 
         for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
-          addEvent(day, event!);
+          addEvent(day, event);
         }
       }
     } catch (e) {
@@ -850,26 +871,24 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         Events? event;
 
-        if (mounted) {
-          event = Events(
-            title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
-            start: startDateTime,
-            end: endDateTime,
-            desc: item['place'] ?? 'Car Booking Pending',
-            status: status,
-            isMeeting: false,
-            category: 'Booking Car',
-            uid: uid,
-            location: item['place'] ?? '',
-            imgName: item['img_name'],
-            createdBy: item['requestor_name'],
-            createdAt: item['updated_at'],
-            members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
-          );
-        }
+        event = Events(
+          title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['place'] ?? 'Car Booking Pending',
+          status: status,
+          isMeeting: false,
+          category: 'Booking Car',
+          uid: uid,
+          location: item['place'] ?? '',
+          imgName: item['img_name'],
+          createdBy: item['requestor_name'],
+          createdAt: item['updated_at'],
+          members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
+        );
 
         for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
-          addEvent(day, event!);
+          addEvent(day, event);
         }
       }
     } catch (e) {
@@ -890,7 +909,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           _refreshKey = UniqueKey(); // Trigger full page rebuild
         });
       } else {
-        await _fetchData();
+        await fetchData();
         setState(() {
           _refreshKey = UniqueKey(); // Trigger full page rebuild
         });
@@ -1169,7 +1188,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             await _onRefresh();
           } else {
             await _onRefresh();
-            if (mounted) {
+            if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: const Text(

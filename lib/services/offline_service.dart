@@ -21,21 +21,47 @@ class OfflineProvider extends ChangeNotifier {
   late Box<AddAssignmentRecord> _addAssignment;
   late Box<UserProfileRecord> _profileBox;
   late Box<QRRecord> _qrBox;
-  LocalDatabaseService localDatabaseService = LocalDatabaseService();
+  final calendarDatabaseService = CalendarDatabaseService();
+  final historyDatabaseService = HistoryDatabaseService();
   final ValueNotifier<bool> isOfflineService = ValueNotifier<bool>(false);
 
-  // late Box<CalendarEventsListRecord> _calendarEventsBox;
-
+  //Calendar offline
   void initializeCalendar() async {
-    await localDatabaseService.initializeDatabase('calendar');
+    await calendarDatabaseService.initializeDatabase('calendar');
   }
 
   void insertCalendar(List<Events> events) async {
-    await localDatabaseService.insertEvents(events);
+    await calendarDatabaseService.insertEvents(events);
   }
 
   Future<List<Events>> getCalendar() async {
-    return await localDatabaseService.getListEvents();
+    return await calendarDatabaseService.getListEvents();
+  }
+
+  //History offline
+  void initializeHistory() async {
+    await historyDatabaseService.initializeDatabase('history');
+  }
+
+  void insertHistory(List<Events> events) async {
+    await historyDatabaseService.insertHistory(events);
+  }
+
+  Future<List<Events>> getHistory() async {
+    return await historyDatabaseService.getListHistory();
+  }
+
+  //History Pending offline
+  void initializeHistoryPending() async {
+    await historyDatabaseService.initializeDatabase('history');
+  }
+
+  void insertHistoryPending(List<Events> events) async {
+    await historyDatabaseService.insertHistory(events);
+  }
+
+  Future<List<Events>> getHistoryPending() async {
+    return await historyDatabaseService.getListHistory();
   }
 
   void initialize() async {
@@ -43,18 +69,7 @@ class OfflineProvider extends ChangeNotifier {
     _addAssignment = Hive.box<AddAssignmentRecord>('add_assignment');
     _profileBox = Hive.box<UserProfileRecord>('user_profile');
     _qrBox = Hive.box<QRRecord>('qr_profile');
-    // _calendarEventsBox = Hive.box<CalendarEventsListRecord>('store_events_calendar');
   }
-
-  // Future<void> addEventsCalendar(CalendarEventsListRecord events) async {
-  //   await _calendarEventsBox.add(events);
-  //   debugPrint('calendar ${_calendarEventsBox.values.first.listEvents.length}');
-  // }
-
-  // CalendarEventsListRecord? getEventsCalendar() {
-  //   if (_calendarEventsBox.isNotEmpty) return _calendarEventsBox.values.first;
-  //   return null;
-  // }
 
   Future<void> autoOffline(bool offline) async {
     isOfflineService.value = offline;

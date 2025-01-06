@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
-class LocalDatabaseService {
+class CalendarDatabaseService {
   Database? _database;
   String calendarTable = 'calendar_table';
 
@@ -178,4 +178,196 @@ class LocalDatabaseService {
   //   var result = await db.rawDelete('DELETE FROM $personTable WHERE $personEmail = ?', [email]);
   //   return result;
   // }
+}
+
+class HistoryDatabaseService {
+  Database? _database;
+  String historyTable = 'history_table';
+  String historyPendingTable = 'history_pending_table';
+
+  // Getter for our database
+  Future<Database> get database async {
+    _database ??= await initializeDatabase('history');
+    return _database!;
+  }
+
+  // Getter for our database
+  Future<Database> get databasePending async {
+    _database ??= await initializeDatabase('history_pending');
+    return _database!;
+  }
+
+  // Function to initialize the database
+  Future<Database> initializeDatabase(String nameDb) async {
+    // Getting directory path for both Android and iOS
+    Directory directory = await getApplicationDocumentsDirectory();
+    String path = '${directory.path}$nameDb.db';
+    Database getDatabase;
+    // Open or create database at a given path.
+    final existDatabase = await databaseExists(nameDb);
+    if (existDatabase) {
+      getDatabase = await openDatabase(path, version: 1, onOpen: _getTable);
+    } else {
+      getDatabase = await openDatabase(path, version: 1, onCreate: _createTable);
+    }
+    debugPrint("Database Created");
+    return getDatabase;
+  }
+
+  // Function to initialize the database
+  Future<Database> initializeDatabasePending(String nameDb) async {
+    // Getting directory path for both Android and iOS
+    Directory directory = await getApplicationDocumentsDirectory();
+    String path = '${directory.path}$nameDb.db';
+    Database getDatabase;
+    // Open or create database at a given path.
+    final existDatabase = await databaseExists(nameDb);
+    if (existDatabase) {
+      getDatabase = await openDatabase(path, version: 1, onOpen: _getTable);
+    } else {
+      getDatabase = await openDatabase(path, version: 1, onCreate: _createTable);
+    }
+    debugPrint("Database Created");
+    return getDatabase;
+  }
+
+  // Function for creating a Table
+  void _createTable(Database db, int newVersion) async {
+    if (_database == null) {
+      await db.execute('''
+        CREATE TABLE $historyTable (
+            uid TEXT PRIMARY KEY, -- Unique identifier
+            title TEXT NOT NULL, -- Event title
+            startDateTime TEXT NOT NULL, -- Start date and time
+            endDateTime TEXT NOT NULL, -- End date and time
+            description TEXT NOT NULL, -- Description of the event
+            status TEXT NOT NULL, -- Event status
+            isMeeting INTEGER NOT NULL, -- Is it a meeting? (0 = false, 1 = true)
+            location TEXT, -- Optional event location
+            createdBy TEXT, -- User who created the event
+            imgName TEXT, -- Name of an image file
+            createdAt TEXT DEFAULT CURRENT_TIMESTAMP, -- Creation timestamp
+            isRepeat INTEGER, -- Is the event recurring? (0 = false, 1 = true)
+            videoConference TEXT, -- Video conference link
+            backgroundColor TEXT, -- Background color in HEX format
+            outmeetingUid TEXT, -- Reference to another meeting UID
+            leaveType TEXT, -- Type of leave (if applicable)
+            category TEXT NOT NULL, -- Event category
+            days INTEGER, -- Number of days (if relevant)
+            members TEXT -- JSON string or list of members
+        );
+      ''');
+    }
+  }
+
+  // Function for creating a Table
+  void _createTablePending(Database db, int newVersion) async {
+    if (_database == null) {
+      await db.execute('''
+        CREATE TABLE $historyPendingTable (
+            uid TEXT PRIMARY KEY, -- Unique identifier
+            title TEXT NOT NULL, -- Event title
+            startDateTime TEXT NOT NULL, -- Start date and time
+            endDateTime TEXT NOT NULL, -- End date and time
+            description TEXT NOT NULL, -- Description of the event
+            status TEXT NOT NULL, -- Event status
+            isMeeting INTEGER NOT NULL, -- Is it a meeting? (0 = false, 1 = true)
+            location TEXT, -- Optional event location
+            createdBy TEXT, -- User who created the event
+            imgName TEXT, -- Name of an image file
+            createdAt TEXT DEFAULT CURRENT_TIMESTAMP, -- Creation timestamp
+            isRepeat INTEGER, -- Is the event recurring? (0 = false, 1 = true)
+            videoConference TEXT, -- Video conference link
+            backgroundColor TEXT, -- Background color in HEX format
+            outmeetingUid TEXT, -- Reference to another meeting UID
+            leaveType TEXT, -- Type of leave (if applicable)
+            category TEXT NOT NULL, -- Event category
+            days INTEGER, -- Number of days (if relevant)
+            members TEXT -- JSON string or list of members
+        );
+      ''');
+    }
+  }
+
+  // Function for finding a Table
+  void _getTable(Database db) async {
+    if (_database == null) {
+      await db.rawQuery('SELECT * FROM $historyTable');
+    }
+  }
+
+  // Function for finding a Table
+  void _getTablePending(Database db) async {
+    if (_database == null) {
+      await db.rawQuery('SELECT * FROM $historyPendingTable');
+    }
+  }
+
+  //Fetch operation
+  Future<List<Events>> getListHistory() async {
+    Database db = await database;
+    var result = await db.rawQuery('SELECT * FROM $historyTable');
+    List<Events> storeEvents = [];
+    for (var e in result) {
+      storeEvents.add(Events.fromJson(e));
+    }
+    return storeEvents;
+  }
+
+  //Fetch Pending operation
+  Future<List<Events>> getListPending() async {
+    Database db = await databasePending;
+    var result = await db.rawQuery('SELECT * FROM $historyPendingTable');
+    List<Events> storeEvents = [];
+    for (var e in result) {
+      storeEvents.add(Events.fromJson(e));
+    }
+    return storeEvents;
+  }
+
+  // Insert Operation
+  Future<void> insertHistory(List<Events> events) async {
+    Database db = await database;
+
+    for (var e in events) {
+      String uid = e.uid;
+
+      // Check if the record exists
+      final List<Map<String, dynamic>> existing = await db.query(
+        historyTable,
+        where: 'uid = ?', // Condition
+        whereArgs: [uid], // Arguments for the condition
+      );
+
+      if (existing.isEmpty) {
+        // If the record doesn't exist, insert it
+        await db.insert(historyTable, e.toJson());
+      }
+    }
+    debugPrint("Events details inserted in the $historyTable.");
+    return;
+  }
+
+  // Insert Operation
+  Future<void> insertPending(List<Events> events) async {
+    Database db = await databasePending;
+
+    for (var e in events) {
+      String uid = e.uid;
+
+      // Check if the record exists
+      final List<Map<String, dynamic>> existing = await db.query(
+        historyTable,
+        where: 'uid = ?', // Condition
+        whereArgs: [uid], // Arguments for the condition
+      );
+
+      if (existing.isEmpty) {
+        // If the record doesn't exist, insert it
+        await db.insert(historyTable, e.toJson());
+      }
+    }
+    debugPrint("Events details inserted in the $historyTable.");
+    return;
+  }
 }

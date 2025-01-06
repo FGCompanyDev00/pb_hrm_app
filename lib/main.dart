@@ -317,12 +317,14 @@ class MainScreenState extends State<MainScreen> {
     return false;
   }
 
-  void _onItemTapped(int index) {
+  void _onItemTapped(int index) async {
     if (index != _selectedIndex) {
       setState(() {
         _selectedIndex = index;
       });
-      if (index == 2) {}
+      if (index == 1) {
+        (HomeCalendarState() as Refreshable).refresh.call();
+      }
     } else {
       _navigatorKeys[index].currentState?.popUntil((route) => route.isFirst);
     }
