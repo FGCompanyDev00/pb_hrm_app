@@ -170,6 +170,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       setState(() {
         _isLoading = false;
       });
+      _filterAndSearchEvents();
     }
   }
 
