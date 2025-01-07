@@ -1374,23 +1374,28 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 18),
                 decoration: BoxDecoration(
-                  color: Colors.grey[200],
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[800]
+                      : Colors.grey[200],
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       'Time Reminder',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _limitTime,  // Dynamic value from the API
+                      _limitTime,
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
