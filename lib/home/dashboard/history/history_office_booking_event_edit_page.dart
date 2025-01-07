@@ -1049,21 +1049,4 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
     }
   }
 
-  /// Shows error message using AlertDialog
-  void _showErrorFieldMessage(String title, String message) async {
-    if (!mounted) return;
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            child: const Text('OK'),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
-      ),
-    );
-  }
 }

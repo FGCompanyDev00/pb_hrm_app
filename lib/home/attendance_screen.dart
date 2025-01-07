@@ -40,6 +40,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   bool _isCheckInActive = false;
   String _checkInTime = '--:--:--';
   String _checkOutTime = '--:--:--';
+  String _limitTime = '--:--:--';
   DateTime? _checkInDateTime;
   DateTime? _checkOutDateTime;
   Duration _workingHours = Duration.zero;
@@ -65,6 +66,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     _fetchWeeklyRecords();
     _retrieveSavedState();
     _retrieveDeviceId();
+    _fetchLimitTime();
     _startLocationMonitoring();
     _startTimerForLiveTime();
     _determineAndShowLocationModal();
@@ -77,6 +79,42 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     _refreshTimer = Timer.periodic(const Duration(hours: 1), (timer) {
       _fetchWeeklyRecords();
     });
+  }
+
+  Future<void> _fetchLimitTime() async {
+    const String baseUrl = 'https://demo-application-api.flexiflows.co';
+    const String endpoint = '$baseUrl/api/attendance/checkin-checkout/offices/weekly/me';
+
+    try {
+      String? token = userPreferences.getToken();
+
+      if (token == null) {
+        throw Exception('No token found');
+      }
+
+      final response = await http.get(
+        Uri.parse(endpoint),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        final String limitTime = data['settings']['limit_time'] ?? '--:--:--';
+
+        setState(() {
+          _limitTime = limitTime;
+        });
+      } else {
+        throw Exception('Failed to load limit time');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching limit time: $e');
+      }
+    }
   }
 
   Future<void> _determineAndShowLocationModal() async {
@@ -916,7 +954,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              color: isDarkMode ? Colors.grey[900] : Colors.white, // Dark mode color support
+              color: isDarkMode ? Colors.grey[900] : Colors.white,
               border: Border.all(
                 color: isDarkMode ? Colors.white24 : Colors.black12,
                 width: 1,
@@ -1177,8 +1215,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildHeaderContent(BuildContext context) {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    // If offsite on => fingerprint is red
-    // If offsite off => gradient orange to green
     BoxDecoration fingerprintDecoration;
     if (_isOffsite) {
       fingerprintDecoration = const BoxDecoration(
@@ -1198,7 +1234,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     final checkInTimeAllowed = DateTime(now.year, now.month, now.day, 0, 0);
     final checkInDisabledTime = DateTime(now.year, now.month, now.day, 22, 0);
     bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
-    // bool isCheckOutEnabled = _isCheckInActive && _workingHours >= const Duration(hours: 6) && _isCheckOutAvailable;
 
     return GestureDetector(
       onTap: () async {
@@ -1210,10 +1245,10 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               isSuccess: false,
             );
           } else if (isCheckInEnabled) {
-            await _authenticate(context, true); // Pass 'true' for check-in
+            await _authenticate(context, true);
           }
         } else if (_isCheckInActive) {
-          await _authenticate(context, false); // Pass 'false' for check-out
+          await _authenticate(context, false);
         } else {
           _showCustomDialog(
             AppLocalizations.of(context)!.alreadyCheckedIn,
@@ -1229,106 +1264,143 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: isDarkMode ? Colors.black54 : Colors.black12, // Shadow color for dark mode
+              color: isDarkMode ? Colors.black54 : Colors.black12,
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Column(
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            // Date and Time
-            Text(
-              DateFormat('EEEE, dd MMMM yyyy').format(DateTime.now()),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              DateFormat('HH:mm:ss').format(DateTime.now()),
-              style: TextStyle(
-                fontSize: 14,
-                color: isDarkMode ? Colors.white70 : Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Fingerprint button with dynamic background color
-            Container(
-              width: 80,
-              height: 80,
-              decoration: fingerprintDecoration,
-              child: const Icon(
-                Icons.fingerprint,
-                size: 40,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Check In/Check Out button text
-            Text(
-              _isCheckInActive ? AppLocalizations.of(context)!.checkOut : AppLocalizations.of(context)!.checkIn,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Register presence text
-            Text(
-              AppLocalizations.of(context)!.registerPresenceStartWork,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: isDarkMode ? Colors.white70 : Colors.black,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Month and Year display (e.g., February - 2024)
-            Text(
-              DateFormat('MMMM - yyyy').format(DateTime.now()),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Summary Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+            Column(
               children: [
-                _buildSummaryItem(
-                  AppLocalizations.of(context)!.checkIn,
-                  _totalCheckInDelay,
-                  Icons.login,
-                  Colors.green,
-                  isDarkMode: Theme.of(context).brightness == Brightness.dark,
+                Text(
+                  DateFormat('EEEE, dd MMMM yyyy').format(DateTime.now()),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
                 ),
-                _buildSummaryItem(
-                  AppLocalizations.of(context)!.checkOut,
-                  _totalCheckOutDelay,
-                  Icons.logout,
-                  Colors.red,
-                  isDarkMode: Theme.of(context).brightness == Brightness.dark,
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('HH:mm:ss').format(DateTime.now()),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDarkMode ? Colors.white70 : Colors.grey,
+                  ),
                 ),
-                _buildSummaryItem(
-                  AppLocalizations.of(context)!.workingHours,
-                  _totalWorkDuration,
-                  Icons.timer,
-                  Colors.blue,
-                  isDarkMode: Theme.of(context).brightness == Brightness.dark,
+                const SizedBox(height: 20),
+
+                // Fingerprint Button
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: fingerprintDecoration,
+                  child: const Icon(
+                    Icons.fingerprint,
+                    size: 40,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Divider and Register Presence Text
+                Container(
+                  width: double.infinity,
+                  height: 1,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  AppLocalizations.of(context)!.registerPresenceStartWork,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDarkMode ? Colors.white70 : Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  height: 1,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 16),
+
+                Text(
+                  DateFormat('MMMM - yyyy').format(DateTime.now()),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildSummaryItem(
+                      AppLocalizations.of(context)!.checkIn,
+                      _totalCheckInDelay,
+                      Icons.login,
+                      Colors.green,
+                      isDarkMode: Theme.of(context).brightness == Brightness.dark,
+                    ),
+                    _buildSummaryItem(
+                      AppLocalizations.of(context)!.checkOut,
+                      _totalCheckOutDelay,
+                      Icons.logout,
+                      Colors.red,
+                      isDarkMode: Theme.of(context).brightness == Brightness.dark,
+                    ),
+                    _buildSummaryItem(
+                      AppLocalizations.of(context)!.workingHours,
+                      _totalWorkDuration,
+                      Icons.timer,
+                      Colors.blue,
+                      isDarkMode: Theme.of(context).brightness == Brightness.dark,
+                    ),
+                  ],
                 ),
               ],
             ),
+
+            // Time Reminder positioned at the top-right
+            Positioned(
+              top: 50,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 18),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Time Reminder',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _limitTime,  // Dynamic value from the API
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
           ],
         ),
       ),
