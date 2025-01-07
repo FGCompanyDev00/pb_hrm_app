@@ -297,7 +297,18 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         List<dynamic> resultsMember = [];
         if (responseMember != null) {
           dataMember = json.decode(responseMember.body);
-          resultsMember = dataMember['results'];
+          resultsMember = dataMember['results'] ?? [];
+        }
+
+        // Filter duplicates by employee_id for meeting members
+        final seenEmployeeIds = <dynamic>{};
+        final uniqueMembers = <Map<String, dynamic>>[];
+
+        for (var member in resultsMember) {
+          if (member['employee_id'] != null && !seenEmployeeIds.contains(member['employee_id'])) {
+            seenEmployeeIds.add(member['employee_id']);
+            uniqueMembers.add(Map<String, dynamic>.from(member));
+          }
         }
 
         // Combine 'from_date' with 'start_time' and 'to_date' with 'end_time'
@@ -308,7 +319,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           DateTime fromDate = DateTime.parse(item['from_date']);
           List<String> startTimeParts = item['start_time'] != "" ? item['start_time'].split(':') : ["00", "00"];
           if (startTimeParts.length == 3) startTimeParts.removeLast();
-
           if (startTimeParts.length != 2) {
             throw const FormatException('Invalid start_time format');
           }
@@ -340,14 +350,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
 
         final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
-
         String status = item['s_name'] != null ? mapEventStatus(item['s_name'].toString()) : 'Pending';
-
         if (status == 'Cancelled') continue;
 
         final event = Events(
           title: item['title'] ?? 'Minutes Of Meeting',
-          // title: item['title'] ?? 'Add Meeting',
           start: startDateTime,
           end: endDateTime,
           desc: item['description'] ?? '',
@@ -355,7 +362,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           isMeeting: true,
           location: item['location'] ?? '',
           createdBy: item['create_by'] ?? '',
-          // imgName: item['file_name'] ?? '',
           createdAt: item['created_at'] ?? '',
           uid: uid,
           isRepeat: item['is_repeat']?.toString(),
@@ -364,8 +370,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           outmeetingUid: item['meeting_id']?.toString(),
           category: 'Minutes Of Meeting',
           fileName: item['file_name'],
-          // category: 'Add Meeting',
-          members: List<Map<String, dynamic>>.from(resultsMember),
+          members: uniqueMembers,  // Use filtered unique members list
         );
 
         // Normalize the start and end dates for event mapping
@@ -379,8 +384,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     } catch (e) {
       showSnackBar('Error parsing meeting data: $e');
     }
-
-    return;
   }
 
   /// Fetches meeting out data from the API
@@ -494,17 +497,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final List<dynamic> results = data['results'];
 
       for (var item in results) {
-        // Ensure necessary fields are present
         if (item['fromdate'] == null || item['todate'] == null) {
-          showSnackBar('Missing date or time fields in meeting data.');
+          showSnackBar('Missing date fields in meeting data.');
           continue;
         }
 
-        // Combine 'from_date' with 'start_time' and 'to_date' with 'end_time'
         DateTime startDateTime;
         DateTime endDateTime;
         try {
-          // Parse 'from_date' and 'start_time' separately and combine
           DateTime fromDate = DateTime.parse(item['fromdate']);
           startDateTime = DateTime(
             fromDate.year,
@@ -514,7 +514,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             fromDate.minute,
           );
 
-          // Parse 'to_date' and 'end_time' separately and combine
           DateTime toDate = DateTime.parse(item['todate']);
           endDateTime = DateTime(
             toDate.year,
@@ -528,12 +527,22 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           continue;
         }
 
-        // Handle possible nulls with default values
         final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
-
         String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
-
         if (status == 'Cancelled') continue;
+
+        // Filter duplicates by employee_id for minutes of meeting members
+        List<Map<String, dynamic>> membersList = item['members'] != null
+            ? List<Map<String, dynamic>>.from(item['members'])
+            : [];
+        final seenEmployeeIds = <dynamic>{};
+        final uniqueMembers = <Map<String, dynamic>>[];
+        for (var member in membersList) {
+          if (member['employee_id'] != null && !seenEmployeeIds.contains(member['employee_id'])) {
+            seenEmployeeIds.add(member['employee_id']);
+            uniqueMembers.add(member);
+          }
+        }
 
         final event = Events(
           title: item['title'] ?? 'Minutes Of Meeting',
@@ -542,7 +551,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           desc: item['description'] ?? '',
           status: status,
           isMeeting: true,
-          location: item['location'] ?? '', // Assuming 'location' field exists
+          location: item['location'] ?? '',
           createdBy: item['create_by'] ?? '',
           imgName: item['file_name'] ?? '',
           createdAt: item['created_at'] ?? '',
@@ -552,10 +561,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
           category: 'Minutes Of Meeting',
-          members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
+          members: uniqueMembers,  // Use filtered unique members list
         );
 
-        // Normalize the start and end dates for event mapping
         final normalizedStartDay = normalizeDate(startDateTime);
         final normalizedEndDay = normalizeDate(endDateTime);
 
@@ -566,11 +574,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     } catch (e) {
       showSnackBar('Error parsing meeting data: $e');
     }
-
-    return;
   }
-
-  // /// Fetches meeting room bookings from the API
 
   /// Fetches meeting room bookings from the API
   Future<void> _fetchMeetingRoomInvite() async {
@@ -683,13 +687,23 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
 
         final String uid = item['uid']?.toString() ?? UniqueKey().toString();
-
         String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
-
         if (status == 'Cancelled') continue;
 
-        Events? event;
-        event = Events(
+        // Filter duplicates by employee_id for meeting room members
+        List<Map<String, dynamic>> membersList = item['members'] != null
+            ? List<Map<String, dynamic>>.from(item['members'])
+            : [];
+        final seenEmployeeIds = <dynamic>{};
+        final uniqueMembers = <Map<String, dynamic>>[];
+        for (var member in membersList) {
+          if (member['employee_id'] != null && !seenEmployeeIds.contains(member['employee_id'])) {
+            seenEmployeeIds.add(member['employee_id']);
+            uniqueMembers.add(member);
+          }
+        }
+
+        final event = Events(
           title: item['title'] ?? AppLocalizations.of(context)!.meetingRoomBookings,
           start: startDateTime,
           end: endDateTime,
@@ -702,17 +716,18 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           createdBy: item['employee_name'],
           createdAt: item['date_create'],
           location: item['room_name'] ?? 'Meeting Room',
-          members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
+          members: uniqueMembers,  // Use filtered unique members list
         );
 
-        for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+        for (var day = normalizeDate(startDateTime);
+        !day.isAfter(normalizeDate(endDateTime));
+        day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
     } catch (e) {
       showSnackBar('Error parsing meeting room bookings: $e');
     }
-    return;
   }
 
   /// Fetches car bookings from the API
@@ -830,7 +845,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         DateTime? endDateTime;
 
         try {
-          // Combine date and time properly
           DateTime outDate = DateTime.parse(dateOutStr);
           List<String> timeOutParts = timeOutStr.split(':');
           if (timeOutParts.length == 3) timeOutParts.removeLast();
@@ -865,14 +879,23 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
 
         final String uid = 'car_${item['uid']?.toString() ?? UniqueKey().toString()}';
-
         String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
-
         if (status == 'Cancelled') continue;
 
-        Events? event;
+        // Filter duplicates by employee_id for car booking members
+        List<Map<String, dynamic>> membersList = item['members'] != null
+            ? List<Map<String, dynamic>>.from(item['members'])
+            : [];
+        final seenEmployeeIds = <dynamic>{};
+        final uniqueMembers = <Map<String, dynamic>>[];
+        for (var member in membersList) {
+          if (member['employee_id'] != null && !seenEmployeeIds.contains(member['employee_id'])) {
+            seenEmployeeIds.add(member['employee_id']);
+            uniqueMembers.add(member);
+          }
+        }
 
-        event = Events(
+        final event = Events(
           title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
           start: startDateTime,
           end: endDateTime,
@@ -885,17 +908,18 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           imgName: item['img_name'],
           createdBy: item['requestor_name'],
           createdAt: item['updated_at'],
-          members: item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [],
+          members: uniqueMembers,  // Use filtered unique members list
         );
 
-        for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+        for (var day = normalizeDate(startDateTime);
+        !day.isAfter(normalizeDate(endDateTime));
+        day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
     } catch (e) {
       showSnackBar('Error parsing booking car: $e');
     }
-    return;
   }
 
   /// Handles pull-to-refresh action

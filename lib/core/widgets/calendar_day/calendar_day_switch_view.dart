@@ -630,31 +630,46 @@ class CalendarDaySwitchView extends HookWidget {
   }
 
   List<Widget> _buildMembersAvatars(
-    AdvancedDayEvent<String> event,
-    BuildContext context,
-  ) {
+      AdvancedDayEvent<String> event,
+      BuildContext context,
+      ) {
+    // Filter duplicate members based on employee_id
+    List<dynamic> filteredMembers = [];
+    final seenIds = <dynamic>{};
+    if (event.members != null) {
+      for (var member in event.members!) {
+        if (member['employee_id'] != null && seenIds.contains(member['employee_id'])) {
+          continue;
+        }
+        seenIds.add(member['employee_id']);
+        filteredMembers.add(member);
+      }
+    }
+
     List<Widget> membersAvatar = [];
     List<Widget> membersList = [];
     int moreMembers = 0;
     int countMembers = 0;
     bool isEnoughCount = false;
 
-    if (event.members != null) {
-      event.members?.forEach((v) {
-        countMembers += 1;
-        membersList.add(_avatarUserList(v['img_name'], v['member_name']));
-        if (isEnoughCount) return;
-        if (countMembers < 4) {
-          membersAvatar.add(_avatarUser(v['img_name']));
-        } else {
-          moreMembers = (event.members?.length ?? 0) - (countMembers - 1);
-          membersAvatar.add(
-            _avatarMore(context, membersList, count: '+ $moreMembers'),
-          );
-          isEnoughCount = true;
-        }
-      });
+    // Use filteredMembers instead of event.members
+    for (var v in filteredMembers) {
+      countMembers += 1;
+      membersList.add(_avatarUserList(v['img_name'], v['member_name']));
+      if (isEnoughCount) continue;
+
+      if (countMembers < 4) {
+        membersAvatar.add(_avatarUser(v['img_name']));
+      } else {
+        // Calculate remaining members count beyond the first few avatars
+        moreMembers = filteredMembers.length - (countMembers - 1);
+        membersAvatar.add(
+          _avatarMore(context, membersList, count: '+ $moreMembers'),
+        );
+        isEnoughCount = true;
+      }
     }
+
     return membersAvatar;
   }
 

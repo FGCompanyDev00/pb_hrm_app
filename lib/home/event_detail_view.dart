@@ -460,9 +460,12 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     if (members.isEmpty) return const SizedBox.shrink();
 
     List<Widget> membersList = [];
+    Set<String> uniqueMembers = {};
 
     for (var v in members) {
-      membersList.add(_avatarUser(v['img_name'], v['status'] ?? ''));
+      if (uniqueMembers.add(v['employee_id'])) {
+        membersList.add(_avatarUser(v['img_name'], v['status'] ?? ''));
+      }
     }
 
     return Padding(
@@ -484,11 +487,6 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
               children: membersList,
             ),
           ),
-          // SingleChildScrollView(
-          //     scrollDirection: Axis.horizontal,
-          //     child: Row(
-          //       children: membersList,
-          //     )),
           const SizedBox(height: 25),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -505,14 +503,6 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
                   ),
                 ],
               ),
-              // Visibility(
-              //   visible: isDownload,
-              //   child: ElevatedButton(
-              //     style: const ButtonStyle(backgroundColor: WidgetStatePropertyAll<Color>(Colors.green)),
-              //     onPressed: _downloadFiles,
-              //     child: Text(AppLocalizations.of(context)!.download),
-              //   ),
-              // )
             ],
           ),
           const SizedBox(height: 15),
