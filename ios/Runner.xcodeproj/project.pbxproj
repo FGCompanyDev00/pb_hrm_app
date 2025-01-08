@@ -250,9 +250,6 @@
 			);
 			dependencies = (
 			);
-			fileSystemSynchronizedGroups = (
-				87AC391A2C995E52007D496E /* PSVB Next DemoTests */,
-			);
 			name = "PSVB Next DemoTests";
 			packageProductDependencies = (
 			);
@@ -271,9 +268,6 @@
 			buildRules = (
 			);
 			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				87AC39242C995E52007D496E /* PSVB Next DemoUITests */,
 			);
 			name = "PSVB Next DemoUITests";
 			packageProductDependencies = (
