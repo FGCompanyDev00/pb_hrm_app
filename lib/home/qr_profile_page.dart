@@ -6,7 +6,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/models/qr_profile_page.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:share_plus/share_plus.dart';
@@ -19,6 +18,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/home/myprofile_page.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
+import '../services/offline_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -125,6 +126,7 @@ class TicketShapeClipper extends CustomClipper<Path> {
 class ProfileScreenState extends State<ProfileScreen> {
   late Future<Map<String, dynamic>> _profileData;
   late Future<Map<String, dynamic>> _displayData;
+  late OfflineProvider offlineProvider;
   final GlobalKey qrKey = GlobalKey();
   final GlobalKey qrFullScreenKey = GlobalKey();
 
@@ -134,6 +136,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    offlineProvider = Provider.of<OfflineProvider>(context, listen: false);
     _profileData = _fetchProfileData();
     _displayData = _fetchDisplayData();
   }
@@ -176,7 +179,11 @@ class ProfileScreenState extends State<ProfileScreen> {
   Future<Map<String, dynamic>> _fetchDisplayData() async {
     if (offlineProvider.isOfflineService.value) {
       final offlineProfile = offlineProvider.getProfile();
-      return offlineProfile!.userProfileRecordToJson(offlineProfile);
+      if (offlineProfile != null) {
+        return offlineProfile.toMap();
+      } else {
+        throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
+      }
     } else {
       try {
         final prefs = await SharedPreferences.getInstance();
@@ -400,11 +407,7 @@ class ProfileScreenState extends State<ProfileScreen> {
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
-            }
-            // else if (snapshot.hasError) {
-            //   return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
-            // }
-            else if (snapshot.hasData) {
+            } else if (snapshot.hasData) {
               Map<String, dynamic> data = {};
               String vCardData = '';
               if (offlineProvider.isOfflineService.value) {
