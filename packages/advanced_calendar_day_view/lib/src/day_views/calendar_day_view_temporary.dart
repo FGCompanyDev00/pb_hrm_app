@@ -70,7 +70,7 @@ class _OverFlowCalendarDayViewState<T extends Object> extends State<OverFlowCale
   late DateTime timeStart;
   late DateTime timeEnd;
   Timer? _timer;
-  double _rowScale = 1;
+  final double _rowScale = 1;
 
   @override
   void initState() {

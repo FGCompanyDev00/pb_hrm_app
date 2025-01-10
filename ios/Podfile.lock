@@ -215,8 +215,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/workmanager/ios"
 
 SPEC CHECKSUMS:
-  connectivity_plus: b21496ab28d1324eb59885d888a4d83b98531f01
-  device_info_plus: 807924f506f0af239c82a6cef8123b1599b6a5c3
+  connectivity_plus: 2256d3e20624a7749ed21653aafe291a46446fee
+  device_info_plus: 71ffc6ab7634ade6267c7a93088ed7e4f74e5896
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   file_picker: 9b3292d7c8bc68c8a7bf8eb78f730e49c8efc517
@@ -224,7 +224,7 @@ SPEC CHECKSUMS:
   flutter_image_compress_common: 1697a328fd72bfb335507c6bca1a65fa5ad87df1
   flutter_local_notifications: ad39620c743ea4c15127860f4b5641649a988100
   flutter_localization: 72299fb6cb4e51cae587bd953ed0b958040b71e6
-  flutter_pdfview: 54e283d5851b0b247b3cc57877d35f1a05a204de
+  flutter_pdfview: 32bf27bda6fd85b9dd2c09628a824df5081246cf
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
   fluttertoast: 76fea30fcf04176325f6864c87306927bd7d2038
   geolocator_apple: 1560c3c875af2a412242c7a923e15d0d401966ff
@@ -239,7 +239,7 @@ SPEC CHECKSUMS:
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
-  rive_common: 007aa316d587becf7c23da8cce6ff3d4b0be8ac7
+  rive_common: dd421daaf9ae69f0125aa761dd96abd278399952
   saver_gallery: af2d0c762dafda254e0ad025ef0dabd6506cd490
   SDWebImage: 73c6079366fea25fa4bb9640d5fb58f0893facd8
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
