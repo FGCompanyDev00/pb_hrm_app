@@ -28,7 +28,7 @@ class SettingsPageState extends State<SettingsPage> {
   final _storage = const FlutterSecureStorage();
   bool _biometricEnabled = false;
   late Future<UserProfile> futureUserProfile;
-  String _appVersion = 'PSBV Next Demo v1.0.48(48)';
+  String _appVersion = 'PSBV Next Demo v1.0.49(49)';
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
