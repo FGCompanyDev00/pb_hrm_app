@@ -35,6 +35,7 @@ class CalendarDaySwitchView extends HookWidget {
     final untilEndDefault = useState(23);
     // final switchTime = useState(selectedSlotTime);
     final ValueNotifier<List<AdvancedDayEvent<String>>> currentEvents = useState([]);
+    final ValueNotifier<List<AdvancedDayEvent<String>>> categoriesEvents = useState([]);
     final ValueNotifier<List<OverflowEventsRow<String>>> currentOverflowEventsRow = useState([]);
 
     // ScrollController to control the initial scroll position
@@ -49,6 +50,7 @@ class CalendarDaySwitchView extends HookWidget {
 
       // Clear previous events
       currentEvents.value.clear();
+      categoriesEvents.value.clear();
       currentOverflowEventsRow.value.clear();
 
       // if (passDefaultCurrentHour != 0) {
@@ -228,11 +230,47 @@ class CalendarDaySwitchView extends HookWidget {
         }
       }
 
+      List<AdvancedDayEvent<String>> addMeetingEvents = [];
+      List<AdvancedDayEvent<String>> leaveEvents = [];
+      List<AdvancedDayEvent<String>> meetingRoomBookingsEvents = [];
+      List<AdvancedDayEvent<String>> bookingCarEvents = [];
+      List<AdvancedDayEvent<String>> minutesOfMeetingEvents = [];
+
+      for (var i in currentEvents.value) {
+        if (i.category == 'Add Meeting') {
+          addMeetingEvents.add(i);
+        } else if (i.category == 'Leave') {
+          leaveEvents.add(i);
+        } else if (i.category == 'Meeting Room Bookings') {
+          meetingRoomBookingsEvents.add(i);
+        } else if (i.category == 'Booking Car') {
+          bookingCarEvents.add(i);
+        } else if (i.category == 'Minutes Of Meeting') {
+          minutesOfMeetingEvents.add(i);
+        } else {}
+      }
+
+      for (var j in addMeetingEvents) {
+        categoriesEvents.value.add(j);
+      }
+      for (var j in leaveEvents) {
+        categoriesEvents.value.add(j);
+      }
+      for (var j in meetingRoomBookingsEvents) {
+        categoriesEvents.value.add(j);
+      }
+      for (var j in bookingCarEvents) {
+        categoriesEvents.value.add(j);
+      }
+      for (var j in minutesOfMeetingEvents) {
+        categoriesEvents.value.add(j);
+      }
+
       // Process overflow events
       currentOverflowEventsRow.value = processOverflowEvents(
-        [...currentEvents.value]..sort((a, b) => a.compare(b)),
-        startOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: currentHour.value, minute: 0)),
-        endOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: untilEnd.value, minute: 0)),
+        [...categoriesEvents.value]..sort((a, b) => a.compare(b)),
+        startOfDay: selectedDay!.copyTimeAndMinClean(const TimeOfDay(hour: 0, minute: 0)),
+        endOfDay: selectedDay!.copyTimeAndMinClean(const TimeOfDay(hour: 24, minute: 0)),
         cropBottomEvents: true,
       );
     }
@@ -283,6 +321,7 @@ class CalendarDaySwitchView extends HookWidget {
               renderRowAsListView: true,
               showMoreOnRowButton: true,
               showCurrentTimeLine: true,
+              cropBottomEvents: true,
               timeTitleColumnWidth: 40,
               time12: true,
               overflowItemBuilder: (context, constraints, itemIndex, event) {

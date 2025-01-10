@@ -169,6 +169,7 @@ class TimeTableDayWidget extends HookWidget {
               timeViewItemBuilder: (context, constraints, itemIndex, event) {
                 Color statusColor;
                 String? iconCategory = categoryIcon[event.category];
+                Duration? time = event.end.difference(event.start);
 
                 debugPrint(event.category);
 
@@ -341,98 +342,139 @@ class TimeTableDayWidget extends HookWidget {
                           ),
                           child: Row(
                             children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // First column for eventType and event.desc
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Row for icon and eventType
-                                      Row(
-                                        children: [
-                                          ColorFiltered(
-                                            colorFilter: ColorFilter.mode(
-                                              Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-                                              BlendMode.srcIn,
-                                            ),
-                                            child: Image.asset(
-                                              'assets/icons/element_4.png',
-                                              width: 20,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 5),
-                                          Text(eventType),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-
-                                      // Row for event.desc
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.title_sharp, size: 18, color: Colors.blueGrey),
-                                          const SizedBox(width: 5),
-                                          Align(
-                                            alignment: Alignment.bottomCenter,
-                                            child: Text(
-                                              event.desc,
-                                              textAlign: TextAlign.start,
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                color: Colors.blueGrey,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-
-                                  const Spacer(), // Pushes the next content to the bottom
-
-                                  // Second column for additional content like members, time, and other info
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Row for avatars
-                                      Row(children: buildMembersAvatarsTimeTable(event, context)),
-                                      const SizedBox(height: 20),
-
-                                      // Row for time and additional details
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Row(
+                              (time.inHours) < 2
+                                  ? Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        SingleChildScrollView(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              iconCategory != null
-                                                  ? Padding(
-                                                      padding: const EdgeInsets.only(left: 10),
-                                                      child: Image.asset(iconCategory, width: 15),
-                                                    )
-                                                  : const SizedBox.shrink(),
-                                            ],
-                                          ),
-                                          const SizedBox(width: 20),
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.access_time,
-                                                size: 15,
-                                                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.window_rounded, size: 15),
+                                                  const SizedBox(width: 5),
+                                                  Text(eventType),
+                                                ],
                                               ),
-                                              const SizedBox(width: 5),
-                                              Text(
-                                                '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
-                                                style: const TextStyle(fontSize: 10),
+                                              const SizedBox(height: 6),
+                                              Row(
+                                                children: [
+                                                  iconCategory != null ? Image.asset(iconCategory, width: 15) : const SizedBox.shrink(),
+                                                  const SizedBox(width: 5),
+                                                  Text(event.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                                ],
+                                              ),
+                                              // Text(event.desc, style: const TextStyle(fontSize: 10)),
+                                              Row(children: buildMembersAvatarsTimeTable(event, context)),
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.access_time, size: 15),
+                                                  const SizedBox(width: 5),
+                                                  Text(
+                                                    '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
+                                                    style: const TextStyle(fontSize: 10),
+                                                  ),
+                                                ],
                                               ),
                                             ],
                                           ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              )
+                                        ),
+                                      ],
+                                    )
+                                  : Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // First column for eventType and event.desc
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            // Row for icon and eventType
+                                            Row(
+                                              children: [
+                                                ColorFiltered(
+                                                  colorFilter: ColorFilter.mode(
+                                                    Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                                    BlendMode.srcIn,
+                                                  ),
+                                                  child: Image.asset(
+                                                    'assets/icons/element_4.png',
+                                                    width: 20,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 5),
+                                                Text(eventType),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+
+                                            // Row for event.desc
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.title_sharp, size: 18, color: Colors.blueGrey),
+                                                const SizedBox(width: 5),
+                                                Align(
+                                                  alignment: Alignment.bottomCenter,
+                                                  child: Text(
+                                                    event.desc,
+                                                    textAlign: TextAlign.start,
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      color: Colors.blueGrey,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+
+                                        const Spacer(), // Pushes the next content to the bottom
+
+                                        // Second column for additional content like members, time, and other info
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            // Row for avatars
+                                            Row(children: buildMembersAvatarsTimeTable(event, context)),
+                                            const SizedBox(height: 20),
+
+                                            // Row for time and additional details
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    iconCategory != null
+                                                        ? Padding(
+                                                            padding: const EdgeInsets.only(left: 10),
+                                                            child: Image.asset(iconCategory, width: 15),
+                                                          )
+                                                        : const SizedBox.shrink(),
+                                                  ],
+                                                ),
+                                                const SizedBox(width: 20),
+                                                Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.access_time,
+                                                      size: 15,
+                                                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                                    ),
+                                                    const SizedBox(width: 5),
+                                                    Text(
+                                                      '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
+                                                      style: const TextStyle(fontSize: 10),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    )
                             ],
                           ),
                         ),

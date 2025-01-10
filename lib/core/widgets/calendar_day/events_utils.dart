@@ -54,9 +54,9 @@ List<OverTimeEventsRow<T>> processOverTimeEvents<T extends Object>(
   final Map<DateTime, OverTimeEventsRow<T>> oM = {};
 
   for (var event in sortedEvents) {
-    // if (event.start.isBefore(startOfDay) || event.start.isAfter(endOfDay)) {
-    //   continue;
-    // }
+    if (event.start.isBefore(startOfDay) || event.start.isAfter(endOfDay)) {
+      continue;
+    }
     if (event.start.earlierThan(end)) {
       oM.update(
         start,

@@ -175,7 +175,7 @@ class _ChatCommentApprovalSectionState extends State<ChatCommentApprovalSection>
         setState(() {
           _messages.add({
             'comments': message,
-            'created_at': DateTime.now().toUtc().toIso8601String(),
+            'created_at': DateTime.now().toIso8601String(),
             'createBy_name': 'You',
             'created_by': _currentUserId,
           });
@@ -429,22 +429,22 @@ class _ChatCommentApprovalSectionState extends State<ChatCommentApprovalSection>
               ),
             )
           else
-          // Message List
+            // Message List
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _fetchChatMessages,
                 child: _messages.isEmpty
                     ? Center(
-                  child: Text(
-                    'No messages available.',
-                    style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                  ),
-                )
+                        child: Text(
+                          'No messages available.',
+                          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                        ),
+                      )
                     : ListView(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16.0),
-                  children: _buildMessageList(isDarkMode),
-                ),
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(16.0),
+                        children: _buildMessageList(isDarkMode),
+                      ),
               ),
             ),
 
