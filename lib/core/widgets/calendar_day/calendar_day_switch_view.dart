@@ -213,6 +213,7 @@ class CalendarDaySwitchView extends HookWidget {
             status: e.status,
             startDisplay: startTimeDisplay,
             endDisplay: endTimeDisplay,
+            duration: endTime.difference(startTime),
           ));
         } else {
           currentEvents.value.add(AdvancedDayEvent(
@@ -226,6 +227,7 @@ class CalendarDaySwitchView extends HookWidget {
             category: e.category,
             members: e.members,
             status: e.status,
+            duration: endTime.difference(startTime),
           ));
         }
       }
@@ -453,7 +455,7 @@ class CalendarDaySwitchView extends HookWidget {
                                     ),
                                     child: Row(
                                       children: [
-                                        (time?.inHours ?? 0) < 2
+                                        (time?.inHours ?? 0) < 3
                                             ? Row(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -559,7 +561,7 @@ class CalendarDaySwitchView extends HookWidget {
                                         padding: const EdgeInsets.all(8.0),
                                         child: Row(
                                           children: [
-                                            (time?.inHours ?? 0) < 2
+                                            (time?.inHours ?? 0) < 3
                                                 ? Row(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -669,9 +671,9 @@ class CalendarDaySwitchView extends HookWidget {
   }
 
   List<Widget> _buildMembersAvatars(
-      AdvancedDayEvent<String> event,
-      BuildContext context,
-      ) {
+    AdvancedDayEvent<String> event,
+    BuildContext context,
+  ) {
     // Filter duplicate members based on employee_id
     List<dynamic> filteredMembers = [];
     final seenIds = <dynamic>{};

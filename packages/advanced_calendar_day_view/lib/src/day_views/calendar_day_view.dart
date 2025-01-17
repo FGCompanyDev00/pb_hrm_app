@@ -267,8 +267,18 @@ class _OverFlowCalendarDayViewState<T extends Object> extends State<OverFlowCale
       final numberOfEvents = oEvents.events.length;
       final availableWidth = eventColumnWidth;
       final widthPerEvent = availableWidth / numberOfEvents;
+      // int numbers = 0;
+      // List<Map<String, DateTime>> listDate = [];
 
       for (var i = 0; i < oEvents.events.length; i++) {
+        // if (listDate.isEmpty) numbers += 1;
+        // listDate.add({'start': oEvents.events[i].start, 'end': oEvents.events[i].end!});
+        // for (var val in listDate) {
+        //   if (val['start']!.laterThan(oEvents.events[i].start) && val['end']!.earlierThan(oEvents.events[i].end!)) {
+        //     numbers += 1;
+        //     break;
+        //   }
+        // }
         widgets.add(
           Builder(
             builder: (context) {

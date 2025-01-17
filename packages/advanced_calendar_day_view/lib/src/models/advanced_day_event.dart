@@ -9,6 +9,7 @@ class AdvancedDayEvent<T extends Object> {
   final DateTime? end;
   final DateTime? startDisplay;
   final DateTime? endDisplay;
+  final Duration? duration;
   final Color? color;
   final String? status;
   final List<Map<String, dynamic>>? members;
@@ -22,6 +23,7 @@ class AdvancedDayEvent<T extends Object> {
     this.end,
     this.startDisplay,
     this.endDisplay,
+    this.duration,
     this.color,
     this.members,
     this.status,
@@ -36,6 +38,7 @@ class AdvancedDayEvent<T extends Object> {
     DateTime? end,
     DateTime? startDisplay,
     DateTime? endDisplay,
+    Duration? duration,
     Color? color,
     String? status,
     List<Map<String, dynamic>>? members,
@@ -49,6 +52,7 @@ class AdvancedDayEvent<T extends Object> {
       end: end ?? this.end,
       startDisplay: startDisplay ?? this.startDisplay,
       endDisplay: endDisplay ?? this.endDisplay,
+      duration: duration ?? this.duration,
       color: color ?? this.color,
       status: status ?? this.status,
       members: members ?? this.members,

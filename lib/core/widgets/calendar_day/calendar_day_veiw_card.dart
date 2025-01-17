@@ -58,7 +58,7 @@ class CalendarDayWidgetCard extends HookWidget {
           break;
       }
 
-    currentEvents.value.clear();
+      currentEvents.value.clear();
       currentOverflowEventsRow.value.clear();
       for (var e in eventsCalendar) {
         DateTime slotStartTime = DateTime.utc(
@@ -169,7 +169,6 @@ class CalendarDayWidgetCard extends HookWidget {
         [...currentEvents.value]..sort((a, b) => a.compare(b)),
         startOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: currentHour.value, minute: 0)),
         endOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: untilEnd.value, minute: 0)),
-        cropBottomEvents: true,
       );
     }
 
@@ -376,7 +375,7 @@ class CalendarDayWidgetCard extends HookWidget {
                                                       'assets/icons/time_circle.png',
                                                       width: 15,
                                                       color: Theme.of(context).brightness == Brightness.dark
-                                                          ? Colors.white  // White icon in dark mode
+                                                          ? Colors.white // White icon in dark mode
                                                           : Colors.black, // Black icon in light mode
                                                     ),
                                                     const SizedBox(width: 5),
@@ -385,7 +384,7 @@ class CalendarDayWidgetCard extends HookWidget {
                                                       style: TextStyle(
                                                         fontSize: 10,
                                                         color: Theme.of(context).brightness == Brightness.dark
-                                                            ? Colors.white  // White text in dark mode
+                                                            ? Colors.white // White text in dark mode
                                                             : Colors.black, // Black text in light mode
                                                       ),
                                                     ),
