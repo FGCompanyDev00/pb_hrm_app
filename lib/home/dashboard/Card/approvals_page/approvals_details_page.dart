@@ -344,7 +344,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
   /// Utility to check if status is "Waiting"/"Pending"/"Processing"/etc.
   bool isPendingStatus(String status) {
-    return status.toLowerCase() == 'waiting' || status.toLowerCase() == 'pending' || status.toLowerCase() == 'processing' || status.toLowerCase() == 'branch waiting' || status.toLowerCase() == 'branch processing';
+    return status.toLowerCase() == 'waiting' || status.toLowerCase() == 'pending' || status.toLowerCase() == 'processing' || status.toLowerCase() == 'branch waiting' || status.toLowerCase() == 'branch processing' || status.toLowerCase() == 'waiting for approval';
   }
 
   /// Format date string for display
@@ -403,21 +403,22 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.all(26.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 10),
                   _buildRequestorSection(isDarkMode),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 4),
                   _buildBlueSection(isDarkMode),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 24),
                   _buildDetailsSection(),
 
                   // Show comment input & action buttons only for 'leave'/'meeting'
                   if (widget.type == 'leave' || widget.type == 'meeting') ...[
                     const SizedBox(height: 10),
                     if (isPendingStatus(status)) ...[
+                      const SizedBox(height: 10),
                       _buildCommentInputSection(),
                       const SizedBox(height: 22),
                       _buildActionButtons(context),
@@ -491,10 +492,10 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           style: TextStyle(
             color: isDarkMode ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,
-            fontSize: 22,
+            fontSize: 24,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 14),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -536,20 +537,26 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   }
 
   Widget _buildBlueSection(bool isDarkMode) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 30.0),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          color: isDarkMode ? Colors.blueGrey.withOpacity(0.4) : Colors.lightBlueAccent.withOpacity(0.4),
-          borderRadius: BorderRadius.circular(25),
-        ),
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Container(
+      width: screenWidth * 0.7,
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.blueGrey[700] : Colors.lightBlue[100],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Center(
         child: Text(
           _getTypeHeader(),
           style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
             color: isDarkMode ? Colors.white : Colors.black,
-            fontSize: 18,
           ),
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );
@@ -569,13 +576,17 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
   Widget _buildDetailsSection() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     if (widget.type == 'leave') {
       return _buildLeaveDetails();
-    } else if (widget.type == 'car') {
+    }
+    else if (widget.type == 'car') {
       return _buildCarDetails();
-    } else if (widget.type == 'meeting') {
+    }
+    else if (widget.type == 'meeting') {
       return _buildMeetingDetails();
-    } else {
+    }
+    else {
       return Center(
         child: Text(
           'Unknown Request Type',
@@ -591,6 +602,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   /// LEAVE DETAILS
   Widget _buildLeaveDetails() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final status = approvalData?['status']?.toString() ?? 'Pending';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -601,7 +614,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           Colors.green,
           isDarkMode,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         _buildInfoRow(
           'Leave Type',
           approvalData?['name'] ?? 'N/A',
@@ -609,7 +622,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           Colors.purple,
           isDarkMode,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         _buildInfoRow(
           'Reason',
           approvalData?['take_leave_reason'] ?? 'N/A',
@@ -617,7 +630,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           Colors.blue,
           isDarkMode,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         _buildInfoRow(
           'From Date',
           formatDate(approvalData?['take_leave_from'], includeDay: true),
@@ -625,7 +638,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           Colors.blue,
           isDarkMode,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         _buildInfoRow(
           'Until Date',
           formatDate(approvalData?['take_leave_to'], includeDay: true),
@@ -633,13 +646,76 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           Colors.blue,
           isDarkMode,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         _buildInfoRow(
           'Days',
           approvalData?['days']?.toString() ?? 'N/A',
           Icons.today,
           Colors.orange,
           isDarkMode,
+        ),
+
+        const SizedBox(height: 18),
+        _buildRequestFlowRow(),
+        const SizedBox(height: 4),
+      ],
+    );
+  }
+
+  Widget _buildRequestFlowRow() {
+    // Fallback for requestor image
+    const fallbackImage = 'https://via.placeholder.com/150';
+    final firstAvatar = requestorImage ?? fallbackImage;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // First circle: requestor
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.green, width: 2),
+            image: DecorationImage(
+              image: NetworkImage(firstAvatar),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Icon(Icons.arrow_forward, color: Colors.amber, size: 24),
+        const SizedBox(width: 8),
+
+        // Second circle (placeholder)
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.red, width: 2),
+            image: const DecorationImage(
+              image: AssetImage('assets/avatar_placeholder.png'),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Icon(Icons.arrow_forward, color: Colors.grey, size: 24),
+        const SizedBox(width: 8),
+
+        // Third circle (placeholder)
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.grey, width: 2),
+            image: const DecorationImage(
+              image: AssetImage('assets/avatar_placeholder.png'),
+              fit: BoxFit.cover,
+            ),
+          ),
         ),
       ],
     );
@@ -1654,8 +1730,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 22, color: color),
-        const SizedBox(width: 12),
+        Icon(icon, size: 24, color: color),
+        const SizedBox(width: 14),
         Expanded(
           child: RichText(
             text: TextSpan(
@@ -1663,7 +1739,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                 TextSpan(
                   text: '$title: ',
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     color: isDarkMode ? Colors.white : Colors.black,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1804,42 +1880,29 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       return;
     }
 
-    String endpoint = '';
+    String primaryEndpoint = '';
+    String fallbackEndpoint = '';
     Map<String, dynamic> body = {};
-    String method = 'POST'; // default method
+    String method = 'PUT';
 
-    if (widget.type == 'leave') {
-      method = 'PUT';
-      if (action == 'approve') {
-        endpoint = '$baseUrl/api/leave_approve/${widget.id}';
-      } else if (action == 'reject') {
-        endpoint = '$baseUrl/api/leave_reject/${widget.id}';
-      }
-      if (comment.isNotEmpty) {
-        body['comments'] = comment;
-      }
+    if (widget.type == 'leave' && action == 'approve') {
+      primaryEndpoint = '$baseUrl/api/leave_approve/${widget.id}';
+      fallbackEndpoint = '$baseUrl/api/leave_processing/${widget.id}';
+    } else if (widget.type == 'leave' && action == 'reject') {
+      primaryEndpoint = '$baseUrl/api/leave_reject/${widget.id}';
     } else if (widget.type == 'meeting') {
-      method = 'PUT';
       if (action == 'approve') {
-        endpoint = '$baseUrl/api/office-administration/book_meeting_room/approve/${widget.id}';
+        primaryEndpoint = '$baseUrl/api/office-administration/book_meeting_room/approve/${widget.id}';
       } else if (action == 'reject') {
-        endpoint = '$baseUrl/api/office-administration/book_meeting_room/disapprove/${widget.id}';
-      }
-      if (comment.isNotEmpty) {
-        body['comments'] = comment;
+        primaryEndpoint = '$baseUrl/api/office-administration/book_meeting_room/disapprove/${widget.id}';
       }
     } else if (widget.type == 'car') {
-      // Car type -- we already handle this with separate function
-      // This code won't be called because we hide these UI buttons for 'car'
       method = 'POST';
-      endpoint = '$baseUrl/api/app/tasks/approvals/pending/${widget.id}';
+      primaryEndpoint = '$baseUrl/api/app/tasks/approvals/pending/${widget.id}';
       body = {
         "status": action == 'approve' ? 'Approved' : 'Rejected',
         "types": widget.type,
       };
-      if (comment.isNotEmpty) {
-        body['description'] = comment;
-      }
     } else {
       _showErrorDialog('Error', 'Invalid request type.');
       setState(() {
@@ -1848,49 +1911,71 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       return;
     }
 
-    debugPrint('Sending $action request to $endpoint with body: $body');
-
-    try {
-      http.Response response;
-      if (method == 'PUT') {
-        response = await http.put(
-          Uri.parse(endpoint),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode(body),
-        );
-      } else {
-        response = await http.post(
-          Uri.parse(endpoint),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode(body),
-        );
-      }
-
-      debugPrint('Approval response status: ${response.statusCode}');
-      debugPrint('Approval response body: ${response.body}');
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        _showSuccessDialog('Success', 'Request has been $action successfully.');
-      } else {
-        final responseBody = jsonDecode(response.body);
-        final errorMessage = responseBody['message'] ?? 'Failed to $action the request.';
-        _showErrorDialog('Error', errorMessage);
-      }
-    } catch (e, stackTrace) {
-      debugPrint('Error sending $action request: $e');
-      debugPrint(stackTrace.toString());
-      _showErrorDialog('Error', 'An unexpected error occurred.');
-    } finally {
-      setState(() {
-        isFinalized = false;
-      });
+    if (comment.isNotEmpty) {
+      body['comments'] = comment;
     }
+
+    debugPrint('Sending $action request to $primaryEndpoint');
+
+    // Function to handle the API call
+    Future<String?> callApi(String endpoint) async {
+      try {
+        http.Response response;
+        if (method == 'PUT') {
+          response = await http.put(
+            Uri.parse(endpoint),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(body),
+          );
+        } else {
+          response = await http.post(
+            Uri.parse(endpoint),
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(body),
+          );
+        }
+
+        debugPrint('API response status: ${response.statusCode}');
+        debugPrint('API response body: ${response.body}');
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return null; // Success, no error message
+        } else {
+          final responseBody = jsonDecode(response.body);
+          return responseBody['message'] ?? 'Unknown error occurred.';
+        }
+      } catch (e, stackTrace) {
+        debugPrint('Error calling API: $e');
+        debugPrint(stackTrace.toString());
+        return 'An unexpected error occurred while connecting to the server.';
+      }
+    }
+
+    // Attempt primary API call
+    String? errorMessage = await callApi(primaryEndpoint);
+
+    // If primary fails, try fallback
+    if (errorMessage != null && fallbackEndpoint.isNotEmpty) {
+      debugPrint('Primary API failed, trying fallback API...');
+      errorMessage = await callApi(fallbackEndpoint);
+    }
+
+    // Show result
+    if (errorMessage == null) {
+      _showSuccessDialog('Success', 'Request has been $action successfully.');
+    } else {
+      _showErrorDialog('Error', errorMessage);
+    }
+
+    setState(() {
+      isFinalized = false;
+    });
   }
 
   /// Generic error dialog

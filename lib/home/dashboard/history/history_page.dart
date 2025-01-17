@@ -1,5 +1,3 @@
-// history_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
@@ -59,12 +57,16 @@ class HistoryPageState extends State<HistoryPage> {
         final leaveTypesBody = jsonDecode(leaveTypesResponse.body);
         if (leaveTypesBody['statusCode'] == 200) {
           final List<dynamic> leaveTypesData = leaveTypesBody['results'];
-          _leaveTypes = {for (var lt in leaveTypesData) lt['leave_type_id']: lt['name']};
+          _leaveTypes = {
+            for (var lt in leaveTypesData) lt['leave_type_id']: lt['name']
+          };
         } else {
-          throw Exception(leaveTypesBody['message'] ?? 'Failed to load leave types');
+          throw Exception(
+              leaveTypesBody['message'] ?? 'Failed to load leave types');
         }
       } else {
-        throw Exception('Failed to load leave types: ${leaveTypesResponse.statusCode}');
+        throw Exception(
+            'Failed to load leave types: ${leaveTypesResponse.statusCode}');
       }
 
       // Fetch Pending Items
@@ -100,12 +102,15 @@ class HistoryPageState extends State<HistoryPage> {
             return status != 'cancel';
           }).toList();
 
-          tempPendingItems.addAll(filteredPendingData.map((item) => _formatItem(item as Map<String, dynamic>)));
+          tempPendingItems.addAll(filteredPendingData
+              .map((item) => _formatItem(item as Map<String, dynamic>)));
         } else {
-          throw Exception(responseBody['message'] ?? 'Failed to load pending data');
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load pending data');
         }
       } else {
-        throw Exception('Failed to load pending data: ${pendingResponse.statusCode}');
+        throw Exception(
+            'Failed to load pending data: ${pendingResponse.statusCode}');
       }
 
       // Process History Response
@@ -119,24 +124,31 @@ class HistoryPageState extends State<HistoryPage> {
             return status != 'cancel';
           }).toList();
 
-          tempHistoryItems.addAll(filteredHistoryData.map((item) => _formatItem(item as Map<String, dynamic>)));
+          tempHistoryItems.addAll(filteredHistoryData
+              .map((item) => _formatItem(item as Map<String, dynamic>)));
         } else {
-          throw Exception(responseBody['message'] ?? AppLocalizations.of(context)!.failedToLoadHistoryData);
+          throw Exception(responseBody['message'] ??
+              AppLocalizations.of(context)!.failedToLoadHistoryData);
         }
       } else {
-        throw Exception('Failed to load history data: ${historyResponse.statusCode}');
+        throw Exception(
+            'Failed to load history data: ${historyResponse.statusCode}');
       }
 
       // Sort the temporary lists by 'updated_at' in descending order
       tempPendingItems.sort((a, b) {
-        DateTime aDate = a['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
-        DateTime bDate = b['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        DateTime aDate =
+            a['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        DateTime bDate =
+            b['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
         return bDate.compareTo(aDate); // Descending order
       });
 
       tempHistoryItems.sort((a, b) {
-        DateTime aDate = a['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
-        DateTime bDate = b['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        DateTime aDate =
+            a['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        DateTime bDate =
+            b['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
         return bDate.compareTo(aDate); // Descending order
       });
 
@@ -147,8 +159,10 @@ class HistoryPageState extends State<HistoryPage> {
         _isLoading = false;
       });
 
-      debugPrint('Pending items loaded and sorted: ${_pendingItems.length} items.');
-      debugPrint('History items loaded and sorted: ${_historyItems.length} items.');
+      debugPrint(
+          'Pending items loaded and sorted: ${_pendingItems.length} items.');
+      debugPrint(
+          'History items loaded and sorted: ${_historyItems.length} items.');
     } catch (e, stackTrace) {
       setState(() {
         _isLoading = false;
@@ -164,15 +178,19 @@ class HistoryPageState extends State<HistoryPage> {
   /// Formats each item based on its type
   Map<String, dynamic> _formatItem(Map<String, dynamic> item) {
     String type = item['types']?.toLowerCase() ?? 'unknown';
+
     Map<String, dynamic> formattedItem = {
       'type': type,
       'status': _getItemStatus(type, item),
       'statusColor': _getStatusColor(_getItemStatus(type, item)),
       'icon': _getIconForType(type),
       'iconColor': _getTypeColor(type),
-      'updated_at': DateTime.tryParse(item['updated_at'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
-      'img_name': item['img_name'] ?? 'https://via.placeholder.com/150', // Placeholder image
-      'img_path': item['img_path'] ?? '', // Add img_path if available
+      'updated_at':
+      DateTime.tryParse(item['updated_at'] ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      'img_name': item['img_name'] ??
+          'https://via.placeholder.com/150', // Placeholder image
+      'img_path': item['img_path'] ?? '',
     };
 
     switch (type) {
@@ -181,12 +199,14 @@ class HistoryPageState extends State<HistoryPage> {
           'title': item['title'] ?? AppLocalizations.of(context)!.noTitle,
           'startDate': item['from_date_time'] ?? '',
           'endDate': item['to_date_time'] ?? '',
-          'room': item['room_name'] ?? AppLocalizations.of(context)!.noRoomInfo,
+          'room':
+          item['room_name'] ?? AppLocalizations.of(context)!.noRoomInfo,
           'employee_name': item['employee_name'] ?? 'N/A',
           'id': item['uid']?.toString() ?? '',
           'remark': item['remark'] ?? '',
         });
         break;
+
       case 'leave':
         int leaveTypeId = item['leave_type_id'] ?? 0;
         String leaveTypeName = _leaveTypes[leaveTypeId] ?? 'Unknown';
@@ -199,34 +219,49 @@ class HistoryPageState extends State<HistoryPage> {
           'id': item['take_leave_request_id']?.toString() ?? '',
         });
         break;
+
       case 'car':
-        debugPrint('Car Item Data: $item');
-        // Combine date_out with time_out for From:
+      // Combine date_out/time_out for 'From' and date_in/time_in for 'To'
         String? dateOut = item['date_in'];
         String? timeOut = item['time_out'];
         String startDateTimeStr = '';
         if (dateOut != null && timeOut != null) {
-          startDateTimeStr = '$dateOut' 'T' '$timeOut:00'; // e.g., '2024-02-15T08:00:00'
+          startDateTimeStr = '$dateOut' 'T' '$timeOut:00';
         }
-
-        // Combine date_in with time_in for To:
         String? dateIn = item['date_out'];
         String? timeIn = item['time_in'];
         String endDateTimeStr = '';
         if (dateIn != null && timeIn != null) {
-          endDateTimeStr = '$dateIn' 'T' '$timeIn:00'; // e.g., '2024-02-15T04:00:00'
+          endDateTimeStr = '$dateIn' 'T' '$timeIn:00';
         }
 
         formattedItem.addAll({
-          'title': item['purpose'] ?? AppLocalizations.of(context)!.noPurpose,
-          'startDate': startDateTimeStr, // From: date_out + time_out
-          'endDate': endDateTimeStr, // To: date_in + time_in
+          'title':
+          item['purpose'] ?? AppLocalizations.of(context)!.noPurpose,
+          'startDate': startDateTimeStr,
+          'endDate': endDateTimeStr,
           'employee_name': item['requestor_name'] ?? 'N/A',
           'id': item['uid']?.toString() ?? '',
         });
         break;
+
+    /// NEW CASE: minutes of meeting
+      case 'minutes of meeting':
+        formattedItem.addAll({
+          'title': item['title'] ?? AppLocalizations.of(context)!.noTitle,
+          'startDate': item['fromdate'] ?? '',
+          'endDate': item['todate'] ?? '',
+          'employee_name':
+          item['created_by_name'] ?? 'N/A',
+          'id': item['outmeeting_uid']?.toString() ?? '',
+          'description': item['description'] ?? '',
+          'location': item['location'] ?? '',
+          'file_download_url': item['file_name'] ?? '',
+        });
+        break;
+
       default:
-        // Handle unknown types if necessary
+      // Handle unknown types if necessary
         break;
     }
 
@@ -234,13 +269,16 @@ class HistoryPageState extends State<HistoryPage> {
   }
 
   String _getItemStatus(String type, Map<String, dynamic> item) {
-    return (item['status'] ?? AppLocalizations.of(context)!.waiting).toString().toLowerCase();
+    return (item['status'] ?? AppLocalizations.of(context)!.waiting)
+        .toString()
+        .toLowerCase();
   }
 
   /// Returns color based on status
   Color _getStatusColor(String status) {
     switch (status) {
       case 'approved':
+      case 'public':
         return Colors.green;
       case 'completed':
         return Colors.blue;
@@ -270,6 +308,11 @@ class HistoryPageState extends State<HistoryPage> {
         return Colors.orange;
       case 'car':
         return Colors.blue;
+
+    /// NEW: minutes of meeting color
+      case 'minutes of meeting':
+        return Colors.purple;
+
       default:
         return Colors.grey;
     }
@@ -284,6 +327,11 @@ class HistoryPageState extends State<HistoryPage> {
         return Icons.event;
       case 'car':
         return Icons.directions_car;
+
+    /// NEW: minutes of meeting icon
+      case 'minutes of meeting':
+        return Icons.sticky_note_2;
+
       default:
         return Icons.info;
     }
@@ -296,85 +344,88 @@ class HistoryPageState extends State<HistoryPage> {
     final Size screenSize = MediaQuery.of(context).size;
 
     return WillPopScope(
-        onWillPop: () async {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const Dashboard()),
-            (route) => false,
-          );
-          return false;
-        },
-        child: Scaffold(
-          backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
-          body: Column(
-            children: [
-              _buildHeader(isDarkMode, screenSize),
-              SizedBox(height: screenSize.height * 0.005),
-              _buildTabBar(screenSize),
-              SizedBox(height: screenSize.height * 0.005),
-              _isLoading
-                  ? const Expanded(
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  : Expanded(
-                      child: RefreshIndicator(
-                        onRefresh: _fetchHistoryData, // This function will refresh data
-                        child: _isPendingSelected
-                            ? _pendingItems.isEmpty
-                                ? Center(
-                                    child: Text(
-                                      AppLocalizations.of(context)!.noPendingItems,
-                                      style: TextStyle(
-                                        fontSize: screenSize.width * 0.04,
-                                      ),
-                                    ),
-                                  )
-                                : ListView.builder(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: screenSize.width * 0.04,
-                                      vertical: screenSize.height * 0.008,
-                                    ),
-                                    itemCount: _pendingItems.length,
-                                    itemBuilder: (context, index) {
-                                      final item = _pendingItems[index];
-                                      return _buildHistoryCard(
-                                        context,
-                                        item,
-                                        isHistory: false,
-                                        screenSize: screenSize,
-                                      );
-                                    },
-                                  )
-                            : _historyItems.isEmpty
-                                ? Center(
-                                    child: Text(
-                                      AppLocalizations.of(context)!.myHistoryItems,
-                                      style: TextStyle(
-                                        fontSize: screenSize.width * 0.04,
-                                      ),
-                                    ),
-                                  )
-                                : ListView.builder(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: screenSize.width * 0.04,
-                                      vertical: screenSize.height * 0.008,
-                                    ),
-                                    itemCount: _historyItems.length,
-                                    itemBuilder: (context, index) {
-                                      final item = _historyItems[index];
-                                      return _buildHistoryCard(
-                                        context,
-                                        item,
-                                        isHistory: true,
-                                        screenSize: screenSize,
-                                      );
-                                    },
-                                  ),
-                      ),
+      onWillPop: () async {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const Dashboard()),
+              (route) => false,
+        );
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
+        body: Column(
+          children: [
+            _buildHeader(isDarkMode, screenSize),
+            SizedBox(height: screenSize.height * 0.005),
+            _buildTabBar(screenSize),
+            SizedBox(height: screenSize.height * 0.005),
+            _isLoading
+                ? const Expanded(
+              child: Center(child: CircularProgressIndicator()),
+            )
+                : Expanded(
+              child: RefreshIndicator(
+                onRefresh:
+                _fetchHistoryData, // This function will refresh data
+                child: _isPendingSelected
+                    ? _pendingItems.isEmpty
+                    ? Center(
+                  child: Text(
+                    AppLocalizations.of(context)!
+                        .noPendingItems,
+                    style: TextStyle(
+                      fontSize: screenSize.width * 0.04,
                     ),
-            ],
-          ),
-        ));
+                  ),
+                )
+                    : ListView.builder(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: screenSize.width * 0.04,
+                    vertical: screenSize.height * 0.008,
+                  ),
+                  itemCount: _pendingItems.length,
+                  itemBuilder: (context, index) {
+                    final item = _pendingItems[index];
+                    return _buildHistoryCard(
+                      context,
+                      item,
+                      isHistory: false,
+                      screenSize: screenSize,
+                    );
+                  },
+                )
+                    : _historyItems.isEmpty
+                    ? Center(
+                  child: Text(
+                    AppLocalizations.of(context)!.myHistoryItems,
+                    style: TextStyle(
+                      fontSize: screenSize.width * 0.04,
+                    ),
+                  ),
+                )
+                    : ListView.builder(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: screenSize.width * 0.04,
+                    vertical: screenSize.height * 0.008,
+                  ),
+                  itemCount: _historyItems.length,
+                  itemBuilder: (context, index) {
+                    final item = _historyItems[index];
+                    return _buildHistoryCard(
+                      context,
+                      item,
+                      isHistory: true,
+                      screenSize: screenSize,
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Builds the header section with background image and title
@@ -419,7 +470,7 @@ class HistoryPageState extends State<HistoryPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(width: screenSize.width * 0.12), // Placeholder for alignment
+              SizedBox(width: screenSize.width * 0.12), // Placeholder
             ],
           ),
         ),
@@ -449,7 +500,9 @@ class HistoryPageState extends State<HistoryPage> {
                   vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
-                  color: _isPendingSelected ? (isDarkMode ? Colors.amber[700] : Colors.amber) : (isDarkMode ? Colors.grey[800] : Colors.grey[300]),
+                  color: _isPendingSelected
+                      ? (isDarkMode ? Colors.amber[700] : Colors.amber)
+                      : (isDarkMode ? Colors.grey[800] : Colors.grey[300]),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -462,13 +515,19 @@ class HistoryPageState extends State<HistoryPage> {
                       'assets/pending.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: _isPendingSelected ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                      color: _isPendingSelected
+                          ? Colors.white
+                          : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       AppLocalizations.of(context)!.pending,
                       style: TextStyle(
-                        color: _isPendingSelected ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                        color: _isPendingSelected
+                            ? Colors.white
+                            : (isDarkMode
+                            ? Colors.grey[400]
+                            : Colors.grey[600]),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -491,7 +550,9 @@ class HistoryPageState extends State<HistoryPage> {
                   vertical: screenSize.height * 0.008,
                 ),
                 decoration: BoxDecoration(
-                  color: !_isPendingSelected ? (isDarkMode ? Colors.amber[700] : Colors.amber) : (isDarkMode ? Colors.grey[800] : Colors.grey[300]),
+                  color: !_isPendingSelected
+                      ? (isDarkMode ? Colors.amber[700] : Colors.amber)
+                      : (isDarkMode ? Colors.grey[800] : Colors.grey[300]),
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(20.0),
                     bottomRight: Radius.circular(20.0),
@@ -504,13 +565,19 @@ class HistoryPageState extends State<HistoryPage> {
                       'assets/history.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: !_isPendingSelected ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                      color: !_isPendingSelected
+                          ? Colors.white
+                          : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       AppLocalizations.of(context)!.history,
                       style: TextStyle(
-                        color: !_isPendingSelected ? Colors.white : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                        color: !_isPendingSelected
+                            ? Colors.white
+                            : (isDarkMode
+                            ? Colors.grey[400]
+                            : Colors.grey[600]),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -526,7 +593,8 @@ class HistoryPageState extends State<HistoryPage> {
   }
 
   /// Builds each history/pending card
-  Widget _buildHistoryCard(BuildContext context, Map<String, dynamic> item, {required bool isHistory, required Size screenSize}) {
+  Widget _buildHistoryCard(BuildContext context, Map<String, dynamic> item,
+      {required bool isHistory, required Size screenSize}) {
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
     final String type = item['type'] ?? 'unknown';
@@ -540,61 +608,72 @@ class HistoryPageState extends State<HistoryPage> {
 
     String formatDate(String dateStr) {
       try {
-        DateTime date;
-        if (dateStr.contains('T')) {
-          date = DateTime.parse(dateStr);
-        } else {
-          date = DateFormat('yyyy-M-d').parse(dateStr);
-        }
-        return DateFormat('dd-MM-yyyy HH:mm').format(date);
+        final DateTime parsedDate = DateTime.parse(dateStr);
+        return DateFormat('dd-MM-yyyy HH:mm').format(parsedDate);
       } catch (e) {
-        return AppLocalizations.of(context)!.invalidDate;
+        return 'Invalid Date';
       }
     }
 
     switch (type) {
       case 'meeting':
         titleColor = Colors.green;
-        detailLabel = '${AppLocalizations.of(context)!.room} :';
+        detailLabel = 'Room:';
         detailText = item['room'] ?? 'N/A';
         detailTextColor = Colors.orange;
         break;
       case 'leave':
         titleColor = Colors.orange;
-        detailLabel = '${AppLocalizations.of(context)!.type} :';
+        detailLabel = 'Type:';
         detailText = item['leave_type'] ?? 'N/A';
         detailTextColor = Colors.orange;
         break;
       case 'car':
         titleColor = Colors.blue;
-        detailLabel = '${AppLocalizations.of(context)!.tel} :';
-        detailText = item['employee_tel']?.toString() ?? AppLocalizations.of(context)!.noPhoneNumber;
+        detailLabel = 'Tel:';
+        detailText = item['employee_tel']?.toString() ?? 'No Phone Number';
         detailTextColor = Colors.grey;
         break;
+
+      case 'minutes of meeting':
+        titleColor = Colors.purple;
+        detailLabel = 'Location:';
+        detailText = item['location'] ?? 'No location';
+        detailTextColor = Colors.orange;
+        break;
+
       default:
         titleColor = Colors.grey;
-        detailLabel = '${AppLocalizations.of(context)!.infoLabel}:';
+        detailLabel = 'Info:';
         detailText = 'N/A';
     }
 
-    String startDate = item['startDate'] != null ? formatDate(item['startDate']) : 'N/A';
-    String endDate = item['endDate'] != null ? formatDate(item['endDate']) : 'N/A';
+    String startDate =
+    item['startDate'] != null ? formatDate(item['startDate']) : 'N/A';
+    String endDate =
+    item['endDate'] != null ? formatDate(item['endDate']) : 'N/A';
 
     return GestureDetector(
       onTap: () {
+        // Format the status to match the API format
+        String formattedStatus = item['status'] != null
+            ? '${item['status'][0].toUpperCase()}${item['status'].substring(1).toLowerCase()}'
+            : 'Waiting'; // Default to 'Waiting' if no status exists
+
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => DetailsPage(
               types: type,
               id: item['id'] ?? '',
-              status: item['status'] ?? AppLocalizations.of(context)!.pending,
+              status: formattedStatus, // Pass the formatted status
             ),
           ),
         );
       },
+
       child: Card(
-        color: isDarkMode ? Colors.grey[850] : Colors.white, // Card color changes based on theme
+        color: isDarkMode ? Colors.grey[850] : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(screenSize.width * 0.03),
           side: BorderSide(color: typeColor, width: screenSize.width * 0.001),
@@ -628,8 +707,29 @@ class HistoryPageState extends State<HistoryPage> {
                         size: screenSize.width * 0.08,
                       ),
                       SizedBox(height: screenSize.height * 0.003),
-                      Text(
-                        type == 'meeting' ? AppLocalizations.of(context)!.room : type[0].toUpperCase() + type.substring(1),
+                      type == 'minutes of meeting'
+                          ? Column(
+                        children: [
+                          Text(
+                            'Minutes',
+                            style: TextStyle(
+                              color: typeColor,
+                              fontSize: screenSize.width * 0.03,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'of Meeting',
+                            style: TextStyle(
+                              color: typeColor,
+                              fontSize: screenSize.width * 0.03,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      )
+                          : Text(
+                        type[0].toUpperCase() + type.substring(1),
                         style: TextStyle(
                           color: typeColor,
                           fontSize: screenSize.width * 0.03,
@@ -644,7 +744,7 @@ class HistoryPageState extends State<HistoryPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item['employee_name'] ?? AppLocalizations.of(context)!.noName,
+                          item['employee_name'] ?? 'No Name',
                           style: TextStyle(
                             color: titleColor,
                             fontSize: screenSize.width * 0.038,
@@ -655,14 +755,18 @@ class HistoryPageState extends State<HistoryPage> {
                         Text(
                           'From: $startDate',
                           style: TextStyle(
-                            color: isDarkMode ? Colors.white70 : Colors.grey[700],
+                            color: isDarkMode
+                                ? Colors.white70
+                                : Colors.grey[700],
                             fontSize: screenSize.width * 0.03,
                           ),
                         ),
                         Text(
                           'To: $endDate',
                           style: TextStyle(
-                            color: isDarkMode ? Colors.white70 : Colors.grey[700],
+                            color: isDarkMode
+                                ? Colors.white70
+                                : Colors.grey[700],
                             fontSize: screenSize.width * 0.03,
                           ),
                         ),
@@ -678,7 +782,7 @@ class HistoryPageState extends State<HistoryPage> {
                         Row(
                           children: [
                             Text(
-                              '${AppLocalizations.of(context)!.status} : ',
+                              'Status : ',
                               style: TextStyle(
                                 fontSize: screenSize.width * 0.03,
                                 fontWeight: FontWeight.bold,
@@ -724,7 +828,8 @@ class HistoryPageState extends State<HistoryPage> {
                 child: CircleAvatar(
                   backgroundImage: NetworkImage(item['img_name']),
                   radius: screenSize.width * 0.06,
-                  backgroundColor: isDarkMode ? Colors.grey[700] : Colors.grey[300],
+                  backgroundColor:
+                  isDarkMode ? Colors.grey[700] : Colors.grey[300],
                 ),
               ),
             ),
@@ -733,10 +838,5 @@ class HistoryPageState extends State<HistoryPage> {
       ),
     );
   }
-
-  /// Helper method to get a default avatar URL
-  String _defaultAvatarUrl() {
-    // Replace with a publicly accessible image URL
-    return 'https://www.w3schools.com/howto/img_avatar.png';
-  }
 }
+

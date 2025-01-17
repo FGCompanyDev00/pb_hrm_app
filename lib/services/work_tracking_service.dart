@@ -90,16 +90,22 @@ class WorkTrackingService {
           }
           return projects;
         } else {
-          throw Exception('Unexpected response format for fetchAllProjects.');
+          if (kDebugMode) {
+            debugPrint('Unexpected response format for fetchAllProjects.');
+          }
+          return []; // Return an empty list if the response format is unexpected
         }
       } else {
-        throw Exception('Failed to fetch all projects: ${response.reasonPhrase}');
+        if (kDebugMode) {
+          debugPrint('Failed to fetch all projects: ${response.reasonPhrase}');
+        }
+        return []; // Return an empty list on HTTP error
       }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error in fetchAllProjects: $e');
       }
-      rethrow;
+      return []; // Return an empty list on any exception
     }
   }
 

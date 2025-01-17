@@ -1,5 +1,3 @@
-// history_details_page.dart
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -13,7 +11,12 @@ class DetailsPage extends StatefulWidget {
   final String id;
   final String status;
 
-  const DetailsPage({super.key, required this.types, required this.id, required this.status});
+  const DetailsPage({
+    super.key,
+    required this.types,
+    required this.id,
+    required this.status,
+  });
 
   @override
   DetailsPageState createState() => DetailsPageState();
@@ -27,7 +30,7 @@ class DetailsPageState extends State<DetailsPage> {
   String? imageUrl;
   String? lineManagerImageUrl;
   String? hrImageUrl;
-  String? _errorMessage; // Added error message variable
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -39,7 +42,7 @@ class DetailsPageState extends State<DetailsPage> {
 
   /// Handle refresh action
   Future<void> _handleRefresh() async {
-    await _fetchData(); // Re-fetch data when user pulls down
+    await _fetchData();
   }
 
   /// Fetch Leave Types
@@ -49,7 +52,8 @@ class DetailsPageState extends State<DetailsPage> {
     try {
       final String? tokenValue = await _getToken();
       if (tokenValue == null) {
-        _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+        _showErrorDialog('Authentication Error',
+            'Token not found. Please log in again.');
         setState(() {
           _errorMessage = 'Token not found. Please log in again.';
         });
@@ -73,13 +77,16 @@ class DetailsPageState extends State<DetailsPage> {
         final data = jsonDecode(response.body);
         if (data['statusCode'] == 200 && data['results'] is List) {
           setState(() {
-            _leaveTypes = {for (var lt in data['results']) lt['leave_type_id']: lt['name']};
+            _leaveTypes = {
+              for (var lt in data['results']) lt['leave_type_id']: lt['name']
+            };
           });
         } else {
           throw Exception('Failed to fetch leave types');
         }
       } else {
-        throw Exception('Failed to fetch leave types: ${response.statusCode}');
+        throw Exception(
+            'Failed to fetch leave types: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
@@ -95,24 +102,15 @@ class DetailsPageState extends State<DetailsPage> {
   Future<void> _fetchData() async {
     setState(() {
       isLoading = true;
-      _errorMessage = null; // Reset error message before fetching
+      _errorMessage = null;
     });
 
     final String type = widget.types.toLowerCase();
     final String id = widget.id;
-    final String status = widget.status.toLowerCase();
+    final String status = widget.status;
 
-    // Mapping types and statuses
-    String statusValue;
-    if (type == 'meeting') {
-      statusValue = status == 'waiting' ? 'waiting' : status;
-    } else if (type == 'car') {
-      statusValue = status == 'waiting' ? 'Waiting' : status;
-    } else if (type == 'leave') {
-      statusValue = status == 'waiting' ? 'Waiting' : status;
-    } else {
-      statusValue = 'unknown';
-    }
+    // Ensure the first letter is capitalized and the rest are lowercase
+    String formattedStatus = '${status[0].toUpperCase()}${status.substring(1).toLowerCase()}';
 
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String apiUrl = '$baseUrl/api/app/users/history/pending/$id';
@@ -128,20 +126,18 @@ class DetailsPageState extends State<DetailsPage> {
         return;
       }
 
-      http.Response response;
-
-      // Prepare request body for POST request
+      // Prepare request body
       Map<String, dynamic> requestBody = {
         'types': type,
-        'status': statusValue,
+        'status': formattedStatus,
       };
 
       if (kDebugMode) {
         debugPrint('Sending POST request to $apiUrl with body: $requestBody');
       }
 
-      // Sending POST request for all types (meeting, leave, car)
-      response = await http.post(
+      // Send POST request
+      final response = await http.post(
         Uri.parse(apiUrl),
         headers: {
           'Content-Type': 'application/json',
@@ -158,8 +154,9 @@ class DetailsPageState extends State<DetailsPage> {
       if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 202) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
 
-        if (responseData.containsKey('statusCode') && (responseData['statusCode'] == 200 || responseData['statusCode'] == 201 || responseData['statusCode'] == 202)) {
-          // Success
+        if (responseData.containsKey('statusCode') &&
+            (responseData['statusCode'] == 200 || responseData['statusCode'] == 201 || responseData['statusCode'] == 202)) {
+          // Handle success
           if (!responseData.containsKey('results')) {
             _showErrorDialog('Error', 'Invalid API response structure.');
             setState(() {
@@ -168,8 +165,6 @@ class DetailsPageState extends State<DetailsPage> {
             });
             return;
           }
-
-          // Handle the results based on type
           if (responseData['results'] is List) {
             final List<dynamic> dataList = responseData['results'];
             if (dataList.isNotEmpty) {
@@ -191,7 +186,6 @@ class DetailsPageState extends State<DetailsPage> {
               isLoading = false;
             });
           } else {
-            // Handle unexpected format
             setState(() {
               data = null;
               isLoading = false;
@@ -226,86 +220,6 @@ class DetailsPageState extends State<DetailsPage> {
     }
   }
 
-  /// Fetch Profile Image using the profile API
-  Future<void> _fetchProfileImage(String id) async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    String profileApiUrl = '$baseUrl/api/profile/$id';
-
-    try {
-      final String? tokenValue = await _getToken();
-      if (tokenValue == null) {
-        _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
-        setState(() {
-          imageUrl = _defaultAvatarUrl();
-          _errorMessage = 'Token not found. Please log in again.';
-        });
-        return;
-      }
-
-      if (kDebugMode) {
-        debugPrint('Fetching profile image from: $profileApiUrl');
-      }
-
-      final response = await http.get(
-        Uri.parse(profileApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $tokenValue',
-        },
-      );
-
-      if (kDebugMode) {
-        debugPrint('Profile API Response Status Code: ${response.statusCode}');
-        debugPrint('Profile API Response Body: ${response.body}');
-      }
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final Map<String, dynamic> profileData = jsonDecode(response.body);
-
-        if (profileData.containsKey('statusCode') && (profileData['statusCode'] == 200 || profileData['statusCode'] == 201 || profileData['statusCode'] == 202)) {
-          if (profileData.containsKey('results') && profileData['results'] is Map<String, dynamic>) {
-            String fetchedImageUrl = profileData['results']['images'] ?? _defaultAvatarUrl();
-            setState(() {
-              imageUrl = fetchedImageUrl;
-            });
-          } else {
-            setState(() {
-              imageUrl = _defaultAvatarUrl();
-              _errorMessage = 'Invalid profile API response.';
-            });
-            _showErrorDialog('Error', 'Invalid profile API response.');
-          }
-        } else {
-          String errorMessage = profileData['message'] ?? 'Unknown error fetching profile.';
-          _showErrorDialog('Error', errorMessage);
-          setState(() {
-            imageUrl = _defaultAvatarUrl();
-            _errorMessage = errorMessage;
-          });
-        }
-      } else {
-        setState(() {
-          imageUrl = _defaultAvatarUrl();
-          _errorMessage = 'Failed to fetch profile image: ${response.statusCode}';
-        });
-        _showErrorDialog('Error', 'Failed to fetch profile image: ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('Error fetching profile image: $e');
-      setState(() {
-        imageUrl = _defaultAvatarUrl();
-        _errorMessage = 'An error occurred while fetching profile image.';
-      });
-      _showErrorDialog('Error', 'An unexpected error occurred while fetching profile image.');
-    }
-  }
-
-  /// Helper method to get a default avatar URL
-  String _defaultAvatarUrl() {
-    // Replace with a publicly accessible image URL
-    return 'https://www.w3schools.com/howto/img_avatar.png';
-  }
-
   /// Retrieve token from SharedPreferences
   Future<String?> _getToken() async {
     try {
@@ -324,21 +238,24 @@ class DetailsPageState extends State<DetailsPage> {
         return 'N/A';
       }
       final DateTime parsedDate = DateTime.parse(dateStr);
-      return includeTime ? DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate) : DateFormat('dd-MM-yyyy').format(parsedDate);
+      return includeTime
+          ? DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate)
+          : DateFormat('dd-MM-yyyy').format(parsedDate);
     } catch (e) {
       debugPrint('Date parsing error: $e');
       return 'Invalid Date';
     }
   }
 
-  /// Build AppBar
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return AppBar(
       flexibleSpace: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+            image: AssetImage(
+              isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png',
+            ),
             fit: BoxFit.cover,
           ),
           borderRadius: const BorderRadius.only(
@@ -351,9 +268,7 @@ class DetailsPageState extends State<DetailsPage> {
       title: Text(
         'History Details',
         style: TextStyle(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.white // White text in dark mode
-              : Colors.black, // Black text in light mode
+          color: isDarkMode ? Colors.white : Colors.black,
           fontWeight: FontWeight.bold,
           fontSize: 22,
         ),
@@ -361,9 +276,7 @@ class DetailsPageState extends State<DetailsPage> {
       leading: IconButton(
         icon: Icon(
           Icons.arrow_back_ios_new,
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.white // White icon in dark mode
-              : Colors.black, // Black icon in light mode
+          color: isDarkMode ? Colors.white : Colors.black,
           size: 20,
         ),
         onPressed: () {
@@ -378,43 +291,39 @@ class DetailsPageState extends State<DetailsPage> {
 
   /// Build Requestor Section
   Widget _buildRequestorSection() {
-    String requestorName = (data?['requestor_name'] ?? data?['employee_name']) ?? 'No Name';
-    String submittedOn = formatDate(
-      data?['created_date'] ?? data?['date_create'],
+    String requestorName =
+        (data?['requestor_name'] ?? data?['employee_name'] ?? data?['created_by']) ?? 'No Name';
+
+    final submittedOn = formatDate(
+      data?['created_date'] ?? data?['date_create'] ?? data?['created_at'],
       includeTime: true,
     );
+
     String requestorImageUrl = data?['img_name'] ?? data?['img_path'] ?? '';
 
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark; // Check for dark mode
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Requestor Section Title
         Text(
           'Requestor',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
-        const SizedBox(height: 10),
-
-        // Profile Image and Name
+        const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircleAvatar(
-              backgroundImage: requestorImageUrl.isNotEmpty ? NetworkImage(requestorImageUrl) : NetworkImage(_defaultAvatarUrl()),
-              radius: 30, // Profile image size
+              backgroundImage: requestorImageUrl.isNotEmpty
+                  ? NetworkImage(requestorImageUrl)
+                  : NetworkImage(_defaultAvatarUrl()),
+              radius: 30,
               backgroundColor: Colors.grey[300],
-              onBackgroundImageError: (_, __) {
-                setState(() {
-                  // If there's an error loading the image, fallback to the default image
-                  requestorImageUrl = _defaultAvatarUrl();
-                });
-              },
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -424,20 +333,21 @@ class DetailsPageState extends State<DetailsPage> {
                   Text(
                     requestorName,
                     style: TextStyle(
-                      fontSize: 16, // Reduced font size
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: isDarkMode ? Colors.white : Colors.black,
                     ),
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis, // Handle overflow
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'Submitted on $submittedOn',
                     style: TextStyle(
-                      fontSize: 12, // Reduced font size
+                      fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                      color:
+                      isDarkMode ? Colors.white70 : Colors.black54,
                     ),
                   ),
                 ],
@@ -449,12 +359,13 @@ class DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  /// Build Blue Section
+  /// A small highlight container to show the type
   Widget _buildBlueSection() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Container(
-      width: 100, // Reduced width
+      width: screenWidth * 0.7,
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
       decoration: BoxDecoration(
@@ -465,16 +376,18 @@ class DetailsPageState extends State<DetailsPage> {
         child: Text(
           '${widget.types[0].toUpperCase()}${widget.types.substring(1).toLowerCase()}',
           style: TextStyle(
-            fontSize: 15, // Reduced font size
+            fontSize: 17,
             fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : Colors.black, // Text color changes for dark mode
+            color: isDarkMode ? Colors.white : Colors.black,
           ),
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );
   }
 
-  /// Build Details Section
+  /// Build the main details
   Widget _buildDetailsSection() {
     final String type = widget.types.toLowerCase();
     final List<Map<String, dynamic>> details = [];
@@ -482,68 +395,262 @@ class DetailsPageState extends State<DetailsPage> {
 
     if (type == 'meeting') {
       details.addAll([
-        {'icon': Icons.bookmark, 'title': 'Title', 'value': data?['title'] ?? 'No Title', 'color': Colors.blue},
-        {'icon': Icons.calendar_today, 'title': 'Date', 'value': '${formatDate(data?['from_date_time'])} - ${formatDate(data?['to_date_time'])}', 'color': Colors.green},
-        {'icon': Icons.access_time, 'title': 'Time', 'value': '${formatDate(data?['from_date_time'], includeTime: true)} - ${formatDate(data?['to_date_time'], includeTime: true)}', 'color': Colors.orange},
-        {'icon': Icons.description, 'title': 'Description', 'value': data?['remark'] ?? 'No Remark', 'color': Colors.indigo},
-        {'icon': Icons.location_on, 'title': 'Room', 'value': data?['room_name'] ?? 'No room specified', 'color': Colors.orange}
+        {
+          'icon': Icons.bookmark,
+          'title': 'Title',
+          'value': data?['title'] ?? 'No Title',
+          'color': Colors.blue
+        },
+        {
+          'icon': Icons.calendar_today,
+          'title': 'Date',
+          'value':
+          '${formatDate(data?["from_date_time"])} - ${formatDate(data?["to_date_time"])}',
+          'color': Colors.green
+        },
+        {
+          'icon': Icons.access_time,
+          'title': 'Time',
+          'value':
+          '${formatDate(data?["from_date_time"], includeTime: true)} - ${formatDate(data?["to_date_time"], includeTime: true)}',
+          'color': Colors.orange
+        },
+        {
+          'icon': Icons.description,
+          'title': 'Description',
+          'value': data?['remark'] ?? 'No Remark',
+          'color': Colors.indigo
+        },
+        {
+          'icon': Icons.location_on,
+          'title': 'Room',
+          'value': data?['room_name'] ?? 'No room specified',
+          'color': Colors.orange
+        },
       ]);
     } else if (type == 'car') {
       details.addAll([
-        {'icon': Icons.bookmark, 'title': 'Purpose', 'value': data?['purpose'] ?? 'No Purpose', 'color': Colors.blue},
-        {'icon': Icons.place, 'title': 'Place', 'value': data?['place'] ?? 'N/A', 'color': Colors.green},
-        {'icon': Icons.calendar_today, 'title': 'Date', 'value': '${formatDate(data?['date_in'])} - ${formatDate(data?['date_out'])}', 'color': Colors.orange},
-        {'icon': Icons.access_time, 'title': 'Time', 'value': '${data?['time_in'] ?? 'N/A'} - ${data?['time_out'] ?? 'No time out and time in'}', 'color': Colors.purple},
-        {'icon': Icons.phone, 'title': 'Discretion', 'value': data?['employee_tel'] ?? 'No phone number', 'color': Colors.red}
+        {
+          'icon': Icons.bookmark,
+          'title': 'Purpose',
+          'value': data?['purpose'] ?? 'No Purpose',
+          'color': Colors.blue
+        },
+        {
+          'icon': Icons.place,
+          'title': 'Place',
+          'value': data?['place'] ?? 'N/A',
+          'color': Colors.green
+        },
+        {
+          'icon': Icons.calendar_today,
+          'title': 'Date',
+          'value':
+          '${formatDate(data?["date_in"])} - ${formatDate(data?["date_out"])}',
+          'color': Colors.orange
+        },
+        {
+          'icon': Icons.access_time,
+          'title': 'Time',
+          'value':
+          '${data?['time_in'] ?? 'N/A'} - ${data?['time_out'] ?? 'No time out'}',
+          'color': Colors.purple
+        },
+        {
+          'icon': Icons.phone,
+          'title': 'Discretion',
+          'value': data?['employee_tel'] ?? 'No phone number',
+          'color': Colors.red
+        },
       ]);
     } else if (type == 'leave') {
-      String leaveTypeName = _leaveTypes[data?['leave_type_id']] ?? 'Unknown Leave Type';
+      String leaveTypeName =
+          _leaveTypes[data?['leave_type_id']] ?? 'Unknown Leave Type';
       details.addAll([
-        {'icon': Icons.bookmark, 'title': 'Title', 'value': data?['name'] ?? 'No Title', 'color': Colors.blue},
-        {'icon': Icons.calendar_today, 'title': 'Date', 'value': '${formatDate(data?['take_leave_from'])} - ${formatDate(data?['take_leave_to'])}', 'color': Colors.green},
-        {'icon': Icons.label, 'title': 'Type of leave', 'value': '$leaveTypeName (${data?['days']?.toString() ?? 'N/A'})', 'color': Colors.orange},
-        {'icon': Icons.description, 'title': 'Description', 'value': data?['take_leave_reason'] ?? 'No Description Provided', 'color': Colors.green}
+        {
+          'icon': Icons.bookmark,
+          'title': 'Title',
+          'value': data?['name'] ?? 'No Title',
+          'color': Colors.blue
+        },
+        {
+          'icon': Icons.calendar_today,
+          'title': 'Date',
+          'value':
+          '${formatDate(data?["take_leave_from"])} - ${formatDate(data?["take_leave_to"])}',
+          'color': Colors.green
+        },
+        {
+          'icon': Icons.label,
+          'title': 'Type of leave',
+          'value':
+          '$leaveTypeName (${data?["days"]?.toString() ?? "N/A"})',
+          'color': Colors.orange
+        },
+        {
+          'icon': Icons.description,
+          'title': 'Description',
+          'value': data?['take_leave_reason'] ?? 'No Description Provided',
+          'color': Colors.green
+        },
+      ]);
+    }
+
+    else if (type == 'minutes of meeting') {
+      details.addAll([
+        {
+          'icon': Icons.bookmark,
+          'title': 'Title',
+          'value': data?['title'] ?? 'No Title',
+          'color': Colors.blue
+        },
+        {
+          'icon': Icons.calendar_today,
+          'title': 'Date',
+          'value':
+          '${formatDate(data?["fromdate"])} - ${formatDate(data?["todate"])}',
+          'color': Colors.green
+        },
+        {
+          'icon': Icons.access_time,
+          'title': 'Time',
+          'value':
+          '${formatDate(data?["fromdate"], includeTime: true)} - ${formatDate(data?["todate"], includeTime: true)}',
+          'color': Colors.orange
+        },
+        {
+          'icon': Icons.description,
+          'title': 'Description',
+          'value': data?['description'] ?? 'No Description',
+          'color': Colors.purple
+        },
+        {
+          'icon': Icons.public,
+          'title': 'Status',
+          'value': data?['status'] ?? '',
+          'color': Colors.red
+        },
+        {
+          'icon': Icons.groups,
+          'title': 'Members',
+          'value': _buildMemberCircles(data?['guests'] ?? []),
+          'color': Colors.indigo
+        },
       ]);
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: details.map((detail) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: _buildInfoRow(detail['icon'], detail['title'], detail['value'], detail['color'], isDarkMode),
+      children: [
+        // Build each detail row
+        for (final detail in details)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: _buildInfoRow(
+              detail['icon'],
+              detail['title'],
+              detail['value'],
+              detail['color'],
+              isDarkMode,
+            ),
+          ),
+        if (type == 'minutes of meeting')
+          _buildDownloadButton(data?['file_name'] ?? '')
+      ],
+    );
+  }
+
+  Widget _buildMemberCircles(List<dynamic> guests) {
+    if (guests.isEmpty) {
+      return const Text('No members available');
+    }
+
+    return Wrap(
+      spacing: 4,
+      runSpacing: 10,
+      children: guests.map<Widget>((guest) {
+        final String imageUrl = guest['img_name'] ?? '';
+        final String name = guest['employee_name'] ?? 'Unknown';
+
+        return SizedBox(
+          width: 60,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundImage: NetworkImage(imageUrl),
+                onBackgroundImageError: (_, __) => const Icon(Icons.error),
+                backgroundColor: Colors.grey[300],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                name,
+                style: const TextStyle(fontSize: 10),
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         );
       }).toList(),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String title, String content, Color color, bool isDarkMode) {
+  /// Download Button
+  Widget _buildDownloadButton(String fileNameOrUrl) {
+    // Hide if empty:
+    if (fileNameOrUrl.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            size: 18,
-            color: isDarkMode ? color.withOpacity(0.8) : color,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '$title: $content',
-              style: TextStyle(
-                fontSize: 13,
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
-            ),
-          ),
-        ],
+      padding: const EdgeInsets.only(top: 16.0),
+      child: ElevatedButton.icon(
+        onPressed: () async {
+          // Open or download the file if have a direct URL
+          // For demonstration, just print the URL
+          if (kDebugMode) {
+            print('Downloading from: $fileNameOrUrl');
+          }
+          // Use url_launcher or any other logic
+          // Example:
+          // if (await canLaunchUrlString(fileNameOrUrl)) {
+          //   await launchUrlString(fileNameOrUrl);
+          // }
+        },
+        icon: const Icon(Icons.download),
+        label: const Text('Download Attachment'),
       ),
     );
   }
 
-  /// Build Workflow Section
+  Widget _buildInfoRow(IconData icon, String title, dynamic content, Color color, bool isDarkMode) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          icon,
+          size: 24,
+          color: isDarkMode ? color.withOpacity(0.8) : color,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: content is Widget
+              ? content
+              : Text(
+            '$title: $content',
+            style: TextStyle(
+              fontSize: 14,
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// If needed, show avatars in a "workflow" style
   Widget _buildWorkflowSection() {
     if (widget.types.toLowerCase() == 'leave') {
       return Wrap(
@@ -551,17 +658,15 @@ class DetailsPageState extends State<DetailsPage> {
         spacing: 10,
         runSpacing: 10,
         children: [
-          _buildUserAvatar(data?['img_name'] ?? _defaultAvatarUrl(), borderColor: Colors.green),
-          Transform.translate(
-            offset: const Offset(0, 13.0),
-            child: const Icon(Icons.arrow_forward, color: Colors.orange, size: 18),
-          ),
-          _buildUserAvatar(lineManagerImageUrl ?? _defaultAvatarUrl(), borderColor: Colors.orange),
-          Transform.translate(
-            offset: const Offset(0, 13.0),
-            child: const Icon(Icons.arrow_forward, color: Colors.grey, size: 18),
-          ),
-          _buildUserAvatar(hrImageUrl ?? _defaultAvatarUrl(), borderColor: Colors.grey),
+          _buildUserAvatar(
+              data?['img_name'] ?? _defaultAvatarUrl(),
+              borderColor: Colors.green),
+          const Icon(Icons.arrow_forward, color: Colors.orange, size: 18),
+          _buildUserAvatar(lineManagerImageUrl ?? _defaultAvatarUrl(),
+              borderColor: Colors.orange),
+          const Icon(Icons.arrow_forward, color: Colors.grey, size: 18),
+          _buildUserAvatar(hrImageUrl ?? _defaultAvatarUrl(),
+              borderColor: Colors.grey),
         ],
       );
     } else if (widget.types.toLowerCase() == 'meeting') {
@@ -570,11 +675,10 @@ class DetailsPageState extends State<DetailsPage> {
         spacing: 10,
         runSpacing: 10,
         children: [
-          _buildUserAvatar(data?['img_name'] ?? _defaultAvatarUrl(), borderColor: Colors.green),
-          Transform.translate(
-            offset: const Offset(0, 13.0),
-            child: const Icon(Icons.arrow_forward, color: Colors.orange, size: 18),
-          ),
+          _buildUserAvatar(
+              data?['img_name'] ?? _defaultAvatarUrl(),
+              borderColor: Colors.green),
+          const Icon(Icons.arrow_forward, color: Colors.orange, size: 18),
           _buildUserAvatar(_defaultAvatarUrl(), borderColor: Colors.grey),
         ],
       );
@@ -584,10 +688,10 @@ class DetailsPageState extends State<DetailsPage> {
 
   Widget _buildUserAvatar(String imageUrl, {Color borderColor = Colors.grey}) {
     return CircleAvatar(
-      radius: 22, // Reduced radius
+      radius: 22,
       backgroundColor: borderColor,
       child: CircleAvatar(
-        radius: 20, // Reduced radius
+        radius: 20,
         backgroundImage: NetworkImage(imageUrl),
         onBackgroundImageError: (_, __) {
           setState(() {
@@ -598,10 +702,12 @@ class DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  /// Build Action Buttons
   Widget _buildActionButtons(BuildContext context) {
-    // Hide action buttons if status is approved, disapproved, or cancel
-    if (widget.status.toLowerCase() == 'approved' || widget.status.toLowerCase() == 'disapproved' || widget.status.toLowerCase() == 'cancel') {
+    final String type = widget.types.toLowerCase();
+    final lowerStatus = widget.status.toLowerCase();
+
+    // Hide for "minutes of meeting" type
+    if (type == 'minutes of meeting' || lowerStatus == 'approved' || lowerStatus == 'disapproved' || lowerStatus == 'cancel') {
       return const SizedBox.shrink();
     }
 
@@ -622,7 +728,7 @@ class DetailsPageState extends State<DetailsPage> {
           Expanded(
             child: _buildStyledButton(
               label: 'Edit',
-              icon: Icons.check,
+              icon: Icons.edit,
               backgroundColor: const Color(0xFFDBB342),
               textColor: Colors.white,
               onPressed: isFinalized ? null : () => _handleEdit(),
@@ -663,7 +769,7 @@ class DetailsPageState extends State<DetailsPage> {
             child: Icon(
               icon,
               color: backgroundColor,
-              size: 18, // Icon size
+              size: 18,
             ),
           ),
           const SizedBox(width: 8),
@@ -671,7 +777,7 @@ class DetailsPageState extends State<DetailsPage> {
             label,
             style: TextStyle(
               color: textColor,
-              fontSize: 14.0, // Font size
+              fontSize: 14.0,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -680,7 +786,6 @@ class DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  /// Handle Edit Action
   Future<void> _handleEdit() async {
     setState(() {
       isFinalized = true;
@@ -688,19 +793,12 @@ class DetailsPageState extends State<DetailsPage> {
 
     final String type = widget.types.toLowerCase();
     String idToSend;
-
     if (type == 'leave') {
       idToSend = data?['take_leave_request_id']?.toString() ?? widget.id;
     } else {
       idToSend = data?['uid']?.toString() ?? widget.id;
     }
 
-    // Debug: debugPrint the data and id before navigating to the edit page
-    if (kDebugMode) {
-      debugPrint('Navigating to Edit Page with data: $data and id: $idToSend');
-    }
-
-    // Navigate to OfficeBookingEventEditPage with id and type
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -710,12 +808,9 @@ class DetailsPageState extends State<DetailsPage> {
         ),
       ),
     ).then((result) {
-      // Debug: debugPrint the result from the edit page
       if (kDebugMode) {
         debugPrint('Returned from Edit Page with result: $result');
       }
-
-      // Refresh data after returning from edit page if result is true
       if (result == true) {
         _fetchData();
       }
@@ -726,7 +821,6 @@ class DetailsPageState extends State<DetailsPage> {
     });
   }
 
-  /// Confirm Delete Action
   void _confirmDelete() {
     showDialog(
       context: context,
@@ -736,14 +830,14 @@ class DetailsPageState extends State<DetailsPage> {
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(ctx).pop(); // Close the dialog
+              Navigator.of(ctx).pop();
             },
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.of(ctx).pop(); // Close the dialog
-              _handleDelete(); // Proceed with deletion
+              Navigator.of(ctx).pop();
+              _handleDelete();
             },
             child: const Text('Delete'),
           ),
@@ -752,7 +846,6 @@ class DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  /// Handle Delete Action
   Future<void> _handleDelete() async {
     final String type = widget.types.toLowerCase();
     final String id = widget.id;
@@ -765,7 +858,7 @@ class DetailsPageState extends State<DetailsPage> {
 
     final String? tokenValue = await _getToken();
     if (tokenValue == null) {
-      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog('Authentication Error', 'Token not found.');
       return;
     }
 
@@ -775,7 +868,6 @@ class DetailsPageState extends State<DetailsPage> {
 
     try {
       http.Response response;
-
       switch (type) {
         case 'leave':
           response = await http.put(
@@ -786,45 +878,55 @@ class DetailsPageState extends State<DetailsPage> {
             },
           );
           if (response.statusCode == 200 || response.statusCode == 201) {
-            _showSuccessDialog('Success', 'Leave request deleted successfully.');
+            _showSuccessDialog('Success', 'Leave request deleted.');
           } else {
-            _showErrorDialog('Error', 'Failed to delete leave request: ${response.reasonPhrase}\nResponse Body: ${response.body}');
+            _showErrorDialog(
+                'Error',
+                'Failed to delete leave request: ${response.reasonPhrase}\n'
+                    'Response Body: ${response.body}');
           }
           break;
 
         case 'car':
           response = await http.delete(
-            Uri.parse('$baseUrl/api/office-administration/car_permit/${data?['uid'] ?? id}'),
+            Uri.parse(
+                '$baseUrl/api/office-administration/car_permit/${data?["uid"] ?? id}'),
             headers: {
               'Authorization': 'Bearer $tokenValue',
               'Content-Type': 'application/json',
             },
           );
           if (response.statusCode == 200 || response.statusCode == 201) {
-            _showSuccessDialog('Success', 'Car permit deleted successfully.');
+            _showSuccessDialog('Success', 'Car permit deleted.');
           } else {
-            _showErrorDialog('Error', 'Failed to delete car permit: ${response.reasonPhrase}\nResponse Body: ${response.body}');
+            _showErrorDialog(
+                'Error',
+                'Failed to delete car permit: ${response.reasonPhrase}\n'
+                    'Response Body: ${response.body}');
           }
           break;
 
         case 'meeting':
           response = await http.delete(
-            Uri.parse('$baseUrl/api/office-administration/book_meeting_room/${data?['uid'] ?? id}'),
+            Uri.parse(
+                '$baseUrl/api/office-administration/book_meeting_room/${data?["uid"] ?? id}'),
             headers: {
               'Authorization': 'Bearer $tokenValue',
               'Content-Type': 'application/json',
             },
           );
           if (response.statusCode == 200 || response.statusCode == 201) {
-            _showSuccessDialog('Success', 'Meeting deleted successfully.');
+            _showSuccessDialog('Success', 'Meeting deleted.');
           } else {
-            _showErrorDialog('Error', 'Failed to delete meeting: ${response.reasonPhrase}\nResponse Body: ${response.body}');
+            _showErrorDialog(
+                'Error',
+                'Failed to delete meeting: ${response.reasonPhrase}\n'
+                    'Response Body: ${response.body}');
           }
+          break;
 
-          if (kDebugMode) {
-            debugPrint('Full response body: ${response.body}');
-          }
-
+        case 'minutes of meeting':
+          _showErrorDialog('Error', 'Delete for minutes of meeting not implemented.');
           break;
 
         default:
@@ -832,7 +934,8 @@ class DetailsPageState extends State<DetailsPage> {
       }
     } catch (e) {
       debugPrint('Error deleting request: $e');
-      _showErrorDialog('Error', 'An unexpected error occurred while deleting the request.');
+      _showErrorDialog(
+          'Error', 'An unexpected error occurred while deleting the request.');
     }
 
     setState(() {
@@ -840,7 +943,6 @@ class DetailsPageState extends State<DetailsPage> {
     });
   }
 
-  /// Show Error Dialog
   void _showErrorDialog(String title, String message) {
     showDialog(
       context: context,
@@ -849,9 +951,7 @@ class DetailsPageState extends State<DetailsPage> {
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-            },
+            onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('OK'),
           ),
         ],
@@ -859,7 +959,6 @@ class DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  /// Show Success Dialog
   void _showSuccessDialog(String title, String message) {
     showDialog(
       context: context,
@@ -870,7 +969,7 @@ class DetailsPageState extends State<DetailsPage> {
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              Navigator.of(context).pop(); // Navigate back after success
+              Navigator.of(context).pop();
             },
             child: const Text('OK'),
           ),
@@ -879,68 +978,71 @@ class DetailsPageState extends State<DetailsPage> {
     );
   }
 
+  String _defaultAvatarUrl() {
+    return 'https://www.w3schools.com/howto/img_avatar.png';
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark; // Check for dark mode
-    final horizontalPadding = screenWidth < 360 ? 12.0 : 16.0; // Reduced padding for small screens
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final horizontalPadding = screenWidth < 360 ? 12.0 : 24.0;
 
     return Scaffold(
       appBar: _buildAppBar(context),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      _errorMessage!,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: isDarkMode ? Colors.redAccent : Colors.red, // Error color for dark mode
-                      ),
-                    ),
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _handleRefresh, // Pull down to refresh
-                  child: data == null
-                      ? Center(
-                          child: Text(
-                            'No Data Available',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: isDarkMode ? Colors.grey[400] : Colors.red, // Adapt color for dark mode
-                            ),
-                          ),
-                        )
-                      : SingleChildScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          child: Center(
-                            // Wrapped content in Center widget
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  const SizedBox(height: 8),
-                                  _buildRequestorSection(),
-                                  _buildBlueSection(),
-                                  const SizedBox(height: 16),
-                                  _buildDetailsSection(),
-                                  const SizedBox(height: 16),
-                                  _buildWorkflowSection(),
-                                  SizedBox(
-                                    height: screenHeight * 0.02,
-                                  ),
-                                  _buildActionButtons(context),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                ),
+          ? Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            _errorMessage!,
+            style: TextStyle(
+              fontSize: 16,
+              color: isDarkMode ? Colors.redAccent : Colors.red,
+            ),
+          ),
+        ),
+      )
+          : RefreshIndicator(
+        onRefresh: _handleRefresh,
+        child: data == null
+            ? Center(
+          child: Text(
+            'No Data Available',
+            style: TextStyle(
+              fontSize: 16,
+              color: isDarkMode ? Colors.grey[400] : Colors.red,
+            ),
+          ),
+        )
+            : SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding, vertical: 12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 8),
+                  _buildRequestorSection(),
+                  const SizedBox(height: 8),
+                  _buildBlueSection(),
+                  const SizedBox(height: 18),
+                  _buildDetailsSection(),
+                  const SizedBox(height: 14),
+                  _buildWorkflowSection(),
+                  SizedBox(height: screenHeight * 0.02),
+                  _buildActionButtons(context),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

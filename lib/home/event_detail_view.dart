@@ -366,7 +366,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
 
   /// Extracts and formats necessary event details.
   Map<String, String> _getEventDetails() {
-    String creatorName = widget.event['createdBy'] ?? widget.event['created_by_name'] ?? 'Unknown';
+    String creatorName = widget.event['createdBy'] ?? widget.event['created_by_name'] ?? widget.event['employee_name'] ?? 'Unknown';
     String imageUrl = widget.event['img_name'] ?? '';
     String createdAt = '';
     if (widget.event['created_at'] != null) {
@@ -481,7 +481,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 97,
+            height: 60,
             child: GridView.count(
               crossAxisCount: 7,
               children: membersList,
@@ -494,6 +494,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
               Row(
                 children: [
                   const Icon(Icons.folder_open),
+                  const SizedBox(width: 10,),
                   Text(
                     AppLocalizations.of(context)!.description,
                     textAlign: TextAlign.left,
@@ -719,7 +720,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
                     '${AppLocalizations.of(context)!.submittedOn} ${details['formattedCreatedAt']}',
                     style: TextStyle(
                       fontSize: 13,
-                      color: isDarkMode ? Colors.white : Colors.grey, // Adjust text color
+                      color: isDarkMode ? Colors.white : Colors.grey,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -914,7 +915,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
                   _buildEventType(),
                   const SizedBox(height: 20),
                   _buildEventDetails(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   if (members.isNotEmpty) _buildMembersList(members),
                 ],
               ),
@@ -928,10 +929,10 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     final isHiddenButton = (_eventType == 'Leave' || _eventType == 'Minutes Of Meeting') || eventStatus == 'Pending';
     Provider.of<ThemeNotifier>(context);
 
-    bool isDarkMode = Theme.of(context).brightness == Brightness.dark; // Define the isDarkMode variable
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? Colors.black : Colors.grey[50], // Adjust background color based on theme
+      backgroundColor: isDarkMode ? Colors.black : Colors.grey[50],
       appBar: _buildAppBar(isDarkMode),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

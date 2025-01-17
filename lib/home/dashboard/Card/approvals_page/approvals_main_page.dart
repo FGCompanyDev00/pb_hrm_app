@@ -816,6 +816,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
       case 'waiting':
       case 'pending':
       case 'branch waiting':
+      case 'waiting for approval':
         return Colors.amber;
       case 'processing':
       case 'branch processing':

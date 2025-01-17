@@ -310,9 +310,19 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
   /// Populates leave request data into controllers
   void _populateLeaveData(Map<String, dynamic> data) {
     setState(() {
-      _selectedLeaveTypeId = data['take_leave_type_id']?.toString() ?? (_leaveTypes.isNotEmpty ? _leaveTypes.first['leave_type_id'].toString() : null);
-      _leaveFromController.text = data['take_leave_from'] ?? '';
-      _leaveToController.text = data['take_leave_to'] ?? '';
+      _selectedLeaveTypeId = data['take_leave_type_id']?.toString() ??
+          (_leaveTypes.isNotEmpty
+              ? _leaveTypes.first['leave_type_id'].toString()
+              : null);
+
+      // Format take_leave_from and take_leave_to to 'yyyy-MM-dd'
+      _leaveFromController.text = data['take_leave_from'] != null
+          ? DateFormat('yyyy-MM-dd').format(DateTime.parse(data['take_leave_from']))
+          : '';
+      _leaveToController.text = data['take_leave_to'] != null
+          ? DateFormat('yyyy-MM-dd').format(DateTime.parse(data['take_leave_to']))
+          : '';
+
       _leaveReasonController.text = data['take_leave_reason'] ?? '';
       _leaveDaysController.text = data['days']?.toString() ?? '';
     });
