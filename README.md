@@ -29,7 +29,7 @@ Settings
 Profile Management
 Language Preferences
 Theme Selection: Dark/Light
-Notification Preferences: Email/In-App
+Notification Preferences: In-App
 Fingerprint Setup
 Terms and Conditions, Privacy Policy
 Log-Out Option
@@ -80,7 +80,7 @@ Compliance: Adherence to relevant regulations (e.g., GDPR, PCI DSS)
 
 Performance Requirements
 Responsiveness: Load and respond to actions within 2 seconds
-Offline Capability: Full functionality offline with data synchronization when online
+Offline Capability: Functionality offline with data synchronization when online
 Scalability: Support up to 10,000 users simultaneously
 Testing and Quality Assurance
 Unit Testing: Extensive tests for business logic
