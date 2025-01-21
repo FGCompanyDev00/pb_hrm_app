@@ -169,6 +169,7 @@ class CalendarDayWidgetCard extends HookWidget {
         [...currentEvents.value]..sort((a, b) => a.compare(b)),
         startOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: currentHour.value, minute: 0)),
         endOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: untilEnd.value, minute: 0)),
+        cropBottomEvents: true,
       );
     }
 
@@ -380,7 +381,7 @@ class CalendarDayWidgetCard extends HookWidget {
                                                     ),
                                                     const SizedBox(width: 5),
                                                     Text(
-                                                      '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                      '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
                                                       style: TextStyle(
                                                         fontSize: 10,
                                                         color: Theme.of(context).brightness == Brightness.dark
@@ -469,7 +470,7 @@ class CalendarDayWidgetCard extends HookWidget {
                                                         const Icon(Icons.access_time, size: 15),
                                                         const SizedBox(width: 5),
                                                         Text(
-                                                          '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                          '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
                                                           style: const TextStyle(fontSize: 10),
                                                         ),
                                                       ],

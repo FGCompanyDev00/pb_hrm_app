@@ -401,7 +401,7 @@ class CalendarDayWidget extends HookWidget {
                                                             const Icon(Icons.access_time, size: 15),
                                                             const SizedBox(width: 5),
                                                             Text(
-                                                              '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                              '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
                                                               style: const TextStyle(fontSize: 10),
                                                             ),
                                                           ],
@@ -465,7 +465,7 @@ class CalendarDayWidget extends HookWidget {
                                                                 const Icon(Icons.access_time, size: 15),
                                                                 const SizedBox(width: 5),
                                                                 Text(
-                                                                  '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                                  '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
                                                                   style: const TextStyle(fontSize: 10),
                                                                 ),
                                                               ],

@@ -370,7 +370,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           outmeetingUid: item['meeting_id']?.toString(),
           category: 'Minutes Of Meeting',
           fileName: item['file_name'],
-          members: uniqueMembers,  // Use filtered unique members list
+          members: uniqueMembers, // Use filtered unique members list
         );
 
         // Normalize the start and end dates for event mapping
@@ -532,9 +532,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (status == 'Cancelled') continue;
 
         // Filter duplicates by employee_id for minutes of meeting members
-        List<Map<String, dynamic>> membersList = item['members'] != null
-            ? List<Map<String, dynamic>>.from(item['members'])
-            : [];
+        List<Map<String, dynamic>> membersList = item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [];
         final seenEmployeeIds = <dynamic>{};
         final uniqueMembers = <Map<String, dynamic>>[];
         for (var member in membersList) {
@@ -561,7 +559,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
           category: 'Minutes Of Meeting',
-          members: uniqueMembers,  // Use filtered unique members list
+          members: uniqueMembers, // Use filtered unique members list
         );
 
         final normalizedStartDay = normalizeDate(startDateTime);
@@ -691,9 +689,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (status == 'Cancelled') continue;
 
         // Filter duplicates by employee_id for meeting room members
-        List<Map<String, dynamic>> membersList = item['members'] != null
-            ? List<Map<String, dynamic>>.from(item['members'])
-            : [];
+        List<Map<String, dynamic>> membersList = item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [];
         final seenEmployeeIds = <dynamic>{};
         final uniqueMembers = <Map<String, dynamic>>[];
         for (var member in membersList) {
@@ -716,12 +712,10 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           createdBy: item['employee_name'],
           createdAt: item['date_create'],
           location: item['room_name'] ?? 'Meeting Room',
-          members: uniqueMembers,  // Use filtered unique members list
+          members: uniqueMembers, // Use filtered unique members list
         );
 
-        for (var day = normalizeDate(startDateTime);
-        !day.isAfter(normalizeDate(endDateTime));
-        day = day.add(const Duration(days: 1))) {
+        for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
@@ -883,9 +877,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (status == 'Cancelled') continue;
 
         // Filter duplicates by employee_id for car booking members
-        List<Map<String, dynamic>> membersList = item['members'] != null
-            ? List<Map<String, dynamic>>.from(item['members'])
-            : [];
+        List<Map<String, dynamic>> membersList = item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [];
         final seenEmployeeIds = <dynamic>{};
         final uniqueMembers = <Map<String, dynamic>>[];
         for (var member in membersList) {
@@ -908,12 +900,10 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           imgName: item['img_name'],
           createdBy: item['requestor_name'],
           createdAt: item['updated_at'],
-          members: uniqueMembers,  // Use filtered unique members list
+          members: uniqueMembers, // Use filtered unique members list
         );
 
-        for (var day = normalizeDate(startDateTime);
-        !day.isAfter(normalizeDate(endDateTime));
-        day = day.add(const Duration(days: 1))) {
+        for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }

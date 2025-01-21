@@ -330,7 +330,7 @@ class CalendarDaySwitchView extends HookWidget {
                 Color statusColor = categoryColors[event.category] ?? Colors.grey;
                 String? iconCategory = categoryIcon[event.category];
                 Widget child;
-                Duration? time = event.end?.difference(event.start);
+                Duration? time = event.end.difference(event.start);
 
                 String eventCategory = '';
 
@@ -455,7 +455,7 @@ class CalendarDaySwitchView extends HookWidget {
                                     ),
                                     child: Row(
                                       children: [
-                                        (time?.inHours ?? 0) < 3
+                                        (time.inHours) < 3
                                             ? Row(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -486,7 +486,7 @@ class CalendarDaySwitchView extends HookWidget {
                                                             const Icon(Icons.access_time, size: 15),
                                                             const SizedBox(width: 5),
                                                             Text(
-                                                              '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                              '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
                                                               style: const TextStyle(fontSize: 10),
                                                             ),
                                                           ],
@@ -531,7 +531,7 @@ class CalendarDaySwitchView extends HookWidget {
                                                           const Icon(Icons.access_time, size: 15),
                                                           const SizedBox(width: 5),
                                                           Text(
-                                                            '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                            '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
                                                             style: const TextStyle(fontSize: 10),
                                                           ),
                                                         ],
@@ -561,7 +561,7 @@ class CalendarDaySwitchView extends HookWidget {
                                         padding: const EdgeInsets.all(8.0),
                                         child: Row(
                                           children: [
-                                            (time?.inHours ?? 0) < 3
+                                            time.inHours < 3
                                                 ? Row(
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -596,7 +596,7 @@ class CalendarDaySwitchView extends HookWidget {
                                                                     const Icon(Icons.access_time, size: 15),
                                                                     const SizedBox(width: 5),
                                                                     Text(
-                                                                      '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                                      '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
                                                                       style: const TextStyle(fontSize: 10),
                                                                     ),
                                                                   ],
@@ -646,7 +646,7 @@ class CalendarDaySwitchView extends HookWidget {
                                                                   const Icon(Icons.access_time, size: 15),
                                                                   const SizedBox(width: 5),
                                                                   Text(
-                                                                    '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${event.end != null ? FLDateTime.formatWithNames(event.end!, 'hh:mm a') : ''}',
+                                                                    '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
                                                                     style: const TextStyle(fontSize: 10),
                                                                   ),
                                                                 ],

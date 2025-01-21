@@ -6,7 +6,7 @@ class AdvancedDayEvent<T extends Object> {
   final String category;
   final String desc;
   final DateTime start;
-  final DateTime? end;
+  final DateTime end;
   final DateTime? startDisplay;
   final DateTime? endDisplay;
   final Duration? duration;
@@ -20,7 +20,7 @@ class AdvancedDayEvent<T extends Object> {
     required this.category,
     required this.desc,
     required this.start,
-    this.end,
+    required this.end,
     this.startDisplay,
     this.endDisplay,
     this.duration,
