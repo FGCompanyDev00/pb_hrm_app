@@ -53,35 +53,6 @@ class CalendarDaySwitchView extends HookWidget {
       categoriesEvents.value.clear();
       currentOverflowEventsRow.value.clear();
 
-      // if (passDefaultCurrentHour != 0) {
-      // if (passDefaultCurrentHour > 18) {
-      // currentHourDefault.value = passDefaultCurrentHour;
-      // untilEndDefault.value = passDefaultEndHour;
-      // currentHour.value = 7;
-      // untilEnd.value = 18;
-      // } else if (passDefaultCurrentHour > 14) {
-      //   currentHourDefault.value = 14;
-      //   untilEndDefault.value = 18;
-      //   currentHour.value = 14;
-      //   untilEnd.value = 18;
-      // } else if (passDefaultCurrentHour > 10) {
-      //   currentHourDefault.value = 11;
-      //   untilEndDefault.value = 15;
-      //   currentHour.value = 11;
-      //   untilEnd.value = 15;
-      // } else if (passDefaultCurrentHour > 6) {
-      //   currentHourDefault.value = 7;
-      //   untilEndDefault.value = 11;
-      //   currentHour.value = 7;
-      //   untilEnd.value = 11;
-      // }
-      // } else {
-      //   currentHourDefault.value = passDefaultCurrentHour;
-      //   untilEndDefault.value = passDefaultEndHour;
-      //   currentHour.value = 7;
-      //   untilEnd.value = 18;
-      // }
-
       for (var e in eventsCalendar) {
         DateTime startTimeDisplay = DateTime(
           e.start.year,
@@ -97,8 +68,8 @@ class CalendarDaySwitchView extends HookWidget {
           e.end.hour == 0 ? untilEndDisplay.value : e.end.hour,
           e.end.hour == 0
               ? untilEndDisplay.value == 23
-                  ? 59
-                  : 0
+              ? 59
+              : 0
               : e.end.minute,
         );
         DateTime slotStartTime = DateTime(
@@ -162,59 +133,12 @@ class CalendarDaySwitchView extends HookWidget {
           );
         }
 
-        // if (slotEndTime.isBefore(startTime)) {
-        // } else if (endTime.isBefore(slotStartTime)) {
-        // } else if (startTime.isAfter(endTime)) {
-        // } else if (startTime.isBefore(slotStartTime)) {
-        // int subHours = currentHour.value - startTime.hour;
-        // startTime = startTime.add(Duration(hours: subHours));
-        // if (startTime.minute > 0) {
-        //   startTime = startTime.subtract(Duration(minutes: startTime.minute));
-        // }
-
-        // if (endTime.isAtSameMomentAs(slotEndTime.add(const Duration(hours: 1)))) {
-        //   endTime = endTime.subtract(const Duration(hours: 1));
-        // }
-
-        // if (endTime.hour >= slotEndTime.hour) {
-        //   int subHours = endTime.hour - (untilEnd.value - 1);
-        // startTime = DateTime.utc(
-        //   selectedDay!.year,
-        //   selectedDay!.month,
-        //   selectedDay!.day,
-        //   currentHour.value,
-        //   0,
-        // );
-        // endTime = DateTime.utc(
-        //   selectedDay!.year,
-        //   selectedDay!.month,
-        //   selectedDay!.day,
-        //   untilEnd.value - 1,
-        //   0,
-        // );
-
-        // }
-
         if (slotEndTime.isBefore(startTime)) {
           // Event ends before the visible slot; ignore
         } else if (endTime.isBefore(slotStartTime)) {
           // Event starts after the visible slot; ignore
         } else if (startTime.isAfter(endTime)) {
           // Invalid event timing; ignore
-        } else if (startTime.isBefore(slotStartTime)) {
-          currentEvents.value.add(AdvancedDayEvent(
-            value: e.uid,
-            title: e.title,
-            desc: e.desc,
-            start: startTime,
-            end: endTime,
-            category: e.category,
-            members: e.members,
-            status: e.status,
-            startDisplay: startTimeDisplay,
-            endDisplay: endTimeDisplay,
-            duration: endTime.difference(startTime),
-          ));
         } else {
           currentEvents.value.add(AdvancedDayEvent(
             value: e.uid,
@@ -249,24 +173,27 @@ class CalendarDaySwitchView extends HookWidget {
           bookingCarEvents.add(i);
         } else if (i.category == 'Minutes Of Meeting') {
           minutesOfMeetingEvents.add(i);
-        } else {}
+        }
       }
 
-      for (var j in addMeetingEvents) {
-        categoriesEvents.value.add(j);
-      }
-      for (var j in leaveEvents) {
-        categoriesEvents.value.add(j);
-      }
-      for (var j in meetingRoomBookingsEvents) {
-        categoriesEvents.value.add(j);
-      }
-      for (var j in bookingCarEvents) {
-        categoriesEvents.value.add(j);
-      }
-      for (var j in minutesOfMeetingEvents) {
-        categoriesEvents.value.add(j);
-      }
+      categoriesEvents.value
+        ..addAll(addMeetingEvents)
+        ..addAll(meetingRoomBookingsEvents)
+        ..addAll(bookingCarEvents)
+        ..addAll(minutesOfMeetingEvents)
+        ..addAll(leaveEvents);
+
+      const categoryOrder = {
+        'Add Meeting': 1,
+        'Meeting Room Bookings': 2,
+        'Booking Car': 3,
+        'Minutes Of Meeting': 4,
+        'Leave': 5,
+      };
+
+      categoriesEvents.value.sort((a, b) {
+        return categoryOrder[a.category]!.compareTo(categoryOrder[b.category]!);
+      });
 
       // Process overflow events
       currentOverflowEventsRow.value = processOverflowEvents(
@@ -275,6 +202,10 @@ class CalendarDaySwitchView extends HookWidget {
         endOfDay: selectedDay!.copyTimeAndMinClean(const TimeOfDay(hour: 24, minute: 0)),
         cropBottomEvents: true,
       );
+
+      for (var row in currentOverflowEventsRow.value) {
+        row.events.sort((a, b) => categoryOrder[a.category]!.compareTo(categoryOrder[b.category]!));
+      }
     }
 
     // switchSlot() {
