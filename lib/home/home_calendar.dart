@@ -354,7 +354,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (status == 'Cancelled') continue;
 
         final event = Events(
-          title: item['title'] ?? 'Minutes Of Meeting',
+          title: item['title'] ?? 'Add Meeting',
           start: startDateTime,
           end: endDateTime,
           desc: item['description'] ?? '',
@@ -368,7 +368,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
-          category: 'Minutes Of Meeting',
+          category: 'Add Meeting',
           fileName: item['file_name'],
           members: uniqueMembers, // Use filtered unique members list
         );
@@ -438,21 +438,20 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
 
         // Handle possible nulls with default values
-        final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
+        final String uid = item['outmeeting_uid']?.toString() ?? UniqueKey().toString();
 
         String status = item['s_name'] != null ? mapEventStatus(item['s_name'].toString()) : 'Pending';
 
         if (status == 'Cancelled') continue;
 
         final event = Events(
-          // title: item['title'] ?? 'Minutes Of Meeting',
-          title: item['title'] ?? 'Add Meeting',
+          title: item['title'] ?? 'Minutes Of Meeting',
           start: startDateTime,
           end: endDateTime,
           desc: item['description'] ?? '',
           status: status,
           isMeeting: true,
-          location: item['location'] ?? '', // Assuming 'location' field exists
+          location: item['location'] ?? '',
           createdBy: item['create_by'] ?? '',
           imgName: item['file_name'] ?? '',
           createdAt: item['created_at'] ?? '',
@@ -460,9 +459,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           isRepeat: item['is_repeat']?.toString(),
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
-          outmeetingUid: item['meeting_id']?.toString(),
-          // category: 'Minutes Of Meeting',
-          category: 'Add Meeting',
+          outmeetingUid: item['outmeeting_uid']?.toString(),
+          category: 'Minutes Of Meeting',
           members: item['guests'] != null ? List<Map<String, dynamic>>.from(item['guests']) : [],
         );
 
@@ -475,7 +473,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing meeting data: $e');
+      showSnackBar('Error parsing minutes of meeting data: $e');
     }
 
     return;
@@ -527,7 +525,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           continue;
         }
 
-        final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
+        final String uid = item['outmeeting_uid']?.toString() ?? UniqueKey().toString();
         String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
         if (status == 'Cancelled') continue;
 
@@ -557,7 +555,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           isRepeat: item['is_repeat']?.toString(),
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
-          outmeetingUid: item['meeting_id']?.toString(),
+          outmeetingUid: item['outmeeting_uid']?.toString(),
           category: 'Minutes Of Meeting',
           members: uniqueMembers, // Use filtered unique members list
         );

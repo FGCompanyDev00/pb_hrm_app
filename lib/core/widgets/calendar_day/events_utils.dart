@@ -1,54 +1,6 @@
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:flutter/material.dart';
 
-// List<OverflowEventsRow<T>> processOverflowEvents<T extends Object>(
-//   List<AdvancedDayEvent<T>> sortedEvents, {
-//   required DateTime startOfDay,
-//   required DateTime endOfDay,
-//   bool cropBottomEvents = false,
-// }) {
-//   if (sortedEvents.isEmpty) return [];
-
-//   final List<OverflowEventsRow<T>> eventsDay = [];
-
-//   for (var event in sortedEvents) {
-//     bool eventAdded = false;
-
-//     // Try to fit the event into an existing slot
-//     for (var slotDay in eventsDay) {
-//       bool canFit = true;
-
-//       for (var existingEvent in slotDay.events) {
-//         // Check for overlap with existing events in the slot
-//         if (!(event.end.isBefore(existingEvent.start) || event.start.isAfter(existingEvent.end))) {
-//           canFit = false;
-//           break;
-//         }
-//       }
-
-//       if (canFit) {
-//         slotDay.events.add(event); // Add event to this slot
-//         slotDay.copyWith(
-//             start: DateTime.fromMillisecondsSinceEpoch(
-//           [slotDay.start.millisecondsSinceEpoch, event.start.millisecondsSinceEpoch].reduce((a, b) => a < b ? a : b),
-//         ));
-//         slotDay.copyWith(
-//             end: DateTime.fromMillisecondsSinceEpoch(
-//           [slotDay.end.millisecondsSinceEpoch, event.end.millisecondsSinceEpoch].reduce((a, b) => a > b ? a : b),
-//         ));
-//         eventAdded = true;
-//         break;
-//       }
-//     }
-
-//     // If the event doesn't fit in any existing slot, create a new slot
-//     if (!eventAdded) {
-//       eventsDay.add(OverflowEventsRow(events: [event], start: event.start, end: event.end));
-//     }
-//   }
-
-//   return eventsDay;
-// }
 
 List<OverflowEventsRow<T>> processOverflowEvents<T extends Object>(
   List<AdvancedDayEvent<T>> sortedEvents, {
@@ -65,9 +17,6 @@ List<OverflowEventsRow<T>> processOverflowEvents<T extends Object>(
   final Map<DateTime, OverflowEventsRow<T>> oM = {};
 
   for (var event in sortedEvents) {
-    if (event.start.isBefore(startOfDay) || event.start.isAfter(endOfDay)) {
-      continue;
-    }
     if (event.start.earlierThan(end)) {
       oM.update(
         start,
