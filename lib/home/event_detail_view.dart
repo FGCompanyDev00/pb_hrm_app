@@ -131,6 +131,10 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           debugPrint("Can't detect the answer");
       }
       setState(() {
+        _hasResponded = false;
+      });
+    } else {
+      setState(() {
         _hasResponded = true;
       });
     }
@@ -494,7 +498,9 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
               Row(
                 children: [
                   const Icon(Icons.folder_open),
-                  const SizedBox(width: 10,),
+                  const SizedBox(
+                    width: 10,
+                  ),
                   Text(
                     AppLocalizations.of(context)!.description,
                     textAlign: TextAlign.left,

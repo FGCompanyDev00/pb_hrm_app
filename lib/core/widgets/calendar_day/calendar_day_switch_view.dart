@@ -69,8 +69,8 @@ class CalendarDaySwitchView extends HookWidget {
           e.end.hour == 0 ? untilEndDisplay.value : e.end.hour,
           e.end.hour == 0
               ? untilEndDisplay.value == 23
-              ? 59
-              : 0
+                  ? 59
+                  : 0
               : e.end.minute,
         );
         DateTime slotStartTime = DateTime(
