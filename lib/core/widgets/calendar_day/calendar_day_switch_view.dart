@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:dotted_border/dotted_border.dart';
@@ -234,7 +235,10 @@ class CalendarDaySwitchView extends HookWidget {
       return null;
     }, []);
 
-    useEffect(() => autoEventsSlot());
+    useEffect(() {
+      autoEventsSlot();
+      return null;
+    }, [eventsCalendar, selectedDay, passDefaultCurrentHour, passDefaultEndHour]);
 
     return ValueListenableBuilder(
         valueListenable: currentOverflowEventsRow,
@@ -626,20 +630,19 @@ class CalendarDaySwitchView extends HookWidget {
 
     // Use filteredMembers instead of event.members
     for (var v in filteredMembers) {
-      countMembers += 1;
+      // Build a list of member details once
       membersList.add(_avatarUserList(v['img_name'], v['member_name']));
-      if (isEnoughCount) continue;
+    }
 
-      if (countMembers < 4) {
-        membersAvatar.add(_avatarUser(v['img_name']));
-      } else {
-        // Calculate remaining members count beyond the first few avatars
-        moreMembers = filteredMembers.length - (countMembers - 1);
-        membersAvatar.add(
-          _avatarMore(context, membersList, count: '+ $moreMembers'),
-        );
-        isEnoughCount = true;
-      }
+    for (int i = 0; i < filteredMembers.length && i < 3; i++) {
+      membersAvatar.add(_avatarUser(filteredMembers[i]['img_name']));
+    }
+
+    if (filteredMembers.length > 3) {
+      int remaining = filteredMembers.length - 3;
+      membersAvatar.add(
+        _avatarMore(context, membersList, count: '+ $remaining'),
+      );
     }
 
     return membersAvatar;
@@ -650,7 +653,7 @@ class CalendarDaySwitchView extends HookWidget {
       padding: const EdgeInsets.only(right: 3),
       child: CircleAvatar(
         radius: 15,
-        backgroundImage: NetworkImage(link),
+        backgroundImage: CachedNetworkImageProvider(link),
       ),
     );
   }
