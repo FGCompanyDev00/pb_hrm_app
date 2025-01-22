@@ -188,12 +188,15 @@ class CalendarDaySwitchView extends HookWidget {
         'Add Meeting': 1,
         'Meeting Room Bookings': 2,
         'Booking Car': 3,
-        'Minutes Of Meeting': 4,
+        'Minutes Of Meeting': 4,  // Lower priority
         'Leave': 5,
       };
 
       categoriesEvents.value.sort((a, b) {
-        return categoryOrder[a.category]!.compareTo(categoryOrder[b.category]!);
+        final timeCompare = a.start.compareTo(b.start);
+        return timeCompare != 0
+            ? timeCompare
+            : categoryOrder[a.category]!.compareTo(categoryOrder[b.category]!);
       });
 
       // Process overflow events

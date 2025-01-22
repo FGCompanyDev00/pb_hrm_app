@@ -35,7 +35,6 @@ class SplashScreenState extends State<SplashScreen> with SingleTickerProviderSta
     _checkSessionAfterSplash();
   }
 
-  // Delay splash for a few seconds before checking session validity
   void _checkSessionAfterSplash() {
     Future.delayed(const Duration(seconds: 6)).then((_) async {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
@@ -91,7 +90,6 @@ class SplashScreenState extends State<SplashScreen> with SingleTickerProviderSta
     });
   }
 
-  // Responsive font size helper
   double getResponsiveFontSize(double baseSize, double screenWidth) {
     return baseSize * (screenWidth / 375);
   }
@@ -109,6 +107,10 @@ class SplashScreenState extends State<SplashScreen> with SingleTickerProviderSta
     final double spacing = screenHeight * 0.02;
     final double welcomeFontSize = getResponsiveFontSize(30, screenWidth);
     final double subtitleFontSize = getResponsiveFontSize(18, screenWidth);
+
+    // Define text colors based on dark mode
+    final Color welcomeTextColor = isDarkMode ? Colors.white70 : const Color(0xFF333333);
+    final Color subtitleTextColor = isDarkMode ? Colors.white60 : const Color(0xFF666666);
 
     return Scaffold(
       body: Stack(
@@ -149,7 +151,7 @@ class SplashScreenState extends State<SplashScreen> with SingleTickerProviderSta
                       style: TextStyle(
                         fontSize: welcomeFontSize,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF333333),
+                        color: welcomeTextColor,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -160,11 +162,11 @@ class SplashScreenState extends State<SplashScreen> with SingleTickerProviderSta
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: subtitleFontSize,
-                        color: const Color(0xFF666666),
+                        color: subtitleTextColor,
                       ),
                     ),
                     SizedBox(height: spacing * 3),
-                    // Progress Indicator with ShaderMask
+                    // Progress Indicator with ShaderMask remains unchanged
                     TweenAnimationBuilder(
                       tween: Tween<double>(begin: 0.0, end: 1.0),
                       duration: const Duration(seconds: 2),
