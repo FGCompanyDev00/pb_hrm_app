@@ -141,7 +141,7 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
       Map<String, dynamic> body = {};
 
       // Handle different booking types (type 1,2 and 3)
-      if (_selectedBookingType == '1. Add Minutes of Meeting') {
+      if (_selectedBookingType == '1. Add Meeting') {
         // URL for Type 1
         url = 'https://demo-application-api.flexiflows.co/api/work-tracking/out-meeting/insert';
 
