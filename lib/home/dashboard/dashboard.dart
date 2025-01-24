@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -114,7 +115,7 @@ class DashboardState extends State<Dashboard> {
     final String? token = prefs.getString('token');
 
     try {
-      // Fetch profile data online
+      // Try fetching profile data from the network
       final response = await http.get(
         Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
         headers: {
@@ -166,7 +167,6 @@ class DashboardState extends State<Dashboard> {
         if (kDebugMode) {
           print("Error: No cached profile data available in Hive.");
         }
-
         throw Exception(AppLocalizations.of(context)!.noDataAvailable);
       }
     } finally {
@@ -236,6 +236,7 @@ class DashboardState extends State<Dashboard> {
           preferredSize: const Size.fromHeight(140.0),
           child: FutureBuilder<UserProfile>(
             future: futureUserProfile,
+            initialData: UserProfile.fromJson(jsonDecode(userProfileBox.get('userProfile') ?? '{}')), // Use cached profile data
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return _buildAppBarPlaceholder();
@@ -415,7 +416,7 @@ class DashboardState extends State<Dashboard> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
                     image: DecorationImage(
-                      image: NetworkImage(bannerUrl),
+                      image: CachedNetworkImageProvider(bannerUrl), // Use CachedNetworkImageProvider
                       fit: BoxFit.cover,
                       colorFilter: isDarkMode
                           ? ColorFilter.mode(Colors.white.withOpacity(0.1), BlendMode.lighten) // Brighter in dark mode

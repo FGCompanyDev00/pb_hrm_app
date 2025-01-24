@@ -36,7 +36,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   final LocalAuthentication auth = LocalAuthentication();
   final _storage = const FlutterSecureStorage();
   final userPreferences = sl<UserPreferences>();
-// 0 for Home/Office, 1 for Offsite
+  // 0 for Home/Office, 1 for Offsite
   bool _isCheckInActive = false;
   String _checkInTime = '--:--:--';
   String _checkOutTime = '--:--:--';
@@ -258,6 +258,105 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     userPreferences.storeCheckOutTime(_checkOutTime);
     // Start the working hours timer
     _startTimerForWorkingHours();
+  }
+
+  void _showConfirmationModal(BuildContext context, bool isCheckIn) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: isDarkMode ? Colors.grey[900] : Colors.white,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Attendance Icon
+                Image.asset(
+                  'assets/attendance.png',
+                  height: 45,
+                  width: 45,
+                  color: isDarkMode ? const Color(0xFFDBB342) : null,
+                ),
+                const SizedBox(height: 16),
+                // Title
+                Text(
+                  isCheckIn ? "Check-In" : "Check-Out",
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Description
+                Text(
+                  isCheckIn
+                      ? "Are you sure you want to Check-In now?"
+                      : "Are you sure you want to Check-Out now?",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Buttons Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(); // Close modal
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red, // Background color
+                          foregroundColor: Colors.white, // Text color
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: const Text("Cancel"),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(); // Close modal
+                          if (isCheckIn) {
+                            _authenticate(context, true); // Check-In process
+                          } else {
+                            _authenticate(context, false); // Check-Out process
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green, // Background color
+                          foregroundColor: Colors.white, // Text color
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: const Text("Confirm"),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _showCheckInNotification(String checkInTime) async {
@@ -1245,10 +1344,12 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               isSuccess: false,
             );
           } else if (isCheckInEnabled) {
-            await _authenticate(context, true);
+            // Show confirmation dialog for Check-In
+            _showConfirmationModal(context, true);
           }
         } else if (_isCheckInActive) {
-          await _authenticate(context, false);
+          // Show confirmation dialog for Check-Out
+          _showConfirmationModal(context, false);
         } else {
           _showCustomDialog(
             AppLocalizations.of(context)!.alreadyCheckedIn,
@@ -1371,39 +1472,54 @@ class AttendanceScreenState extends State<AttendanceScreen> {
             Positioned(
               top: 50,
               right: 0,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 18),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey[800]
-                      : Colors.grey[200],
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Time Reminder',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white
-                            : Colors.black,
-                      ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  double screenWidth = MediaQuery.of(context).size.width;
+                  double screenHeight = MediaQuery.of(context).size.height;
+
+                  // Dynamic font size and padding based on screen width
+                  double fontSize = screenWidth < 360 ? 8 : 10;
+                  double paddingHorizontal = screenWidth < 360 ? 8 : 12;
+                  double paddingVertical = screenWidth < 360 ? 4 : 6;
+
+                  return Container(
+                    padding: EdgeInsets.symmetric(
+                      vertical: paddingVertical,
+                      horizontal: paddingHorizontal,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _limitTime,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red,
-                      ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[800]
+                          : Colors.grey[200],
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  ],
-                ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Time Reminder',
+                          style: TextStyle(
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _limitTime,
+                          style: TextStyle(
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             )
           ],

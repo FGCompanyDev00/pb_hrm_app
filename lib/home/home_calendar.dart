@@ -488,7 +488,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-        showSnackBar('Invalid meeting data format.');
+        showSnackBar('Invalid minutes of meeting data format.');
         return;
       }
 
@@ -521,7 +521,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             toDate.minute,
           );
         } catch (e) {
-          showSnackBar('Error parsing meeting dates or times: $e');
+          showSnackBar('Error parsing minutes of meeting dates or times: $e');
           continue;
         }
 
@@ -568,7 +568,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing meeting data: $e');
+      showSnackBar('Error parsing minutes of meeting data: $e');
     }
   }
 

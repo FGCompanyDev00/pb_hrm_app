@@ -296,11 +296,11 @@ class NotificationPageState extends State<NotificationPage> {
         throw Exception('Failed to load meeting invites: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
-      debugPrint('Error fetching meeting invites: $e');
+      debugPrint('No meeting invites');
       debugPrint(stackTrace.toString());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching meeting invites: $e')),
+          const SnackBar(content: Text('No meeting invites')),
         );
       }
 
