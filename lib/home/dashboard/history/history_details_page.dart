@@ -369,7 +369,7 @@ class DetailsPageState extends State<DetailsPage> {
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
       decoration: BoxDecoration(
-        color: isDarkMode ? Colors.blueGrey[700] : Colors.lightBlue[100],
+        color: isDarkMode ? Colors.blue : Colors.lightBlue[100],
         borderRadius: BorderRadius.circular(20),
       ),
       child: Center(
@@ -650,54 +650,118 @@ class DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  /// If needed, show avatars in a "workflow" style
-  Widget _buildWorkflowSection() {
-    if (widget.types.toLowerCase() == 'leave') {
-      return Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          _buildUserAvatar(
-              data?['img_name'] ?? _defaultAvatarUrl(),
-              borderColor: Colors.green),
-          const Icon(Icons.arrow_forward, color: Colors.orange, size: 18),
-          _buildUserAvatar(lineManagerImageUrl ?? _defaultAvatarUrl(),
-              borderColor: Colors.orange),
-          const Icon(Icons.arrow_forward, color: Colors.grey, size: 18),
-          _buildUserAvatar(hrImageUrl ?? _defaultAvatarUrl(),
-              borderColor: Colors.grey),
-        ],
-      );
-    } else if (widget.types.toLowerCase() == 'meeting') {
-      return Wrap(
-        alignment: WrapAlignment.center,
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          _buildUserAvatar(
-              data?['img_name'] ?? _defaultAvatarUrl(),
-              borderColor: Colors.green),
-          const Icon(Icons.arrow_forward, color: Colors.orange, size: 18),
-          _buildUserAvatar(_defaultAvatarUrl(), borderColor: Colors.grey),
-        ],
-      );
+  /// Status color helper
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+      case 'yes':
+        return Colors.green;
+      case 'reject':
+      case 'rejected':
+      case 'no':
+        return Colors.red;
+      case 'waiting':
+      case 'pending':
+      case 'branch waiting':
+        return Colors.amber;
+      case 'processing':
+      case 'branch processing':
+        return Colors.blue;
+      case 'completed':
+        return Colors.orange;
+      case 'deleted':
+      case 'disapproved':
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
-    return const SizedBox.shrink();
   }
 
+  Widget _buildWorkflowSection() {
+    // Build a little arrow icon in between avatars
+    Widget buildArrow() => const Padding(
+      padding: EdgeInsets.only(top: 15.0),
+      child: Icon(Icons.arrow_forward, color: Colors.grey, size: 18),
+    );
+
+    final bool isLeaveType = widget.types.toLowerCase() == 'leave';
+    final List<dynamic> detailsList = data?['details'] ?? [];
+
+    // ----------------------------------------------------------------
+    //  1) REQUESTOR (FIRST AVATAR)
+    // ----------------------------------------------------------------
+    final String requestorImg = (data?['img_name'] as String?)?.isNotEmpty == true
+        ? data!['img_name'] as String
+        : 'assets/avatar_placeholder.png';
+
+    // The border color for the requestor is based on data?['status']
+    final Color requestorBorderColor = _getStatusColor(data?['status'] ?? '');
+
+    // ----------------------------------------------------------------
+    //  2) SECOND AVATAR (from details[0] if it exists)
+    // ----------------------------------------------------------------
+    String secondImg = 'assets/avatar_placeholder.png';
+    Color secondBorderColor = Colors.grey;
+    if (detailsList.isNotEmpty) {
+      final detail = detailsList[0];
+      secondImg = (detail['img_name'] as String?)?.isNotEmpty == true
+          ? detail['img_name']
+          : 'assets/avatar_placeholder.png';
+      secondBorderColor = _getStatusColor(detail['decide'] ?? '');
+    }
+
+    // ----------------------------------------------------------------
+    //  3) THIRD AVATAR (ONLY FOR LEAVE TYPE, from details[1] if it exists)
+    // ----------------------------------------------------------------
+    // Even if details is empty or only has one item, we'll still show it with placeholder
+    String thirdImg = 'assets/avatar_placeholder.png';
+    Color thirdBorderColor = Colors.grey;
+    if (isLeaveType && detailsList.length > 1) {
+      final secondDetail = detailsList[1];
+      thirdImg = (secondDetail['img_name'] as String?)?.isNotEmpty == true
+          ? secondDetail['img_name']
+          : 'assets/avatar_placeholder.png';
+      thirdBorderColor = _getStatusColor(secondDetail['decide'] ?? '');
+    }
+
+    // ----------------------------------------------------------------
+    //  BUILD THE ACTUAL WIDGET FLOW
+    // ----------------------------------------------------------------
+    // Always start with the requestor
+    List<Widget> flow = [
+      _buildUserAvatar(requestorImg, borderColor: requestorBorderColor),
+      buildArrow(), // Show arrow no matter what
+      _buildUserAvatar(secondImg, borderColor: secondBorderColor),
+    ];
+
+    // If it's a leave type, add the second arrow and the third avatar
+    if (isLeaveType) {
+      flow.add(buildArrow());
+      flow.add(_buildUserAvatar(thirdImg, borderColor: thirdBorderColor));
+    }
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 10,
+      runSpacing: 10,
+      children: flow,
+    );
+  }
+
+  /// Reusable widget for showing avatar with a colored border
   Widget _buildUserAvatar(String imageUrl, {Color borderColor = Colors.grey}) {
     return CircleAvatar(
-      radius: 22,
+      radius: 24,
       backgroundColor: borderColor,
       child: CircleAvatar(
-        radius: 20,
-        backgroundImage: NetworkImage(imageUrl),
+        radius: 22,
+        backgroundImage: imageUrl.startsWith('http')
+            ? NetworkImage(imageUrl)
+            : AssetImage(imageUrl) as ImageProvider,
         onBackgroundImageError: (_, __) {
-          setState(() {
-            imageUrl = _defaultAvatarUrl();
-          });
+          // fallback if the image fails to load
         },
+        backgroundColor: Colors.grey[300],
       ),
     );
   }

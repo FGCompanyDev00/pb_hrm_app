@@ -544,7 +544,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
       decoration: BoxDecoration(
-        color: isDarkMode ? Colors.blueGrey[700] : Colors.lightBlue[100],
+        color: isDarkMode ? Colors.blue : Colors.lightBlue[100],
         borderRadius: BorderRadius.circular(20),
       ),
       child: Center(
