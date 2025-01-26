@@ -416,9 +416,9 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
                   // Show comment input & action buttons only for 'leave'/'meeting'
                   if (widget.type == 'leave' || widget.type == 'meeting') ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 4),
                     if (isPendingStatus(status)) ...[
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       _buildCommentInputSection(),
                       const SizedBox(height: 22),
                       _buildActionButtons(context),
@@ -653,69 +653,6 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           Icons.today,
           Colors.orange,
           isDarkMode,
-        ),
-
-        const SizedBox(height: 18),
-        _buildRequestFlowRow(),
-        const SizedBox(height: 4),
-      ],
-    );
-  }
-
-  Widget _buildRequestFlowRow() {
-    // Fallback for requestor image
-    const fallbackImage = 'https://via.placeholder.com/150';
-    final firstAvatar = requestorImage ?? fallbackImage;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // First circle: requestor
-        Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.green, width: 2),
-            image: DecorationImage(
-              image: NetworkImage(firstAvatar),
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        const Icon(Icons.arrow_forward, color: Colors.amber, size: 24),
-        const SizedBox(width: 8),
-
-        // Second circle (placeholder)
-        Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.red, width: 2),
-            image: const DecorationImage(
-              image: AssetImage('assets/avatar_placeholder.png'),
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        const Icon(Icons.arrow_forward, color: Colors.grey, size: 24),
-        const SizedBox(width: 8),
-
-        // Third circle (placeholder)
-        Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.grey, width: 2),
-            image: const DecorationImage(
-              image: AssetImage('assets/avatar_placeholder.png'),
-              fit: BoxFit.cover,
-            ),
-          ),
         ),
       ],
     );
