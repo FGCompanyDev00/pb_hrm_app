@@ -232,15 +232,25 @@ class DetailsPageState extends State<DetailsPage> {
   }
 
   /// Format date string
-  String formatDate(String? dateStr, {bool includeTime = false}) {
+  String formatDate(String? dateStr, {String? timeStr, bool includeTime = false, bool timeOnly = false}) {
     try {
       if (dateStr == null || dateStr.isEmpty) {
         return 'N/A';
       }
       final DateTime parsedDate = DateTime.parse(dateStr);
-      return includeTime
-          ? DateFormat('dd-MM-yyyy, HH:mm').format(parsedDate)
-          : DateFormat('dd-MM-yyyy').format(parsedDate);
+
+      if (timeOnly) {
+        // Format only time in hh:mm - hh:mm
+        return DateFormat('HH:mm').format(parsedDate);
+      }
+
+      if (includeTime && timeStr != null && timeStr.isNotEmpty) {
+        final DateTime parsedDateTime = DateTime.parse('$dateStr $timeStr');
+        return DateFormat('dd-MM-yyyy, HH:mm').format(parsedDateTime);
+      }
+
+      // Default date format without time
+      return DateFormat('dd-MM-yyyy').format(parsedDate);
     } catch (e) {
       debugPrint('Date parsing error: $e');
       return 'Invalid Date';
@@ -412,7 +422,7 @@ class DetailsPageState extends State<DetailsPage> {
           'icon': Icons.access_time,
           'title': 'Time',
           'value':
-          '${formatDate(data?["from_date_time"], includeTime: true)} - ${formatDate(data?["to_date_time"], includeTime: true)}',
+          '${formatDate(data?["from_date_time"], timeOnly: true)} - ${formatDate(data?["to_date_time"], timeOnly: true)}',
           'color': Colors.orange
         },
         {
@@ -444,24 +454,30 @@ class DetailsPageState extends State<DetailsPage> {
         },
         {
           'icon': Icons.calendar_today,
-          'title': 'Date',
+          'title': 'Date & Time',
           'value':
-          '${formatDate(data?["date_in"])} - ${formatDate(data?["date_out"])}',
+          '${formatDate(data?["date_in"], timeStr: data?["time_in"], includeTime: true)} - '
+              '${formatDate(data?["date_out"], timeStr: data?["time_out"], includeTime: true)}',
           'color': Colors.orange
         },
         {
-          'icon': Icons.access_time,
-          'title': 'Time',
-          'value':
-          '${data?['time_in'] ?? 'N/A'} - ${data?['time_out'] ?? 'No time out'}',
-          'color': Colors.purple
-        },
-        {
-          'icon': Icons.phone,
-          'title': 'Discretion',
-          'value': data?['employee_tel'] ?? 'No phone number',
-          'color': Colors.red
-        },
+          'icon': Icons.radar,
+          'title': 'Status',
+          'value': RichText(
+            text: TextSpan(
+              children: [
+                const TextSpan(
+                  text: 'Status: ',
+                ),
+                TextSpan(
+                  text: data?['status'] ?? 'No status',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: _getStatusColor(data?['status'] ?? 'no status')),
+                ),
+              ],
+            ),
+          ),
+          'color': _getStatusColor(data?['status'] ?? 'no status')
+        }
       ]);
     } else if (type == 'leave') {
       String leaveTypeName =
@@ -493,6 +509,24 @@ class DetailsPageState extends State<DetailsPage> {
           'value': data?['take_leave_reason'] ?? 'No Description Provided',
           'color': Colors.green
         },
+        {
+          'icon': Icons.radar,
+          'title': 'Status',
+          'value': RichText(
+            text: TextSpan(
+              children: [
+                const TextSpan(
+                  text: 'Status: ',
+                ),
+                TextSpan(
+                  text: data?['is_approve'] ?? 'No status',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: _getStatusColor(data?['is_approve'] ?? 'no status')),
+                ),
+              ],
+            ),
+          ),
+          'color': _getStatusColor(data?['is_approve'] ?? 'no status')
+        }
       ]);
     }
 
@@ -695,7 +729,7 @@ class DetailsPageState extends State<DetailsPage> {
         : 'assets/avatar_placeholder.png';
 
     // The border color for the requestor is based on data?['status']
-    final Color requestorBorderColor = _getStatusColor(data?['status'] ?? '');
+    final Color requestorBorderColor = _getStatusColor(data?['status'] ?? data?['is_approve'] ?? '');
 
     // ----------------------------------------------------------------
     //  2) SECOND AVATAR (from details[0] if it exists)
@@ -707,7 +741,8 @@ class DetailsPageState extends State<DetailsPage> {
       secondImg = (detail['img_name'] as String?)?.isNotEmpty == true
           ? detail['img_name']
           : 'assets/avatar_placeholder.png';
-      secondBorderColor = _getStatusColor(detail['decide'] ?? '');
+      secondBorderColor = _getStatusColor(detail['decide'] ?? detail['detail'] ?? '');
+
     }
 
     // ----------------------------------------------------------------
@@ -730,7 +765,7 @@ class DetailsPageState extends State<DetailsPage> {
     // Always start with the requestor
     List<Widget> flow = [
       _buildUserAvatar(requestorImg, borderColor: requestorBorderColor),
-      buildArrow(), // Show arrow no matter what
+      buildArrow(),
       _buildUserAvatar(secondImg, borderColor: secondBorderColor),
     ];
 
