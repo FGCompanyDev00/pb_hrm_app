@@ -958,10 +958,10 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         title: Text(
           AppLocalizations.of(context)!.editOfficeEvent,
           style: TextStyle(
-            color: isDarkMode ? Colors.white : Colors.black, // Title color based on theme
+            color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
-        backgroundColor: Colors.transparent, // Transparent background for the AppBar
+        backgroundColor: Colors.transparent,
         elevation: 0,
         toolbarHeight: 80,
         flexibleSpace: Container(

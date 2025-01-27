@@ -1000,7 +1000,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         }
       },
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(14.0),
         physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
           children: [
@@ -1468,7 +1468,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               ],
             ),
 
-            // Time Reminder positioned at the top-right
+            // Time Reminder
             Positioned(
               top: 50,
               right: 0,
@@ -1480,7 +1480,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                   // Dynamic font size and padding based on screen width
                   double fontSize = screenWidth < 360 ? 8 : 10;
                   double paddingHorizontal = screenWidth < 360 ? 8 : 12;
-                  double paddingVertical = screenWidth < 360 ? 4 : 6;
+                  double paddingVertical = screenWidth < 360 ? 3 : 4;
 
                   return Container(
                     padding: EdgeInsets.symmetric(
@@ -1507,7 +1507,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                                 : Colors.black,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        // const SizedBox(height: 2),
                         Text(
                           _limitTime,
                           style: TextStyle(
@@ -1684,19 +1684,19 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               color: offsiteBgColor,
               borderRadius: BorderRadius.circular(12),
             ),
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Image.asset(
                   'assets/offsite.png',
-                  width: 18,
-                  height: 18,
+                  width: 20,
+                  height: 20,
                   color: offsiteIconColor,
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  AppLocalizations.of(context)!.offsite, // Ensure this localization key exists
+                  AppLocalizations.of(context)!.offsite,
                   style: TextStyle(
                     color: offsiteTextColor,
                     fontWeight: FontWeight.bold,

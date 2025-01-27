@@ -241,6 +241,7 @@ class HistoryPageState extends State<HistoryPage> {
           'startDate': startDateTimeStr,
           'endDate': endDateTimeStr,
           'employee_name': item['requestor_name'] ?? 'N/A',
+          'place': item['place'] ?? 'N/A',
           'id': item['uid']?.toString() ?? '',
         });
         break;
@@ -630,8 +631,8 @@ class HistoryPageState extends State<HistoryPage> {
         break;
       case 'car':
         titleColor = Colors.blue;
-        detailLabel = 'Tel:';
-        detailText = item['employee_tel']?.toString() ?? 'No Phone Number';
+        detailLabel = 'Place:';
+        detailText = item['place']?.toString() ?? 'No Place';
         detailTextColor = Colors.grey;
         break;
 

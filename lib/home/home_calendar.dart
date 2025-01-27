@@ -250,7 +250,6 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing leave requests: $e');
     }
   }
 
