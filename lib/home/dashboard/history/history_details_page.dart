@@ -299,6 +299,11 @@ class DetailsPageState extends State<DetailsPage> {
     );
   }
 
+  String _capitalizeFirstLetter(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1).toLowerCase();
+  }
+
   /// Build Requestor Section
   Widget _buildRequestorSection() {
     String requestorName =
@@ -437,6 +442,24 @@ class DetailsPageState extends State<DetailsPage> {
           'value': data?['room_name'] ?? 'No room specified',
           'color': Colors.orange
         },
+        {
+          'icon': Icons.radar,
+          'title': 'Status',
+          'value': RichText(
+            text: TextSpan(
+              children: [
+                const TextSpan(
+                  text: 'Status: ',
+                ),
+                TextSpan(
+                  text: _capitalizeFirstLetter(data?['status'] ?? 'No status'),
+                  style: TextStyle(fontWeight: FontWeight.bold, color: _getStatusColor(data?['status'] ?? 'no status')),
+                ),
+              ],
+            ),
+          ),
+          'color': _getStatusColor(data?['status'] ?? 'no status')
+        }
       ]);
     } else if (type == 'car') {
       details.addAll([
