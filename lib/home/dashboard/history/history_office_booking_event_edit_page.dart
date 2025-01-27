@@ -315,12 +315,12 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
               ? _leaveTypes.first['leave_type_id'].toString()
               : null);
 
-      // Format take_leave_from and take_leave_to to 'yyyy-MM-dd'
+      // Format take_leave_from and take_leave_to to 'dd-MM-yyyy'
       _leaveFromController.text = data['take_leave_from'] != null
-          ? DateFormat('yyyy-MM-dd').format(DateTime.parse(data['take_leave_from']))
+          ? DateFormat('dd-MM-yyyy').format(DateTime.parse(data['take_leave_from']))
           : '';
       _leaveToController.text = data['take_leave_to'] != null
-          ? DateFormat('yyyy-MM-dd').format(DateTime.parse(data['take_leave_to']))
+          ? DateFormat('dd-MM-yyyy').format(DateTime.parse(data['take_leave_to']))
           : '';
 
       _leaveReasonController.text = data['take_leave_reason'] ?? '';
@@ -332,8 +332,8 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
   void _populateMeetingData(Map<String, dynamic> data) {
     setState(() {
       _meetingTitleController.text = data['title'] ?? '';
-      _meetingFromController.text = data['from_date_time'] != null ? DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(data['from_date_time'])) : '';
-      _meetingToController.text = data['to_date_time'] != null ? DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(data['to_date_time'])) : '';
+      _meetingFromController.text = data['from_date_time'] != null ? DateFormat('dd-MM-yyyy HH:mm').format(DateTime.parse(data['from_date_time'])) : '';
+      _meetingToController.text = data['to_date_time'] != null ? DateFormat('dd-MM-yyyy HH:mm').format(DateTime.parse(data['to_date_time'])) : '';
       _selectedRoomId = data['room_id']?.toString();
       _meetingTelController.text = data['employee_tel'] ?? '';
       _meetingRemarkController.text = data['remark'] ?? '';
@@ -353,16 +353,38 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
       _carEmployeeIDController.text = data['employee_id'] ?? 'No Employee ID';
       _carPurposeController.text = data['purpose'] ?? '';
       _carPlaceController.text = data['place'] ?? '';
-      _carDateInController.text = '${data['date_in']} ${data['time_in']}';
-      _carDateOutController.text = '${data['date_out']} ${data['time_out']}';
 
-      // _selectedMembers = List<Map<String, dynamic>>.from(
-      //     data['members']?.map((member) => {
-      //       'employee_id': member['employee_id'],
-      //       'employee_name': member['employee_name'],
-      //       'img_name': member['img_name'],
-      //     }) ??
-      //         []);
+      // Format the date_in and time_in fields
+      if (data['date_in'] != null && data['time_in'] != null) {
+        String dateTimeStr = '${data['date_in']} ${data['time_in']}';
+        try {
+          // Try parsing with a custom format
+          DateTime dateTimeIn = DateFormat('yyyy-MM-dd HH:mm').parse(dateTimeStr);
+          _carDateInController.text = DateFormat('dd-MM-yyyy').format(dateTimeIn);  // Only the date part in dd-MM-yyyy format
+        } catch (e) {
+          // If parsing fails, handle gracefully
+          print("Error parsing date_in: $e");
+          _carDateInController.text = '';  // Default empty value if parsing fails
+        }
+      } else {
+        _carDateInController.text = '';  // Default empty value if not available
+      }
+
+      // Similarly format date_out and time_out
+      if (data['date_out'] != null && data['time_out'] != null) {
+        String dateTimeStrOut = '${data['date_out']} ${data['time_out']}';
+        try {
+          // Try parsing with a custom format
+          DateTime dateTimeOut = DateFormat('yyyy-MM-dd HH:mm').parse(dateTimeStrOut);
+          _carDateOutController.text = DateFormat('dd-MM-yyyy').format(dateTimeOut);  // Only the date part in dd-MM-yyyy format
+        } catch (e) {
+          // If parsing fails, handle gracefully
+          print("Error parsing date_out: $e");
+          _carDateOutController.text = '';  // Default empty value if parsing fails
+        }
+      } else {
+        _carDateOutController.text = '';  // Default empty value if not available
+      }
     });
   }
 
@@ -453,28 +475,6 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         backgroundColor: Colors.green,
       ),
     );
-  }
-
-  /// Opens the OfficeEditMembersPage and updates selected members
-  Future<void> _editMembers() async {
-    final updatedMembers = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => OfficeEditMembersPage(
-          initialSelectedMembers: _selectedMembers,
-          meetingId: widget.id,
-        ),
-      ),
-    );
-
-    if (updatedMembers != null && updatedMembers is List<Map<String, dynamic>>) {
-      setState(() {
-        _selectedMembers = updatedMembers;
-        if (kDebugMode) {
-          print('${AppLocalizations.of(context)!.updatedMembers}: $_selectedMembers');
-        }
-      });
-    }
   }
 
   /// Builds the leave form
@@ -659,45 +659,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
           maxLines: 3,
         ),
         const SizedBox(height: 16.0),
-        // Members Label and Edit Button
-        // Row(
-        //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        //   children: [
-        //     const Text(
-        //       'Members*',
-        //       style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
-        //     ),
-        //     ElevatedButton(
-        //       onPressed: _editMembers,
-        //       style: ElevatedButton.styleFrom(
-        //         padding: const EdgeInsets.symmetric(
-        //             vertical: 8.0, horizontal: 16.0),
-        //         shape: RoundedRectangleBorder(
-        //             borderRadius: BorderRadius.circular(10.0)),
-        //       ),
-        //       child: const Text('Edit Members'),
-        //     ),
-        //   ],
-        // ),
-        // const SizedBox(height: 8.0),
-        // _selectedMembers.isNotEmpty
-        //     ? Wrap(
-        //   spacing: 8.0,
-        //   children: _selectedMembers.map((members) {
-        //     return Chip(
-        //       avatar: CircleAvatar(
-        //         backgroundImage: NetworkImage(
-        //             members['img_name'] ??
-        //                 'https://www.w3schools.com/howto/img_avatar.png'),
-        //       ),
-        //       label: Text(members['employee_name'] ?? members['employee_id'] ?? 'No Name'),
-        //     );
-        //   }).toList(),
-        // )
-        //     : const Text(
-        //   'No members selected.',
-        //   style: TextStyle(color: Colors.grey),
-        // ),
+
       ],
     );
   }
@@ -810,15 +772,15 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
     }
   }
 
-  /// Builds the submit button
-  Widget _buildSubmitButton() {
+  /// Builds the edit button
+  Widget _buildUpdateButton() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return ElevatedButton(
       onPressed: _isLoading ? null : _submitEdit,
       style: ElevatedButton.styleFrom(
-        backgroundColor: isDarkMode ? Colors.green : const Color(0xFFDBB342),
-        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 12.0),
+        backgroundColor: isDarkMode ? Colors.orange : const Color(0xFFDBB342),
+        padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 10.0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
       ),
       child: _isLoading
@@ -833,7 +795,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
           : Text(
               AppLocalizations.of(context)!.updateLabel,
               style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black, // Text color adapts to dark mode
+                color: isDarkMode ? Colors.white : Colors.black,
                 fontSize: 15.0,
               ),
             ),
@@ -858,6 +820,11 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
 
       switch (widget.type.toLowerCase()) {
         case 'leave':
+          if (!_validateDateFormat(_leaveFromController.text, 'yyyy-MM-dd') ||
+              !_validateDateFormat(_leaveToController.text, 'yyyy-MM-dd')) {
+            _showErrorMessage('Date format for leave must be yyyy-MM-dd.');
+            return;
+          }
           url = 'https://demo-application-api.flexiflows.co/api/leave_request/${widget.id}';
           body = {
             "take_leave_type_id": _selectedLeaveTypeId,
@@ -868,6 +835,11 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
           };
           break;
         case 'meeting':
+          if (!_validateDateFormat(_meetingFromController.text, 'yyyy-MM-dd HH:mm') ||
+              !_validateDateFormat(_meetingToController.text, 'yyyy-MM-dd HH:mm')) {
+            _showErrorMessage('Date format for meeting must be yyyy-MM-dd HH:mm.');
+            return;
+          }
           url = 'https://demo-application-api.flexiflows.co/api/office-administration/book_meeting_room/${widget.id}';
           body = {
             "room_id": _selectedRoomId,
@@ -876,10 +848,17 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
             "to_date_time": _meetingToController.text,
             "employee_tel": _meetingTelController.text,
             "remark": _meetingRemarkController.text,
-            "members": _selectedMembers.isNotEmpty ? _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList() : [],
+            "members": _selectedMembers.isNotEmpty
+                ? _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList()
+                : [],
           };
           break;
         case 'car':
+          if (!_validateDateFormat(_carDateInController.text, 'yyyy-MM-dd HH:mm') ||
+              !_validateDateFormat(_carDateOutController.text, 'yyyy-MM-dd HH:mm')) {
+            _showErrorMessage('Date format for car permit must be yyyy-MM-dd HH:mm.');
+            return;
+          }
           url = 'https://demo-application-api.flexiflows.co/api/office-administration/car_permit/${widget.id}';
           body = {
             "employee_id": _employeeId,
@@ -888,7 +867,9 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
             "date_in": _carDateInController.text.isNotEmpty ? _carDateInController.text : null,
             "date_out": _carDateOutController.text.isNotEmpty ? _carDateOutController.text : null,
             "permit_branch": "0", // Always send "0"
-            "members": _selectedMembers.isNotEmpty ? _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList() : [],
+            "members": _selectedMembers.isNotEmpty
+                ? _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList()
+                : [],
           };
           break;
         default:
@@ -949,6 +930,15 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
     }
   }
 
+  bool _validateDateFormat(String date, String format) {
+    try {
+      final parsedDate = DateFormat(format).parseStrict(date);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -988,26 +978,43 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
                   ),
                 )
               : SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Align(
-                          alignment: Alignment.topRight,
-                          child: Container(
-                            child: _buildSubmitButton(),
-                          ),
-                        ),
-                        const SizedBox(height: 10.0),
-                        // Form Fields
-                        Form(
-                          child: _buildFormFields(),
-                        ),
-                      ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: Container(
+                  child: _buildUpdateButton(),
+                ),
+              ),
+              const SizedBox(height: 10.0),
+              // Form Fields
+              Form(
+                child: _buildFormFields(),
+              ),
+              // Edit Members Button at bottom left
+              Align(
+                alignment: Alignment.bottomLeft,
+                child: Container(
+                  width: MediaQuery.of(context).size.width * 0.4,
+                  margin: const EdgeInsets.only(top: 20.0),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // button action
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white, backgroundColor: Colors.green,
                     ),
+                    child: const Text('Edit Members'),
                   ),
                 ),
+              ),
+            ],
+          ),
+        ),
+      )
     );
   }
 

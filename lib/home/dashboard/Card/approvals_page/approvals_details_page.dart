@@ -476,10 +476,10 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     final requestorName = approvalData?['employee_name'] ?? approvalData?['requestor_name'] ?? 'No Name';
 
     String submittedOn = 'N/A';
-    if (approvalData?['created_at'] != null && approvalData!['created_at'].toString().isNotEmpty) {
+    if (widget.type == 'meeting' && approvalData?['date_create'] != null && approvalData!['date_create'].toString().isNotEmpty) {
+      submittedOn = formatDate(approvalData!['date_create']);
+    } else if (approvalData?['created_at'] != null && approvalData!['created_at'].toString().isNotEmpty) {
       submittedOn = formatDate(approvalData!['created_at']);
-    } else if ((widget.type == 'car' || widget.type == 'meeting') && approvalData?['created_date'] != null && approvalData!['created_date'].toString().isNotEmpty) {
-      submittedOn = formatDate(approvalData!['created_date']);
     }
 
     final profileImage = requestorImage ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
