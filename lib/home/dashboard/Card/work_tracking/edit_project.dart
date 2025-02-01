@@ -757,7 +757,7 @@ class EditProjectPageState extends State<EditProjectPage> {
                     _showMemberNameDialog(displayedMembers[i]['name'] ?? 'No Name');
                   },
                   child: CircleAvatar(
-                    radius: 25,
+                    radius: 20,
                     backgroundColor: Colors.grey[300],
                     backgroundImage: displayedMembers[i]['img_name'] != null && displayedMembers[i]['img_name'].isNotEmpty ? NetworkImage(displayedMembers[i]['img_name']) : null,
                     child: displayedMembers[i]['img_name'] == null || displayedMembers[i]['img_name'].isEmpty ? const Icon(Icons.person, color: Colors.white) : null,

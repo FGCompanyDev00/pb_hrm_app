@@ -3,7 +3,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'history_office_edit_members_page.dart';
+import 'history_edit_event_members.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
@@ -966,7 +966,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
             ),
           ),
         ),
-        iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black), // Back button color based on theme
+        iconTheme: IconThemeData(color: isDarkMode ? Colors.white : Colors.black),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -995,22 +995,32 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
                 child: _buildFormFields(),
               ),
               // Edit Members Button at bottom left
-              Align(
-                alignment: Alignment.bottomLeft,
-                child: Container(
-                  width: MediaQuery.of(context).size.width * 0.4,
-                  margin: const EdgeInsets.only(top: 20.0),
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // button action
-                    },
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white, backgroundColor: Colors.green,
+              if (widget.type.toLowerCase() == 'meeting' || widget.type.toLowerCase() == 'car')
+                Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width * 0.4,
+                    margin: const EdgeInsets.only(top: 20.0),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EditEventMembersPage(
+                              id: widget.id,
+                              type: widget.type,
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.green,
+                      ),
+                      child: const Text('Add Members'),
                     ),
-                    child: const Text('Edit Members'),
                   ),
                 ),
-              ),
             ],
           ),
         ),
