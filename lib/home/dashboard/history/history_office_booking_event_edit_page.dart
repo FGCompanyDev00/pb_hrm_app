@@ -360,7 +360,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         try {
           // Try parsing with a custom format
           DateTime dateTimeIn = DateFormat('yyyy-MM-dd HH:mm').parse(dateTimeStr);
-          _carDateInController.text = DateFormat('dd-MM-yyyy').format(dateTimeIn);  // Only the date part in dd-MM-yyyy format
+          _carDateInController.text = DateFormat('dd-MM-yyyy HH:mm').format(dateTimeIn);  // Only the date part in dd-MM-yyyy format
         } catch (e) {
           // If parsing fails, handle gracefully
           print("Error parsing date_in: $e");
@@ -376,7 +376,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         try {
           // Try parsing with a custom format
           DateTime dateTimeOut = DateFormat('yyyy-MM-dd HH:mm').parse(dateTimeStrOut);
-          _carDateOutController.text = DateFormat('dd-MM-yyyy').format(dateTimeOut);  // Only the date part in dd-MM-yyyy format
+          _carDateOutController.text = DateFormat('dd-MM-yyyy HH:mm').format(dateTimeOut);  // Only the date part in dd-MM-yyyy format
         } catch (e) {
           // If parsing fails, handle gracefully
           print("Error parsing date_out: $e");
@@ -698,8 +698,8 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
           enabled: false,
         ),
         const SizedBox(height: 12.0),
-        // Purpose Label and Input
-        Text('${AppLocalizations.of(context)!.placeLabel}*'),
+        // Purpose Label and Input (Corrected)
+        Text('${AppLocalizations.of(context)!.purposeLabel}*'),  // Updated label to "Purpose"
         const SizedBox(height: 8.0),
         TextFormField(
           controller: _carPurposeController,
@@ -710,8 +710,8 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
           maxLines: 3,
         ),
         const SizedBox(height: 16.0),
-        // Place Label and Input
-        Text('${AppLocalizations.of(context)!.placeLabel}*'),
+        // Place Label and Input (Removed redundant label)
+        Text('${AppLocalizations.of(context)!.placeLabel}*'),  // Keep label as "Place"
         const SizedBox(height: 8.0),
         TextFormField(
           controller: _carPlaceController,
@@ -822,7 +822,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         case 'leave':
           if (!_validateDateFormat(_leaveFromController.text, 'yyyy-MM-dd') ||
               !_validateDateFormat(_leaveToController.text, 'yyyy-MM-dd')) {
-            _showErrorMessage('Date format for leave must be yyyy-MM-dd.');
+            _showErrorMessage('Please reselect your Date In and Date Out');
             return;
           }
           url = 'https://demo-application-api.flexiflows.co/api/leave_request/${widget.id}';
@@ -837,7 +837,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         case 'meeting':
           if (!_validateDateFormat(_meetingFromController.text, 'yyyy-MM-dd HH:mm') ||
               !_validateDateFormat(_meetingToController.text, 'yyyy-MM-dd HH:mm')) {
-            _showErrorMessage('Date format for meeting must be yyyy-MM-dd HH:mm.');
+            _showErrorMessage('Please reselect your Date In and Date Out');
             return;
           }
           url = 'https://demo-application-api.flexiflows.co/api/office-administration/book_meeting_room/${widget.id}';
@@ -856,7 +856,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
         case 'car':
           if (!_validateDateFormat(_carDateInController.text, 'yyyy-MM-dd HH:mm') ||
               !_validateDateFormat(_carDateOutController.text, 'yyyy-MM-dd HH:mm')) {
-            _showErrorMessage('Date format for car permit must be yyyy-MM-dd HH:mm.');
+            _showErrorMessage('Please reselect your Date In and Date Out');
             return;
           }
           url = 'https://demo-application-api.flexiflows.co/api/office-administration/car_permit/${widget.id}';
@@ -979,7 +979,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
                 )
               : SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -990,37 +990,90 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
                 ),
               ),
               const SizedBox(height: 10.0),
+
               // Form Fields
               Form(
                 child: _buildFormFields(),
               ),
-              // Edit Members Button at bottom left
+
+              // Edit Members Section
               if (widget.type.toLowerCase() == 'meeting' || widget.type.toLowerCase() == 'car')
-                Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Container(
-                    width: MediaQuery.of(context).size.width * 0.4,
-                    margin: const EdgeInsets.only(top: 20.0),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EditEventMembersPage(
-                              id: widget.id,
-                              type: widget.type,
+                Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Add People Button
+                      Container(
+                        width: MediaQuery.of(context).size.width * 0.4,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => EditEventMembersPage(
+                                  id: widget.id,
+                                  type: widget.type,
+                                ),
+                              ),
+                            );
+
+                            if (result != null && result is List<Map<String, dynamic>>) {
+                              setState(() {
+                                _selectedMembers = result;
+                              });
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            backgroundColor: Colors.green,
+                          ),
+                          child: const Text('Add People'),
+                        ),
+                      ),
+
+                      const SizedBox(width: 30.0),
+
+                      // Stacked Member Avatars aligned to the right
+                      if (_selectedMembers.isNotEmpty)
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.centerRight,
+                            child: SizedBox(
+                              height: 40,
+                              child: Stack(
+                                children: [
+                                  for (int i = 0; i < _selectedMembers.take(4).length; i++)
+                                    Positioned(
+                                      left: i * 25.0,
+                                      child: CircleAvatar(
+                                        backgroundImage: _selectedMembers[i]['img_name'].isNotEmpty
+                                            ? NetworkImage(_selectedMembers[i]['img_name'])
+                                            : const AssetImage('assets/avatar_placeholder.png')
+                                        as ImageProvider,
+                                        radius: 20,
+                                      ),
+                                    ),
+                                  if (_selectedMembers.length > 4)
+                                    Positioned(
+                                      left: 4 * 25.0,
+                                      child: CircleAvatar(
+                                        backgroundColor: Colors.grey,
+                                        radius: 20,
+                                        child: Text(
+                                          '+${_selectedMembers.length - 4}',
+                                          style: const TextStyle(color: Colors.white),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.green,
-                      ),
-                      child: const Text('Add Members'),
-                    ),
+                        ),
+                    ],
                   ),
-                ),
+                )
             ],
           ),
         ),

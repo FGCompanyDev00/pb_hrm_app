@@ -241,7 +241,19 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () {
+                    // Filter only selected members to pass back
+                    List<Map<String, dynamic>> selectedMembersToReturn = selectedMembers
+                        .map((member) => {
+                      'employee_id': member['employee_id'],
+                      'name': member['name'],
+                      'img_name': member['img'],
+                    })
+                        .toList();
+
+                    // Return selected members to previous page
+                    Navigator.pop(context, selectedMembersToReturn);
+                  },
                   icon: Icon(
                     Icons.add,
                     size: 24,
