@@ -68,6 +68,29 @@ class LeaveManagementPage extends HookWidget {
       );
     }
 
+    // Function to update the end date based on the days input
+    void _updateEndDateBasedOnDays() {
+      if (startDateController.text.isNotEmpty) {
+        final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
+        double days = double.tryParse(daysController.text) ?? 0.0;
+        if (days > 0) {
+          final endDate = startDate.add(Duration(days: (days * 1).toInt()));
+          endDateController.text = DateFormat('yyyy-MM-dd').format(endDate);
+        } else {
+          endDateController.clear();
+        }
+      }
+    }
+
+// When user manually types in the "Days" field, auto calculate the end date after a delay
+    void _handleManualDaysChange() {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (daysController.text.isNotEmpty && startDateController.text.isNotEmpty) {
+          _updateEndDateBasedOnDays();
+        }
+      });
+    }
+
     // Helper Method to Show Leave Type Bottom Sheet
     void showLeaveTypeBottomSheet(BuildContext context) {
       showModalBottomSheet(
@@ -529,9 +552,9 @@ class LeaveManagementPage extends HookWidget {
                             label: const Text("Submit"),
                             style: ElevatedButton.styleFrom(
                               foregroundColor:
-                              isDarkMode ? Colors.black : Colors.white,
+                              isDarkMode ? Colors.white : Colors.black,
                               backgroundColor: isDarkMode
-                                  ? Colors.orange.shade700
+                                  ? Colors.green
                                   : const Color(0xFFDBB342),
                               disabledBackgroundColor: Colors.grey,
                               shape: RoundedRectangleBorder(
@@ -610,7 +633,6 @@ class LeaveManagementPage extends HookWidget {
                           ],
                         ),
                         const SizedBox(height: 20),
-                        // Days Field
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -628,27 +650,22 @@ class LeaveManagementPage extends HookWidget {
                                 children: [
                                   // Decrement Button
                                   IconButton(
-                                    onPressed: () {
-                                      int currentDays =
-                                          double.tryParse(daysController.text)?.toInt() ??
-                                              0;
-                                      // If we're already at 0 or fractional,
-                                      // you could show partial-day sheet or do nothing.
-                                      if (currentDays <= 0) {
-                                        // Show partial day options if user wants fractional
-                                        showFractionalDayOptions();
-                                      } else {
-                                        // Normal decrement logic
-                                        if (currentDays > 1) {
-                                          daysController.text =
-                                              (currentDays - 1).toString();
-                                          isFractionalDay.value = false; // back to full day
-                                        } else if (currentDays == 1) {
-                                          // If user tries to go below 1, show partial day?
-                                          // This is optional; or just set it to 0.
-                                          daysController.text = '0';
-                                          isFractionalDay.value = false;
-                                        }
+                                    onPressed: startDateController.text.isEmpty
+                                        ? () {
+                                      showCustomDialog(
+                                        context,
+                                        'Start Date Required',
+                                        'Please choose a start date first before using the plus/minus buttons.',
+                                      );
+                                    }
+                                        : () {
+                                      double currentDays = double.tryParse(daysController.text) ?? 0.0;
+                                      if (currentDays > 0.25) {
+                                        daysController.text = (currentDays - 0.25).toStringAsFixed(2);
+                                        _updateEndDateBasedOnDays();
+                                      } else if (currentDays == 0.25) {
+                                        daysController.text = '0';
+                                        _updateEndDateBasedOnDays();
                                       }
                                     },
                                     icon: const Icon(Icons.remove),
@@ -658,7 +675,7 @@ class LeaveManagementPage extends HookWidget {
                                   Expanded(
                                     child: TextFormField(
                                       controller: daysController,
-                                      readOnly: true, // user can't type manually
+                                      readOnly: startDateController.text.isEmpty, // Disable editing if no start date
                                       textAlign: TextAlign.center,
                                       decoration: const InputDecoration(
                                         border: InputBorder.none,
@@ -672,24 +689,38 @@ class LeaveManagementPage extends HookWidget {
                                           return 'Days cannot be empty';
                                         }
                                         final dVal = double.tryParse(value);
-                                        if (dVal == null || dVal < 0) {
-                                          return 'Invalid number of days';
+                                        if (dVal == null || (dVal != dVal.roundToDouble() && dVal % 0.25 != 0)) {
+                                          return 'Invalid number of days. Use only whole numbers or 0.25 increments.';
                                         }
                                         return null;
+                                      },
+                                      onChanged: (value) {
+                                        final dVal = double.tryParse(value);
+                                        if (dVal != null && (dVal % 0.25 == 0 || dVal == dVal.roundToDouble())) {
+                                          // Auto update based on input
+                                          daysController.text = dVal.toStringAsFixed(2);
+                                          _updateEndDateBasedOnDays();
+                                        } else {
+                                          // If the user enters invalid value, reset to the last valid one
+                                          daysController.text = (dVal ?? 0.0).toStringAsFixed(2);
+                                        }
                                       },
                                     ),
                                   ),
                                   // Increment Button
                                   IconButton(
-                                    onPressed: () {
-                                      // If user increments, we assume a full day approach
-                                      // So if we were in fractional mode, reset that
-                                      isFractionalDay.value = false;
-
-                                      int currentDays =
-                                          double.tryParse(daysController.text)?.toInt() ??
-                                              0;
-                                      daysController.text = (currentDays + 1).toString();
+                                    onPressed: startDateController.text.isEmpty
+                                        ? () {
+                                      showCustomDialog(
+                                        context,
+                                        'Start Date Required',
+                                        'Please choose a start date first before using the plus/minus buttons.',
+                                      );
+                                    }
+                                        : () {
+                                      double currentDays = double.tryParse(daysController.text) ?? 0.0;
+                                      daysController.text = (currentDays + 0.25).toStringAsFixed(2);
+                                      _updateEndDateBasedOnDays();
                                     },
                                     icon: const Icon(Icons.add),
                                     tooltip: 'Increase days',

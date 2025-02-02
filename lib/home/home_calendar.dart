@@ -367,7 +367,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
-          category: 'Add Meeting',
+          category: 'Add Meeting',  // This is for Add Meeting category
           fileName: item['file_name'],
           members: uniqueMembers, // Use filtered unique members list
         );
@@ -459,7 +459,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['outmeeting_uid']?.toString(),
-          category: 'Minutes Of Meeting',
+          category: 'Minutes Of Meeting',  // This is for Minutes Of Meeting category
           members: item['guests'] != null ? List<Map<String, dynamic>>.from(item['guests']) : [],
         );
 
@@ -555,7 +555,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['outmeeting_uid']?.toString(),
-          category: 'Minutes Of Meeting',
+          category: 'Minutes Of Meeting',  // This is for Minutes Of Meeting category
           members: uniqueMembers, // Use filtered unique members list
         );
 

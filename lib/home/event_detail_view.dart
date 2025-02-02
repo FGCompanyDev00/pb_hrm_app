@@ -358,37 +358,34 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
   }
 
   /// Formats a given date string into a readable format.
-  String _formatDate(String dateStr, {String format = 'MMM dd, yyyy hh:mm a'}) {
+  String _formatDate(String dateStr, {String format = 'dd-MM-yyyy'}) {
     if (dateStr.isEmpty) return '';
     try {
       DateTime parsedDate = DateTime.parse(dateStr);
       return DateFormat(format).format(parsedDate);
     } catch (e) {
-      return dateStr;
+      return dateStr; // Return original string if parsing fails
     }
   }
 
   /// Extracts and formats necessary event details.
   Map<String, String> _getEventDetails() {
     String creatorName = widget.event['createdBy'] ?? widget.event['created_by_name'] ?? widget.event['employee_name'] ?? 'Unknown';
-    String imageUrl = widget.event['img_name'] ?? '';
-    String createdAt = '';
-    if (widget.event['created_at'] != null) {
-      if (widget.event['created_at'].runtimeType == DateTime) {
-        createdAt = widget.event['created_at'].toString();
-      } else {
-        createdAt = widget.event['created_at'];
-      }
-    }
+    String imageUrl = widget.event['img_path'] ?? widget.event['img_name'] ?? '';
 
-    String formattedCreatedAt = _formatDate(createdAt.toString(), format: 'MMM dd, yyyy - hh:mm:00');
-    String formattedStartDate = '';
-    String formattedEndDate = '';
+    // Formatting Created At Date
+    String formattedCreatedAt = widget.event['created_at'] != null
+        ? _formatDate(widget.event['created_at'].toString(), format: 'dd-MM-yyyy - HH:mm')
+        : '';
 
-    if (widget.event['startDateTime'] != null && widget.event['endDateTime'] != null) {
-      formattedStartDate = _formatDate(widget.event['startDateTime'].toString(), format: 'MMM dd, yyyy hh:mm a');
-      formattedEndDate = _formatDate(widget.event['endDateTime'].toString(), format: 'MMM dd, yyyy hh:mm a');
-    }
+    // Formatting Start Date & End Date
+    String formattedStartDate = widget.event['startDateTime'] != null
+        ? _formatDate(widget.event['startDateTime'].toString(), format: 'dd-MM-yyyy')
+        : '';
+
+    String formattedEndDate = widget.event['endDateTime'] != null
+        ? _formatDate(widget.event['endDateTime'].toString(), format: 'dd-MM-yyyy')
+        : '';
 
     return {
       'creatorName': creatorName,
@@ -699,7 +696,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
         Row(
           children: [
             CircleAvatar(
-                radius: 30,
+                radius: 26,
                 backgroundImage: details['imageUrl']!.isNotEmpty ? NetworkImage(details['imageUrl']!) : const AssetImage('assets/avatar_placeholder.png') as ImageProvider,
                 onBackgroundImageError: (_, __) {
                   const AssetImage('assets/default_avatar.png');
@@ -856,11 +853,14 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
             '${AppLocalizations.of(context)!.title} : ${widget.event['title']}',
             Icons.bookmark_add_outlined,
           ),
-        if (details['formattedStartDate']!.isNotEmpty)
+        if (details['formattedStartDate']!.isNotEmpty && details['formattedEndDate']!.isNotEmpty)
           titleCustom(
-            '${AppLocalizations.of(context)!.date} : ${startDate.year}-${startDate.month}-${startDate.day} - ${endDate.year}-${endDate.month}-${endDate.day}',
+            '${AppLocalizations.of(context)!.date} : '
+                '${startDate.day.toString().padLeft(2, '0')}-${startDate.month.toString().padLeft(2, '0')}-${startDate.year} - '
+                '${endDate.day.toString().padLeft(2, '0')}-${endDate.month.toString().padLeft(2, '0')}-${endDate.year}',
             Icons.free_cancellation_outlined,
           ),
+
         if (details['formattedEndDate']!.isNotEmpty)
           titleCustom(
             '${AppLocalizations.of(context)!.time} : $startDisplay12 - $endDisplay12',
