@@ -353,7 +353,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (status == 'Cancelled') continue;
 
         final event = Events(
-          title: item['title'] ?? 'Add Meeting',
+          title: item['title'] ?? 'Minutes of Meeting',
           start: startDateTime,
           end: endDateTime,
           desc: item['description'] ?? '',
@@ -367,7 +367,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
-          category: 'Add Meeting',  // This is for Add Meeting category
+          category: 'Minutes of Meeting',
           fileName: item['file_name'],
           members: uniqueMembers, // Use filtered unique members list
         );
@@ -444,7 +444,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (status == 'Cancelled') continue;
 
         final event = Events(
-          title: item['title'] ?? 'Minutes Of Meeting',
+          title: item['title'] ?? 'Add Meeting',
           start: startDateTime,
           end: endDateTime,
           desc: item['description'] ?? '',
@@ -459,7 +459,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['outmeeting_uid']?.toString(),
-          category: 'Minutes Of Meeting',  // This is for Minutes Of Meeting category
+          category: 'Add Meeting',
           members: item['guests'] != null ? List<Map<String, dynamic>>.from(item['guests']) : [],
         );
 
@@ -540,7 +540,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
 
         final event = Events(
-          title: item['title'] ?? 'Minutes Of Meeting',
+          title: item['title'] ?? 'Add Meeting',
           start: startDateTime,
           end: endDateTime,
           desc: item['description'] ?? '',
@@ -555,8 +555,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['outmeeting_uid']?.toString(),
-          category: 'Minutes Of Meeting',  // This is for Minutes Of Meeting category
-          members: uniqueMembers, // Use filtered unique members list
+          category: 'Add Meeting',
+          members: uniqueMembers,
         );
 
         final normalizedStartDay = normalizeDate(startDateTime);
