@@ -178,14 +178,19 @@ class TimeTableDayWidget extends HookWidget {
                 switch (event.category) {
                   case 'Add Meeting':
                     eventType = AppLocalizations.of(context)!.meetingTitle;
+                    break;
                   case 'Leave':
                     eventType = AppLocalizations.of(context)!.leave;
+                    break;
                   case 'Meeting Room Bookings':
                     eventType = AppLocalizations.of(context)!.meetingRoomBookings;
+                    break;
                   case 'Booking Car':
                     eventType = AppLocalizations.of(context)!.bookingCar;
+                    break;
                   case 'Minutes Of Meeting':
                     eventType = AppLocalizations.of(context)!.minutesOfMeeting;
+                    break;
                   default:
                     eventType = AppLocalizations.of(context)!.other;
                 }

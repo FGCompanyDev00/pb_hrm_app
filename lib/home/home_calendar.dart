@@ -113,7 +113,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         events.value[detectDate]!.add(event);
       } else {
         event.members?.forEach(
-          (e) => events.value[detectDate]!.where((desc) => desc.desc == event.desc).first.members?.add(e),
+              (e) => events.value[detectDate]!.where((desc) => desc.desc == event.desc).first.members?.add(e),
         );
       }
     } else {
@@ -136,7 +136,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             events.value[detectDate]!.add(i);
           } else {
             i.members?.forEach(
-              (e) => events.value[detectDate]!.where((desc) => desc.desc == i.desc).first.members?.add(e),
+                  (e) => events.value[detectDate]!.where((desc) => desc.desc == i.desc).first.members?.add(e),
             );
           }
         } else {
@@ -162,7 +162,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         _fetchCarBookings(),
         _fetchCarBookingsInvite(),
         _fetchMinutesOfMeeting(),
-        _fetchMinutesOfMeetingMembers(),
+        _fetchMeetingMembers(),
       ]);
     } catch (e) {
       showSnackBar('Error fetching data: $e');
@@ -185,7 +185,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         _fetchCarBookings(),
         _fetchCarBookingsInvite(),
         _fetchMinutesOfMeeting(),
-        _fetchMinutesOfMeetingMembers(),
+        _fetchMeetingMembers(),
       ]);
     } catch (e) {
       showSnackBar('Error fetching data: $e');
@@ -250,6 +250,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
+
     }
   }
 
@@ -269,7 +270,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
   }
 
   /// Fetches meeting data from the API
-  Future<void> _fetchMeetingData() async {
+  Future<void> _fetchMinutesOfMeeting() async {
     final response = await getRequest('/api/work-tracking/meeting/get-all-meeting');
     if (response == null) return;
 
@@ -277,7 +278,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-        showSnackBar('Invalid meeting data format.');
+        showSnackBar('Invalid minutes of meeting data format.');
         return;
       }
 
@@ -353,7 +354,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         if (status == 'Cancelled') continue;
 
         final event = Events(
-          title: item['title'] ?? 'Minutes of Meeting',
+          title: item['title'] ?? 'Minutes Of Meeting',
           start: startDateTime,
           end: endDateTime,
           desc: item['description'] ?? '',
@@ -367,7 +368,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
-          category: 'Minutes of Meeting',
+          category: 'Minutes Of Meeting',
           fileName: item['file_name'],
           members: uniqueMembers, // Use filtered unique members list
         );
@@ -381,12 +382,12 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing meeting data: $e');
+      showSnackBar('Error parsing minutes of meeting data: $e');
     }
   }
 
   /// Fetches meeting out data from the API
-  Future<void> _fetchMinutesOfMeeting() async {
+  Future<void> _fetchMeetingData() async {
     final response = await getRequest('/api/work-tracking/out-meeting/out-meeting');
     if (response == null) return;
 
@@ -437,20 +438,21 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
 
         // Handle possible nulls with default values
-        final String uid = item['outmeeting_uid']?.toString() ?? UniqueKey().toString();
+        final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
 
         String status = item['s_name'] != null ? mapEventStatus(item['s_name'].toString()) : 'Pending';
 
         if (status == 'Cancelled') continue;
 
         final event = Events(
+          // title: item['title'] ?? 'Minutes Of Meeting',
           title: item['title'] ?? 'Add Meeting',
           start: startDateTime,
           end: endDateTime,
           desc: item['description'] ?? '',
           status: status,
           isMeeting: true,
-          location: item['location'] ?? '',
+          location: item['location'] ?? '', // Assuming 'location' field exists
           createdBy: item['create_by'] ?? '',
           imgName: item['file_name'] ?? '',
           createdAt: item['created_at'] ?? '',
@@ -458,7 +460,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           isRepeat: item['is_repeat']?.toString(),
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
-          outmeetingUid: item['outmeeting_uid']?.toString(),
+          outmeetingUid: item['meeting_id']?.toString(),
           category: 'Add Meeting',
           members: item['guests'] != null ? List<Map<String, dynamic>>.from(item['guests']) : [],
         );
@@ -472,14 +474,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing minutes of meeting data: $e');
+      showSnackBar('Error parsing meeting data: $e');
     }
 
     return;
   }
 
   /// Fetches meeting out data from the API
-  Future<void> _fetchMinutesOfMeetingMembers() async {
+  Future<void> _fetchMeetingMembers() async {
     final response = await getRequest('/api/work-tracking/out-meeting/outmeeting/my-members');
     if (response == null) return;
 
@@ -487,7 +489,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-        showSnackBar('Invalid minutes of meeting data format.');
+        showSnackBar('Invalid meeting data format.');
         return;
       }
 
@@ -520,11 +522,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             toDate.minute,
           );
         } catch (e) {
-          showSnackBar('Error parsing minutes of meeting dates or times: $e');
+          showSnackBar('Error parsing meeting dates or times: $e');
           continue;
         }
 
-        final String uid = item['outmeeting_uid']?.toString() ?? UniqueKey().toString();
+        final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
         String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
         if (status == 'Cancelled') continue;
 
@@ -540,7 +542,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
 
         final event = Events(
-          title: item['title'] ?? 'Add Meeting',
+          title: item['title'] ?? 'Minutes Of Meeting',
           start: startDateTime,
           end: endDateTime,
           desc: item['description'] ?? '',
@@ -554,9 +556,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           isRepeat: item['is_repeat']?.toString(),
           videoConference: item['video_conference']?.toString(),
           backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
-          outmeetingUid: item['outmeeting_uid']?.toString(),
-          category: 'Add Meeting',
-          members: uniqueMembers,
+          outmeetingUid: item['meeting_id']?.toString(),
+          category: 'Minutes Of Meeting',
+          members: uniqueMembers, // Use filtered unique members list
         );
 
         final normalizedStartDay = normalizeDate(startDateTime);
@@ -567,7 +569,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing minutes of meeting data: $e');
+      showSnackBar('Error parsing meeting data: $e');
     }
   }
 
@@ -631,8 +633,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
         String status = item['statuss'] != null
             ? item['statuss'] == 1
-                ? 'Success'
-                : 'Pending'
+            ? 'Success'
+            : 'Pending'
             : 'Pending';
 
         if (status == 'Cancelled') continue;
@@ -1255,22 +1257,22 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                   height: MediaQuery.of(context).size.height * 0.50,
                   child: eventsForDay.isEmpty
                       ? Center(
-                          child: Text(
-                            AppLocalizations.of(context)!.noEventsForThisDay,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        )
+                    child: Text(
+                      AppLocalizations.of(context)!.noEventsForThisDay,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
                       : CalendarDaySwitchView(
-                          selectedDay: _selectedDay,
-                          passDefaultCurrentHour: 0,
-                          passDefaultEndHour: 25,
-                          eventsCalendar: eventsForDay,
-                        ),
+                    selectedDay: _selectedDay,
+                    passDefaultCurrentHour: 0,
+                    passDefaultEndHour: 25,
+                    eventsCalendar: eventsForDay,
+                  ),
                 ),
               )
             ],

@@ -251,14 +251,19 @@ class CalendarDayWidget extends HookWidget {
                     switch (event.category) {
                       case 'Add Meeting':
                         eventCategory = AppLocalizations.of(context)!.meetingTitle;
+                        break;
                       case 'Leave':
                         eventCategory = AppLocalizations.of(context)!.leave;
+                        break;
                       case 'Meeting Room Bookings':
                         eventCategory = AppLocalizations.of(context)!.meetingRoomBookings;
+                        break;
                       case 'Booking Car':
                         eventCategory = AppLocalizations.of(context)!.bookingCar;
+                        break;
                       case 'Minutes Of Meeting':
                         eventCategory = AppLocalizations.of(context)!.minutesOfMeeting;
+                        break;
                       default:
                         eventCategory = AppLocalizations.of(context)!.other;
                     }
