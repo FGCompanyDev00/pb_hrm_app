@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -24,6 +25,9 @@ class OfflineProvider extends ChangeNotifier {
   final calendarDatabaseService = CalendarDatabaseService();
   final historyDatabaseService = HistoryDatabaseService();
   final ValueNotifier<bool> isOfflineService = ValueNotifier<bool>(false);
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   //Calendar offline
   void initializeCalendar() async {
@@ -160,9 +164,9 @@ class OfflineProvider extends ChangeNotifier {
   Future<bool> _sendAttendance(AttendanceRecord record) async {
     String url;
     if (record.section == 'Office' || record.section == 'Home') {
-      url = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/office';
+      url = '$baseUrl/api/attendance/checkin-checkout/office';
     } else {
-      url = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offsite';
+      url = '$baseUrl/api/attendance/checkin-checkout/offsite';
     }
 
     String? token = sl<UserPreferences>().getToken();
@@ -200,7 +204,7 @@ class OfflineProvider extends ChangeNotifier {
     final token = prefs.getString('token');
 
     // Build the request
-    var uri = Uri.parse('https://demo-application-api.flexiflows.co');
+    var uri = Uri.parse(baseUrl);
     var request = http.MultipartRequest('POST', uri);
     request.headers['Authorization'] = 'Bearer $token';
 

@@ -2,6 +2,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'history_edit_event_members.dart';
 import 'dart:convert';
@@ -66,6 +67,9 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
   final TextEditingController _carDateInController = TextEditingController();
   final TextEditingController _carDateOutController = TextEditingController();
 
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
   @override
   void initState() {
     super.initState();
@@ -128,7 +132,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
   Future<void> _fetchLeaveTypes() async {
     try {
       String token = await _fetchToken();
-      String url = 'https://demo-application-api.flexiflows.co/api/leave-types';
+      String url = '$baseUrl/api/leave-types';
 
       final response = await http.get(
         Uri.parse(url),
@@ -170,7 +174,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
   Future<void> _fetchRooms() async {
     try {
       String token = await _fetchToken();
-      String url = 'https://demo-application-api.flexiflows.co/api/office-administration/rooms';
+      String url = '$baseUrl/api/office-administration/rooms';
 
       final response = await http.get(
         Uri.parse(url),
@@ -226,13 +230,13 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
 
       switch (widget.type.toLowerCase()) {
         case 'leave':
-          url = 'https://demo-application-api.flexiflows.co/api/leave_request/${widget.id}';
+          url = '$baseUrl/api/leave_request/${widget.id}';
           break;
         case 'meeting':
-          url = 'https://demo-application-api.flexiflows.co/api/office-administration/book_meeting_room/waiting/${widget.id}';
+          url = '$baseUrl/api/office-administration/book_meeting_room/waiting/${widget.id}';
           break;
         case 'car':
-          url = 'https://demo-application-api.flexiflows.co/api/office-administration/car_permit/${widget.id}';
+          url = '$baseUrl/api/office-administration/car_permit/${widget.id}';
           break;
         default:
           throw Exception('Invalid event type');
@@ -825,7 +829,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
             _showErrorMessage('Please reselect your Date In and Date Out');
             return;
           }
-          url = 'https://demo-application-api.flexiflows.co/api/leave_request/${widget.id}';
+          url = '$baseUrl/api/leave_request/${widget.id}';
           body = {
             "take_leave_type_id": _selectedLeaveTypeId,
             "take_leave_from": _leaveFromController.text,
@@ -840,7 +844,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
             _showErrorMessage('Please reselect your Date In and Date Out');
             return;
           }
-          url = 'https://demo-application-api.flexiflows.co/api/office-administration/book_meeting_room/${widget.id}';
+          url = '$baseUrl/api/office-administration/book_meeting_room/${widget.id}';
           body = {
             "room_id": _selectedRoomId,
             "title": _meetingTitleController.text,
@@ -859,7 +863,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
             _showErrorMessage('Please reselect your Date In and Date Out');
             return;
           }
-          url = 'https://demo-application-api.flexiflows.co/api/office-administration/car_permit/${widget.id}';
+          url = '$baseUrl/api/office-administration/car_permit/${widget.id}';
           body = {
             "employee_id": _employeeId,
             "purpose": _carPurposeController.text.isNotEmpty ? _carPurposeController.text : null,

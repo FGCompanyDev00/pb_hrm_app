@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -32,6 +33,9 @@ class LeaveManagementPage extends HookWidget {
     final filteredLeaveTypes = useState<List<Map<String, dynamic>>>([]);
     final isLoadingLeaveTypes = useState<bool>(false);
     final isSubmitting = useState<bool>(false);
+
+    // BaseUrl ENV initialization for debug and production
+    String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
     // Whether the user currently has selected a fractional day
     // (This helps us skip auto-calculation when changing dates).
@@ -183,7 +187,7 @@ class LeaveManagementPage extends HookWidget {
 
       try {
         final response = await http.get(
-          Uri.parse('https://demo-application-api.flexiflows.co/api/leave-types'),
+          Uri.parse('$baseUrl/api/leave-types'),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',
@@ -407,7 +411,7 @@ class LeaveManagementPage extends HookWidget {
           };
 
           final response = await http.post(
-            Uri.parse('https://demo-application-api.flexiflows.co/api/leave_request'),
+            Uri.parse('$baseUrl/api/leave_request'),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',

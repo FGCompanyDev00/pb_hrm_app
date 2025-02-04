@@ -2,6 +2,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_details_page.dart';
 import 'package:pb_hrsystem/notifications/notification_detail_page.dart';
@@ -27,7 +28,9 @@ class NotificationPageState extends State<NotificationPage> {
   bool _isLoading = true;
   final Set<String> _knownTypes = {'meeting', 'leave', 'car'};
   Map<int, String> _leaveTypesMap = {};
-  final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   // State variables for expansion
   bool _isMeetingExpanded = false;
@@ -77,8 +80,7 @@ class NotificationPageState extends State<NotificationPage> {
 
   /// Fetches leave types from the API and populates the _leaveTypesMap
   Future<void> _fetchLeaveTypes() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String leaveTypesApiUrl = '$baseUrl/api/leave-types';
+    String leaveTypesApiUrl = '$baseUrl/api/leave-types';
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -132,8 +134,7 @@ class NotificationPageState extends State<NotificationPage> {
 
   /// Fetches all pending approval items without pagination
   Future<void> _fetchPendingItems() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String pendingApiUrl = '$baseUrl/api/app/tasks/approvals/pending';
+    String pendingApiUrl = '$baseUrl/api/app/tasks/approvals/pending';
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -191,8 +192,7 @@ class NotificationPageState extends State<NotificationPage> {
 
   /// Fetches all history approval items without pagination
   Future<void> _fetchHistoryItems() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String historyApiUrl = '$baseUrl/api/app/tasks/approvals/history';
+    String historyApiUrl = '$baseUrl/api/app/tasks/approvals/history';
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -252,8 +252,7 @@ class NotificationPageState extends State<NotificationPage> {
 
   /// Fetches all meeting invites without pagination
   Future<void> _fetchMeetingInvites() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String meetingInvitesApiUrl = '$baseUrl/api/office-administration/book_meeting_room/invites-meeting';
+    String meetingInvitesApiUrl = '$baseUrl/api/office-administration/book_meeting_room/invites-meeting';
 
     try {
       final prefs = await SharedPreferences.getInstance();

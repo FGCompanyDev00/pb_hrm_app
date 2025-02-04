@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
@@ -40,6 +41,9 @@ class DashboardState extends State<Dashboard> {
   // Hive boxes
   late Box<String> userProfileBox;
   late Box<List<String>> bannersBox;
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   @override
   void initState() {
@@ -117,7 +121,7 @@ class DashboardState extends State<Dashboard> {
     try {
       // Try fetching profile data from the network
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
+        Uri.parse('$baseUrl/api/display/me'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -183,7 +187,7 @@ class DashboardState extends State<Dashboard> {
 
     try {
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/app/promotions/files/active'),
+        Uri.parse('$baseUrl/app/promotions/files/active'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

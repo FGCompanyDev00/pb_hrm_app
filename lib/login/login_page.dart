@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
@@ -41,6 +42,9 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _storage = const FlutterSecureStorage();
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   @override
   void initState() {
@@ -118,7 +122,7 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
     if (isOnline) {
       try {
         final response = await http.post(
-          Uri.parse('https://demo-application-api.flexiflows.co/api/login'),
+          Uri.parse('$baseUrl/api/login'),
           headers: <String, String>{
             'Content-Type': 'application/json; charset=UTF-8',
           },

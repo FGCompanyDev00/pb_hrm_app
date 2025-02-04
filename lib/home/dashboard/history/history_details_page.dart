@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_office_booking_event_edit_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,6 +33,9 @@ class DetailsPageState extends State<DetailsPage> {
   String? hrImageUrl;
   String? _errorMessage;
 
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
   @override
   void initState() {
     super.initState();
@@ -47,8 +51,7 @@ class DetailsPageState extends State<DetailsPage> {
 
   /// Fetch Leave Types
   Future<void> _fetchLeaveTypes() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String leaveTypesUrl = '$baseUrl/api/leave-types';
+    final String leaveTypesUrl = '$baseUrl/api/leave-types';
     try {
       final String? tokenValue = await _getToken();
       if (tokenValue == null) {
@@ -112,7 +115,6 @@ class DetailsPageState extends State<DetailsPage> {
     // Ensure the first letter is capitalized and the rest are lowercase
     String formattedStatus = '${status[0].toUpperCase()}${status.substring(1).toLowerCase()}';
 
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String apiUrl = '$baseUrl/api/app/users/history/pending/$id';
 
     try {

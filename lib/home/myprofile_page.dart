@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -16,6 +17,9 @@ class MyProfilePage extends StatefulWidget {
 
 class MyProfilePageState extends State<MyProfilePage> {
   late Future<UserProfile> futureUserProfile;
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   @override
   void initState() {
@@ -33,7 +37,7 @@ class MyProfilePageState extends State<MyProfilePage> {
 
     // Fetch user profile details (without roles)
     final response = await http.get(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
+      Uri.parse('$baseUrl/api/work-tracking/project-member/get-all-employees'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -49,7 +53,7 @@ class MyProfilePageState extends State<MyProfilePage> {
 
       // Fetch roles from the separate API
       final rolesResponse = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
+        Uri.parse('$baseUrl/api/display/me'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

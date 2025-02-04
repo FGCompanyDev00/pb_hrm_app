@@ -147,3 +147,5 @@ flutter:
     - assets/chat_image.png
     - assets/attendance.png
     - assets/chat_icon.png
+    - .env.demo
+    - .env.production

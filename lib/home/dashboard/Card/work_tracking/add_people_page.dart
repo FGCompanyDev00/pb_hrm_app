@@ -25,6 +25,7 @@ class AddPeoplePageState extends State<AddPeoplePage> {
   final List<Map<String, dynamic>> _selectedPeople = [];
   String _searchQuery = '';
   bool _isLoading = false;
+  final workTrackingService = WorkTrackingService();
 
   // New variables for groups
   List<Map<String, dynamic>> _groups = [];
@@ -86,7 +87,7 @@ class AddPeoplePageState extends State<AddPeoplePage> {
       debugPrint('Retrieved Bearer Token for groups: $token');
 
       final response = await http.get(
-        Uri.parse('${WorkTrackingService.baseUrl}/api/work-tracking/group/usergroups'),
+        Uri.parse('${workTrackingService.baseUrl}/api/work-tracking/group/usergroups'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -158,7 +159,7 @@ class AddPeoplePageState extends State<AddPeoplePage> {
 
       // Make the POST request
       final response = await http.post(
-        Uri.parse('${WorkTrackingService.baseUrl}/api/work-tracking/project-member/insert'),
+        Uri.parse('${workTrackingService.baseUrl}/api/work-tracking/project-member/insert'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

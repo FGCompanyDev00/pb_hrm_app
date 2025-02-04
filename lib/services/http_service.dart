@@ -1,10 +1,11 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 
 // Base URL for API endpoints
-const String baseUrl = 'https://demo-application-api.flexiflows.co';
+String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
 /// Helper method to handle HTTP GET requests with error handling
 Future<http.Response?> getRequest(String endpoint) async {

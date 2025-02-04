@@ -1,6 +1,7 @@
 // approvals_details_page.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/comment_approvals_reply.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -43,6 +44,9 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   // Base URL for images
   final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
   @override
   void initState() {
     super.initState();
@@ -50,7 +54,6 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   }
 
   Future<void> _fetchApprovalDetails() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
     String apiUrl;
 
     try {
@@ -145,7 +148,6 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       return;
     }
 
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String endpoint =
         '$baseUrl/api/office-administration/car_permit/approved/merge/${widget.id}';
 
@@ -210,7 +212,6 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       _isFetchingWaitingList = true;
     });
 
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String apiUrl =
         '$baseUrl/api/office-administration/car_permits/waiting/merge/${widget.id}';
 
@@ -265,8 +266,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       return;
     }
 
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String apiUrl = '$baseUrl/api/office-administration/my-vehicles';
+    final String apiUrl = '$baseUrl/api/office-administration/my-vehicles';
 
     setState(() {
       _isFetchingVehicles = true;
@@ -308,7 +308,6 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   }
 
   Future<String> _fetchProfileImage(String id) async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String apiUrl = '$baseUrl/api/profile/$id';
 
     try {
@@ -1310,7 +1309,6 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       return;
     }
 
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String endpoint = '$baseUrl/api/office-administration/car_permit/approved/${widget.id}';
 
     setState(() {
@@ -1556,7 +1554,6 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       return;
     }
 
-    const baseUrl = 'https://demo-application-api.flexiflows.co';
     final endpoint = '$baseUrl/api/office-administration/car_permit/disapproved/${widget.id}';
     final reason = _rejectReasonController.text.trim();
 

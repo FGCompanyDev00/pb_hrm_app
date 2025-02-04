@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
@@ -32,6 +33,9 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   // File selection
   PlatformFile? selectedFile;
 
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
   @override
   void initState() {
     super.initState();
@@ -39,7 +43,6 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   }
 
   Future<void> fetchEventData() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -96,7 +99,6 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
 
   /// Called when user finally confirms (in the Comment dialog).
   Future<void> confirmReturn() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');

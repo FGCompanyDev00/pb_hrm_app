@@ -1,6 +1,7 @@
 // notification_meeting_detail_page.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,7 +29,8 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
   late AnimationController _animationController;
   late Animation<double> _animation;
 
-  final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   @override
   void initState() {
@@ -42,7 +44,6 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
   }
 
   Future<void> _fetchMeetingDetails() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
     String apiUrl = '$baseUrl/api/office-administration/book_meeting_room/invite-meeting/${widget.id}';
 
     try {
@@ -434,7 +435,6 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
 
   Future<void> _handleMeetingAction(String action) async {
     final String uid = widget.id;
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
     String endpoint;
 

@@ -1,6 +1,7 @@
 // approvals_main_page.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_details_page.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
@@ -33,6 +34,9 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
   // Leave Types Map: leave_type_id -> name
   Map<int, String> _leaveTypesMap = {};
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   @override
   void initState() {
@@ -70,8 +74,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
   /// Fetches leave types from the API and populates the _leaveTypesMap
   Future<void> _fetchLeaveTypes() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String leaveTypesApiUrl = '$baseUrl/api/leave-types';
+    final String leaveTypesApiUrl = '$baseUrl/api/leave-types';
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -119,8 +122,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
   /// Fetches all pending approval items without pagination
   Future<void> _fetchPendingItems() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String pendingApiUrl = '$baseUrl/api/app/tasks/approvals/pending';
+    final String pendingApiUrl = '$baseUrl/api/app/tasks/approvals/pending';
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -179,8 +181,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
   /// Fetches all history items without pagination
   Future<void> _fetchHistoryItems() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String historyApiUrl = '$baseUrl/api/app/tasks/approvals/history';
+    final String historyApiUrl = '$baseUrl/api/app/tasks/approvals/history';
 
     try {
       final prefs = await SharedPreferences.getInstance();

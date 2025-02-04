@@ -10,6 +10,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -53,10 +54,20 @@ const FlutterSecureStorage secureStorage = FlutterSecureStorage();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-
   // Run entire app inside runZonedGuarded:
   runZonedGuarded(() async {
+
+
+    try {
+      await dotenv.load(fileName: ".env.demo"); // Please change to ".env.production" for release
+    } catch (e) {
+      debugPrint("Error loading .env file: $e");
+    }
+
+    debugPrint("BASE_URL Loaded: ${dotenv.env['BASE_URL']}");
+
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
     // Initialize secure HTTP client
     final Dio dio = createSecureDio();
     sl.registerSingleton<Dio>(dio);

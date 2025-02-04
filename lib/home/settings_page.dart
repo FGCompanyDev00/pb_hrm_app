@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -29,6 +30,9 @@ class SettingsPageState extends State<SettingsPage> {
   bool _biometricEnabled = false;
   late Future<UserProfile> futureUserProfile;
   String _appVersion = 'PSBV Next Demo v1.0.52(52)';
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -195,7 +199,7 @@ class SettingsPageState extends State<SettingsPage> {
     final String? token = prefs.getString('token');
 
     final response = await http.get(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
+      Uri.parse('$baseUrl/api/display/me'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',

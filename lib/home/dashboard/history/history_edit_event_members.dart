@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,6 +25,9 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
   List<Map<String, dynamic>> selectedMembers = [];
   final TextEditingController searchController = TextEditingController();
   Set<String> excludedMemberIds = Set();
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   @override
   void initState() {
@@ -50,7 +54,6 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
       }
 
       // Fetch members from the main API
-      const String baseUrl = 'https://demo-application-api.flexiflows.co';
       final Uri url = Uri.parse('$baseUrl/api/work-tracking/project-member/get-all-employees');
       final response = await http.get(
         url,
@@ -93,7 +96,7 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
 
   // Fetch meeting members and add them to the exclusion list
   Future<void> _fetchMeetingMembers(String currentUserId, String token) async {
-    final Uri url = Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/meeting/get-meeting/${widget.id}');
+    final Uri url = Uri.parse('$baseUrl/api/work-tracking/meeting/get-meeting/${widget.id}');
     final response = await http.get(
       url,
       headers: {
@@ -117,7 +120,7 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
 
   // Fetch car members and add them to the exclusion list
   Future<void> _fetchCarMembers(String currentUserId, String token) async {
-    final Uri url = Uri.parse('https://demo-application-api.flexiflows.co/api/office-administration/car_permit/me/${widget.id}');
+    final Uri url = Uri.parse('$baseUrl/api/office-administration/car_permit/me/${widget.id}');
     final response = await http.get(
       url,
       headers: {
@@ -136,7 +139,7 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
       }
     } else {
       // If the first API fails, try the second approach.
-      final secondUrl = Uri.parse('https://demo-application-api.flexiflows.co/api/office-administration/car_permit/invite-car-member/${widget.id}');
+      final secondUrl = Uri.parse('$baseUrl/api/office-administration/car_permit/invite-car-member/${widget.id}');
       final secondResponse = await http.get(
         secondUrl,
         headers: {

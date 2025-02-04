@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WorkTrackingService {
-  static const String baseUrl = 'https://demo-application-api.flexiflows.co';
+  final String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   // Helper to get the headers with the auth token
   Future<Map<String, String>> _getHeaders() async {
@@ -65,7 +66,7 @@ class WorkTrackingService {
   /// Fetch all available projects.
   Future<List<Map<String, dynamic>>> fetchAllProjects() async {
     final headers = await _getHeaders();
-    const url = '$baseUrl/api/work-tracking/proj/projects';
+    final url = '$baseUrl/api/work-tracking/proj/projects';
     if (kDebugMode) {
       debugPrint('Fetching All Projects from: $url');
     }
@@ -112,7 +113,7 @@ class WorkTrackingService {
   /// Add a new project.
   Future<String?> addProject(Map<String, dynamic> projectData) async {
     final headers = await _getHeaders();
-    const url = '$baseUrl/api/work-tracking/proj/insert';
+    final url = '$baseUrl/api/work-tracking/proj/insert';
     if (kDebugMode) {
       debugPrint('Adding Project to: $url');
       debugPrint('Project Data: ${jsonEncode(projectData)}');
@@ -196,7 +197,7 @@ class WorkTrackingService {
   /// Delete a project by its ID.
   Future<bool> deleteProject(String projectId) async {
     final headers = await _getHeaders();
-    const url = '$baseUrl/api/work-tracking/proj/delete';
+    final url = '$baseUrl/api/work-tracking/proj/delete';
     if (kDebugMode) {
       debugPrint('Deleting Project at: $url');
       debugPrint('Project ID to Delete: $projectId');

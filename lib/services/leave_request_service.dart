@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LeaveRequestService {
-  final String baseUrl = 'https://demo-application-api.flexiflows.co';
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   Future<void> addLeaveRequest(Map<String, dynamic> leaveRequestData) async {
     final prefs = await SharedPreferences.getInstance();

@@ -25,6 +25,7 @@ class EditPeoplePageState extends State<EditPeoplePage> {
   final List<Map<String, dynamic>> _selectedPeople = [];
   String _searchQuery = '';
   bool _isLoading = false;
+  final workTrackingService = WorkTrackingService();
 
   // New variables for groups
   List<Map<String, dynamic>> _groups = [];
@@ -92,7 +93,7 @@ class EditPeoplePageState extends State<EditPeoplePage> {
       debugPrint('Retrieved Bearer Token for groups: $token');
 
       final response = await http.get(
-        Uri.parse('${WorkTrackingService.baseUrl}/api/work-tracking/group/usergroups'),
+        Uri.parse('${workTrackingService.baseUrl}/api/work-tracking/group/usergroups'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -145,7 +146,7 @@ class EditPeoplePageState extends State<EditPeoplePage> {
       }
 
       final response = await http.get(
-        Uri.parse('${WorkTrackingService.baseUrl}/api/work-tracking/proj/find-Member-By-ProjectId/${widget.projectId}'),
+        Uri.parse('${workTrackingService.baseUrl}/api/work-tracking/proj/find-Member-By-ProjectId/${widget.projectId}'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -225,7 +226,7 @@ class EditPeoplePageState extends State<EditPeoplePage> {
       // Handle deletions
       for (String memberId in _membersToDelete) {
         final deleteResponse = await http.put(
-          Uri.parse('${WorkTrackingService.baseUrl}/api/work-tracking/project-member/delete/$memberId'),
+          Uri.parse('${workTrackingService.baseUrl}/api/work-tracking/project-member/delete/$memberId'),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',
@@ -264,7 +265,7 @@ class EditPeoplePageState extends State<EditPeoplePage> {
 
         // Make the POST request to add/update members
         final postResponse = await http.post(
-          Uri.parse('${WorkTrackingService.baseUrl}/api/work-tracking/project-member/insert'),
+          Uri.parse('${workTrackingService.baseUrl}/api/work-tracking/project-member/insert'),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',

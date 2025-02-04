@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
+import '../services/http_service.dart';
+
 class MonthlyAttendanceReport extends StatefulWidget {
   const MonthlyAttendanceReport({super.key});
 
@@ -29,8 +31,7 @@ class MonthlyAttendanceReportState extends State<MonthlyAttendanceReport> {
       return;
     }
 
-    const String url = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offices/months/me';
-
+    String url = '$baseUrl/api/attendance/checkin-checkout/offices/months/me';
     String formattedMonth = DateFormat('yyyy-MM').format(_currentMonth);
 
     try {

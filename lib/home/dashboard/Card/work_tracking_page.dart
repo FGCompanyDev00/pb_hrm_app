@@ -2,6 +2,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_project.dart';
@@ -17,7 +18,6 @@ class WorkTrackingPage extends StatefulWidget {
   final String? highlightedProjectId;
 
   const WorkTrackingPage({super.key, this.highlightedProjectId});
-  static const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
   @override
   WorkTrackingPageState createState() => WorkTrackingPageState();
@@ -31,6 +31,9 @@ class WorkTrackingPageState extends State<WorkTrackingPage> {
   List<Map<String, dynamic>> _projects = [];
   bool _isLoading = false;
   final WorkTrackingService _workTrackingService = WorkTrackingService();
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   @override
   void initState() {
@@ -451,7 +454,7 @@ class WorkTrackingPageState extends State<WorkTrackingPage> {
                 MaterialPageRoute(
                   builder: (context) => EditProjectPage(
                     projectId: project['project_id'],
-                    baseUrl: WorkTrackingService.baseUrl,
+                    baseUrl: _workTrackingService.baseUrl,
                     project: project,
                     onUpdate: (updatedProject) {
                       setState(() {
@@ -486,7 +489,7 @@ class WorkTrackingPageState extends State<WorkTrackingPage> {
             MaterialPageRoute(
               builder: (context) => ProjectManagementPage(
                 projectId: project['project_id'],
-                baseUrl: WorkTrackingService.baseUrl,
+                baseUrl: _workTrackingService.baseUrl,
               ),
             ),
           );
@@ -540,7 +543,7 @@ class WorkTrackingPageState extends State<WorkTrackingPage> {
                         MaterialPageRoute(
                           builder: (context) => EditProjectPage(
                             projectId: project['project_id'],
-                            baseUrl: WorkTrackingService.baseUrl,
+                            baseUrl: _workTrackingService.baseUrl,
                             project: project,
                             onUpdate: (updatedProject) {
                               setState(() {
@@ -570,7 +573,7 @@ class WorkTrackingPageState extends State<WorkTrackingPage> {
                         MaterialPageRoute(
                           builder: (context) => EditProjectPage(
                             projectId: project['project_id'],
-                            baseUrl: WorkTrackingService.baseUrl,
+                            baseUrl: _workTrackingService.baseUrl,
                             project: project,
                             onUpdate: (updatedProject) {
                               setState(() {

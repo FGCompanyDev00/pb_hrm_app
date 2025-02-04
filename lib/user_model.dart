@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
@@ -30,6 +31,9 @@ class UserProvider extends ChangeNotifier {
   User get currentUser => _currentUser;
   bool get isLoggedIn => _isLoggedIn;
   String get token => _token;
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   UserProvider() {
     loadUser();
@@ -71,7 +75,7 @@ class UserProvider extends ChangeNotifier {
 
     try {
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
+        Uri.parse('$baseUrl/api/display/me'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -118,6 +122,6 @@ class UserProvider extends ChangeNotifier {
     await prefs.removeToken();
     await prefs.removeLoginSession();
 
-    notifyListeners(); // Notify listeners to refresh UI based on the new state
+    notifyListeners();
   }
 }

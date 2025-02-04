@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive/hive.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
@@ -38,6 +39,9 @@ class HomeCalendar extends StatefulWidget {
 
 class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin implements Refreshable {
   late Box eventsBox;
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   // ValueNotifier to hold events mapped by date
   final selectedSlot = ValueNotifier(1);

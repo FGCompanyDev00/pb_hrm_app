@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/models/qr_profile_page.dart';
 import 'package:saver_gallery/saver_gallery.dart';
@@ -130,6 +131,9 @@ class ProfileScreenState extends State<ProfileScreen> {
   final GlobalKey qrKey = GlobalKey();
   final GlobalKey qrFullScreenKey = GlobalKey();
 
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   bool _isQRCodeFullScreen = false;
 
@@ -151,7 +155,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       }
 
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/profile/'),
+        Uri.parse('$baseUrl/api/profile/'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -194,7 +198,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         }
 
         final response = await http.get(
-          Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
+          Uri.parse('$baseUrl/api/display/me'),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',

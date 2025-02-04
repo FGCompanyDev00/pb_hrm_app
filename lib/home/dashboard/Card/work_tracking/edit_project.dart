@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:provider/provider.dart';
@@ -56,6 +57,9 @@ class EditProjectPageState extends State<EditProjectPage> {
   List<Map<String, dynamic>> _projectMembers = [];
   bool _isFetchingMembers = false;
 
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
   @override
   void initState() {
     super.initState();
@@ -66,8 +70,8 @@ class EditProjectPageState extends State<EditProjectPage> {
           orElse: () => const MapEntry('Pending', '40d2ba5e-a978-47ce-bc48-caceca8668e9'),
         )
         .key;
-    _branch = 'HQ office'; // You may want to initialize based on project data
-    _department = 'Digital Banking Dept'; // Initialize based on project data
+    _branch = 'HQ office';
+    _department = 'Digital Banking Dept';
     _nameController = TextEditingController(text: widget.project['p_name']);
     String formattedDeadline = _formatDateForDisplay(widget.project['dl']);
     String formattedExtended = _formatDateForDisplay(widget.project['extend']);
@@ -307,7 +311,7 @@ class EditProjectPageState extends State<EditProjectPage> {
   }
 
   Future<String> _fetchMemberProfileImage(String employeeId, Map<String, String> headers) async {
-    final url = 'https://demo-application-api.flexiflows.co/api/profile/$employeeId';
+    final url = '$baseUrl/api/profile/$employeeId';
     try {
       final response = await http.get(Uri.parse(url), headers: headers);
       if (response.statusCode == 200) {

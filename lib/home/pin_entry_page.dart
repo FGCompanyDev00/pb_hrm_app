@@ -1,6 +1,7 @@
 // lib/settings/pin_entry_page.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
@@ -18,6 +19,9 @@ class PinEntryPageState extends State<PinEntryPage> {
   final bool _obscurePin = true;
   String _errorMessage = '';
 
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
   @override
   void initState() {
     super.initState();
@@ -29,7 +33,7 @@ class PinEntryPageState extends State<PinEntryPage> {
 
     if (_pinController.text == storedPin) {
       // Successfully entered the PIN
-      Navigator.pushReplacementNamed(context, '/home'); // Replace with actual route
+      Navigator.pushReplacementNamed(context, '/home');
     } else {
       setState(() {
         _errorMessage = 'Incorrect PIN. Please try again.';

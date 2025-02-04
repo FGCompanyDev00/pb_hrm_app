@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AttendanceService {
-  final String baseUrl = 'https://demo-application-api.flexiflows.co';
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   Future<void> checkInOrCheckOut(bool isCheckIn, String deviceId, double latitude, double longitude) async {
     final prefs = await SharedPreferences.getInstance();

@@ -1,6 +1,7 @@
 // notification_detail_page.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/comment_approvals_reply.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -40,6 +41,9 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
   String? _selectedWaitingUid;
   String? _selectedMergeVehicleUid;
 
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
   // Base URL for images
   final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
@@ -50,7 +54,6 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
   }
 
   Future<void> _fetchApprovalDetails() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
     String apiUrl;
 
     try {
@@ -265,8 +268,7 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
       return;
     }
 
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String apiUrl = '$baseUrl/api/office-administration/my-vehicles';
+    String apiUrl = '$baseUrl/api/office-administration/my-vehicles';
 
     setState(() {
       _isFetchingVehicles = true;
@@ -308,8 +310,7 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
   }
 
   Future<String> _fetchProfileImage(String id) async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    final String apiUrl = '$baseUrl/api/profile/$id';
+    String apiUrl = '$baseUrl/api/profile/$id';
 
     try {
       final String? token = await _getToken();
@@ -1297,8 +1298,7 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
       return;
     }
 
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    final String endpoint = '$baseUrl/api/office-administration/car_permit/approved/${widget.id}';
+    String endpoint = '$baseUrl/api/office-administration/car_permit/approved/${widget.id}';
 
     setState(() {
       isFinalized = true;
@@ -1543,7 +1543,6 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
       return;
     }
 
-    const baseUrl = 'https://demo-application-api.flexiflows.co';
     final endpoint = '$baseUrl/api/office-administration/car_permit/disapproved/${widget.id}';
     final reason = _rejectReasonController.text.trim();
 

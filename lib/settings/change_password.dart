@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -23,6 +24,9 @@ class ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _isConfirmPasswordVisible = false;
   String? _profileImageUrl;
 
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
   @override
   void initState() {
     super.initState();
@@ -38,7 +42,7 @@ class ChangePasswordPageState extends State<ChangePasswordPage> {
     }
 
     final response = await http.get(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/display/me'),
+      Uri.parse('$baseUrl/api/display/me'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -66,7 +70,7 @@ class ChangePasswordPageState extends State<ChangePasswordPage> {
     final String? token = prefs.getString('token');
 
     final response = await http.put(
-      Uri.parse('https://demo-application-api.flexiflows.co/api/changepassword'),
+      Uri.parse('$baseUrl/api/changepassword'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',

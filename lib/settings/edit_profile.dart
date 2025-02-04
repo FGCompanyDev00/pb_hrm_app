@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
@@ -35,15 +36,19 @@ class EditProfilePageState extends State<EditProfilePage> {
   String? _profileImageUrl;
   bool _isLoading = false;
 
-  // Constants for API URLs
-  static const String baseUrl = 'https://demo-application-api.flexiflows.co/api';
-  static const String profileEndpoint = '$baseUrl/profile';
-  static const String displayMeEndpoint = '$baseUrl/display/me';
-  static const String requestChangeEndpoint = '$baseUrl/profile/request-change';
+  late String baseUrl;
+  late String profileEndpoint;
+  late String displayMeEndpoint;
+  late String requestChangeEndpoint;
 
   @override
   void initState() {
     super.initState();
+    baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+    profileEndpoint = '$baseUrl/profile';
+    displayMeEndpoint = '$baseUrl/display/me';
+    requestChangeEndpoint = '$baseUrl/profile/request-change';
+
     _loadProfile();
   }
 

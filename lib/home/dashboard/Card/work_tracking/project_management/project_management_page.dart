@@ -111,7 +111,7 @@ class ProjectManagementPageState extends State<ProjectManagementPage> with Ticke
             child: IconButton(
               icon: Icon(
                 Icons.arrow_back,
-                color: isDarkMode ? Colors.white : Colors.black, // Adjust color for dark mode
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
               onPressed: () {
                 Navigator.pop(context);
@@ -127,7 +127,7 @@ class ProjectManagementPageState extends State<ProjectManagementPage> with Ticke
                 Text(
                   'Project Management',
                   style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black, // Adjust text color for dark mode
+                    color: isDarkMode ? Colors.white : Colors.black,
                     fontWeight: FontWeight.bold,
                     fontSize: 24,
                   ),

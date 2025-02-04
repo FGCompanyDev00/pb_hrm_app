@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:intl/intl.dart';
@@ -19,11 +20,14 @@ class ChatCommentApprovalSection extends StatefulWidget {
 
 class _ChatCommentApprovalSectionState extends State<ChatCommentApprovalSection> {
   List<Map<String, dynamic>> _messages = [];
-  final String _currentUserId = 'user_1'; // Update based on actual user ID logic
+  final String _currentUserId = 'user_1';
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _messageController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   @override
   void initState() {
@@ -45,7 +49,6 @@ class _ChatCommentApprovalSectionState extends State<ChatCommentApprovalSection>
       _errorMessage = null;
     });
 
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String endpoint = '/api/office-administration/car_permit/reply/${widget.id}';
     final String url = '$baseUrl$endpoint';
 
@@ -118,7 +121,6 @@ class _ChatCommentApprovalSectionState extends State<ChatCommentApprovalSection>
       _errorMessage = null;
     });
 
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String adminEndpoint = '/api/office-administration/car_permit/admin-reply/${widget.id}';
     final String userEndpoint = '/api/office-administration/car_permit/reply/${widget.id}';
     final String adminUrl = '$baseUrl$adminEndpoint';

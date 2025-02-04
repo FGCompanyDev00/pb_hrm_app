@@ -4,6 +4,7 @@ library;
 // add_member_office_event.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
@@ -26,6 +27,9 @@ class AddMemberPageState extends State<AddMemberPage> {
   List<Map<String, dynamic>> _groups = [];
   String? _selectedGroupId;
 
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
   @override
   void initState() {
     super.initState();
@@ -47,7 +51,7 @@ class AddMemberPageState extends State<AddMemberPage> {
       String? currentUserEmployeeId = prefs.getString('employee_id');
 
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/project-member/get-all-employees'),
+        Uri.parse('$baseUrl/api/work-tracking/project-member/get-all-employees'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -81,7 +85,7 @@ class AddMemberPageState extends State<AddMemberPage> {
     try {
       String token = await _fetchToken();
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/work-tracking/group/usergroups'),
+        Uri.parse('$baseUrl/api/work-tracking/group/usergroups'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -112,7 +116,7 @@ class AddMemberPageState extends State<AddMemberPage> {
     try {
       String token = await _fetchToken();
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
+        Uri.parse('$baseUrl/api/profile/$employeeId'),
         headers: {
           'Authorization': 'Bearer $token',
         },

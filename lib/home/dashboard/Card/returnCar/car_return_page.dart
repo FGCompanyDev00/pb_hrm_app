@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:pb_hrsystem/home/dashboard/Card/returnCar/car_return_page_details.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
@@ -21,6 +22,9 @@ class ReturnCarPageState extends State<ReturnCarPage> {
   TextEditingController searchController = TextEditingController();
   String searchOption = 'requestor_name';
 
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
   @override
   void initState() {
     super.initState();
@@ -29,7 +33,6 @@ class ReturnCarPageState extends State<ReturnCarPage> {
   }
 
   Future<void> fetchEvents() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');

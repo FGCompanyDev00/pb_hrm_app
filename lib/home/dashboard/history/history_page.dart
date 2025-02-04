@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_details_page.dart';
@@ -23,6 +24,9 @@ class HistoryPageState extends State<HistoryPage> {
   Map<int, String> _leaveTypes = {};
   bool _isLoading = true;
 
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
   @override
   void initState() {
     super.initState();
@@ -31,10 +35,9 @@ class HistoryPageState extends State<HistoryPage> {
 
   /// Fetches leave types, pending items, and history items from the API
   Future<void> _fetchHistoryData() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String pendingApiUrl = '$baseUrl/api/app/users/history/pending';
-    const String historyApiUrl = '$baseUrl/api/app/users/history';
-    const String leaveTypesUrl = '$baseUrl/api/leave-types';
+    final String pendingApiUrl = '$baseUrl/api/app/users/history/pending';
+    final String historyApiUrl = '$baseUrl/api/app/users/history';
+    final String leaveTypesUrl = '$baseUrl/api/leave-types';
 
     try {
       final prefs = await SharedPreferences.getInstance();

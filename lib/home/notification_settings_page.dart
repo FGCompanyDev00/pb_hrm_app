@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -6,6 +7,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/http_service.dart';
 import '../settings/theme_notifier.dart';
 
 class NotificationSettingsPage extends StatefulWidget {
@@ -393,7 +395,6 @@ class Device {
 
 /// Handles all API interactions related to notification settings.
 class ApiService {
-  final String baseUrl = 'https://demo-application-api.flexiflows.co';
 
   /// Fetches all devices associated with the user.
   Future<List<Device>> fetchDevices() async {

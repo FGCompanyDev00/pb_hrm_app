@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -54,8 +55,10 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   String _totalCheckInDelay = '--:--:--';
   String _totalCheckOutDelay = '--:--:--';
   String _totalWorkDuration = '--:--:--';
-  static const String officeApiUrl = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/office';
-  static const String offsiteApiUrl = 'https://demo-application-api.flexiflows.co/api/attendance/checkin-checkout/offsite';
+
+  late String baseUrl;
+  late String officeApiUrl;
+  late String offsiteApiUrl;
 
   static const double _officeRange = 500;
   static LatLng officeLocation = const LatLng(2.891589, 101.524822);
@@ -63,6 +66,12 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   @override
   void initState() {
     super.initState();
+
+    baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
+    officeApiUrl = '$baseUrl/api/attendance/checkin-checkout/office';
+    offsiteApiUrl = '$baseUrl/api/attendance/checkin-checkout/offsite';
+
     _fetchWeeklyRecords();
     _retrieveSavedState();
     _retrieveDeviceId();
@@ -82,8 +91,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _fetchLimitTime() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String endpoint = '$baseUrl/api/attendance/checkin-checkout/offices/weekly/me';
+    final String endpoint = '$baseUrl/api/attendance/checkin-checkout/offices/weekly/me';
 
     try {
       String? token = userPreferences.getToken();
@@ -582,8 +590,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _fetchWeeklyRecords() async {
-    const String baseUrl = 'https://demo-application-api.flexiflows.co';
-    const String endpoint = '$baseUrl/api/attendance/checkin-checkout/offices/weekly/me';
+    final String endpoint = '$baseUrl/api/attendance/checkin-checkout/offices/weekly/me';
 
     try {
       String? token = userPreferences.getToken();

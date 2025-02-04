@@ -1,6 +1,7 @@
 // office_add_event.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:pb_hrsystem/home/home_calendar.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +20,10 @@ class OfficeAddEventPage extends StatefulWidget {
 }
 
 class OfficeAddEventPageState extends State<OfficeAddEventPage> {
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+
   // Booking type selected by the user
   String? _selectedBookingType;
 
@@ -100,7 +105,7 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
       String token = await _fetchToken();
 
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/office-administration/rooms'),
+        Uri.parse('$baseUrl/api/office-administration/rooms'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -143,7 +148,7 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
       // Handle different booking types (type 1,2 and 3)
       if (_selectedBookingType == '1. Add Meeting') {
         // URL for Type 1
-        url = 'https://demo-application-api.flexiflows.co/api/work-tracking/out-meeting/insert';
+        url = '$baseUrl/work-tracking/out-meeting/insert';
 
         // Determine status based on the presence of members
         String status = _selectedMembers.isEmpty ? 'private' : 'public';
@@ -197,7 +202,7 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
         }
       } else if (_selectedBookingType == '2. Meeting and Booking Meeting Room') {
         // URL for Type 2
-        url = 'https://demo-application-api.flexiflows.co/api/office-administration/book_meeting_room';
+        url = '$baseUrl/api/office-administration/book_meeting_room';
         // Building the request body
         body = {
           "room_id": _roomId,
@@ -237,7 +242,7 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
         }
       } else if (_selectedBookingType == '3. Booking Car') {
         // URL for Type 3
-        url = 'https://demo-application-api.flexiflows.co/api/office-administration/car_permit';
+        url = '$baseUrl/api/office-administration/car_permit';
         // Building the request body
         body = {
           "employee_id": _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : null,

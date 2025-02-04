@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'dart:convert';
@@ -19,7 +20,10 @@ class ViewProjectPage extends StatefulWidget {
 
 class ViewProjectPageState extends State<ViewProjectPage> {
   List<Map<String, dynamic>> projectMembers = [];
-  String? token; // Store the token once
+  String? token;
+
+  // BaseUrl ENV initialization for debug and production
+  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   @override
   void initState() {
@@ -52,7 +56,7 @@ class ViewProjectPageState extends State<ViewProjectPage> {
     }
 
     final projectId = widget.project['project_id'];
-    final url = 'https://demo-application-api.flexiflows.co/api/work-tracking/proj/find-Member-By-ProjectId/$projectId';
+    final url = '$baseUrl/api/work-tracking/proj/find-Member-By-ProjectId/$projectId';
 
     try {
       final headers = {
@@ -114,7 +118,7 @@ class ViewProjectPageState extends State<ViewProjectPage> {
   }
 
   Future<String> _fetchMemberProfileImage(String employeeId, Map<String, String> headers) async {
-    final url = 'https://demo-application-api.flexiflows.co/api/profile/$employeeId';
+    final url = '$baseUrl/api/profile/$employeeId';
     try {
       final response = await http.get(Uri.parse(url), headers: headers);
       if (response.statusCode == 200) {
