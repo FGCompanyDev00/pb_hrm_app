@@ -159,14 +159,15 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   Future<void> _retrieveSavedState() async {
     String? savedCheckInTime = userPreferences.getCheckInTime();
     String? savedCheckOutTime = userPreferences.getCheckOutTime();
+    String? lastAction = userPreferences.getLastAction(); // New: Track last action (checkIn/checkOut)
     Duration? savedWorkingHours = userPreferences.getWorkingHours();
 
     setState(() {
       _checkInTime = savedCheckInTime ?? '--:--:--';
+      _checkOutTime = savedCheckOutTime ?? '--:--:--';
       _checkInDateTime = savedCheckInTime != null ? DateFormat('HH:mm:ss').parse(savedCheckInTime) : null;
-      _checkOutTime = savedCheckOutTime ?? '--:--:--'; // Restore checkout time
-      _isCheckInActive = savedCheckInTime != null && savedCheckOutTime == null;
-      // Check if checkout is available
+      _checkOutDateTime = savedCheckOutTime != null ? DateFormat('HH:mm:ss').parse(savedCheckOutTime) : null;
+      _isCheckInActive = lastAction == "checkIn"; // Determines if next action should be check-out
       _workingHours = savedWorkingHours ?? Duration.zero;
     });
 
@@ -229,8 +230,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   void _applyCheckInState(DateTime now) {
     setState(() {
       _checkInTime = DateFormat('HH:mm:ss').format(now);
-      _checkOutTime = '--:--:--';
       _checkInDateTime = now;
+      _checkOutTime = '--:--:--';
       _checkOutDateTime = null;
       _workingHours = Duration.zero;
       _isCheckInActive = true;
@@ -238,6 +239,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     userPreferences.storeCheckInTime(_checkInTime);
     userPreferences.storeCheckOutTime(_checkOutTime);
+    userPreferences.storeLastAction("checkIn"); // 🔹 Save last action as check-in
     _startTimerForWorkingHours();
   }
 
@@ -317,33 +319,16 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     setState(() {
       _checkOutTime = DateFormat('HH:mm:ss').format(now);
       _checkOutDateTime = now;
-
       if (_checkInDateTime != null) {
-        // Handle multi-day work
-        if (_checkOutDateTime!.difference(_checkInDateTime!).inDays > 0) {
-          DateTime midnight = DateTime(
-            _checkInDateTime!.year,
-            _checkInDateTime!.month,
-            _checkInDateTime!.day,
-            23, 59, 59,
-          );
-
-          Duration firstDayWork = midnight.difference(_checkInDateTime!);
-          Duration secondDayWork = _checkOutDateTime!.difference(midnight);
-
-          _workingHours = firstDayWork + secondDayWork;
-        } else {
-          // Regular single-day work duration
-          _workingHours = _checkOutDateTime!.difference(_checkInDateTime!);
-        }
+        _workingHours = now.difference(_checkInDateTime!);
+        _isCheckInActive = false;
+        _timer?.cancel();
       }
-
-      _isCheckInActive = false;
-      _timer?.cancel();  // Stop working hours timer
     });
 
     userPreferences.storeCheckOutTime(_checkOutTime);
     userPreferences.storeWorkingHours(_workingHours);
+    userPreferences.storeLastAction("checkOut"); // 🔹 Save last action as check-out
   }
 
   // Method to show notification for check-out
@@ -1319,6 +1304,16 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                   style: TextStyle(
                     fontSize: 14,
                     color: isDarkMode ? Colors.white70 : Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                Text(
+                  _isCheckInActive ? "Check-Out" : "Check-In", // Shows action based on saved state
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.orange : Colors.green,
                   ),
                 ),
                 const SizedBox(height: 20),

@@ -18,6 +18,7 @@ class UserPreferences {
   static const String _checkOutTime = "CHECK_OUT_TIME";
   static const String _workingHours = "WORKING_HOURS";
   static const languageKey = 'preferred_language';
+  static const String _lastAction = "LAST_ACTION"; // New: Store last action (Check-In/Check-Out)
 
   // Store the token
   Future<void> setToken(String token) => prefs.setString(_token, token);
@@ -51,6 +52,12 @@ class UserPreferences {
   // Store the device
   Future<void> setDevice(String device) => prefs.setString(_device, device);
   String? getDevice() => prefs.getString(_device);
+
+  // ✅ Store Last Attendance Action (checkIn or checkOut)
+  Future<void> storeLastAction(String action) => prefs.setString(_lastAction, action);
+
+  // ✅ Retrieve Last Attendance Action (checkIn or checkOut)
+  String? getLastAction() => prefs.getString(_lastAction);
 
   // Store the default locale
   Future<void> setLocalizeSupport(String langCode) => prefs.setString(_defaultLocale, langCode);
