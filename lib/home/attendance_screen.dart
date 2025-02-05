@@ -216,27 +216,14 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       record.longitude = currentPosition.longitude.toString();
     }
 
-    final hasConnection = await connectivityResult.checkConnectivity();
-    final isOffline = hasConnection.contains(ConnectivityResult.none);
-
-    if (isOffline) {
-      await offlineProvider.addPendingAttendance(record);
-      await offlineProvider.autoOffline(true);
-      _applyCheckInState(now);
-      await _showValidationModal(true, true, 'Check-In Successful', 'Your check-in was recorded successfully.');
-      return;
-    }
-
     bool success = await _sendCheckInOutRequest(record);
     if (success) {
       _applyCheckInState(now);
       await _showValidationModal(true, true, 'Check-In Successful', 'Your check-in was recorded successfully.');
+      await _showCheckInNotification(_checkInTime); // ✅ Only trigger if successful
     } else {
       await _showValidationModal(true, false, 'Check-In Failed', 'There was an issue checking in. Please try again.');
     }
-
-    _applyCheckInState(now);
-    await _showCheckInNotification(_checkInTime);
   }
 
   void _applyCheckInState(DateTime now) {
@@ -249,10 +236,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       _isCheckInActive = true;
     });
 
-    // Store check-in time locally
     userPreferences.storeCheckInTime(_checkInTime);
     userPreferences.storeCheckOutTime(_checkOutTime);
-    // Start the working hours timer
     _startTimerForWorkingHours();
   }
 
@@ -317,26 +302,14 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       record.longitude = currentPosition.longitude.toString();
     }
 
-    final hasConnection = await connectivityResult.checkConnectivity();
-    final isOffline = hasConnection.contains(ConnectivityResult.none);
-
-    if (isOffline) {
-      await offlineProvider.addPendingAttendance(record);
-      _applyCheckOutState(now);
-      await _showValidationModal(false, true, 'Check-Out Successful', 'Your check-out was recorded successfully.');
-      return;
-    }
-
     bool success = await _sendCheckInOutRequest(record);
     if (success) {
       _applyCheckOutState(now);
       await _showValidationModal(false, true, 'Check-Out Successful', 'Your check-out was recorded successfully.');
+      await _showCheckOutNotification(_checkOutTime, _workingHours); // ✅ Only trigger if successful
     } else {
       await _showValidationModal(false, false, 'Check-Out Failed', 'There was an issue checking out. Please try again.');
     }
-
-    _applyCheckInState(now);
-    await _showCheckOutNotification(_checkOutTime, _workingHours);
   }
 
   /// Applies the local changes for check-out
@@ -344,13 +317,31 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     setState(() {
       _checkOutTime = DateFormat('HH:mm:ss').format(now);
       _checkOutDateTime = now;
+
       if (_checkInDateTime != null) {
-        _workingHours = now.difference(_checkInDateTime!);
-        _isCheckInActive = false;
-        _timer?.cancel(); // Stop the working hours timer if any
+        // Handle multi-day work
+        if (_checkOutDateTime!.difference(_checkInDateTime!).inDays > 0) {
+          DateTime midnight = DateTime(
+            _checkInDateTime!.year,
+            _checkInDateTime!.month,
+            _checkInDateTime!.day,
+            23, 59, 59,
+          );
+
+          Duration firstDayWork = midnight.difference(_checkInDateTime!);
+          Duration secondDayWork = _checkOutDateTime!.difference(midnight);
+
+          _workingHours = firstDayWork + secondDayWork;
+        } else {
+          // Regular single-day work duration
+          _workingHours = _checkOutDateTime!.difference(_checkInDateTime!);
+        }
       }
+
+      _isCheckInActive = false;
+      _timer?.cancel();  // Stop working hours timer
     });
-    // Store times + working hours
+
     userPreferences.storeCheckOutTime(_checkOutTime);
     userPreferences.storeWorkingHours(_workingHours);
   }
@@ -420,13 +411,11 @@ class AttendanceScreenState extends State<AttendanceScreen> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
               color: isDarkMode ? Colors.grey[900] : Colors.white,
-              border: Border.all(color: isDarkMode ? Colors.white24 : Colors.black12, width: 1),
             ),
             padding: const EdgeInsets.all(16.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Colored Header
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
@@ -441,33 +430,16 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Success or Error Icon
                 Icon(iconData, size: 50, color: iconColor),
                 const SizedBox(height: 16),
-                // Title
-                Text(
-                  title,
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black),
-                ),
+                Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                // Message
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: isDarkMode ? Colors.white70 : Colors.black54),
-                ),
+                Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 20),
-                // Close Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: backgroundColor,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: const Text("Close", style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
-                  ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(backgroundColor: backgroundColor),
+                  child: const Text("Close", style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -478,7 +450,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<bool> _sendCheckInOutRequest(AttendanceRecord record) async {
-    // If offline mode is forcibly on, do nothing and return false
     if (sl<OfflineProvider>().isOfflineService.value) {
       return false;
     }
@@ -489,8 +460,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     if (token == null) {
       if (mounted) {
         _showCustomDialog(
-          AppLocalizations.of(context)!.error,
-          AppLocalizations.of(context)!.noTokenFound,
+          "Error",
+          "No token found. Please log in again.",
           isSuccess: false,
         );
       }
@@ -512,35 +483,31 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       );
 
       if (response.statusCode == 201) {
-        // Check-in/Check-out was successful
-        return true;
-      }
-      // If the URL is the "office" API and we get 202 => location is out of range
-      else if (response.statusCode == 202 && url == officeApiUrl) {
+        return true; // ✅ Check-in/Check-out was successful
+      } else if (response.statusCode == 202 && url == officeApiUrl) {
+        // ❌ Office Check-in/Check-out failed due to location restrictions
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final serverMessage = data['message'] ?? AppLocalizations.of(context)!.checkInNotAllowedMessage;
+        final String errorMessage = data['message'] ?? "Check-in/check-out not allowed due to location restrictions.";
 
         if (mounted) {
-          _showCheckInNotAllowedModalLocation(serverMessage);
+          _showValidationModal(
+              record.type == 'checkIn',
+              false,
+              "Location Error",
+              errorMessage // ✅ Show API message in modal
+          );
         }
-        // Return false => do NOT proceed with local setState, notifications, etc.
-        return false;
+        return false; // ❌ Prevent state updates
       } else {
-        // Some other error from the server
         throw Exception('Failed with status code ${response.statusCode}');
       }
     } catch (error) {
       if (mounted) {
-        // If sending fails, save to local storage
-        await offlineProvider.addPendingAttendance(record);
-        // Show a dialog or just keep silent
-        if (mounted) {
-          _showCustomDialog(
-            AppLocalizations.of(context)!.error,
-            '${AppLocalizations.of(context)!.failedToCheckInOut}: $error',
-            isSuccess: false,
-          );
-        }
+        _showCustomDialog(
+          "Error",
+          'Check-in/check-out failed: $error',
+          isSuccess: false,
+        );
       }
       return false;
     }
