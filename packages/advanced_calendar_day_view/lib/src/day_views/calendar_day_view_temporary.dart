@@ -202,7 +202,7 @@ class _OverFlowCalendarDayViewState<T extends Object> extends State<OverFlowCale
         final event = oEvents.events[i];
         final width = eventColumnWidth / oEvents.events.length;
         final topPosition = event.minutesFrom(oEvents.start) * heightUnit;
-        final tileHeight = widget.cropBottomEvents && event.end!.isAfter(timeEnd) ? (event.minutesFrom(oEvents.end).abs() * heightUnit) : (event.durationInMins * heightUnit);
+        final tileHeight = widget.cropBottomEvents && event.end.isAfter(timeEnd) ? (event.minutesFrom(oEvents.end).abs() * heightUnit) : (event.durationInMins * heightUnit);
 
         widgets.add(Positioned(
           top: topPosition,

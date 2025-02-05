@@ -16,7 +16,7 @@ List<OverflowEventsRow<T>> processOverflowEvents<T extends Object>(
   if (sortedEvents.isEmpty) return [];
 
   var start = sortedEvents.first.start.cleanSec();
-  var end = sortedEvents.first.end!;
+  var end = sortedEvents.first.end;
 
   final Map<DateTime, OverflowEventsRow<T>> oM = {};
 
@@ -32,21 +32,21 @@ List<OverflowEventsRow<T>> processOverflowEvents<T extends Object>(
       oM.update(
         start,
         (value) => value.copyWith(events: [...value.events, event]),
-        ifAbsent: () => OverflowEventsRow(events: [event], start: event.start, end: event.end!),
+        ifAbsent: () => OverflowEventsRow(events: [event], start: event.start, end: event.end),
       );
 
-      if (event.end!.laterThan(end)) {
+      if (event.end.laterThan(end)) {
         if (cropBottomEvents) {
-          end = event.end!.isBefore(endOfDay) ? event.end! : endOfDay;
+          end = event.end.isBefore(endOfDay) ? event.end : endOfDay;
         } else {
-          end = event.end!;
+          end = event.end;
         }
         oM[start] = oM[start]!.copyWith(end: end);
       }
     } else {
       start = event.start.cleanSec();
-      end = event.end!;
-      oM[start] = OverflowEventsRow(events: [event], start: event.start, end: event.end!);
+      end = event.end;
+      oM[start] = OverflowEventsRow(events: [event], start: event.start, end: event.end);
     }
   }
 

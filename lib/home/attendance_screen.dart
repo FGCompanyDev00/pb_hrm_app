@@ -166,7 +166,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       _checkInDateTime = savedCheckInTime != null ? DateFormat('HH:mm:ss').parse(savedCheckInTime) : null;
       _checkOutTime = savedCheckOutTime ?? '--:--:--'; // Restore checkout time
       _isCheckInActive = savedCheckInTime != null && savedCheckOutTime == null;
-// Check if checkout is available
+      // Check if checkout is available
       _workingHours = savedWorkingHours ?? Duration.zero;
     });
 
@@ -201,7 +201,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _performCheckIn(DateTime now) async {
-    // 1) Build a record
     AttendanceRecord record = AttendanceRecord(
       deviceId: _deviceId,
       latitude: '',
@@ -211,44 +210,33 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       timestamp: now,
     );
 
-    // 2) Attempt to get current position
     Position? currentPosition = await _getCurrentPosition();
     if (currentPosition != null) {
       record.latitude = currentPosition.latitude.toString();
       record.longitude = currentPosition.longitude.toString();
     }
 
-    // 3) Check connectivity
     final hasConnection = await connectivityResult.checkConnectivity();
     final isOffline = hasConnection.contains(ConnectivityResult.none);
 
     if (isOffline) {
-      // a) Offline => store locally, treat as "checked in" since user can't verify with server
       await offlineProvider.addPendingAttendance(record);
       await offlineProvider.autoOffline(true);
-      if (kDebugMode) {
-        print('No internet. Check-in stored locally.');
-      }
-      // b) Now setState to reflect local check-in
       _applyCheckInState(now);
-      // c) Optionally show local check-in notification
-      await _showCheckInNotification(_checkInTime);
-    } else {
-      // 4) Online => attempt to send to server first
-      bool success = await _sendCheckInOutRequest(record);
-      if (!success) {
-        // => If returns false, it means status 202 or error => DO NOTHING
-        // => Do not set the time, do not show any notification
-        if (kDebugMode) {
-          print('Check-in request not allowed or failed. No UI changes.');
-        }
-        return;
-      }
-
-      // 5) If success == true => proceed with setState, store prefs, notify user
-      _applyCheckInState(now);
-      await _showCheckInNotification(_checkInTime);
+      await _showValidationModal(true, true, 'Check-In Successful', 'Your check-in was recorded successfully.');
+      return;
     }
+
+    bool success = await _sendCheckInOutRequest(record);
+    if (success) {
+      _applyCheckInState(now);
+      await _showValidationModal(true, true, 'Check-In Successful', 'Your check-in was recorded successfully.');
+    } else {
+      await _showValidationModal(true, false, 'Check-In Failed', 'There was an issue checking in. Please try again.');
+    }
+
+    _applyCheckInState(now);
+    await _showCheckInNotification(_checkInTime);
   }
 
   void _applyCheckInState(DateTime now) {
@@ -266,105 +254,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     userPreferences.storeCheckOutTime(_checkOutTime);
     // Start the working hours timer
     _startTimerForWorkingHours();
-  }
-
-  void _showConfirmationModal(BuildContext context, bool isCheckIn) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: isDarkMode ? Colors.grey[900] : Colors.white,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Attendance Icon
-                Image.asset(
-                  'assets/attendance.png',
-                  height: 45,
-                  width: 45,
-                  color: isDarkMode ? const Color(0xFFDBB342) : null,
-                ),
-                const SizedBox(height: 16),
-                // Title
-                Text(
-                  isCheckIn ? "Check-In" : "Check-Out",
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Description
-                Text(
-                  isCheckIn
-                      ? "Are you sure you want to Check-In now?"
-                      : "Are you sure you want to Check-Out now?",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: isDarkMode ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Buttons Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop(); // Close modal
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red, // Background color
-                          foregroundColor: Colors.white, // Text color
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: const Text("Cancel"),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop(); // Close modal
-                          if (isCheckIn) {
-                            _authenticate(context, true); // Check-In process
-                          } else {
-                            _authenticate(context, false); // Check-Out process
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green, // Background color
-                          foregroundColor: Colors.white, // Text color
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: const Text("Confirm"),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   Future<void> _showCheckInNotification(String checkInTime) async {
@@ -413,7 +302,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _performCheckOut(DateTime now) async {
-    // 1) Build the record
     AttendanceRecord record = AttendanceRecord(
       deviceId: _deviceId,
       latitude: '',
@@ -423,37 +311,31 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       timestamp: now,
     );
 
-    // 2) Get current position
     Position? currentPosition = await _getCurrentPosition();
     if (currentPosition != null) {
       record.latitude = currentPosition.latitude.toString();
       record.longitude = currentPosition.longitude.toString();
     }
 
-    // 3) Check connectivity
     final hasConnection = await connectivityResult.checkConnectivity();
     final isOffline = hasConnection.contains(ConnectivityResult.none);
 
-    // 4) If offline, store locally + update UI
     if (isOffline) {
       await offlineProvider.addPendingAttendance(record);
-      if (kDebugMode) {
-        print('No internet connection. Check-out stored locally.');
-      }
       _applyCheckOutState(now);
-      await _showCheckOutNotification(_checkOutTime, _workingHours);
+      await _showValidationModal(false, true, 'Check-Out Successful', 'Your check-out was recorded successfully.');
       return;
     }
 
-    // 5) Online => ask server first
     bool success = await _sendCheckInOutRequest(record);
-    if (!success) {
-      // => If server says "202" or error => do nothing
-      return;
+    if (success) {
+      _applyCheckOutState(now);
+      await _showValidationModal(false, true, 'Check-Out Successful', 'Your check-out was recorded successfully.');
+    } else {
+      await _showValidationModal(false, false, 'Check-Out Failed', 'There was an issue checking out. Please try again.');
     }
 
-    // 6) If success => update UI
-    _applyCheckOutState(now);
+    _applyCheckInState(now);
     await _showCheckOutNotification(_checkOutTime, _workingHours);
   }
 
@@ -518,6 +400,81 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         print('Error displaying Check-out notification: $e');
       }
     }
+  }
+
+  Future<void> _showValidationModal(bool isCheckIn, bool isSuccess, String title, String message) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        Color backgroundColor = isCheckIn ? Colors.green : Colors.red;
+        Color iconColor = isSuccess ? Colors.greenAccent : Colors.redAccent;
+        IconData iconData = isSuccess ? Icons.check_circle_outline : Icons.cancel_outlined;
+
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: isDarkMode ? Colors.grey[900] : Colors.white,
+              border: Border.all(color: isDarkMode ? Colors.white24 : Colors.black12, width: 1),
+            ),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Colored Header
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: backgroundColor,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Center(
+                    child: Text(
+                      isCheckIn ? "Check-In Status" : "Check-Out Status",
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Success or Error Icon
+                Icon(iconData, size: 50, color: iconColor),
+                const SizedBox(height: 16),
+                // Title
+                Text(
+                  title,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black),
+                ),
+                const SizedBox(height: 8),
+                // Message
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: isDarkMode ? Colors.white70 : Colors.black54),
+                ),
+                const SizedBox(height: 20),
+                // Close Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: backgroundColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: const Text("Close", style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<bool> _sendCheckInOutRequest(AttendanceRecord record) async {
@@ -1342,30 +1299,28 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     bool isCheckInEnabled = !_isCheckInActive && now.isAfter(checkInTimeAllowed) && now.isBefore(checkInDisabledTime);
 
     return GestureDetector(
-      onTap: () async {
-        if (!_isCheckInActive) {
-          if (now.isBefore(checkInTimeAllowed) || now.isAfter(checkInDisabledTime)) {
-            _showCustomDialog(
-              AppLocalizations.of(context)!.checkInNotAllowed,
-              AppLocalizations.of(context)!.checkInLateNotAllowed,
-              isSuccess: false,
-            );
-          } else if (isCheckInEnabled) {
-            // Show confirmation dialog for Check-In
-            _showConfirmationModal(context, true);
+        onTap: () async {
+          DateTime now = DateTime.now();
+          DateTime checkInTimeAllowed = DateTime(now.year, now.month, now.day, 0, 0);
+          DateTime checkInDisabledTime = DateTime(now.year, now.month, now.day, 22, 0);
+
+          if (!_isCheckInActive) {
+            if (now.isBefore(checkInTimeAllowed) || now.isAfter(checkInDisabledTime)) {
+              _showCustomDialog(
+                AppLocalizations.of(context)!.checkInNotAllowed,
+                AppLocalizations.of(context)!.checkInLateNotAllowed,
+                isSuccess: false,
+              );
+            } else {
+              // Authenticate before check-in
+              await _authenticate(context, true);
+            }
+          } else {
+            // Authenticate before check-out
+            await _authenticate(context, false);
           }
-        } else if (_isCheckInActive) {
-          // Show confirmation dialog for Check-Out
-          _showConfirmationModal(context, false);
-        } else {
-          _showCustomDialog(
-            AppLocalizations.of(context)!.alreadyCheckedIn,
-            AppLocalizations.of(context)!.alreadyCheckedInMessage,
-            isSuccess: false,
-          );
-        }
-      },
-      child: Container(
+        },
+        child: Container(
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
           color: isDarkMode ? Colors.grey[850] : Colors.white,

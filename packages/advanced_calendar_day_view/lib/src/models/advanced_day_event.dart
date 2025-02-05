@@ -78,7 +78,7 @@ class AdvancedDayEvent<T extends Object> {
 }
 
 extension DayEventExtension on AdvancedDayEvent {
-  int get durationInMins => end == null ? 30 : end!.difference(start).inMinutes;
+  int get durationInMins => end == null ? 30 : end.difference(start).inMinutes;
 
   int get timeGapFromZero => start.hour * 60 + start.minute;
 

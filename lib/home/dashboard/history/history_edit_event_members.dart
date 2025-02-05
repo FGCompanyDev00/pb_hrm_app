@@ -10,10 +10,10 @@ class EditEventMembersPage extends StatefulWidget {
   final String type;
 
   const EditEventMembersPage({
-    Key? key,
+    super.key,
     required this.id,
     required this.type,
-  }) : super(key: key);
+  });
 
   @override
   _EditEventMembersPageState createState() => _EditEventMembersPageState();
@@ -24,7 +24,7 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
   List<Map<String, dynamic>> filteredMembers = [];
   List<Map<String, dynamic>> selectedMembers = [];
   final TextEditingController searchController = TextEditingController();
-  Set<String> excludedMemberIds = Set();
+  Set<String> excludedMemberIds = {};
 
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';

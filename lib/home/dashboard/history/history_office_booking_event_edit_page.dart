@@ -1008,7 +1008,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // Add People Button
-                      Container(
+                      SizedBox(
                         width: MediaQuery.of(context).size.width * 0.4,
                         child: ElevatedButton(
                           onPressed: () async {

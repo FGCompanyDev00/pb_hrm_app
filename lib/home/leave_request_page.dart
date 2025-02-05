@@ -73,7 +73,7 @@ class LeaveManagementPage extends HookWidget {
     }
 
     // Function to update the end date based on the days input
-    void _updateEndDateBasedOnDays() {
+    void updateEndDateBasedOnDays() {
       if (startDateController.text.isNotEmpty) {
         final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
         double days = double.tryParse(daysController.text) ?? 0.0;
@@ -87,10 +87,10 @@ class LeaveManagementPage extends HookWidget {
     }
 
 // When user manually types in the "Days" field, auto calculate the end date after a delay
-    void _handleManualDaysChange() {
+    void handleManualDaysChange() {
       Future.delayed(const Duration(seconds: 2), () {
         if (daysController.text.isNotEmpty && startDateController.text.isNotEmpty) {
-          _updateEndDateBasedOnDays();
+          updateEndDateBasedOnDays();
         }
       });
     }
@@ -666,10 +666,10 @@ class LeaveManagementPage extends HookWidget {
                                       double currentDays = double.tryParse(daysController.text) ?? 0.0;
                                       if (currentDays > 0.25) {
                                         daysController.text = (currentDays - 0.25).toStringAsFixed(2);
-                                        _updateEndDateBasedOnDays();
+                                        updateEndDateBasedOnDays();
                                       } else if (currentDays == 0.25) {
                                         daysController.text = '0';
-                                        _updateEndDateBasedOnDays();
+                                        updateEndDateBasedOnDays();
                                       }
                                     },
                                     icon: const Icon(Icons.remove),
@@ -703,7 +703,7 @@ class LeaveManagementPage extends HookWidget {
                                         if (dVal != null && (dVal % 0.25 == 0 || dVal == dVal.roundToDouble())) {
                                           // Auto update based on input
                                           daysController.text = dVal.toStringAsFixed(2);
-                                          _updateEndDateBasedOnDays();
+                                          updateEndDateBasedOnDays();
                                         } else {
                                           // If the user enters invalid value, reset to the last valid one
                                           daysController.text = (dVal ?? 0.0).toStringAsFixed(2);
@@ -724,7 +724,7 @@ class LeaveManagementPage extends HookWidget {
                                         : () {
                                       double currentDays = double.tryParse(daysController.text) ?? 0.0;
                                       daysController.text = (currentDays + 0.25).toStringAsFixed(2);
-                                      _updateEndDateBasedOnDays();
+                                      updateEndDateBasedOnDays();
                                     },
                                     icon: const Icon(Icons.add),
                                     tooltip: 'Increase days',
