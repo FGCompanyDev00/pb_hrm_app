@@ -384,7 +384,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-        Color backgroundColor = isCheckIn ? Colors.green : Colors.red;
+        Color backgroundColor = isSuccess ? Colors.green : Colors.red;
         Color iconColor = isSuccess ? Colors.greenAccent : Colors.redAccent;
         IconData iconData = isSuccess ? Icons.check_circle_outline : Icons.cancel_outlined;
 
@@ -401,6 +401,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Title and Status
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
@@ -415,12 +416,21 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+
+                // Icon
                 Icon(iconData, size: 50, color: iconColor),
                 const SizedBox(height: 16),
+
+                // Title
                 Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
+
+                // API Error Message
                 Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16)),
+
                 const SizedBox(height: 20),
+
+                // Close Button
                 ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(),
                   style: ElevatedButton.styleFrom(backgroundColor: backgroundColor),
