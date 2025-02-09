@@ -489,54 +489,45 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
     String type = (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
     String status = (item['status']?.toString() ?? item['is_approve']?.toString() ?? 'Pending').trim();
-    if (status == 'Branch Waiting') {
-      status = 'Waiting';
-    } else if (status == 'Branch Approved') {
-      status = 'Approved';
-    }
+    if (status == 'Branch Waiting') status = 'Waiting';
+    else if (status == 'Branch Approved') status = 'Approved';
+
     String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
     String requestorName = (item['requestor_name']?.toString() ?? 'N/A').trim();
     String imgName = item['img_name']?.toString().trim() ?? '';
     String imgPath = item['img_path']?.toString().trim() ?? '';
 
-    String employeeImage;
-    if (imgPath.isNotEmpty && imgPath.startsWith('http')) {
-      employeeImage = imgPath;
-    } else if (imgName.isNotEmpty && imgName.startsWith('http')) {
-      employeeImage = imgName;
-    } else {
-      employeeImage = 'https://via.placeholder.com/150'; // Fallback image
-    }
+    String employeeImage = (imgPath.isNotEmpty && imgPath.startsWith('http'))
+        ? imgPath
+        : (imgName.isNotEmpty && imgName.startsWith('http'))
+        ? imgName
+        : 'https://via.placeholder.com/150'; // Fallback image
 
     Color typeColor = _getTypeColor(type);
     Color statusColor = _getStatusColor(status);
     IconData typeIcon = _getIconForType(type);
 
     String title = '';
-    String startDate = '';
-    String endDate = '';
+    String dateRange = '';
     String detailLabel = '';
     String detailValue = '';
 
     switch (type) {
       case 'meeting':
         title = item['title']?.toString() ?? 'No Title';
-        startDate = item['from_date_time']?.toString() ?? '';
-        endDate = item['to_date_time']?.toString() ?? '';
+        dateRange = _formatDateRange(item['from_date_time'], item['to_date_time']);
         detailLabel = 'Employee Name';
         detailValue = employeeName;
         break;
       case 'leave':
         title = _leaveTypesMap[item['leave_type_id']] ?? 'Unknown Leave Type';
-        startDate = item['take_leave_from']?.toString() ?? '';
-        endDate = item['take_leave_to']?.toString() ?? '';
+        dateRange = _formatDateRange(item['take_leave_from'], item['take_leave_to'], alwaysShowTime: true);
         detailLabel = 'Leave Type';
         detailValue = title;
         break;
       case 'car':
         title = item['purpose']?.toString() ?? 'No Purpose';
-        startDate = item['date_in']?.toString() ?? '';
-        endDate = item['date_out']?.toString() ?? '';
+        dateRange = _formatDateRange('${item['date_in']} ${item['time_in']}', '${item['date_out']} ${item['time_out']}');
         detailLabel = 'Requestor Name';
         detailValue = requestorName;
         break;
@@ -554,9 +545,6 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
           case 'car':
             itemId = item['uid']?.toString() ?? '';
             break;
-          default:
-            itemId = '';
-            break;
         }
 
         if (itemId.isEmpty) {
@@ -566,7 +554,6 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
           return;
         }
 
-        // Navigate to the ApprovalsDetailsPage with the appropriate ID
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -614,7 +601,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                       ),
                       SizedBox(height: screenSize.height * 0.003),
                       Text(
-                        type == 'meeting' ? 'Room' : type[0].toUpperCase() + type.substring(1),
+                        type[0].toUpperCase() + type.substring(1),
                         style: TextStyle(
                           color: typeColor,
                           fontSize: screenSize.width * 0.03,
@@ -631,31 +618,25 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                         Text(
                           title,
                           style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black, // Title color changes based on dark mode
+                            color: isDarkMode ? Colors.white : Colors.black,
                             fontSize: screenSize.width * 0.04,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         SizedBox(height: screenSize.height * 0.003),
-                        Text(
-                          'From: ${_formatDate(startDate)}',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700, // Date text color in dark mode
-                            fontSize: screenSize.width * 0.03,
+                        if (dateRange.isNotEmpty)
+                          Text(
+                            'Date: $dateRange',
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                              fontSize: screenSize.width * 0.03,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'To: ${_formatDate(endDate)}',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700, // Date text color in dark mode
-                            fontSize: screenSize.width * 0.03,
-                          ),
-                        ),
                         SizedBox(height: screenSize.height * 0.003),
                         Text(
                           '$detailLabel: $detailValue',
                           style: TextStyle(
-                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700, // Detail label color in dark mode
+                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
                             fontSize: screenSize.width * 0.03,
                           ),
                         ),
@@ -665,7 +646,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                             Text(
                               'Status: ',
                               style: TextStyle(
-                                color: isDarkMode ? Colors.white : Colors.black, // Status label color changes based on dark mode
+                                color: isDarkMode ? Colors.white : Colors.black,
                                 fontWeight: FontWeight.bold,
                                 fontSize: screenSize.width * 0.03,
                               ),
@@ -677,9 +658,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                               ),
                               decoration: BoxDecoration(
                                 color: statusColor,
-                                borderRadius: BorderRadius.circular(
-                                  screenSize.width * 0.03,
-                                ),
+                                borderRadius: BorderRadius.circular(screenSize.width * 0.03),
                               ),
                               child: Text(
                                 status[0].toUpperCase() + status.substring(1),
@@ -695,36 +674,13 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  right: screenSize.width * 0.015,
-                  bottom: screenSize.height * 0.02,
-                ),
-                child: CircleAvatar(
-                  radius: screenSize.width * 0.07,
-                  backgroundColor: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300, // Avatar background changes in dark mode
-                  child: ClipOval(
-                    child: Image.network(
-                      employeeImage,
-                      width: screenSize.width * 0.14,
-                      height: screenSize.width * 0.14,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(
-                          Icons.person,
-                          color: Colors.grey.shade600,
-                          size: screenSize.width * 0.07,
-                        );
-                      },
-                    ),
+                  SizedBox(width: screenSize.width * 0.02),
+                  CircleAvatar(
+                    radius: screenSize.width * 0.07,
+                    backgroundColor: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
+                    backgroundImage: NetworkImage(employeeImage),
                   ),
-                ),
+                ],
               ),
             ),
           ],
@@ -733,77 +689,37 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
     );
   }
 
-  /// Removes duplicate parts from the requestor name
-  String _removeDuplicateNames(String name) {
-    if (name.isEmpty) return 'N/A';
-    // Example: "UserHQ1UserHQ1" -> "UserHQ1"
-    // This can be adjusted based on the duplication pattern
-    RegExp regExp = RegExp(r'^(.*?)\1+$');
-    Match? match = regExp.firstMatch(name);
-    if (match != null && match.groupCount >= 1) {
-      return match.group(1)!;
+  String _formatDateRange(String? start, String? end, {bool alwaysShowTime = false}) {
+    String formatDateTime(String? dateTime, bool forceTime) {
+      if (dateTime == null || dateTime.isEmpty) return '';
+
+      try {
+        DateTime parsedDate = DateTime.parse(dateTime);
+
+        // If forceTime is false and the time is 00:00, remove it
+        if (!forceTime && parsedDate.hour == 0 && parsedDate.minute == 0) {
+          return DateFormat('dd-MM-yyyy').format(parsedDate);
+        }
+
+        return DateFormat('dd-MM-yyyy HH:mm').format(parsedDate);
+      } catch (e) {
+        debugPrint('Error parsing date: $dateTime -> $e');
+        return '';
+      }
     }
-    return name;
-  }
 
-  /// Builds the employee avatar with error handling
-  Widget _buildEmployeeAvatar(String imageUrl, Size screenSize) {
-    return CircleAvatar(
-      radius: screenSize.width * 0.07, // Responsive radius
-      backgroundColor: Colors.grey.shade300,
-      child: ClipOval(
-        child: Image.network(
-          imageUrl,
-          width: screenSize.width * 0.14, // 14% of screen width
-          height: screenSize.width * 0.14, // 14% of screen width
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            debugPrint('Error loading employee image from $imageUrl: $error');
-            return Icon(
-              Icons.person,
-              color: Colors.grey.shade600,
-              size: screenSize.width * 0.07,
-            );
-          },
-        ),
-      ),
-    );
-  }
+    String formattedStart = formatDateTime(start, alwaysShowTime);
+    String formattedEnd = formatDateTime(end, alwaysShowTime);
 
-  /// Formats the date string to 'dd-MM-yyyy'. Handles various date formats.
-  String _formatDate(String? dateStr) {
-    try {
-      if (dateStr == null || dateStr.isEmpty) {
-        return 'N/A';
-      }
-
-      DateTime parsedDate;
-
-      // Handle the case where the date is in 'YYYY-MM-DD' or 'YYYY-M-D' format
-      if (RegExp(r"^\d{4}-\d{1,2}-\d{1,2}$").hasMatch(dateStr)) {
-        List<String> dateParts = dateStr.split('-');
-        int year = int.parse(dateParts[0]);
-        int month = int.parse(dateParts[1]);
-        int day = int.parse(dateParts[2]);
-
-        parsedDate = DateTime(year, month, day);
-      }
-      // Handle ISO 8601 formatted dates like '2024-04-25T00:00:00.000Z'
-      else if (dateStr.contains('T')) {
-        parsedDate = DateTime.parse(dateStr);
-      }
-      // Default fallback for unsupported formats
-      else {
-        parsedDate = DateTime.parse(dateStr);
-      }
-
-      // Format the date to 'dd-MM-yyyy' or modify as needed
-      return DateFormat('dd-MM-yyyy').format(parsedDate);
-    } catch (e, stackTrace) {
-      debugPrint('Date parsing error for "$dateStr": $e');
-      debugPrint(stackTrace.toString());
-      return 'Invalid Date';
+    if (formattedStart.isNotEmpty && formattedEnd.isNotEmpty) {
+      return '$formattedStart → $formattedEnd';
+    } else if (formattedStart.isNotEmpty) {
+      return formattedStart;
+    } else if (formattedEnd.isNotEmpty) {
+      return formattedEnd;
     }
+
+    return 'N/A'; // Show 'N/A' if both are missing
   }
 
   /// Returns appropriate color based on the status

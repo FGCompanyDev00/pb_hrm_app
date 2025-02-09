@@ -16,6 +16,8 @@ class LeaveManagementPage extends HookWidget {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
+    final reloadKey = useState<int>(0); // Used to trigger refresh
+
     // Form Key for Validation
     final formKey = useMemoized(() => GlobalKey<FormState>());
 
@@ -33,6 +35,9 @@ class LeaveManagementPage extends HookWidget {
     final filteredLeaveTypes = useState<List<Map<String, dynamic>>>([]);
     final isLoadingLeaveTypes = useState<bool>(false);
     final isSubmitting = useState<bool>(false);
+
+    final startDateDisplayController = useTextEditingController(); // Display format
+    final endDateDisplayController = useTextEditingController();   // Display format
 
     // BaseUrl ENV initialization for debug and production
     String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
@@ -231,12 +236,13 @@ class LeaveManagementPage extends HookWidget {
         filteredLeaveTypes.value = types;
       });
       return null;
-    }, []);
+    }, [reloadKey.value]); // <- Listen to changes in reloadKey
 
     // Date Picker Method
     Future<void> pickDate(
         BuildContext context,
         TextEditingController controller,
+        TextEditingController displayController, // Added display controller
         bool isStartDate,
         ) async {
       DateTime initialDate = DateTime.now();
@@ -273,10 +279,15 @@ class LeaveManagementPage extends HookWidget {
       );
 
       if (pickedDate != null) {
-        // If user had picked fractional day before, reset it when picking new date
-        // because user is now picking a new date range
         isFractionalDay.value = false;
 
+        // Store in API format (yyyy-MM-dd)
+        controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+
+        // Store in Display format (dd-MM-yyyy)
+        displayController.text = DateFormat('dd-MM-yyyy').format(pickedDate);
+
+        // Validate date logic
         if (isStartDate) {
           if (endDateController.text.isNotEmpty) {
             final endDate = DateFormat('yyyy-MM-dd').parse(endDateController.text);
@@ -289,7 +300,6 @@ class LeaveManagementPage extends HookWidget {
               return;
             }
           }
-          controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
         } else {
           if (startDateController.text.isNotEmpty) {
             final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
@@ -302,13 +312,10 @@ class LeaveManagementPage extends HookWidget {
               return;
             }
           }
-          controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
         }
 
-        // Only auto-calculate days if not in fractional-day mode
-        if (!isFractionalDay.value &&
-            startDateController.text.isNotEmpty &&
-            endDateController.text.isNotEmpty) {
+        // Auto-calculate days if applicable
+        if (!isFractionalDay.value && startDateController.text.isNotEmpty && endDateController.text.isNotEmpty) {
           final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
           final endDate = DateFormat('yyyy-MM-dd').parse(endDateController.text);
           final difference = endDate.difference(startDate).inDays + 1;
@@ -427,6 +434,9 @@ class LeaveManagementPage extends HookWidget {
               'Success',
               'Your leave request has been submitted successfully.',
             );
+
+            // Increment reloadKey to trigger refresh
+            reloadKey.value++;
           } else if (response.statusCode == 400) {
             final responseBody = jsonDecode(response.body);
             String errorMessage = 'Failed to submit leave request.';
@@ -606,7 +616,7 @@ class LeaveManagementPage extends HookWidget {
                             Expanded(
                               child: buildTextField(
                                 label: "Start Date*",
-                                controller: startDateController,
+                                controller: startDateDisplayController, // Use display controller
                                 readOnly: true,
                                 prefixIcon: const Icon(Icons.calendar_today),
                                 validator: (value) {
@@ -615,14 +625,14 @@ class LeaveManagementPage extends HookWidget {
                                   }
                                   return null;
                                 },
-                                onTap: () => pickDate(context, startDateController, true),
+                                onTap: () => pickDate(context, startDateController, startDateDisplayController, true), // Pass both controllers
                               ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: buildTextField(
                                 label: "End Date*",
-                                controller: endDateController,
+                                controller: endDateDisplayController, // Use display controller
                                 readOnly: true,
                                 prefixIcon: const Icon(Icons.calendar_today),
                                 validator: (value) {
@@ -631,7 +641,7 @@ class LeaveManagementPage extends HookWidget {
                                   }
                                   return null;
                                 },
-                                onTap: () => pickDate(context, endDateController, false),
+                                onTap: () => pickDate(context, endDateController, endDateDisplayController, false), // Pass both controllers
                               ),
                             ),
                           ],

@@ -780,7 +780,7 @@ class HistoryPageState extends State<HistoryPage> {
         detailTextColor = Colors.orange;
         break;
       case 'car':
-        detailLabel = 'Place:';
+        detailLabel = 'Place:'; //Should Tel. but no tel number in the api response
         detailText = item['place']?.toString() ?? 'No Place';
         detailTextColor = Colors.grey;
         break;
@@ -802,6 +802,5 @@ class HistoryPageState extends State<HistoryPage> {
       ),
     );
   }
-
 }
 
