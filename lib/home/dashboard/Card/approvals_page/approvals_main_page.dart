@@ -567,11 +567,11 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
       child: Card(
         color: isDarkMode ? Colors.grey.shade900 : Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(screenSize.width * 0.03),
+          borderRadius: BorderRadius.circular(screenSize.width * 0.04),
           side: BorderSide(color: typeColor, width: screenSize.width * 0.002),
         ),
         elevation: 1.5,
-        margin: EdgeInsets.symmetric(vertical: screenSize.height * 0.008),
+        margin: EdgeInsets.symmetric(vertical: screenSize.height * 0.004),
         child: Stack(
           children: [
             Positioned(
@@ -619,11 +619,11 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                           title,
                           style: TextStyle(
                             color: isDarkMode ? Colors.white : Colors.black,
-                            fontSize: screenSize.width * 0.04,
+                            fontSize: screenSize.width * 0.035,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        SizedBox(height: screenSize.height * 0.003),
+                        SizedBox(height: screenSize.height * 0.004),
                         if (dateRange.isNotEmpty)
                           Text(
                             'Date: $dateRange',
@@ -632,7 +632,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                               fontSize: screenSize.width * 0.03,
                             ),
                           ),
-                        SizedBox(height: screenSize.height * 0.003),
+                        SizedBox(height: screenSize.height * 0.004),
                         Text(
                           '$detailLabel: $detailValue',
                           style: TextStyle(
@@ -640,7 +640,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                             fontSize: screenSize.width * 0.03,
                           ),
                         ),
-                        SizedBox(height: screenSize.height * 0.003),
+                        SizedBox(height: screenSize.height * 0.008),
                         Row(
                           children: [
                             Text(
@@ -676,7 +676,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                   ),
                   SizedBox(width: screenSize.width * 0.02),
                   CircleAvatar(
-                    radius: screenSize.width * 0.07,
+                    radius: screenSize.width * 0.06,
                     backgroundColor: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
                     backgroundImage: NetworkImage(employeeImage),
                   ),
