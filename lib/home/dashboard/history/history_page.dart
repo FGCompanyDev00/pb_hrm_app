@@ -315,10 +315,27 @@ class HistoryPageState extends State<HistoryPage> {
 
     /// NEW: minutes of meeting color
       case 'minutes of meeting':
-        return Colors.purple;
+        return Colors.green;
 
       default:
         return Colors.grey;
+    }
+  }
+
+  Widget _getIconWidgetForType(String type, double size, Color color) {
+    if (type.toLowerCase() == 'minutes of meeting') {
+      return Image.asset(
+        'assets/room.png',
+        width: size,
+        height: size,
+        color: color,
+      );
+    } else {
+      return Icon(
+        _getIconForType(type),
+        color: color,
+        size: size,
+      );
     }
   }
 
@@ -603,12 +620,8 @@ class HistoryPageState extends State<HistoryPage> {
     final bool isDarkMode = themeNotifier.isDarkMode;
     final String type = item['type'] ?? 'unknown';
 
-    Color titleColor;
-    String detailText;
-    Color detailTextColor = Colors.grey;
-    String detailLabel;
-    Color statusColor = _getStatusColor(item['status']);
     Color typeColor = _getTypeColor(type);
+    Color statusColor = _getStatusColor(item['status']);
 
     String formatDate(String dateStr) {
       try {
@@ -619,39 +632,6 @@ class HistoryPageState extends State<HistoryPage> {
       }
     }
 
-    switch (type) {
-      case 'meeting':
-        titleColor = Colors.green;
-        detailLabel = 'Room:';
-        detailText = item['room'] ?? 'N/A';
-        detailTextColor = Colors.orange;
-        break;
-      case 'leave':
-        titleColor = Colors.orange;
-        detailLabel = 'Type:';
-        detailText = item['leave_type'] ?? 'N/A';
-        detailTextColor = Colors.orange;
-        break;
-      case 'car':
-        titleColor = Colors.blue;
-        detailLabel = 'Place:';
-        detailText = item['place']?.toString() ?? 'No Place';
-        detailTextColor = Colors.grey;
-        break;
-
-      case 'minutes of meeting':
-        titleColor = Colors.purple;
-        detailLabel = 'Location:';
-        detailText = item['location'] ?? 'No location';
-        detailTextColor = Colors.orange;
-        break;
-
-      default:
-        titleColor = Colors.grey;
-        detailLabel = 'Info:';
-        detailText = 'N/A';
-    }
-
     String startDate =
     item['startDate'] != null ? formatDate(item['startDate']) : 'N/A';
     String endDate =
@@ -659,10 +639,9 @@ class HistoryPageState extends State<HistoryPage> {
 
     return GestureDetector(
       onTap: () {
-        // Format the status to match the API format
         String formattedStatus = item['status'] != null
             ? '${item['status'][0].toUpperCase()}${item['status'].substring(1).toLowerCase()}'
-            : 'Waiting'; // Default to 'Waiting' if no status exists
+            : 'Waiting';
 
         Navigator.push(
           context,
@@ -670,12 +649,11 @@ class HistoryPageState extends State<HistoryPage> {
             builder: (context) => DetailsPage(
               types: type,
               id: item['id'] ?? '',
-              status: formattedStatus, // Pass the formatted status
+              status: formattedStatus,
             ),
           ),
         );
       },
-
       child: Card(
         color: isDarkMode ? Colors.grey[850] : Colors.white,
         shape: RoundedRectangleBorder(
@@ -688,7 +666,7 @@ class HistoryPageState extends State<HistoryPage> {
             Positioned(
               top: screenSize.height * 0.01,
               bottom: screenSize.height * 0.01,
-              left: screenSize.width * 0.001,
+              left: screenSize.width * 0.002,
               child: Container(
                 width: screenSize.width * 0.005,
                 color: typeColor,
@@ -702,45 +680,12 @@ class HistoryPageState extends State<HistoryPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        item['icon'],
-                        color: typeColor,
-                        size: screenSize.width * 0.08,
-                      ),
-                      SizedBox(height: screenSize.height * 0.003),
-                      type == 'minutes of meeting'
-                          ? Column(
-                        children: [
-                          Text(
-                            'Minutes',
-                            style: TextStyle(
-                              color: typeColor,
-                              fontSize: screenSize.width * 0.03,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            'of Meeting',
-                            style: TextStyle(
-                              color: typeColor,
-                              fontSize: screenSize.width * 0.03,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      )
-                          : Text(
-                        type[0].toUpperCase() + type.substring(1),
-                        style: TextStyle(
-                          color: typeColor,
-                          fontSize: screenSize.width * 0.03,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                  // Icon column with fixed width for proper alignment
+                  SizedBox(
+                    width: screenSize.width * 0.12,
+                    child: Center(
+                      child: _getIconWidgetForType(type, screenSize.width * 0.1, typeColor),
+                    ),
                   ),
                   SizedBox(width: screenSize.width * 0.03),
                   Expanded(
@@ -750,43 +695,26 @@ class HistoryPageState extends State<HistoryPage> {
                         Text(
                           item['employee_name'] ?? 'No Name',
                           style: TextStyle(
-                            color: titleColor,
+                            color: typeColor,
                             fontSize: screenSize.width * 0.038,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         SizedBox(height: screenSize.height * 0.005),
                         Text(
-                          'From: $startDate',
+                          'Date: $startDate to $endDate',
                           style: TextStyle(
-                            color: isDarkMode
-                                ? Colors.white70
-                                : Colors.grey[700],
-                            fontSize: screenSize.width * 0.03,
-                          ),
-                        ),
-                        Text(
-                          'To: $endDate',
-                          style: TextStyle(
-                            color: isDarkMode
-                                ? Colors.white70
-                                : Colors.grey[700],
-                            fontSize: screenSize.width * 0.03,
+                            color: isDarkMode ? Colors.white70 : Colors.grey[700],
+                            fontSize: screenSize.width * 0.026,
                           ),
                         ),
                         SizedBox(height: screenSize.height * 0.005),
-                        Text(
-                          '$detailLabel $detailText',
-                          style: TextStyle(
-                            color: detailTextColor,
-                            fontSize: screenSize.width * 0.03,
-                          ),
-                        ),
+                        _buildDetailLabel(type, item, isDarkMode, screenSize),
                         SizedBox(height: screenSize.height * 0.006),
                         Row(
                           children: [
                             Text(
-                              'Status : ',
+                              'Status: ',
                               style: TextStyle(
                                 fontSize: screenSize.width * 0.03,
                                 fontWeight: FontWeight.bold,
@@ -818,23 +746,14 @@ class HistoryPageState extends State<HistoryPage> {
                       ],
                     ),
                   ),
+                  SizedBox(width: screenSize.width * 0.02),
+                  // Profile Image
+                  CircleAvatar(
+                    backgroundImage: NetworkImage(item['img_name']),
+                    radius: screenSize.width * 0.06,
+                    backgroundColor: isDarkMode ? Colors.grey[700] : Colors.grey[300],
+                  ),
                 ],
-              ),
-            ),
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  right: screenSize.width * 0.015,
-                  bottom: screenSize.height * 0.02,
-                ),
-                child: CircleAvatar(
-                  backgroundImage: NetworkImage(item['img_name']),
-                  radius: screenSize.width * 0.06,
-                  backgroundColor:
-                  isDarkMode ? Colors.grey[700] : Colors.grey[300],
-                ),
               ),
             ),
           ],
@@ -842,5 +761,47 @@ class HistoryPageState extends State<HistoryPage> {
       ),
     );
   }
+
+// Function to return proper detail label and text based on type
+  Widget _buildDetailLabel(String type, Map<String, dynamic> item, bool isDarkMode, Size screenSize) {
+    Color detailTextColor = Colors.grey;
+    String detailLabel;
+    String detailText;
+
+    switch (type.toLowerCase()) {
+      case 'meeting':
+        detailLabel = 'Room:';
+        detailText = item['room'] ?? 'N/A';
+        detailTextColor = Colors.orange;
+        break;
+      case 'leave':
+        detailLabel = 'Type:';
+        detailText = item['leave_type'] ?? 'N/A';
+        detailTextColor = Colors.orange;
+        break;
+      case 'car':
+        detailLabel = 'Place:';
+        detailText = item['place']?.toString() ?? 'No Place';
+        detailTextColor = Colors.grey;
+        break;
+      case 'minutes of meeting':
+        detailLabel = 'Room:';
+        detailText = item['location'] ?? 'No location';
+        detailTextColor = Colors.orange;
+        break;
+      default:
+        detailLabel = 'Info:';
+        detailText = 'N/A';
+    }
+
+    return Text(
+      '$detailLabel $detailText',
+      style: TextStyle(
+        color: detailTextColor,
+        fontSize: screenSize.width * 0.03,
+      ),
+    );
+  }
+
 }
 

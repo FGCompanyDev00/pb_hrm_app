@@ -102,6 +102,7 @@ class DetailsPageState extends State<DetailsPage> {
   }
 
   /// Fetch detailed data using appropriate API based on type
+  /// Fetch detailed data using appropriate API based on type
   Future<void> _fetchData() async {
     setState(() {
       isLoading = true;
@@ -134,9 +135,7 @@ class DetailsPageState extends State<DetailsPage> {
         'status': formattedStatus,
       };
 
-      if (kDebugMode) {
-        debugPrint('Sending POST request to $apiUrl with body: $requestBody');
-      }
+      debugPrint('Sending POST request to $apiUrl with body: $requestBody');
 
       // Send POST request
       final response = await http.post(
@@ -148,17 +147,16 @@ class DetailsPageState extends State<DetailsPage> {
         body: jsonEncode(requestBody),
       );
 
-      if (kDebugMode) {
-        debugPrint('Received response with status code: ${response.statusCode}');
-        debugPrint('Response body: ${response.body}');
-      }
+      debugPrint('Received response with status code: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 202) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
 
         if (responseData.containsKey('statusCode') &&
             (responseData['statusCode'] == 200 || responseData['statusCode'] == 201 || responseData['statusCode'] == 202)) {
-          // Handle success
+
+          // Ensure results key exists
           if (!responseData.containsKey('results')) {
             _showErrorDialog('Error', 'Invalid API response structure.');
             setState(() {
@@ -167,7 +165,9 @@ class DetailsPageState extends State<DetailsPage> {
             });
             return;
           }
+
           if (responseData['results'] is List) {
+            // ✅ Handle case when results is a List
             final List<dynamic> dataList = responseData['results'];
             if (dataList.isNotEmpty) {
               setState(() {
@@ -182,7 +182,14 @@ class DetailsPageState extends State<DetailsPage> {
               });
             }
           } else if (responseData['results'] is Map) {
+            // ✅ Handle case when results is a Map
             final Map<String, dynamic> singleData = responseData['results'];
+
+            // 🔥 Fix: Convert "details" field to an empty list if it's a string
+            if (singleData.containsKey('details') && singleData['details'] is String) {
+              singleData['details'] = []; // ✅ Convert to empty list to avoid errors
+            }
+
             setState(() {
               data = singleData;
               isLoading = false;
@@ -331,7 +338,7 @@ class DetailsPageState extends State<DetailsPage> {
             color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -339,10 +346,10 @@ class DetailsPageState extends State<DetailsPage> {
               backgroundImage: requestorImageUrl.isNotEmpty
                   ? NetworkImage(requestorImageUrl)
                   : NetworkImage(_defaultAvatarUrl()),
-              radius: 30,
+              radius: 32,
               backgroundColor: Colors.grey[300],
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 25),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -361,8 +368,9 @@ class DetailsPageState extends State<DetailsPage> {
                   Text(
                     'Submitted on $submittedOn',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: FontWeight.w500,
+                      fontStyle: FontStyle.italic,
                       color:
                       isDarkMode ? Colors.white70 : Colors.black54,
                     ),
@@ -382,9 +390,9 @@ class DetailsPageState extends State<DetailsPage> {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Container(
-      width: screenWidth * 0.7,
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+      width: screenWidth * 0.6,
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.blue : Colors.lightBlue[100],
         borderRadius: BorderRadius.circular(20),
@@ -393,7 +401,7 @@ class DetailsPageState extends State<DetailsPage> {
         child: Text(
           '${widget.types[0].toUpperCase()}${widget.types.substring(1).toLowerCase()}',
           style: TextStyle(
-            fontSize: 17,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
             color: isDarkMode ? Colors.white : Colors.black,
           ),
@@ -604,7 +612,7 @@ class DetailsPageState extends State<DetailsPage> {
         // Build each detail row
         for (final detail in details)
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            padding: const EdgeInsets.symmetric(vertical: 6.0),
             child: _buildInfoRow(
               detail['icon'],
               detail['title'],
@@ -625,7 +633,7 @@ class DetailsPageState extends State<DetailsPage> {
     }
 
     return Wrap(
-      spacing: 4,
+      spacing: 6,
       runSpacing: 10,
       children: guests.map<Widget>((guest) {
         final String imageUrl = guest['img_name'] ?? '';
@@ -637,7 +645,7 @@ class DetailsPageState extends State<DetailsPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
-                radius: 16,
+                radius: 18,
                 backgroundImage: NetworkImage(imageUrl),
                 onBackgroundImageError: (_, __) => const Icon(Icons.error),
                 backgroundColor: Colors.grey[300],
@@ -645,9 +653,9 @@ class DetailsPageState extends State<DetailsPage> {
               const SizedBox(height: 6),
               Text(
                 name,
-                style: const TextStyle(fontSize: 10),
+                style: const TextStyle(fontSize: 9),
                 textAlign: TextAlign.center,
-                maxLines: 3,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
             ],
@@ -690,17 +698,17 @@ class DetailsPageState extends State<DetailsPage> {
       children: [
         Icon(
           icon,
-          size: 24,
+          size: 28,
           color: isDarkMode ? color.withOpacity(0.8) : color,
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 16),
         Expanded(
           child: content is Widget
               ? content
               : Text(
             '$title: $content',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 15,
               color: isDarkMode ? Colors.white : Colors.black,
             ),
           ),
@@ -740,7 +748,7 @@ class DetailsPageState extends State<DetailsPage> {
     // Build a little arrow icon in between avatars
     Widget buildArrow() => const Padding(
       padding: EdgeInsets.only(top: 15.0),
-      child: Icon(Icons.arrow_forward, color: Colors.grey, size: 18),
+      child: Icon(Icons.arrow_forward, color: Colors.grey, size: 20),
     );
 
     final bool isLeaveType = widget.types.toLowerCase() == 'leave';
@@ -811,10 +819,10 @@ class DetailsPageState extends State<DetailsPage> {
   /// Reusable widget for showing avatar with a colored border
   Widget _buildUserAvatar(String imageUrl, {Color borderColor = Colors.grey}) {
     return CircleAvatar(
-      radius: 24,
+      radius: 30,
       backgroundColor: borderColor,
       child: CircleAvatar(
-        radius: 22,
+        radius: 26,
         backgroundImage: imageUrl.startsWith('http')
             ? NetworkImage(imageUrl)
             : AssetImage(imageUrl) as ImageProvider,
