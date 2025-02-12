@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,6 +54,7 @@ const FlutterSecureStorage secureStorage = FlutterSecureStorage();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
 
   // Run entire app inside runZonedGuarded:
   runZonedGuarded(() async {

@@ -187,7 +187,7 @@ class DashboardState extends State<Dashboard> {
 
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/app/promotions/files/active'),
+        Uri.parse('$baseUrl/api/app/promotions/files'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -20,16 +21,34 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
   final ApiService _apiService = ApiService();
   final LocalAuthentication auth = LocalAuthentication();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
 
   List<Device> _devices = [];
   bool _isLoading = false;
   bool _biometricEnabled = false;
+  String? _deviceToken;
 
   @override
   void initState() {
     super.initState();
     _loadBiometricSetting();
     _loadDevices();
+    _fetchDeviceToken();
+  }
+
+  /// Fetches the FCM token
+  Future<void> _fetchDeviceToken() async {
+    try {
+      String? token = await _firebaseMessaging.getToken();
+      if (token != null) {
+        setState(() {
+          _deviceToken = token;
+        });
+        print("Device Token: $token");
+      }
+    } catch (e) {
+      print("Error getting FCM token: $e");
+    }
   }
 
   /// Loads the biometric setting from secure storage.
@@ -110,7 +129,6 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
   void _showAddDeviceDialog() {
     final formKey = GlobalKey<FormState>();
     String deviceId = '';
-    String deviceToken = '';
     String platform = 'android';
 
     showDialog(
@@ -138,29 +156,16 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   ),
                   TextFormField(
                     decoration: const InputDecoration(labelText: 'Device Token'),
-                    onChanged: (value) {
-                      deviceToken = value.trim();
-                    },
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter Device Token';
-                      }
-                      return null;
-                    },
+                    initialValue: _deviceToken, // Auto-fill the token
+                    enabled: false, // Prevent editing
                   ),
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
                     value: platform,
                     decoration: const InputDecoration(labelText: 'Platform'),
                     items: const [
-                      DropdownMenuItem(
-                        value: 'android',
-                        child: Text('Android'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'ios',
-                        child: Text('iOS'),
-                      ),
+                      DropdownMenuItem(value: 'android', child: Text('Android')),
+                      DropdownMenuItem(value: 'ios', child: Text('iOS')),
                     ],
                     onChanged: (value) {
                       platform = value ?? 'android';
@@ -187,11 +192,9 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
               onPressed: () async {
                 if (formKey.currentState?.validate() ?? false) {
                   if (_biometricEnabled) {
-                    // Proceed to add device
-                    await _addDevice(deviceId, deviceToken, platform);
+                    await _addDevice(deviceId, _deviceToken ?? '', platform);
                   } else {
-                    // Prompt user to enable biometrics in Settings
-                    Navigator.of(context).pop(); // Close the current dialog
+                    Navigator.of(context).pop();
                     _showBiometricPrompt();
                   }
                 }
