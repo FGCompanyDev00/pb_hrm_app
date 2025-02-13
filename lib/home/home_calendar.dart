@@ -282,7 +282,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-        showSnackBar('Invalid minutes of meeting data format.');
+
         return;
       }
 
@@ -399,7 +399,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-        showSnackBar('Invalid meeting data format.');
+
         return;
       }
 
@@ -493,7 +493,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-        showSnackBar('Invalid meeting data format.');
+
         return;
       }
 

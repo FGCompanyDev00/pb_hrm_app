@@ -88,15 +88,6 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <receiver
-            android:name="be.tramckrijte.workmanager.WorkManagerBroadcastReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@mipmap/playstore" />

@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "764988358149",
+    "project_id": "psvb-bestari",
+    "storage_bucket": "psvb-bestari.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:764988358149:android:a4d8b68c6273103fd8666c",
+        "android_client_info": {
+          "package_name": "com.phongsavanh.pb_hrsystem"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDeZILpitcP9ioBOs3IclujelOUPmBk4do"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:764988358149:android:44d250a07c1f3c02d8666c",
+        "android_client_info": {
+          "package_name": "com.psvsystem.next"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDeZILpitcP9ioBOs3IclujelOUPmBk4do"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1389,7 +1389,7 @@ packages:
     source: hosted
     version: "0.15.0"
   platform:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: platform
       sha256: "5d6b1b0036a5f331ebc77c850ebc8506cbc1e9416c27e59b439f917a902a4984"
@@ -1945,14 +1945,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.5"
-  workmanager:
-    dependency: "direct main"
-    description:
-      name: workmanager
-      sha256: ed13530cccd28c5c9959ad42d657cd0666274ca74c56dea0ca183ddd527d3a00
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.5.2"
   xdg_directories:
     dependency: transitive
     description:

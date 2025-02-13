@@ -38,6 +38,7 @@ import 'home/attendance_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'hive_helper/model/attendance_record.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
+import 'firebase_options.dart';
 
 /// ------------------------------------------------------------
 /// 1) Global instance of FlutterLocalNotificationsPlugin
@@ -54,7 +55,14 @@ const FlutterSecureStorage secureStorage = FlutterSecureStorage();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint("Firebase initialization failed: $e");
+  }
 
   // Run entire app inside runZonedGuarded:
   runZonedGuarded(() async {

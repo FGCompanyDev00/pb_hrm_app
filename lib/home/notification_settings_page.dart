@@ -1,9 +1,11 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:platform/platform.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,7 +16,8 @@ class NotificationSettingsPage extends StatefulWidget {
   const NotificationSettingsPage({super.key});
 
   @override
-  NotificationSettingsPageState createState() => NotificationSettingsPageState();
+  NotificationSettingsPageState createState() =>
+      NotificationSettingsPageState();
 }
 
 class NotificationSettingsPageState extends State<NotificationSettingsPage> {
@@ -39,15 +42,29 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
   /// Fetches the FCM token
   Future<void> _fetchDeviceToken() async {
     try {
-      String? token = await _firebaseMessaging.getToken();
-      if (token != null) {
-        setState(() {
-          _deviceToken = token;
-        });
-        print("Device Token: $token");
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        if (apnsToken != null) {
+          setState(() {
+            _deviceToken = apnsToken;
+          });
+          print("APNs Device Token: $apnsToken");
+        } else {
+          print("APNs token is null. Check APNs setup in Firebase.");
+        }
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
+        String? fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken != null) {
+          setState(() {
+            _deviceToken = fcmToken;
+          });
+          print("FCM Device Token: $fcmToken");
+        }
+      } else {
+        print("Unsupported platform.");
       }
     } catch (e) {
-      print("Error getting FCM token: $e");
+      print("Error getting device token: $e");
     }
   }
 
@@ -104,20 +121,23 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
   /// Adds a new device by interacting with the API.
   Future<void> _addDevice(String deviceId, String deviceToken, String platform) async {
-    Navigator.of(context).pop(); // Close the dialog
     setState(() {
       _isLoading = true;
     });
     try {
       bool added = await _apiService.addDevice(deviceId, deviceToken, platform);
       if (added) {
-        _showSnackBar('Device added successfully');
+        // Show success validation modal
+        _showValidationModal('Device added successfully', true);
+        // Reload devices after successful addition
         _loadDevices();
       } else {
-        _showSnackBar('Failed to add device');
+        // Show failure validation modal
+        _showValidationModal('Failed to add device', false);
       }
     } catch (e) {
-      _showSnackBar('Error adding device: $e');
+      // Handle error and show failure validation modal
+      _showValidationModal('Error adding device: $e', false);
     } finally {
       setState(() {
         _isLoading = false;
@@ -125,11 +145,38 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
     }
   }
 
+  /// Displays the API message in a dialog after adding the device
+  void _showValidationModal(String message, bool isSuccess) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Prevent closing the dialog manually
+      builder: (context) {
+        return AlertDialog(
+          title: Text(isSuccess ? 'Success' : 'Error'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the validation modal
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    ).then((_) {
+      // Auto-refresh devices after dialog is closed if success
+      if (isSuccess) {
+        _loadDevices(); // Refresh device list
+      }
+    });
+  }
+
   /// Displays the dialog to add a new device.
   void _showAddDeviceDialog() {
     final formKey = GlobalKey<FormState>();
     String deviceId = '';
-    String platform = 'android';
+    String platform = const LocalPlatform().isAndroid ? 'android' : 'ios';  // Automatically choose platform
 
     showDialog(
       context: context,
@@ -160,22 +207,10 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
                     enabled: false, // Prevent editing
                   ),
                   const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: platform,
+                  TextFormField(
                     decoration: const InputDecoration(labelText: 'Platform'),
-                    items: const [
-                      DropdownMenuItem(value: 'android', child: Text('Android')),
-                      DropdownMenuItem(value: 'ios', child: Text('iOS')),
-                    ],
-                    onChanged: (value) {
-                      platform = value ?? 'android';
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please select a platform';
-                      }
-                      return null;
-                    },
+                    initialValue: platform, // Automatically set platform
+                    enabled: false, // Prevent editing
                   ),
                 ],
               ),
@@ -253,14 +288,14 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
     return AppBar(
-      backgroundColor: Colors.transparent, // Ensures no duplicate backgroundColor
+      backgroundColor: Colors.transparent,
       centerTitle: true,
       title: Text(
         'Notification Settings',
         style: TextStyle(
           color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.white // White text for dark mode
-              : Colors.black, // Black text for light mode
+              ? Colors.white
+              : Colors.black,
           fontSize: 22,
           fontWeight: FontWeight.w500,
         ),
@@ -269,8 +304,8 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
         icon: Icon(
           Icons.arrow_back_ios_new,
           color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.white // White icon for dark mode
-              : Colors.black, // Black icon for light mode
+              ? Colors.white
+              : Colors.black,
           size: 20,
         ),
         onPressed: () {
@@ -308,40 +343,39 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _devices.isEmpty
-                        ? const Center(child: Text('No devices found.'))
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16.0),
-                            itemCount: _devices.length,
-                            itemBuilder: (context, index) {
-                              final device = _devices[index];
-                              return ListTile(
-                                leading: Image.asset(
-                                  device.platform == 'android' ? 'assets/android_device.png' : 'assets/ios_device.png',
-                                  width: 30,
-                                  height: 40,
-                                ),
-                                title: Text(device.deviceId),
-                                subtitle: Text('Last login: ${device.lastLoginFormatted}'),
-                                trailing: device.isUpdating
-                                    ? const SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Switch(
-                                        value: device.status,
-                                        onChanged: (value) {
-                                          _toggleNotification(device);
-                                        },
-                                      ),
-                              );
-                            },
-                          ),
+                    ? const Center(child: Text('No devices found.'))
+                    : ListView.builder(
+                  padding: const EdgeInsets.all(16.0),
+                  itemCount: _devices.length,
+                  itemBuilder: (context, index) {
+                    final device = _devices[index];
+                    return ListTile(
+                      leading: Image.asset(
+                        device.platform == 'android' ? 'assets/android_device.png' : 'assets/ios_device.png',
+                        width: 30,
+                        height: 40,
+                      ),
+                      title: Text(device.deviceId),
+                      subtitle: Text('Last login: ${device.lastLoginFormatted}'),
+                      trailing: device.isUpdating
+                          ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                        ),
+                      )
+                          : Switch(
+                        value: device.status,
+                        onChanged: (value) {
+                          _toggleNotification(device);
+                        },
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
-            // Removed Biometric Settings Toggle from here
           ],
         ),
       ),
@@ -374,7 +408,6 @@ class Device {
   factory Device.fromJson(Map<String, dynamic> json) {
     String platform = json['platform'] ?? 'android';
     if (platform.isEmpty) {
-      // Fallback to determining platform based on device_id if 'platform' is not provided
       platform = json['device_id'].toString().toLowerCase().contains('iphone') ? 'ios' : 'android';
     }
     return Device(
@@ -386,7 +419,6 @@ class Device {
     );
   }
 
-  /// Formats the last login DateTime into a readable string.
   String get lastLoginFormatted {
     return "${lastLogin.year}-${_twoDigits(lastLogin.month)}-${_twoDigits(lastLogin.day)} "
         "${_twoDigits(lastLogin.hour)}:${_twoDigits(lastLogin.minute)}";
@@ -397,8 +429,6 @@ class Device {
 
 /// Handles all API interactions related to notification settings.
 class ApiService {
-
-  /// Fetches all devices associated with the user.
   Future<List<Device>> fetchDevices() async {
     final token = await _getToken();
     if (token == null) {
@@ -426,7 +456,6 @@ class ApiService {
     }
   }
 
-  /// Updates the notification status of a specific device.
   Future<bool> updateDeviceStatus(Device device, bool newStatus) async {
     final token = await _getToken();
     if (token == null) {
@@ -455,7 +484,6 @@ class ApiService {
     }
   }
 
-  /// Adds a new device to the user's notification settings.
   Future<bool> addDevice(String deviceId, String deviceToken, String platform) async {
     final token = await _getToken();
     if (token == null) {
@@ -484,7 +512,6 @@ class ApiService {
     }
   }
 
-  /// Retrieves the authentication token from SharedPreferences.
   Future<String?> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('token');
