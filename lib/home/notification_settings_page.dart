@@ -44,21 +44,21 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
     try {
       if (defaultTargetPlatform == TargetPlatform.iOS) {
         String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        print("Retrieved APNs Token: $apnsToken"); // Print here
         if (apnsToken != null) {
           setState(() {
             _deviceToken = apnsToken;
           });
-          print("APNs Device Token: $apnsToken");
         } else {
           print("APNs token is null. Check APNs setup in Firebase.");
         }
       } else if (defaultTargetPlatform == TargetPlatform.android) {
         String? fcmToken = await FirebaseMessaging.instance.getToken();
+        print("Retrieved FCM Token: $fcmToken"); // Print here
         if (fcmToken != null) {
           setState(() {
             _deviceToken = fcmToken;
           });
-          print("FCM Device Token: $fcmToken");
         }
       } else {
         print("Unsupported platform.");

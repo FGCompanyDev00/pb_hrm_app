@@ -41,11 +41,11 @@ import AdSupport
   }
 
   // Example: Handling remote notifications
-  override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-      // Forward the token to your push notification provider
-      // For example:
-      // Messaging.messaging().apnsToken = deviceToken
-  }
+override func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+    // Pass the token to Firebase Messaging
+    // Messaging.messaging().apnsToken = deviceToken
+    print("APNs device token: \(deviceToken)")
+}
 
   override func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
       print("Failed to register for remote notifications: \(error)")

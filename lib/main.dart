@@ -8,6 +8,7 @@ import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,6 +54,45 @@ final Logger logger = Logger(
 
 const FlutterSecureStorage secureStorage = FlutterSecureStorage();
 
+/// ------------------------------------------------------------
+/// 2) Firebase Messaging background handler
+/// ------------------------------------------------------------
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  _showNotification(message);
+}
+
+/// ------------------------------------------------------------
+/// 3) Show notification function for push notifications
+/// ------------------------------------------------------------
+Future<void> _showNotification(RemoteMessage message) async {
+  RemoteNotification? notification = message.notification;
+  if (notification != null) {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'psbv_next_notification', // Must match the channel id created below
+      'PSBV Next',
+      channelDescription: 'Notifications',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    const DarwinNotificationDetails iOSDetails = DarwinNotificationDetails();
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidDetails,
+      iOS: iOSDetails,
+    );
+    await flutterLocalNotificationsPlugin.show(
+      notification.hashCode,
+      notification.title,
+      notification.body,
+      platformChannelSpecifics,
+      payload: message.data.toString(),
+    );
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -66,8 +106,6 @@ void main() async {
 
   // Run entire app inside runZonedGuarded:
   runZonedGuarded(() async {
-
-
     try {
       await dotenv.load(fileName: ".env.demo"); // Please change to ".env.production" for release
     } catch (e) {
@@ -96,6 +134,19 @@ void main() async {
     // Initialize local notifications
     await _initializeLocalNotifications();
 
+    // Register Firebase Messaging background handler
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    // Listen for foreground messages and display notifications
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      _showNotification(message);
+    });
+
+    // Listen for notification tap (when app is in background)
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      debugPrint("Notification tapped: ${message.data}");
+    });
+
     runApp(
       MultiProvider(
         providers: [
@@ -118,7 +169,7 @@ void main() async {
 }
 
 /// ------------------------------------------
-/// 3) A private method for plugin initialization
+/// 4) A private method for plugin initialization
 /// ------------------------------------------
 Future<void> _initializeLocalNotifications() async {
   // For Android
@@ -145,9 +196,9 @@ Future<void> _initializeLocalNotifications() async {
 
   // (Optional) Create an Android notification channel:
   const AndroidNotificationChannel channel = AndroidNotificationChannel(
-    'attendance_channel_id',
-    'Attendance',
-    description: 'Notifications for check-in/check-out',
+    'psbv_next_notification',
+    'PSBV Next',
+    description: 'Notifications',
     importance: Importance.high,
   );
 
@@ -156,11 +207,11 @@ Future<void> _initializeLocalNotifications() async {
 
 /// iOS < 10 local notification callback
 void onDidReceiveLocalNotification(
-  int id,
-  String? title,
-  String? body,
-  String? payload,
-) {
+    int id,
+    String? title,
+    String? body,
+    String? payload,
+    ) {
   debugPrint('iOS (<10) local notification: title=$title, body=$body');
 }
 
@@ -198,9 +249,9 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: Colors.black,
             textTheme: GoogleFonts.oxaniumTextTheme(
               Theme.of(context).textTheme.apply(
-                    bodyColor: Colors.white,
-                    displayColor: Colors.white,
-                  ),
+                bodyColor: Colors.white,
+                displayColor: Colors.white,
+              ),
             ),
           ),
           themeMode: themeNotifier.currentTheme,
@@ -223,7 +274,7 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// Logger Production Filler
+// Logger Production Filter
 class ProductionFilter extends LogFilter {
   @override
   bool shouldLog(LogEvent event) {
