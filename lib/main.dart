@@ -72,7 +72,7 @@ Future<void> _showNotification(RemoteMessage message) async {
   RemoteNotification? notification = message.notification;
   if (notification != null) {
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'psbv_next_notification', // Must match the channel id created below
+      'psbv_next_notification',
       'PSBV Next',
       channelDescription: 'Notifications',
       importance: Importance.high,

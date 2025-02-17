@@ -45,6 +45,7 @@
 		<string>fetch</string>
 		<string>remote-notification</string>
 		<string>processing</string>
+		<string>location</string>
 	</array>
 	<key>UILaunchImageBackgroundColor</key>
 	<string>#FFFFFF</string>
