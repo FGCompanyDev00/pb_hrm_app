@@ -29,7 +29,7 @@ class SettingsPageState extends State<SettingsPage> {
   final _storage = const FlutterSecureStorage();
   bool _biometricEnabled = false;
   late Future<UserProfile> futureUserProfile;
-  String _appVersion = 'PSBV Next Demo v1.0.53(53)';
+  String _appVersion = 'PSBV Next Demo v1.0.54(54)';
 
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
@@ -47,7 +47,7 @@ class SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadAppVersion() async {
     setState(() {
-      _appVersion = 'PSBV Next Demo v1.0.53(53)';
+      _appVersion = 'PSBV Next Demo v1.0.54(54)';
       // _appVersion = 'PSBV Next v${packageInfo.version}';
     });
   }
