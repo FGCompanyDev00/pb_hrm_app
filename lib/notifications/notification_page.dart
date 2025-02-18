@@ -63,14 +63,12 @@ class NotificationPageState extends State<NotificationPage> {
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
-        debugPrint('Error during initial data fetch: $e');
+
       }
       if (kDebugMode) {
         debugPrint(stackTrace.toString());
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching data: $e')),
-      );
+
     } finally {
       setState(() {
         _isLoading = false;
@@ -252,7 +250,10 @@ class NotificationPageState extends State<NotificationPage> {
 
   /// Fetches all meeting invites without pagination
   Future<void> _fetchMeetingInvites() async {
-    String meetingInvitesApiUrl = '$baseUrl/api/office-administration/book_meeting_room/invites-meeting';
+    String meetingInvitesApiUrl =
+        '$baseUrl/api/office-administration/book_meeting_room/invites-meeting';
+    String outMeetingApiUrl =
+        '$baseUrl/api/work-tracking/out-meeting/outmeeting/my-members';
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -262,38 +263,19 @@ class NotificationPageState extends State<NotificationPage> {
         throw Exception('User not authenticated');
       }
 
-      final response = await http.get(
-        Uri.parse(meetingInvitesApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+      List<Map<String, dynamic>> allMeetings = [];
 
-      if (kDebugMode) {
-        debugPrint('Fetching meeting invites: Status Code ${response.statusCode}');
-      }
+      // Fetch Meeting and Booking Room Invites
+      await _fetchMeetingsFromUrl(meetingInvitesApiUrl, token, allMeetings, 'meeting');
 
-      if (response.statusCode == 200) {
-        final responseBody = jsonDecode(response.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
-          final List<dynamic> meetingData = responseBody['results'];
-          final List<Map<String, dynamic>> formattedMeetingData = meetingData.map((item) {
-            final Map<String, dynamic> meetingItem = Map<String, dynamic>.from(item);
-            meetingItem['types'] = 'meeting';
-            return meetingItem;
-          }).toList();
+      // Fetch Out Meeting Invites
+      await _fetchMeetingsFromUrl(outMeetingApiUrl, token, allMeetings, 'out-meeting');
 
-          setState(() {
-            _meetingInvites = formattedMeetingData;
-          });
-          debugPrint('Meeting invites loaded: ${_meetingInvites.length} items.');
-        } else {
-          throw Exception(responseBody['message'] ?? 'Failed to load meeting invites');
-        }
-      } else {
-        throw Exception('Failed to load meeting invites: ${response.statusCode}');
-      }
+      setState(() {
+        _meetingInvites = allMeetings;
+      });
+
+      debugPrint('Total meeting invites loaded: ${_meetingInvites.length}');
     } catch (e, stackTrace) {
       debugPrint('No meeting invites');
       debugPrint(stackTrace.toString());
@@ -304,6 +286,37 @@ class NotificationPageState extends State<NotificationPage> {
       }
 
       rethrow;
+    }
+  }
+
+  Future<void> _fetchMeetingsFromUrl(
+      String url, String token, List<Map<String, dynamic>> allMeetings, String type) async {
+    final response = await http.get(
+      Uri.parse(url),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (kDebugMode) {
+      debugPrint('Fetching from $url: Status Code ${response.statusCode}');
+    }
+
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        final List<dynamic> meetingData = responseBody['results'];
+        for (var item in meetingData) {
+          final Map<String, dynamic> meetingItem = Map<String, dynamic>.from(item);
+          meetingItem['types'] = type;
+          allMeetings.add(meetingItem);
+        }
+      } else {
+        throw Exception(responseBody['message'] ?? 'Failed to load from $url');
+      }
+    } else {
+      throw Exception('Failed to load from $url: ${response.statusCode}');
     }
   }
 
@@ -591,10 +604,20 @@ class NotificationPageState extends State<NotificationPage> {
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
+    String title = '';
     String type = (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
     String status = (item['status']?.toString() ?? 'Pending').trim();
     String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
     String requestorName = (item['requestor_name']?.toString() ?? 'N/A').trim();
+
+    // **Title Customization**
+    if (type == 'meeting') {
+      title = "Meeting and Booking Meeting Room";
+    } else if (type == 'out-meeting') {
+      title = "Meeting";
+    } else {
+      title = item['title']?.toString() ?? 'No Title';
+    }
 
     if (status.toLowerCase() == 'branch approved') {
       status = 'Approved';
@@ -626,7 +649,6 @@ class NotificationPageState extends State<NotificationPage> {
     Color statusColor = _getStatusColor(status);
     IconData typeIcon = _getIconForType(type);
 
-    String title = '';
     String startDate = '';
     String endDate = '';
     String detailLabel = '';
