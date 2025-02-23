@@ -3,9 +3,11 @@
 import Flutter
 import UIKit
 import UserNotifications
-import AppTrackingTransparency
-import AdSupport
 import flutter_local_notifications
+#if canImport(AppTrackingTransparency)
+import AppTrackingTransparency
+#endif
+import AdSupport
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -32,11 +34,13 @@ import flutter_local_notifications
       self?.initializeNotifications(application)
       
       // Handle tracking permission with delay
+      #if canImport(AppTrackingTransparency)
       if #available(iOS 14, *) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
           self?.requestTrackingPermission()
         }
       }
+      #endif
     }
     
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
@@ -70,16 +74,24 @@ import flutter_local_notifications
   }
   
   private func requestTrackingPermission() {
-    ATTrackingManager.requestTrackingAuthorization { status in
-      switch status {
-      case .authorized:
-        print("Tracking permission granted")
-      case .denied:
-        print("Tracking permission denied")
-      default:
-        break
+    #if canImport(AppTrackingTransparency)
+    if #available(iOS 14, *) {
+      ATTrackingManager.requestTrackingAuthorization { status in
+        switch status {
+        case .authorized:
+          print("Tracking permission granted")
+        case .denied:
+          print("Tracking permission denied")
+        case .notDetermined:
+          print("Tracking permission not determined")
+        case .restricted:
+          print("Tracking permission restricted")
+        @unknown default:
+          print("Tracking permission unknown status")
+        }
       }
     }
+    #endif
   }
 
   override func application(

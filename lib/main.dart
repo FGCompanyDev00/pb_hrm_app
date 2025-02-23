@@ -157,7 +157,7 @@ Future<void> _initializeApp() async {
     }),
 
     // Environment loading with error handling
-    dotenv.load(fileName: ".env.demo").catchError((e) {
+    dotenv.load(fileName: ".env.demo").catchError((e) { // change it to .env.production for production mode
       debugPrint("Error loading .env file: $e");
       return null;
     }),
