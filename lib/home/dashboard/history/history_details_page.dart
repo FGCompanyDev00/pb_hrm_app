@@ -455,19 +455,7 @@ class DetailsPageState extends State<DetailsPage> {
         {
           'icon': Icons.radar,
           'title': 'Status',
-          'value': RichText(
-            text: TextSpan(
-              children: [
-                const TextSpan(
-                  text: 'Status: ',
-                ),
-                TextSpan(
-                  text: _capitalizeFirstLetter(data?['status'] ?? 'No status'),
-                  style: TextStyle(fontWeight: FontWeight.bold, color: _getStatusColor(data?['status'] ?? 'no status')),
-                ),
-              ],
-            ),
-          ),
+          'value': _capitalizeFirstLetter(data?['status'] ?? 'No status'),
           'color': _getStatusColor(data?['status'] ?? 'no status')
         }
       ]);
@@ -839,7 +827,7 @@ class DetailsPageState extends State<DetailsPage> {
     final lowerStatus = widget.status.toLowerCase();
 
     // Hide for "minutes of meeting" type
-    if (type == 'minutes of meeting' || lowerStatus == 'approved' || lowerStatus == 'disapproved' || lowerStatus == 'cancel') {
+    if (type == 'minutes of meeting' || lowerStatus == 'approved' || lowerStatus == 'disapproved' || lowerStatus == 'cancel' || lowerStatus == 'completed') {
       return const SizedBox.shrink();
     }
 

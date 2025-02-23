@@ -11,7 +11,8 @@ class TestNotificationWidget extends StatefulWidget {
   TestNotificationWidgetState createState() => TestNotificationWidgetState();
 }
 
-class TestNotificationWidgetState extends State<TestNotificationWidget> with SingleTickerProviderStateMixin {
+class TestNotificationWidgetState extends State<TestNotificationWidget>
+    with SingleTickerProviderStateMixin {
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   late AnimationController _controller;
   late Animation<Color?> _colorTween;
@@ -27,9 +28,11 @@ class TestNotificationWidgetState extends State<TestNotificationWidget> with Sin
   void _initializeNotificationPlugin() {
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+    const InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
 
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
@@ -45,7 +48,9 @@ class TestNotificationWidgetState extends State<TestNotificationWidget> with Sin
   }
 
   void _initializeAnimation() {
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 3))..repeat(reverse: true);
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 3))
+          ..repeat(reverse: true);
 
     _colorTween = _controller.drive(
       ColorTween(
@@ -56,7 +61,8 @@ class TestNotificationWidgetState extends State<TestNotificationWidget> with Sin
   }
 
   Future<void> _showTestNotification() async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
       'test_channel',
       'Test Notifications',
       importance: Importance.max,
@@ -65,7 +71,18 @@ class TestNotificationWidgetState extends State<TestNotificationWidget> with Sin
       icon: '@mipmap/ic_launcher',
     );
 
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(android: androidPlatformChannelSpecifics);
+    const DarwinNotificationDetails iOSPlatformChannelSpecifics =
+        DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      sound: 'default',
+      badgeNumber: 1,
+    );
+
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+        android: androidPlatformChannelSpecifics,
+        iOS: iOSPlatformChannelSpecifics);
 
     await flutterLocalNotificationsPlugin.show(
       0,
@@ -92,7 +109,8 @@ class TestNotificationWidgetState extends State<TestNotificationWidget> with Sin
         flexibleSpace: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+              image: AssetImage(
+                  isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
               fit: BoxFit.cover,
             ),
           ),
@@ -102,7 +120,8 @@ class TestNotificationWidgetState extends State<TestNotificationWidget> with Sin
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+            image: AssetImage(
+                isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
         ),
@@ -114,7 +133,8 @@ class TestNotificationWidgetState extends State<TestNotificationWidget> with Sin
                 onPressed: _showTestNotification,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _colorTween.value,
-                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
                   textStyle: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,

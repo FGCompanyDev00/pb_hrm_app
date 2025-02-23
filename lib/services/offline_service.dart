@@ -16,6 +16,7 @@ import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../hive_helper/model/attendance_record.dart';
 import 'package:flutter/foundation.dart';
+import 'package:sqflite/sqflite.dart';
 
 class OfflineProvider extends ChangeNotifier {
   late Box<AttendanceRecord> _attendanceBox;
@@ -26,33 +27,111 @@ class OfflineProvider extends ChangeNotifier {
   final historyDatabaseService = HistoryDatabaseService();
   final ValueNotifier<bool> isOfflineService = ValueNotifier<bool>(false);
 
+  // Cache for database instances
+  Database? _calendarDb;
+  Database? _historyDb;
+
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
-  //Calendar offline
-  void initializeCalendar() async {
-    await calendarDatabaseService.initializeDatabase('calendar');
+  //Calendar offline with improved error handling and caching
+  Future<void> initializeCalendar() async {
+    try {
+      if (_calendarDb == null) {
+        _calendarDb =
+            await calendarDatabaseService.initializeDatabase('calendar');
+        debugPrint('Calendar database initialized successfully');
+      }
+    } catch (e) {
+      debugPrint('Error initializing calendar database: $e');
+      // Reset database instance and try to recover
+      _calendarDb = null;
+      // Try to reinitialize once
+      try {
+        _calendarDb =
+            await calendarDatabaseService.initializeDatabase('calendar');
+      } catch (retryError) {
+        debugPrint('Failed to recover calendar database: $retryError');
+      }
+    }
   }
 
-  void insertCalendar(List<Events> events) async {
-    await calendarDatabaseService.insertEvents(events);
+  Future<void> insertCalendar(List<Events> events) async {
+    if (events.isEmpty) return;
+
+    try {
+      // Ensure database is initialized
+      if (_calendarDb == null) {
+        await initializeCalendar();
+      }
+
+      // Create a safe copy of events and filter out any null or invalid events
+      final List<Events> eventsCopy = List<Events>.from(
+        events.where((event) => event != null && event.uid != null),
+      );
+
+      if (eventsCopy.isEmpty) {
+        debugPrint('No valid events to insert after filtering');
+        return;
+      }
+
+      await calendarDatabaseService.insertEvents(eventsCopy);
+      debugPrint('Successfully inserted ${eventsCopy.length} calendar events');
+    } catch (e) {
+      debugPrint('Error inserting calendar events: $e');
+      debugPrint('Error details: ${e.toString()}');
+      // Reset database instance and try to recover
+      _calendarDb = null;
+      rethrow;
+    }
   }
 
   Future<List<Events>> getCalendar() async {
-    return await calendarDatabaseService.getListEvents();
+    try {
+      // Ensure database is initialized
+      if (_calendarDb == null) {
+        await initializeCalendar();
+      }
+      return await calendarDatabaseService.getListEvents();
+    } catch (e) {
+      debugPrint('Error fetching calendar events: $e');
+      debugPrint('Error details: ${e.toString()}');
+      // Reset database instance
+      _calendarDb = null;
+      return [];
+    }
   }
 
-  //History offline
-  void initializeHistory() async {
-    await historyDatabaseService.initializeDatabase('history');
+  //History offline with improved performance
+  Future<void> initializeHistory() async {
+    try {
+      _historyDb = await historyDatabaseService.initializeDatabase('history');
+      debugPrint('History database initialized successfully');
+    } catch (e) {
+      debugPrint('Error initializing history database: $e');
+      // Implement proper error handling
+    }
   }
 
-  void insertHistory(List<Events> events) async {
-    await historyDatabaseService.insertHistory(events);
+  Future<void> insertHistory(List<Events> events) async {
+    if (events.isEmpty) return;
+
+    try {
+      await historyDatabaseService.insertHistory(events);
+      debugPrint('Successfully inserted ${events.length} history events');
+    } catch (e) {
+      debugPrint('Error inserting history events: $e');
+      // Implement proper error handling
+    }
   }
 
   Future<List<Events>> getHistory() async {
-    return await historyDatabaseService.getListHistory();
+    try {
+      return await historyDatabaseService.getListHistory();
+    } catch (e) {
+      debugPrint('Error fetching history events: $e');
+      return [];
+    }
   }
 
   //History Pending offline
@@ -69,14 +148,27 @@ class OfflineProvider extends ChangeNotifier {
   }
 
   void initialize() async {
-    _attendanceBox = Hive.box<AttendanceRecord>('pending_attendance');
-    _addAssignment = Hive.box<AddAssignmentRecord>('add_assignment');
-    _profileBox = Hive.box<UserProfileRecord>('user_profile');
-    _qrBox = Hive.box<QRRecord>('qr_profile');
+    try {
+      _attendanceBox =
+          await Hive.openBox<AttendanceRecord>('pending_attendance');
+      _addAssignment =
+          await Hive.openBox<AddAssignmentRecord>('add_assignment');
+      _profileBox = await Hive.openBox<UserProfileRecord>('user_profile');
+      _qrBox = await Hive.openBox<QRRecord>('qr_profile');
+
+      await initializeCalendar();
+      await initializeHistory();
+
+      debugPrint('All databases initialized successfully');
+    } catch (e) {
+      debugPrint('Error initializing databases: $e');
+      // Implement proper error handling
+    }
   }
 
   Future<void> autoOffline(bool offline) async {
     isOfflineService.value = offline;
+    notifyListeners();
   }
 
   Future<void> addPendingAttendance(AttendanceRecord record) async {
@@ -187,7 +279,8 @@ class OfflineProvider extends ChangeNotifier {
         return true;
       } else {
         if (kDebugMode) {
-          print('Failed to sync attendance: ${response.statusCode} - ${response.reasonPhrase}');
+          print(
+              'Failed to sync attendance: ${response.statusCode} - ${response.reasonPhrase}');
         }
         return false;
       }
@@ -214,12 +307,15 @@ class OfflineProvider extends ChangeNotifier {
     request.fields['descriptions'] = record.descriptions;
     request.fields['status_id'] = record.statusId;
 
-    List<Map<String, String>> membersDetails = record.members.map((member) => {"employee_id": member['employee_id'].toString()}).toList();
+    List<Map<String, String>> membersDetails = record.members
+        .map((member) => {"employee_id": member['employee_id'].toString()})
+        .toList();
     request.fields['memberDetails'] = jsonEncode(membersDetails);
 
     // If there's an image
     if (record.imagePath != null) {
-      final mimeType = lookupMimeType(record.imagePath!) ?? 'application/octet-stream';
+      final mimeType =
+          lookupMimeType(record.imagePath!) ?? 'application/octet-stream';
       final mimeSplit = mimeType.split('/');
       request.files.add(
         await http.MultipartFile.fromPath(
@@ -242,5 +338,15 @@ class OfflineProvider extends ChangeNotifier {
     }
 
     return false;
+  }
+
+  @override
+  void dispose() {
+    // Close databases properly
+    _calendarDb?.close();
+    _historyDb?.close();
+    _calendarDb = null;
+    _historyDb = null;
+    super.dispose();
   }
 }

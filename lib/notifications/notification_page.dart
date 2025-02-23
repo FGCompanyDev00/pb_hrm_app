@@ -449,7 +449,7 @@ class NotificationPageState extends State<NotificationPage> {
   /// Builds the header section with background image and title.
   Widget _buildHeader(bool isDarkMode, Size screenSize) {
     return Container(
-      height: screenSize.height * 0.18,
+      height: screenSize.height * 0.17,
       width: double.infinity,
       decoration: BoxDecoration(
         image: DecorationImage(
@@ -600,55 +600,37 @@ class NotificationPageState extends State<NotificationPage> {
   }
 
   /// Builds each item card for Meeting or Approval.
-  Widget _buildItemCard(BuildContext context, Map<String, dynamic> item, {required bool isHistory, required Size screenSize}) {
+  Widget _buildItemCard(BuildContext context, Map<String, dynamic> item,
+      {required bool isHistory, required Size screenSize}) {
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
-    String title = '';
     String type = (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
     String status = (item['status']?.toString() ?? 'Pending').trim();
     String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
     String requestorName = (item['requestor_name']?.toString() ?? 'N/A').trim();
 
-    // **Title Customization**
-    if (type == 'meeting') {
-      title = "Meeting and Booking Meeting Room";
-    } else if (type == 'out-meeting') {
-      title = "Meeting";
-    } else {
-      title = item['title']?.toString() ?? 'No Title';
-    }
-
-    if (status.toLowerCase() == 'branch approved') {
-      status = 'Approved';
-    } else if (status.toLowerCase() == 'branch waiting') {
-      status = 'Waiting';
-    }
+    if (status.toLowerCase() == 'branch approved') status = 'Approved';
+    else if (status.toLowerCase() == 'branch waiting') status = 'Waiting';
 
     String id = (item['uid']?.toString() ?? '').trim();
-    if (id.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (id.isEmpty) return const SizedBox.shrink();
 
     String imgName = item['img_name']?.toString().trim() ?? '';
     String imgPath = item['img_path']?.toString().trim() ?? '';
 
-    // Determine the employee image URL
-    String employeeImage;
-    if (imgPath.isNotEmpty && imgPath.startsWith('http')) {
-      employeeImage = imgPath;
-    } else if (imgName.isNotEmpty && imgName.startsWith('http')) {
-      employeeImage = imgName;
-    } else if (imgName.isNotEmpty) {
-      employeeImage = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/$imgName';
-    } else {
-      employeeImage = 'https://via.placeholder.com/150'; // Placeholder
-    }
+    // Determine employee image URL
+    String employeeImage = (imgPath.isNotEmpty && imgPath.startsWith('http'))
+        ? imgPath
+        : (imgName.isNotEmpty && imgName.startsWith('http'))
+        ? imgName
+        : 'https://via.placeholder.com/150';
 
     Color typeColor = _getTypeColor(type);
     Color statusColor = _getStatusColor(status);
     IconData typeIcon = _getIconForType(type);
 
+    String title = '';
     String startDate = '';
     String endDate = '';
     String detailLabel = '';
@@ -659,12 +641,12 @@ class NotificationPageState extends State<NotificationPage> {
         title = item['title']?.toString() ?? 'No Title';
         startDate = item['from_date_time']?.toString() ?? '';
         endDate = item['to_date_time']?.toString() ?? '';
-        detailLabel = 'Employee Name';
+        detailLabel = 'Employee';
         detailValue = employeeName;
         break;
       case 'leave':
         int leaveTypeId = item['leave_type_id'] ?? 0;
-        title = _leaveTypesMap[leaveTypeId] ?? 'Unknown Leave Type';
+        title = _leaveTypesMap[leaveTypeId] ?? 'Unknown Leave';
         startDate = item['take_leave_from']?.toString() ?? '';
         endDate = item['take_leave_to']?.toString() ?? '';
         detailLabel = 'Leave Type';
@@ -674,7 +656,7 @@ class NotificationPageState extends State<NotificationPage> {
         title = item['purpose']?.toString() ?? 'No Purpose';
         startDate = item['date_out']?.toString() ?? '';
         endDate = item['date_in']?.toString() ?? '';
-        detailLabel = 'Requestor Name';
+        detailLabel = 'Requestor';
         detailValue = requestorName;
         break;
     }
@@ -688,201 +670,128 @@ class NotificationPageState extends State<NotificationPage> {
           return;
         }
 
-        // Check if it is a meeting and determine whether it's from the Approval or Meeting section
-        if (type == 'meeting') {
-          if (_isMeetingSelected) {
-            // If it's from the Meeting section, open NotificationMeetingDetailsPage
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => NotificationMeetingDetailsPage(id: id),
-              ),
-            );
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => type == 'meeting' && _isMeetingSelected
+                ? NotificationMeetingDetailsPage(id: id)
+                : ApprovalsDetailsPage(id: id, type: type),
+          ),
+        );
 
-            if (result == true) {
-              _fetchInitialData();
-            }
-          } else {
-            // If it's from the Approval section, open NotificationDetailPage
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ApprovalsDetailsPage(
-                  id: id,
-                  type: type,
-                ),
-              ),
-            );
-
-            if (result == true) {
-              _fetchInitialData();
-            }
-          }
-        } else {
-          // For other types like 'leave', 'car', etc., open NotificationDetailPage
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => NotificationDetailPage(id: id, type: type),
-            ),
-          );
-
-          if (result == true) {
-            _fetchInitialData();
-          }
-        }
+        if (result == true) _fetchInitialData();
       },
       child: Card(
-        color: isDarkMode ? Colors.grey[850] : Colors.white, // Dark mode card background
+        color: isDarkMode ? Colors.grey[850] : Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(screenSize.width * 0.03),
-          side: BorderSide(color: typeColor, width: screenSize.width * 0.002),
+          borderRadius: BorderRadius.circular(screenSize.width * 0.04),
+          side: BorderSide(color: typeColor, width: screenSize.width * 0.003),
         ),
-        elevation: 1.5,
-        margin: EdgeInsets.symmetric(vertical: screenSize.height * 0.008),
-        child: Stack(
-          children: [
-            Positioned(
-              top: screenSize.height * 0.01,
-              bottom: screenSize.height * 0.01,
-              left: screenSize.width * 0.005,
-              child: Container(
-                width: screenSize.width * 0.005,
-                color: typeColor,
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(
-                vertical: screenSize.height * 0.01,
-                horizontal: screenSize.width * 0.03,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        typeIcon,
+        margin: EdgeInsets.symmetric(vertical: screenSize.height * 0.005),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            vertical: screenSize.height * 0.008,
+            horizontal: screenSize.width * 0.025,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Fixed Icon Section to maintain alignment
+              SizedBox(
+                width: screenSize.width * 0.12,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(typeIcon, color: typeColor, size: screenSize.width * 0.06),
+                    SizedBox(height: screenSize.height * 0.002),
+                    Text(
+                      type[0].toUpperCase() + type.substring(1),
+                      style: TextStyle(
                         color: typeColor,
-                        size: screenSize.width * 0.07,
+                        fontSize: screenSize.width * 0.028,
+                        fontWeight: FontWeight.bold,
                       ),
-                      SizedBox(height: screenSize.height * 0.003),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: screenSize.width * 0.02),
+
+              // Information Column
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                        fontSize: screenSize.width * 0.033,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: screenSize.height * 0.003),
+                    if (startDate.isNotEmpty && endDate.isNotEmpty)
                       Text(
-                        type[0].toUpperCase() + type.substring(1),
+                        '${_formatDate(startDate)} → ${_formatDate(endDate)}',
                         style: TextStyle(
-                          color: typeColor,
-                          fontSize: screenSize.width * 0.03,
-                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                          fontSize: screenSize.width * 0.028,
                         ),
                       ),
-                    ],
-                  ),
-                  SizedBox(width: screenSize.width * 0.03),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    SizedBox(height: screenSize.height * 0.002),
+                    Text(
+                      '$detailLabel: $detailValue',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                        fontSize: screenSize.width * 0.028,
+                      ),
+                    ),
+                    SizedBox(height: screenSize.height * 0.005),
+                    Row(
                       children: [
                         Text(
-                          title,
+                          'Status: ',
                           style: TextStyle(
+                            fontSize: screenSize.width * 0.028,
+                            fontWeight: FontWeight.bold,
                             color: isDarkMode ? Colors.white : Colors.black,
-                            fontSize: screenSize.width * 0.04,
-                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        SizedBox(height: screenSize.height * 0.003),
-                        Text(
-                          'Date: ${_formatDate(startDate)}',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
-                            fontSize: screenSize.width * 0.03,
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenSize.width * 0.012,
+                            vertical: screenSize.height * 0.002,
                           ),
-                        ),
-                        Text(
-                          'To: ${_formatDate(endDate)}',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
-                            fontSize: screenSize.width * 0.03,
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            borderRadius: BorderRadius.circular(screenSize.width * 0.015),
                           ),
-                        ),
-                        SizedBox(height: screenSize.height * 0.003),
-                        Text(
-                          '$detailLabel: $detailValue',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
-                            fontSize: screenSize.width * 0.03,
-                          ),
-                        ),
-                        SizedBox(height: screenSize.height * 0.003),
-                        Row(
-                          children: [
-                            Text(
-                              'Status: ',
-                              style: TextStyle(
-                                color: isDarkMode ? Colors.white : Colors.black,
-                                fontWeight: FontWeight.bold,
-                                fontSize: screenSize.width * 0.03,
-                              ),
+                          child: Text(
+                            status[0].toUpperCase() + status.substring(1),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: screenSize.width * 0.028,
                             ),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: screenSize.width * 0.015,
-                                vertical: screenSize.height * 0.003,
-                              ),
-                              decoration: BoxDecoration(
-                                color: statusColor,
-                                borderRadius: BorderRadius.circular(
-                                  screenSize.width * 0.03,
-                                ),
-                              ),
-                              child: Text(
-                                status[0].toUpperCase() + status.substring(1),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: screenSize.width * 0.03,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  right: screenSize.width * 0.015,
-                  bottom: screenSize.height * 0.02,
-                ),
-                child: CircleAvatar(
-                  radius: screenSize.width * 0.07,
-                  backgroundColor: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
-                  child: ClipOval(
-                    child: Image.network(
-                      employeeImage,
-                      width: screenSize.width * 0.14,
-                      height: screenSize.width * 0.14,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(
-                          Icons.person,
-                          color: isDarkMode ? Colors.white : Colors.grey.shade600,
-                          size: screenSize.width * 0.07,
-                        );
-                      },
-                    ),
-                  ),
+                  ],
                 ),
               ),
-            ),
-          ],
+              SizedBox(width: screenSize.width * 0.015),
+
+              // Profile Image
+              CircleAvatar(
+                radius: screenSize.width * 0.05,
+                backgroundColor: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
+                backgroundImage: NetworkImage(employeeImage),
+              ),
+            ],
+          ),
         ),
       ),
     );

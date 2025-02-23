@@ -92,21 +92,28 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
         },
       );
 
-      debugPrint('Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
+      debugPrint(
+          'Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
 
       if (leaveTypesResponse.statusCode == 200) {
         final responseBody = jsonDecode(leaveTypesResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
           final List<dynamic> leaveTypesData = responseBody['results'];
           setState(() {
-            _leaveTypesMap = {for (var item in leaveTypesData) item['leave_type_id'] as int: item['name'].toString()};
+            _leaveTypesMap = {
+              for (var item in leaveTypesData)
+                item['leave_type_id'] as int: item['name'].toString()
+            };
           });
           debugPrint('Leave types loaded: $_leaveTypesMap');
         } else {
-          throw Exception(responseBody['message'] ?? 'Failed to load leave types');
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load leave types');
         }
       } else {
-        throw Exception('Failed to load leave types: ${leaveTypesResponse.statusCode}');
+        throw Exception(
+            'Failed to load leave types: ${leaveTypesResponse.statusCode}');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching leave types: $e');
@@ -140,32 +147,45 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
         },
       );
 
-      debugPrint('Fetching pending items: Status Code ${pendingResponse.statusCode}');
+      debugPrint(
+          'Fetching pending items: Status Code ${pendingResponse.statusCode}');
 
       if (pendingResponse.statusCode == 200) {
         final responseBody = jsonDecode(pendingResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
           final List<dynamic> pendingData = responseBody['results'];
 
           // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = pendingData.where((item) => item != null).map((item) => Map<String, dynamic>.from(item)).where((item) => item['types'] != null && _knownTypes.contains(item['types'].toString().toLowerCase())).toList();
+          final List<Map<String, dynamic>> filteredData = pendingData
+              .where((item) => item != null)
+              .map((item) => Map<String, dynamic>.from(item))
+              .where((item) =>
+                  item['types'] != null &&
+                  _knownTypes.contains(item['types'].toString().toLowerCase()))
+              .toList();
 
           // Sort the filtered data by 'updated_at' in descending order
           filteredData.sort((a, b) {
-            DateTime aDate = DateTime.tryParse(a['updated_at'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-            DateTime bDate = DateTime.tryParse(b['updated_at'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+            DateTime aDate = DateTime.tryParse(a['updated_at'] ?? '') ??
+                DateTime.fromMillisecondsSinceEpoch(0);
+            DateTime bDate = DateTime.tryParse(b['updated_at'] ?? '') ??
+                DateTime.fromMillisecondsSinceEpoch(0);
             return bDate.compareTo(aDate); // Descending order
           });
 
           setState(() {
             _pendingItems = filteredData;
           });
-          debugPrint('Pending items loaded and sorted: ${_pendingItems.length} items.');
+          debugPrint(
+              'Pending items loaded and sorted: ${_pendingItems.length} items.');
         } else {
-          throw Exception(responseBody['message'] ?? 'Failed to load pending data');
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load pending data');
         }
       } else {
-        throw Exception('Failed to load pending data: ${pendingResponse.statusCode}');
+        throw Exception(
+            'Failed to load pending data: ${pendingResponse.statusCode}');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching pending data: $e');
@@ -199,32 +219,45 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
         },
       );
 
-      debugPrint('Fetching history items: Status Code ${historyResponse.statusCode}');
+      debugPrint(
+          'Fetching history items: Status Code ${historyResponse.statusCode}');
 
       if (historyResponse.statusCode == 200) {
         final responseBody = jsonDecode(historyResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
           final List<dynamic> historyData = responseBody['results'];
 
           // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = historyData.where((item) => item != null).map((item) => Map<String, dynamic>.from(item)).where((item) => item['types'] != null && _knownTypes.contains(item['types'].toString().toLowerCase())).toList();
+          final List<Map<String, dynamic>> filteredData = historyData
+              .where((item) => item != null)
+              .map((item) => Map<String, dynamic>.from(item))
+              .where((item) =>
+                  item['types'] != null &&
+                  _knownTypes.contains(item['types'].toString().toLowerCase()))
+              .toList();
 
           // Sort the filtered data by 'updated_at' in descending order
           filteredData.sort((a, b) {
-            DateTime aDate = DateTime.tryParse(a['updated_at'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
-            DateTime bDate = DateTime.tryParse(b['updated_at'] ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+            DateTime aDate = DateTime.tryParse(a['updated_at'] ?? '') ??
+                DateTime.fromMillisecondsSinceEpoch(0);
+            DateTime bDate = DateTime.tryParse(b['updated_at'] ?? '') ??
+                DateTime.fromMillisecondsSinceEpoch(0);
             return bDate.compareTo(aDate); // Descending order
           });
 
           setState(() {
             _historyItems = filteredData;
           });
-          debugPrint('History items loaded and sorted: ${_historyItems.length} items.');
+          debugPrint(
+              'History items loaded and sorted: ${_historyItems.length} items.');
         } else {
-          throw Exception(responseBody['message'] ?? 'Failed to load history data');
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load history data');
         }
       } else {
-        throw Exception('Failed to load history data: ${historyResponse.statusCode}');
+        throw Exception(
+            'Failed to load history data: ${historyResponse.statusCode}');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching history data: $e');
@@ -377,7 +410,8 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
   /// Builds the tab bar for toggling between Approvals and History.
   Widget _buildTabBar(Size screenSize) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark; // Check if dark mode is enabled
+    final isDarkMode = Theme.of(context).brightness ==
+        Brightness.dark; // Check if dark mode is enabled
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -401,8 +435,12 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                 ),
                 decoration: BoxDecoration(
                   color: _isPendingSelected
-                      ? (isDarkMode ? Colors.orangeAccent : Colors.amber) // Adjust for dark mode
-                      : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
+                      ? (isDarkMode
+                          ? Colors.orangeAccent
+                          : Colors.amber) // Adjust for dark mode
+                      : (isDarkMode
+                          ? Colors.grey.shade700
+                          : Colors.grey.shade300),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -415,13 +453,21 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                       'assets/pending.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: _isPendingSelected ? (isDarkMode ? Colors.white : Colors.white) : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                      color: _isPendingSelected
+                          ? (isDarkMode ? Colors.white : Colors.white)
+                          : (isDarkMode
+                              ? Colors.grey.shade300
+                              : Colors.grey.shade600),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Approvals',
                       style: TextStyle(
-                        color: _isPendingSelected ? (isDarkMode ? Colors.white : Colors.white) : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                        color: _isPendingSelected
+                            ? (isDarkMode ? Colors.white : Colors.white)
+                            : (isDarkMode
+                                ? Colors.grey.shade300
+                                : Colors.grey.shade600),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -447,8 +493,12 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                 ),
                 decoration: BoxDecoration(
                   color: !_isPendingSelected
-                      ? (isDarkMode ? Colors.orangeAccent : Colors.amber) // Adjust for dark mode
-                      : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
+                      ? (isDarkMode
+                          ? Colors.orangeAccent
+                          : Colors.amber) // Adjust for dark mode
+                      : (isDarkMode
+                          ? Colors.grey.shade700
+                          : Colors.grey.shade300),
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(20.0),
                     bottomRight: Radius.circular(20.0),
@@ -461,13 +511,21 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                       'assets/history.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: !_isPendingSelected ? (isDarkMode ? Colors.white : Colors.white) : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                      color: !_isPendingSelected
+                          ? (isDarkMode ? Colors.white : Colors.white)
+                          : (isDarkMode
+                              ? Colors.grey.shade300
+                              : Colors.grey.shade600),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'History',
                       style: TextStyle(
-                        color: !_isPendingSelected ? (isDarkMode ? Colors.white : Colors.white) : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                        color: !_isPendingSelected
+                            ? (isDarkMode ? Colors.white : Colors.white)
+                            : (isDarkMode
+                                ? Colors.grey.shade300
+                                : Colors.grey.shade600),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -483,12 +541,14 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
   }
 
   /// Builds each item card for Approvals or History.
-  Widget _buildItemCard(BuildContext context, Map<String, dynamic> item, {required bool isHistory, required Size screenSize}) {
+  Widget _buildItemCard(BuildContext context, Map<String, dynamic> item,
+      {required bool isHistory, required Size screenSize}) {
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     String type = (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
     String status = (item['status']?.toString() ?? item['is_approve']?.toString() ?? 'Pending').trim();
+
     if (status == 'Branch Waiting') status = 'Waiting';
     else if (status == 'Branch Approved') status = 'Approved';
 
@@ -516,11 +576,11 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
       case 'meeting':
         title = item['title']?.toString() ?? 'No Title';
         dateRange = _formatDateRange(item['from_date_time'], item['to_date_time']);
-        detailLabel = 'Employee Name';
+        detailLabel = 'Employee';
         detailValue = employeeName;
         break;
       case 'leave':
-        title = _leaveTypesMap[item['leave_type_id']] ?? 'Unknown Leave Type';
+        title = _leaveTypesMap[item['leave_type_id']] ?? 'Unknown Leave';
         dateRange = _formatDateRange(item['take_leave_from'], item['take_leave_to'], alwaysShowTime: true);
         detailLabel = 'Leave Type';
         detailValue = title;
@@ -528,24 +588,16 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
       case 'car':
         title = item['purpose']?.toString() ?? 'No Purpose';
         dateRange = _formatDateRange('${item['date_in']} ${item['time_in']}', '${item['date_out']} ${item['time_out']}');
-        detailLabel = 'Requestor Name';
+        detailLabel = 'Requestor';
         detailValue = requestorName;
         break;
     }
 
     return GestureDetector(
       onTap: () {
-        String itemId = '';
-
-        switch (type) {
-          case 'leave':
-            itemId = item['take_leave_request_id']?.toString() ?? '';
-            break;
-          case 'meeting':
-          case 'car':
-            itemId = item['uid']?.toString() ?? '';
-            break;
-        }
+        String itemId = (type == 'leave')
+            ? item['take_leave_request_id']?.toString() ?? ''
+            : item['uid']?.toString() ?? '';
 
         if (itemId.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -557,10 +609,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ApprovalsDetailsPage(
-              id: itemId,
-              type: type,
-            ),
+            builder: (context) => ApprovalsDetailsPage(id: itemId, type: type),
           ),
         );
       },
@@ -568,133 +617,154 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
         color: isDarkMode ? Colors.grey.shade900 : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(screenSize.width * 0.04),
-          side: BorderSide(color: typeColor, width: screenSize.width * 0.002),
+          side: BorderSide(color: typeColor, width: screenSize.width * 0.003),
         ),
-        elevation: 1.5,
-        margin: EdgeInsets.symmetric(vertical: screenSize.height * 0.004),
-        child: Stack(
-          children: [
-            Positioned(
-              top: screenSize.height * 0.01,
-              bottom: screenSize.height * 0.01,
-              left: screenSize.width * 0.001,
-              child: Container(
-                width: screenSize.width * 0.008,
-                color: typeColor,
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(
-                vertical: screenSize.height * 0.01,
-                horizontal: screenSize.width * 0.03,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        typeIcon,
+        margin: EdgeInsets.symmetric(vertical: screenSize.height * 0.006),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            vertical: screenSize.height * 0.007,
+            horizontal: screenSize.width * 0.025,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Fixed-sized Icon Section to align properly
+              SizedBox(
+                width: screenSize.width * 0.12,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(typeIcon, color: typeColor, size: screenSize.width * 0.06),
+                    SizedBox(height: screenSize.height * 0.002),
+                    Text(
+                      type[0].toUpperCase() + type.substring(1),
+                      style: TextStyle(
                         color: typeColor,
-                        size: screenSize.width * 0.07,
+                        fontSize: screenSize.width * 0.028,
+                        fontWeight: FontWeight.bold,
                       ),
-                      SizedBox(height: screenSize.height * 0.003),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: screenSize.width * 0.02),
+
+              // Information Column
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white : Colors.black,
+                        fontSize: screenSize.width * 0.033,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (dateRange.isNotEmpty)
                       Text(
-                        type[0].toUpperCase() + type.substring(1),
+                        dateRange,
                         style: TextStyle(
-                          color: typeColor,
-                          fontSize: screenSize.width * 0.03,
-                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                          fontSize: screenSize.width * 0.028,
                         ),
                       ),
-                    ],
-                  ),
-                  SizedBox(width: screenSize.width * 0.03),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    SizedBox(height: screenSize.height * 0.003),
+                    Text(
+                      '$detailLabel: $detailValue',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                        fontSize: screenSize.width * 0.028,
+                      ),
+                    ),
+                    SizedBox(height: screenSize.height * 0.006),
+                    Row(
                       children: [
                         Text(
-                          title,
+                          'Status: ',
                           style: TextStyle(
+                            fontSize: screenSize.width * 0.028,
+                            fontWeight: FontWeight.bold,
                             color: isDarkMode ? Colors.white : Colors.black,
-                            fontSize: screenSize.width * 0.035,
-                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        SizedBox(height: screenSize.height * 0.004),
-                        if (dateRange.isNotEmpty)
-                          Text(
-                            'Date: $dateRange',
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenSize.width * 0.012,
+                            vertical: screenSize.height * 0.002,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            borderRadius: BorderRadius.circular(screenSize.width * 0.015),
+                          ),
+                          child: Text(
+                            status[0].toUpperCase() + status.substring(1),
                             style: TextStyle(
-                              color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
-                              fontSize: screenSize.width * 0.03,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: screenSize.width * 0.028,
                             ),
                           ),
-                        SizedBox(height: screenSize.height * 0.004),
-                        Text(
-                          '$detailLabel: $detailValue',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
-                            fontSize: screenSize.width * 0.03,
-                          ),
-                        ),
-                        SizedBox(height: screenSize.height * 0.008),
-                        Row(
-                          children: [
-                            Text(
-                              'Status: ',
-                              style: TextStyle(
-                                color: isDarkMode ? Colors.white : Colors.black,
-                                fontWeight: FontWeight.bold,
-                                fontSize: screenSize.width * 0.03,
-                              ),
-                            ),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: screenSize.width * 0.015,
-                                vertical: screenSize.height * 0.003,
-                              ),
-                              decoration: BoxDecoration(
-                                color: statusColor,
-                                borderRadius: BorderRadius.circular(screenSize.width * 0.03),
-                              ),
-                              child: Text(
-                                status[0].toUpperCase() + status.substring(1),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: screenSize.width * 0.03,
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
-                  ),
-                  SizedBox(width: screenSize.width * 0.02),
-                  CircleAvatar(
-                    radius: screenSize.width * 0.06,
-                    backgroundColor: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
-                    backgroundImage: NetworkImage(employeeImage),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+              SizedBox(width: screenSize.width * 0.015),
+
+              // Profile Image
+              CircleAvatar(
+                radius: screenSize.width * 0.05,
+                backgroundColor: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
+                backgroundImage: NetworkImage(employeeImage),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  String _formatDateRange(String? start, String? end, {bool alwaysShowTime = false}) {
+  String _formatDateRange(String? start, String? end,
+      {bool alwaysShowTime = false}) {
     String formatDateTime(String? dateTime, bool forceTime) {
       if (dateTime == null || dateTime.isEmpty) return '';
 
       try {
-        DateTime parsedDate = DateTime.parse(dateTime);
+        // First try to parse with standard format
+        DateTime? parsedDate;
+
+        // Handle different date formats
+        if (dateTime.contains('T')) {
+          // ISO format
+          parsedDate = DateTime.parse(dateTime);
+        } else {
+          // Custom format YYYY-M-DD HH:mm
+          final parts = dateTime.split(' ');
+          if (parts.length == 2) {
+            final dateParts = parts[0].split('-');
+            final timeParts = parts[1].split(':');
+
+            if (dateParts.length == 3 && timeParts.length >= 2) {
+              parsedDate = DateTime(
+                  int.parse(dateParts[0]), // year
+                  int.parse(dateParts[1]), // month
+                  int.parse(dateParts[2]), // day
+                  int.parse(timeParts[0]), // hour
+                  int.parse(timeParts[1]), // minute
+                  timeParts.length > 2 ? int.parse(timeParts[2]) : 0 // seconds
+                  );
+            }
+          }
+        }
+
+        if (parsedDate == null) {
+          debugPrint('Could not parse date: $dateTime');
+          return '';
+        }
 
         // If forceTime is false and the time is 00:00, remove it
         if (!forceTime && parsedDate.hour == 0 && parsedDate.minute == 0) {

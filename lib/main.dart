@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:back_button_interceptor/back_button_interceptor.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -44,24 +45,61 @@ import 'firebase_options.dart';
 /// ------------------------------------------------------------
 /// 1) Global instance of FlutterLocalNotificationsPlugin
 /// ------------------------------------------------------------
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
 // Initialize Logger with a custom filter for production
-final Logger logger = Logger(
-  printer: PrettyPrinter(),
-  filter: ProductionFilter(),
-);
+final Logger logger =
+    Logger(printer: PrettyPrinter(), filter: ProductionFilter());
 
 const FlutterSecureStorage secureStorage = FlutterSecureStorage();
+
+/// Cache for frequently accessed data
+class AppCache {
+  static final AppCache _instance = AppCache._internal();
+  factory AppCache() => _instance;
+  AppCache._internal();
+
+  String? baseUrl;
+  String? deviceToken;
+  Map<String, dynamic> userSettings = {};
+
+  // Add cache for commonly used values
+  final Map<String, dynamic> _cache = {};
+  final Duration _cacheDuration = const Duration(minutes: 15);
+
+  void set(String key, dynamic value) {
+    _cache[key] = {
+      'value': value,
+      'timestamp': DateTime.now(),
+    };
+  }
+
+  dynamic get(String key) {
+    final item = _cache[key];
+    if (item == null) return null;
+
+    final timestamp = item['timestamp'] as DateTime;
+    if (DateTime.now().difference(timestamp) > _cacheDuration) {
+      _cache.remove(key);
+      return null;
+    }
+
+    return item['value'];
+  }
+
+  void clear() => _cache.clear();
+}
+
+final appCache = AppCache();
 
 /// ------------------------------------------------------------
 /// 2) Firebase Messaging background handler
 /// ------------------------------------------------------------
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  debugPrint("Firebase message received in background: ${message.messageId}");
   _showNotification(message);
 }
 
@@ -69,83 +107,171 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// 3) Show notification function for push notifications
 /// ------------------------------------------------------------
 Future<void> _showNotification(RemoteMessage message) async {
-  RemoteNotification? notification = message.notification;
-  if (notification != null) {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+  if (!Platform.isIOS && !Platform.isAndroid)
+    return; // Early return for unsupported platforms
+
+  debugPrint("Notification received: ${message.notification?.title}");
+  final notification = message.notification;
+  if (notification == null) {
+    debugPrint("No notification data found in message");
+    return;
+  }
+
+  final platformChannelSpecifics = NotificationDetails(
+    android: const AndroidNotificationDetails(
       'psbv_next_notification',
       'PSBV Next',
       channelDescription: 'Notifications',
       importance: Importance.high,
       priority: Priority.high,
-    );
-    const DarwinNotificationDetails iOSDetails = DarwinNotificationDetails();
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidDetails,
-      iOS: iOSDetails,
-    );
-    await flutterLocalNotificationsPlugin.show(
-      notification.hashCode,
-      notification.title,
-      notification.body,
-      platformChannelSpecifics,
-      payload: message.data.toString(),
-    );
-  }
+      enableVibration: true,
+      playSound: true,
+    ),
+    iOS: const DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      interruptionLevel: InterruptionLevel.timeSensitive,
+    ),
+  );
+
+  await flutterLocalNotificationsPlugin.show(
+    notification.hashCode,
+    notification.title,
+    notification.body,
+    platformChannelSpecifics,
+    payload: message.data.toString(),
+  );
 }
 
-void main() async {
+Future<void> _initializeApp() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } catch (e) {
-    debugPrint("Firebase initialization failed: $e");
-  }
+  // Create a list to hold all initialization futures
+  final List<Future> initializationTasks = [
+    // Firebase initialization with error handling
+    Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)
+        .catchError((e) {
+      debugPrint("Firebase initialization failed: $e");
+      return null;
+    }),
 
-  // Run entire app inside runZonedGuarded:
-  runZonedGuarded(() async {
-    try {
-      await dotenv.load(fileName: ".env.demo"); // Please change to ".env.production" for release
-    } catch (e) {
+    // Environment loading with error handling
+    dotenv.load(fileName: ".env.demo").catchError((e) {
       debugPrint("Error loading .env file: $e");
-    }
+      return null;
+    }),
 
-    debugPrint("BASE_URL Loaded: ${dotenv.env['BASE_URL']}");
+    // Hive initialization
+    _initializeHiveOptimized(),
 
-    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    // System orientation
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
+  ];
 
-    // Initialize secure HTTP client
-    final Dio dio = createSecureDio();
-    sl.registerSingleton<Dio>(dio);
+  // Wait for all initialization tasks to complete concurrently
+  await Future.wait(initializationTasks, eagerError: false)
+      .catchError((e) => debugPrint("Initialization error: $e"));
 
-    // Setup service locator
-    try {
-      await setupServiceLocator();
-    } catch (e) {
-      if (kDebugMode) {
-        logger.e("Error during service locator setup: $e");
-      }
-    }
-    await initializeHive();
-    sl<OfflineProvider>().initializeCalendar();
+  // Cache base URL after environment is loaded
+  appCache.baseUrl = dotenv.env['BASE_URL'];
 
-    // Initialize local notifications
-    await _initializeLocalNotifications();
+  // Initialize remaining services concurrently
+  await Future.wait([
+    _initializeServices(),
+    _initializeNotifications(),
+  ], eagerError: false);
+}
 
-    // Register Firebase Messaging background handler
+Future<void> _initializeServices() async {
+  // Initialize Dio with optimized settings
+  final dio = createSecureDio();
+  sl.registerSingleton<Dio>(dio);
+
+  // Initialize remaining services
+  await setupServiceLocator();
+  await sl<OfflineProvider>().initializeCalendar();
+}
+
+Future<void> _initializeNotifications() async {
+  await Future.wait([
+    _initializeLocalNotifications(),
+    _initializeFirebaseMessaging(),
+  ], eagerError: false);
+}
+
+Future<void> _initializeFirebaseMessaging() async {
+  // Request permissions
+  final settings = await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+    provisional: false,
+  );
+
+  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+    debugPrint('User granted permission');
+
+    // Register handlers
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-    // Listen for foreground messages and display notifications
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      debugPrint(
+          "Firebase message received in foreground: ${message.messageId}");
       _showNotification(message);
     });
 
-    // Listen for notification tap (when app is in background)
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint("Notification tapped: ${message.data}");
     });
+  }
+}
+
+Future<void> _initializeHiveOptimized() async {
+  await Hive.initFlutter();
+
+  // Register adapters sequentially to avoid type issues
+  Hive.registerAdapter(AttendanceRecordAdapter());
+  Hive.registerAdapter(AddAssignmentRecordAdapter());
+  Hive.registerAdapter(UserProfileRecordAdapter());
+  Hive.registerAdapter(QRRecordAdapter());
+
+  // Get encryption key
+  final storedKey = await secureStorage.read(key: 'hive_encryption_key');
+  final encryptionKey = storedKey != null
+      ? base64Url.decode(storedKey)
+      : encrypt.Key.fromSecureRandom(32).bytes;
+
+  if (storedKey == null) {
+    await secureStorage.write(
+      key: 'hive_encryption_key',
+      value: base64UrlEncode(encryptionKey),
+    );
+  }
+
+  final cipher = HiveAesCipher(encryptionKey);
+
+  // Open boxes concurrently with error handling
+  try {
+    await Future.wait<void>([
+      Hive.openBox<AttendanceRecord>('pending_attendance',
+          encryptionCipher: cipher),
+      Hive.openBox<AddAssignmentRecord>('add_assignment',
+          encryptionCipher: cipher),
+      Hive.openBox<UserProfileRecord>('user_profile', encryptionCipher: cipher),
+      Hive.openBox<QRRecord>('qr_profile', encryptionCipher: cipher),
+      Hive.openBox<String>('userProfileBox', encryptionCipher: cipher),
+      Hive.openBox<List<String>>('bannersBox', encryptionCipher: cipher),
+      Hive.openBox('loginBox', encryptionCipher: cipher),
+    ], eagerError: false);
+  } catch (e) {
+    debugPrint('Error opening Hive boxes: $e');
+  }
+}
+
+void main() {
+  runZonedGuarded(() async {
+    await _initializeApp();
 
     runApp(
       MultiProvider(
@@ -160,7 +286,6 @@ void main() async {
       ),
     );
   }, (error, stack) {
-    // Catch all global asynchronous errors here
     if (kDebugMode) {
       logger.e("Uncaught error: $error");
       logger.e(stack);
@@ -173,45 +298,59 @@ void main() async {
 /// ------------------------------------------
 Future<void> _initializeLocalNotifications() async {
   // For Android
-  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/playstore');
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/playstore');
 
   // For iOS
-  const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
+  final DarwinInitializationSettings initializationSettingsIOS =
+      DarwinInitializationSettings(
     requestAlertPermission: true,
     requestBadgePermission: true,
     requestSoundPermission: true,
+    onDidReceiveLocalNotification:
+        (int id, String? title, String? body, String? payload) async {
+      debugPrint(
+          'Received iOS local notification: id=$id, title=$title, body=$body');
+    },
   );
 
   // Combine settings
-  const InitializationSettings initializationSettings = InitializationSettings(
+  final InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
     iOS: initializationSettingsIOS,
   );
 
-  // Initialize the plugin without deprecated callbacks
+  // Initialize the plugin
   await flutterLocalNotificationsPlugin.initialize(
     initializationSettings,
-    onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
+    onDidReceiveNotificationResponse: (NotificationResponse response) {
+      debugPrint('Notification response received: ${response.payload}');
+    },
   );
 
-  // (Optional) Create an Android notification channel:
-  const AndroidNotificationChannel channel = AndroidNotificationChannel(
-    'psbv_next_notification',
-    'PSBV Next',
-    description: 'Notifications',
-    importance: Importance.high,
-  );
+  // Create notification channels for both platforms
+  if (Platform.isAndroid) {
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'psbv_next_notification',
+      'PSBV Next',
+      description: 'Notifications',
+      importance: Importance.high,
+    );
 
-  await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+  }
 }
 
 /// iOS < 10 local notification callback
 void onDidReceiveLocalNotification(
-    int id,
-    String? title,
-    String? body,
-    String? payload,
-    ) {
+  int id,
+  String? title,
+  String? body,
+  String? payload,
+) {
   debugPrint('iOS (<10) local notification: title=$title, body=$body');
 }
 
@@ -235,7 +374,8 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             primarySwatch: Colors.green,
             visualDensity: VisualDensity.adaptivePlatformDensity,
-            textTheme: GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme),
+            textTheme:
+                GoogleFonts.oxaniumTextTheme(Theme.of(context).textTheme),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
@@ -249,9 +389,9 @@ class MyApp extends StatelessWidget {
             scaffoldBackgroundColor: Colors.black,
             textTheme: GoogleFonts.oxaniumTextTheme(
               Theme.of(context).textTheme.apply(
-                bodyColor: Colors.white,
-                displayColor: Colors.white,
-              ),
+                    bodyColor: Colors.white,
+                    displayColor: Colors.white,
+                  ),
             ),
           ),
           themeMode: themeNotifier.currentTheme,
@@ -334,105 +474,120 @@ class MainScreen extends StatefulWidget {
 class MainScreenState extends State<MainScreen> {
   int _selectedIndex = 1;
   bool _enableConnection = false;
-  final List<GlobalKey<NavigatorState>> _navigatorKeys = List.generate(4, (index) => GlobalKey<NavigatorState>());
+  final List<GlobalKey<NavigatorState>> _navigatorKeys =
+      List.generate(4, (index) => GlobalKey<NavigatorState>());
+
+  // Add StreamSubscription for proper cleanup
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
     BackButtonInterceptor.add(_routeInterceptor);
     offlineProvider.initialize();
-    connectivityResult.onConnectivityChanged.listen((source) async {
-      Future.delayed(const Duration(seconds: 20)).whenComplete(() => _enableConnection = true);
-      if (_enableConnection) {
-        if (source.contains(ConnectivityResult.none)) {
-          showToast('No internet', Colors.red, Icons.mobiledata_off_rounded);
-          await offlineProvider.autoOffline(true);
-        }
-        if (source.contains(ConnectivityResult.wifi)) {
-          showToast('WiFi', Colors.green, Icons.wifi);
-          await offlineProvider.autoOffline(false);
-        }
-        if (source.contains(ConnectivityResult.mobile)) {
-          showToast('Internet', Colors.green, Icons.wifi);
-          await offlineProvider.autoOffline(false);
-        }
+
+    // Optimize connectivity listener
+    _initializeConnectivity();
+  }
+
+  Future<void> _initializeConnectivity() async {
+    // Delay enabling connection check
+    Future.delayed(const Duration(seconds: 20))
+        .then((_) => _enableConnection = true);
+
+    _connectivitySubscription =
+        connectivityResult.onConnectivityChanged.listen((source) async {
+      if (!_enableConnection) return;
+
+      if (!mounted) return;
+
+      if (source.contains(ConnectivityResult.none)) {
+        showToast('No internet', Colors.red, Icons.mobiledata_off_rounded);
+        await offlineProvider.autoOffline(true);
+      } else if (source.contains(ConnectivityResult.wifi) ||
+          source.contains(ConnectivityResult.mobile)) {
+        showToast(
+            source.contains(ConnectivityResult.wifi) ? 'WiFi' : 'Internet',
+            Colors.green,
+            Icons.wifi);
+        await offlineProvider.autoOffline(false);
       }
     });
   }
 
   @override
   void dispose() {
-    // Unregister the back button interceptor
+    _connectivitySubscription.cancel();
     BackButtonInterceptor.remove(_routeInterceptor);
     super.dispose();
   }
 
+  // Optimize route interceptor
   bool _routeInterceptor(bool stopDefaultButtonEvent, RouteInfo info) {
-    // Access the current context based on the selected navigator
-    BuildContext currentContext = _navigatorKeys[_selectedIndex].currentContext!;
+    if (!mounted) return false;
 
-    // Get the NavigatorState from the current context
-    var navigationState = Navigator.of(currentContext);
+    final currentContext = _navigatorKeys[_selectedIndex].currentContext;
+    if (currentContext == null) return false;
 
-    // If the keyboard is open, close it
+    // Check for keyboard first
     if (MediaQuery.of(currentContext).viewInsets.bottom > 0) {
       SystemChannels.textInput.invokeMethod('TextInput.hide');
-      return true; // Prevent default back button action
+      return true;
     }
 
+    final navigationState = Navigator.of(currentContext);
     if (navigationState.canPop()) {
       navigationState.pop();
-      return true; // Prevent default back button action
+      return true;
     }
-
-    // If at the root route, allow the default back button behavior (e.g., exit app)
     return false;
   }
 
-  void _onItemTapped(int index) async {
+  Future<bool> _onWillPop() async {
+    final navState = _navigatorKeys[_selectedIndex].currentState;
+    if (navState == null) return true;
+    return !await navState.maybePop();
+  }
+
+  // Optimize item tap handler
+  void _onItemTapped(int index) {
+    if (!mounted) return;
+
     if (index != _selectedIndex) {
-      setState(() {
-        _selectedIndex = index;
-      });
+      setState(() => _selectedIndex = index);
       if (index == 1) {
-        (HomeCalendarState() as Refreshable).refresh.call();
+        final homeCalendarState = HomeCalendarState();
+        if (homeCalendarState is Refreshable) {
+          homeCalendarState.refresh();
+        }
       }
     } else {
       _navigatorKeys[index].currentState?.popUntil((route) => route.isFirst);
     }
   }
 
-  Future<bool> _onWillPop() async {
-    return !await _navigatorKeys[_selectedIndex].currentState!.maybePop();
-  }
-
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      onPopInvokedWithResult: (e, result) => _onWillPop,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop && context.mounted) {
+          Navigator.pop(context);
+        }
+      },
       child: Scaffold(
         body: IndexedStack(
           index: _selectedIndex,
-          children: [
-            Navigator(
-              key: _navigatorKeys[0],
+          children: List.generate(
+            3,
+            (index) => Navigator(
+              key: _navigatorKeys[index],
               onGenerateRoute: (_) => MaterialPageRoute(
-                builder: (_) => const AttendanceScreen(),
+                builder: (_) => _buildScreen(index),
               ),
             ),
-            Navigator(
-              key: _navigatorKeys[1],
-              onGenerateRoute: (_) => MaterialPageRoute(
-                builder: (_) => const HomeCalendar(),
-              ),
-            ),
-            Navigator(
-              key: _navigatorKeys[2],
-              onGenerateRoute: (_) => MaterialPageRoute(
-                builder: (_) => const Dashboard(),
-              ),
-            ),
-          ],
+          ),
         ),
         bottomNavigationBar: CustomBottomNavBar(
           currentIndex: _selectedIndex,
@@ -441,64 +596,100 @@ class MainScreenState extends State<MainScreen> {
       ),
     );
   }
-}
 
-Future<void> initializeHive() async {
-  await Hive.initFlutter();
-  Hive.registerAdapter(AttendanceRecordAdapter());
-  Hive.registerAdapter(AddAssignmentRecordAdapter());
-  Hive.registerAdapter(UserProfileRecordAdapter());
-  Hive.registerAdapter(QRRecordAdapter());
-
-  final String? storedKey = await secureStorage.read(key: 'hive_encryption_key');
-  final List<int> encryptionKey = storedKey != null ? base64Url.decode(storedKey) : encrypt.Key.fromSecureRandom(32).bytes;
-  if (storedKey == null) {
-    final String encodedKey = base64UrlEncode(encryptionKey);
-    await secureStorage.write(key: 'hive_encryption_key', value: encodedKey);
+  Widget _buildScreen(int index) {
+    switch (index) {
+      case 0:
+        return const AttendanceScreen();
+      case 1:
+        return const HomeCalendar();
+      case 2:
+        return const Dashboard();
+      default:
+        return const SizedBox.shrink();
+    }
   }
-
-  final HiveAesCipher cipher = HiveAesCipher(encryptionKey);
-
-  await Future.wait([
-    Hive.openBox<AttendanceRecord>('pending_attendance', encryptionCipher: cipher),
-    Hive.openBox<AddAssignmentRecord>('add_assignment', encryptionCipher: cipher),
-    Hive.openBox<UserProfileRecord>('user_profile', encryptionCipher: cipher),
-    Hive.openBox<QRRecord>('qr_profile', encryptionCipher: cipher),
-    Hive.openBox<String>('userProfileBox', encryptionCipher: cipher),
-    Hive.openBox<List<String>>('bannersBox', encryptionCipher: cipher),
-    Hive.openBox('loginBox', encryptionCipher: cipher),
-  ]);
 }
 
 Dio createSecureDio() {
   final Dio dio = Dio();
 
+  // Optimize timeout settings and headers
   dio.options = BaseOptions(
-    connectTimeout: const Duration(seconds: 5),
-    receiveTimeout: const Duration(seconds: 3),
-    headers: {
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 30),
+    sendTimeout: const Duration(seconds: 30),
+    headers: const {
       HttpHeaders.contentTypeHeader: 'application/json',
+      'Accept': 'application/json',
     },
     responseType: ResponseType.json,
+    validateStatus: (status) => status != null && status < 500,
+    followRedirects: true,
+    maxRedirects: 5,
   );
 
-  // Interceptor to enforce HTTPS
-  dio.interceptors.add(
-    InterceptorsWrapper(
-      onRequest: (options, handler) {
-        if (!options.uri.isScheme('https')) {
-          return handler.reject(
-            DioException(
-              requestOptions: options,
-              error: 'HTTPS is required',
-              type: DioExceptionType.badResponse,
-            ),
-          );
-        }
-        return handler.next(options);
-      },
-    ),
-  );
+  // Add optimized interceptors
+  dio.interceptors.addAll([
+    _createRetryInterceptor(),
+    if (!kDebugMode) _createCacheInterceptor(),
+    _createSecurityInterceptor(),
+  ]);
 
   return dio;
+}
+
+Interceptor _createRetryInterceptor() {
+  return InterceptorsWrapper(
+    onError: (DioException error, handler) async {
+      if (error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.receiveTimeout) {
+        if ((error.requestOptions.extra['retryCount'] ?? 0) < 3) {
+          error.requestOptions.extra['retryCount'] =
+              (error.requestOptions.extra['retryCount'] ?? 0) + 1;
+
+          // Add exponential backoff
+          await Future.delayed(
+            Duration(
+                milliseconds:
+                    pow(2, error.requestOptions.extra['retryCount']).toInt() *
+                        1000),
+          );
+
+          return handler.resolve(await Dio().fetch(error.requestOptions));
+        }
+      }
+      return handler.next(error);
+    },
+  );
+}
+
+Interceptor _createCacheInterceptor() {
+  return InterceptorsWrapper(
+    onResponse: (response, handler) {
+      final headers = response.headers;
+      if (!headers.map.containsKey(HttpHeaders.cacheControlHeader)) {
+        headers.set(HttpHeaders.cacheControlHeader, 'public, max-age=300');
+      }
+      return handler.next(response);
+    },
+  );
+}
+
+Interceptor _createSecurityInterceptor() {
+  return InterceptorsWrapper(
+    onRequest: (options, handler) {
+      if (!options.uri.isScheme('https')) {
+        return handler.reject(
+          DioException(
+            requestOptions: options,
+            error: 'HTTPS is required',
+            type: DioExceptionType.badResponse,
+          ),
+        );
+      }
+      return handler.next(options);
+    },
+  );
 }

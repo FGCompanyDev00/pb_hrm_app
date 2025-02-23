@@ -662,7 +662,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     // Show them only if status is NOT "Approved", "Rejected", or "Deleted".
     final currentStatus = approvalData?['status']?.toString().toLowerCase() ?? '';
-    final canShowButtons = (currentStatus != 'approved' && currentStatus != 'disapproved' && currentStatus != 'deleted');
+    final canShowButtons = (currentStatus != 'approved' && currentStatus != 'disapproved' && currentStatus != 'deleted' && currentStatus != 'completed');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

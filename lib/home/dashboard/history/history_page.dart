@@ -188,8 +188,7 @@ class HistoryPageState extends State<HistoryPage> {
       'statusColor': _getStatusColor(_getItemStatus(type, item)),
       'icon': _getIconForType(type),
       'iconColor': _getTypeColor(type),
-      'updated_at':
-      DateTime.tryParse(item['updated_at'] ?? '') ??
+      'updated_at': DateTime.tryParse(item['updated_at'] ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
       'img_name': item['img_name'] ??
           'https://via.placeholder.com/150', // Placeholder image
@@ -202,8 +201,7 @@ class HistoryPageState extends State<HistoryPage> {
           'title': item['title'] ?? AppLocalizations.of(context)!.noTitle,
           'startDate': item['from_date_time'] ?? '',
           'endDate': item['to_date_time'] ?? '',
-          'room':
-          item['room_name'] ?? AppLocalizations.of(context)!.noRoomInfo,
+          'room': item['room_name'] ?? AppLocalizations.of(context)!.noRoomInfo,
           'employee_name': item['employee_name'] ?? 'N/A',
           'id': item['uid']?.toString() ?? '',
           'remark': item['remark'] ?? '',
@@ -224,7 +222,7 @@ class HistoryPageState extends State<HistoryPage> {
         break;
 
       case 'car':
-      // Combine date_out/time_out for 'From' and date_in/time_in for 'To'
+        // Combine date_out/time_out for 'From' and date_in/time_in for 'To'
         String? dateOut = item['date_in'];
         String? timeOut = item['time_out'];
         String startDateTimeStr = '';
@@ -239,8 +237,7 @@ class HistoryPageState extends State<HistoryPage> {
         }
 
         formattedItem.addAll({
-          'title':
-          item['purpose'] ?? AppLocalizations.of(context)!.noPurpose,
+          'title': item['purpose'] ?? AppLocalizations.of(context)!.noPurpose,
           'startDate': startDateTimeStr,
           'endDate': endDateTimeStr,
           'employee_name': item['requestor_name'] ?? 'N/A',
@@ -249,14 +246,13 @@ class HistoryPageState extends State<HistoryPage> {
         });
         break;
 
-    /// NEW CASE: minutes of meeting
+      /// NEW CASE: minutes of meeting
       case 'minutes of meeting':
         formattedItem.addAll({
           'title': item['title'] ?? AppLocalizations.of(context)!.noTitle,
           'startDate': item['fromdate'] ?? '',
           'endDate': item['todate'] ?? '',
-          'employee_name':
-          item['created_by_name'] ?? 'N/A',
+          'employee_name': item['created_by_name'] ?? 'N/A',
           'id': item['outmeeting_uid']?.toString() ?? '',
           'description': item['description'] ?? '',
           'location': item['location'] ?? '',
@@ -265,7 +261,7 @@ class HistoryPageState extends State<HistoryPage> {
         break;
 
       default:
-      // Handle unknown types if necessary
+        // Handle unknown types if necessary
         break;
     }
 
@@ -297,6 +293,7 @@ class HistoryPageState extends State<HistoryPage> {
       case 'processing':
         return Colors.blue;
       case 'deleted':
+      case 'reject':
         return Colors.red;
       default:
         return Colors.grey;
@@ -313,7 +310,7 @@ class HistoryPageState extends State<HistoryPage> {
       case 'car':
         return Colors.blue;
 
-    /// NEW: minutes of meeting color
+      /// NEW: minutes of meeting color
       case 'minutes of meeting':
         return Colors.green;
 
@@ -349,7 +346,7 @@ class HistoryPageState extends State<HistoryPage> {
       case 'car':
         return Icons.directions_car;
 
-    /// NEW: minutes of meeting icon
+      /// NEW: minutes of meeting icon
       case 'minutes of meeting':
         return Icons.sticky_note_2;
 
@@ -369,7 +366,7 @@ class HistoryPageState extends State<HistoryPage> {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const Dashboard()),
-              (route) => false,
+          (route) => false,
         );
         return false;
       },
@@ -383,66 +380,67 @@ class HistoryPageState extends State<HistoryPage> {
             SizedBox(height: screenSize.height * 0.005),
             _isLoading
                 ? const Expanded(
-              child: Center(child: CircularProgressIndicator()),
-            )
+                    child: Center(child: CircularProgressIndicator()),
+                  )
                 : Expanded(
-              child: RefreshIndicator(
-                onRefresh:
-                _fetchHistoryData, // This function will refresh data
-                child: _isPendingSelected
-                    ? _pendingItems.isEmpty
-                    ? Center(
-                  child: Text(
-                    AppLocalizations.of(context)!
-                        .noPendingItems,
-                    style: TextStyle(
-                      fontSize: screenSize.width * 0.04,
+                    child: RefreshIndicator(
+                      onRefresh:
+                          _fetchHistoryData, // This function will refresh data
+                      child: _isPendingSelected
+                          ? _pendingItems.isEmpty
+                              ? Center(
+                                  child: Text(
+                                    AppLocalizations.of(context)!
+                                        .noPendingItems,
+                                    style: TextStyle(
+                                      fontSize: screenSize.width * 0.04,
+                                    ),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: screenSize.width * 0.04,
+                                    vertical: screenSize.height * 0.008,
+                                  ),
+                                  itemCount: _pendingItems.length,
+                                  itemBuilder: (context, index) {
+                                    final item = _pendingItems[index];
+                                    return _buildHistoryCard(
+                                      context,
+                                      item,
+                                      isHistory: false,
+                                      screenSize: screenSize,
+                                    );
+                                  },
+                                )
+                          : _historyItems.isEmpty
+                              ? Center(
+                                  child: Text(
+                                    AppLocalizations.of(context)!
+                                        .myHistoryItems,
+                                    style: TextStyle(
+                                      fontSize: screenSize.width * 0.04,
+                                    ),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: screenSize.width * 0.04,
+                                    vertical: screenSize.height * 0.008,
+                                  ),
+                                  itemCount: _historyItems.length,
+                                  itemBuilder: (context, index) {
+                                    final item = _historyItems[index];
+                                    return _buildHistoryCard(
+                                      context,
+                                      item,
+                                      isHistory: true,
+                                      screenSize: screenSize,
+                                    );
+                                  },
+                                ),
                     ),
                   ),
-                )
-                    : ListView.builder(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: screenSize.width * 0.04,
-                    vertical: screenSize.height * 0.008,
-                  ),
-                  itemCount: _pendingItems.length,
-                  itemBuilder: (context, index) {
-                    final item = _pendingItems[index];
-                    return _buildHistoryCard(
-                      context,
-                      item,
-                      isHistory: false,
-                      screenSize: screenSize,
-                    );
-                  },
-                )
-                    : _historyItems.isEmpty
-                    ? Center(
-                  child: Text(
-                    AppLocalizations.of(context)!.myHistoryItems,
-                    style: TextStyle(
-                      fontSize: screenSize.width * 0.04,
-                    ),
-                  ),
-                )
-                    : ListView.builder(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: screenSize.width * 0.04,
-                    vertical: screenSize.height * 0.008,
-                  ),
-                  itemCount: _historyItems.length,
-                  itemBuilder: (context, index) {
-                    final item = _historyItems[index];
-                    return _buildHistoryCard(
-                      context,
-                      item,
-                      isHistory: true,
-                      screenSize: screenSize,
-                    );
-                  },
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -547,8 +545,8 @@ class HistoryPageState extends State<HistoryPage> {
                         color: _isPendingSelected
                             ? Colors.white
                             : (isDarkMode
-                            ? Colors.grey[400]
-                            : Colors.grey[600]),
+                                ? Colors.grey[400]
+                                : Colors.grey[600]),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -597,8 +595,8 @@ class HistoryPageState extends State<HistoryPage> {
                         color: !_isPendingSelected
                             ? Colors.white
                             : (isDarkMode
-                            ? Colors.grey[400]
-                            : Colors.grey[600]),
+                                ? Colors.grey[400]
+                                : Colors.grey[600]),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -632,10 +630,8 @@ class HistoryPageState extends State<HistoryPage> {
       }
     }
 
-    String startDate =
-    item['startDate'] != null ? formatDate(item['startDate']) : 'N/A';
-    String endDate =
-    item['endDate'] != null ? formatDate(item['endDate']) : 'N/A';
+    String startDate = item['startDate'] != null ? formatDate(item['startDate']) : 'N/A';
+    String endDate = item['endDate'] != null ? formatDate(item['endDate']) : 'N/A';
 
     return GestureDetector(
       onTap: () {
@@ -657,113 +653,98 @@ class HistoryPageState extends State<HistoryPage> {
       child: Card(
         color: isDarkMode ? Colors.grey[850] : Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(screenSize.width * 0.03),
-          side: BorderSide(color: typeColor, width: screenSize.width * 0.001),
+          borderRadius: BorderRadius.circular(screenSize.width * 0.05),
+          side: BorderSide(color: typeColor, width: screenSize.width * 0.003),
         ),
-        margin: EdgeInsets.symmetric(vertical: screenSize.height * 0.008),
-        child: Stack(
-          children: [
-            Positioned(
-              top: screenSize.height * 0.01,
-              bottom: screenSize.height * 0.01,
-              left: screenSize.width * 0.002,
-              child: Container(
-                width: screenSize.width * 0.005,
-                color: typeColor,
+        margin: EdgeInsets.symmetric(vertical: screenSize.height * 0.006),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            vertical: screenSize.height * 0.008,
+            horizontal: screenSize.width * 0.025,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Icon
+              SizedBox(
+                width: screenSize.width * 0.1,
+                child: _getIconWidgetForType(type, screenSize.width * 0.08, typeColor),
               ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(
-                vertical: screenSize.height * 0.01,
-                horizontal: screenSize.width * 0.03,
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Icon column with fixed width for proper alignment
-                  SizedBox(
-                    width: screenSize.width * 0.12,
-                    child: Center(
-                      child: _getIconWidgetForType(type, screenSize.width * 0.1, typeColor),
+              SizedBox(width: screenSize.width * 0.02),
+              // Information Column
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item['employee_name'] ?? 'No Name',
+                      style: TextStyle(
+                        color: typeColor,
+                        fontSize: screenSize.width * 0.035,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  SizedBox(width: screenSize.width * 0.03),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Text(
+                      '$startDate → $endDate',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.white70 : Colors.grey[700],
+                        fontSize: screenSize.width * 0.026,
+                      ),
+                    ),
+                    SizedBox(height: screenSize.height * 0.002),
+                    _buildDetailLabel(type, item, isDarkMode, screenSize),
+                    SizedBox(height: screenSize.height * 0.002),
+                    Row(
                       children: [
                         Text(
-                          item['employee_name'] ?? 'No Name',
+                          'Status: ',
                           style: TextStyle(
-                            color: typeColor,
-                            fontSize: screenSize.width * 0.038,
+                            fontSize: screenSize.width * 0.028,
                             fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black,
                           ),
                         ),
-                        SizedBox(height: screenSize.height * 0.005),
-                        Text(
-                          'Date: $startDate to $endDate',
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white70 : Colors.grey[700],
-                            fontSize: screenSize.width * 0.026,
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenSize.width * 0.012,
+                            vertical: screenSize.height * 0.002,
                           ),
-                        ),
-                        SizedBox(height: screenSize.height * 0.005),
-                        _buildDetailLabel(type, item, isDarkMode, screenSize),
-                        SizedBox(height: screenSize.height * 0.006),
-                        Row(
-                          children: [
-                            Text(
-                              'Status: ',
-                              style: TextStyle(
-                                fontSize: screenSize.width * 0.03,
-                                fontWeight: FontWeight.bold,
-                                color: isDarkMode ? Colors.white : Colors.black,
-                              ),
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            borderRadius: BorderRadius.circular(screenSize.width * 0.015),
+                          ),
+                          child: Text(
+                            item['status'].toString().toUpperCase(),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: screenSize.width * 0.028,
+                              fontWeight: FontWeight.bold,
                             ),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: screenSize.width * 0.015,
-                                vertical: screenSize.height * 0.003,
-                              ),
-                              decoration: BoxDecoration(
-                                color: statusColor,
-                                borderRadius: BorderRadius.circular(
-                                  screenSize.width * 0.02,
-                                ),
-                              ),
-                              child: Text(
-                                item['status'].toString().toUpperCase(),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: screenSize.width * 0.03,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                  SizedBox(width: screenSize.width * 0.02),
-                  // Profile Image
-                  CircleAvatar(
-                    backgroundImage: NetworkImage(item['img_name']),
-                    radius: screenSize.width * 0.06,
-                    backgroundColor: isDarkMode ? Colors.grey[700] : Colors.grey[300],
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+              SizedBox(width: screenSize.width * 0.015),
+              // Profile Image
+              CircleAvatar(
+                backgroundImage: NetworkImage(item['img_name']),
+                radius: screenSize.width * 0.05,
+                backgroundColor: isDarkMode ? Colors.grey[700] : Colors.grey[300],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
+
 // Function to return proper detail label and text based on type
-  Widget _buildDetailLabel(String type, Map<String, dynamic> item, bool isDarkMode, Size screenSize) {
+  Widget _buildDetailLabel(String type, Map<String, dynamic> item,
+      bool isDarkMode, Size screenSize) {
     Color detailTextColor = Colors.grey;
     String detailLabel;
     String detailText;
@@ -780,7 +761,8 @@ class HistoryPageState extends State<HistoryPage> {
         detailTextColor = Colors.orange;
         break;
       case 'car':
-        detailLabel = 'Place:'; //Should Tel. but no tel number in the api response
+        detailLabel =
+            'Place:'; //Should Tel. but no tel number in the api response
         detailText = item['place']?.toString() ?? 'No Place';
         detailTextColor = Colors.grey;
         break;
@@ -803,4 +785,3 @@ class HistoryPageState extends State<HistoryPage> {
     );
   }
 }
-

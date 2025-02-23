@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
+import 'package:geolocator/geolocator.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -28,14 +29,38 @@ class Dashboard extends StatefulWidget {
   DashboardState createState() => DashboardState();
 }
 
-class DashboardState extends State<Dashboard> {
+class DashboardState extends State<Dashboard>
+    with AutomaticKeepAliveClientMixin {
+  // Cache management
+  static final Map<String, dynamic> _pageCache = {};
+  static const Duration _cacheExpiry = Duration(minutes: 15);
+  DateTime? _lastCacheUpdate;
+
+  // State management
   bool _hasUnreadNotifications = true;
-  late Future<UserProfile> futureUserProfile;
-  late Future<List<String>> futureBanners;
-  late PageController _pageController;
-  int _currentPage = 0;
-  Timer? _carouselTimer;
   bool _isLoading = false;
+  int _currentPage = 0;
+
+  // Page controller optimization
+  late final PageController _pageController;
+  Timer? _carouselTimer;
+
+  // Cached data - remove late keyword
+  Future<UserProfile>? futureUserProfile;
+  Future<List<String>>? futureBanners;
+
+  // Navigation state
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+
+  // Route observer for navigation optimization
+  final RouteObserver<PageRoute> _routeObserver = RouteObserver<PageRoute>();
+
+  // Add location-related variables
+  Position? _lastKnownPosition;
+  bool _isLocationEnabled = false;
+  StreamSubscription<Position>? _positionStreamSubscription;
+
+  @override
   bool get wantKeepAlive => true;
 
   // Hive boxes
@@ -48,40 +73,263 @@ class DashboardState extends State<Dashboard> {
   @override
   void initState() {
     super.initState();
-    // Initialize Hive boxes
-    _initializeHiveBoxes();
+    _initializePageController();
+    _initializeData();
+    _initializeLocation();
+  }
 
-    // Fetch user data and banners
-    refreshData();
-
-    // Initialize PageController
-    _pageController = PageController(initialPage: _currentPage);
-
-    // Start auto-swiping the carousel every 5 seconds
+  void _initializePageController() {
+    _pageController = PageController(initialPage: _currentPage)
+      ..addListener(_handlePageChange);
     _startCarouselTimer();
   }
 
-  // Initialize Hive boxes
-  Future<void> _initializeHiveBoxes() async {
-    // Open 'userProfileBox' if not already open
-    if (!Hive.isBoxOpen('userProfileBox')) {
-      await Hive.openBox<String>('userProfileBox');
-    }
-    userProfileBox = Hive.box<String>('userProfileBox');
+  void _handlePageChange() {
+    if (!_pageController.hasClients) return;
+    setState(() {
+      _currentPage = _pageController.page?.round() ?? 0;
+    });
+  }
 
-    // Open 'bannersBox' if not already open
-    if (!Hive.isBoxOpen('bannersBox')) {
-      await Hive.openBox<List<String>>('bannersBox');
+  Future<void> _initializeData() async {
+    setState(() => _isLoading = true);
+    try {
+      await _initializeHiveBoxes();
+      // Initialize futures after Hive boxes are ready
+      futureUserProfile = fetchUserProfile();
+      futureBanners = fetchBanners();
+    } catch (e) {
+      debugPrint('Error initializing data: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
-    bannersBox = Hive.box<List<String>>('bannersBox');
+  }
+
+  // Optimized navigation methods
+  Future<void> navigateToPage(Widget page) async {
+    if (!mounted) return;
+
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => page,
+        settings: RouteSettings(name: page.runtimeType.toString()),
+      ),
+    );
+
+    if (result == true && mounted) {
+      refreshData();
+    }
+  }
+
+  // Cache management
+  void _updateCache(String key, dynamic data) {
+    _pageCache[key] = {
+      'data': data,
+      'timestamp': DateTime.now(),
+    };
+  }
+
+  dynamic _getCachedData(String key) {
+    final cachedItem = _pageCache[key];
+    if (cachedItem == null) return null;
+
+    final timestamp = cachedItem['timestamp'] as DateTime;
+    if (DateTime.now().difference(timestamp) > _cacheExpiry) {
+      _pageCache.remove(key);
+      return null;
+    }
+
+    return cachedItem['data'];
+  }
+
+  // Optimized data fetching with caching
+  Future<UserProfile> fetchUserProfile() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Check cache first
+      final cachedProfile = _getCachedData('userProfile');
+      if (cachedProfile != null) {
+        return cachedProfile as UserProfile;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
+
+      if (token == null) throw Exception('No token found');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/display/me'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseJson = jsonDecode(response.body);
+        final List<dynamic> results = responseJson['results'];
+
+        if (results.isNotEmpty) {
+          final userProfile = UserProfile.fromJson(results[0]);
+
+          // Update cache
+          _updateCache('userProfile', userProfile);
+
+          // Save to Hive
+          await userProfileBox.put(
+              'userProfile', jsonEncode(userProfile.toJson()));
+
+          return userProfile;
+        }
+      }
+      throw Exception('Failed to fetch profile');
+    } catch (e) {
+      debugPrint('Error fetching profile: $e');
+      // Fallback to Hive cache
+      final cachedProfileJson = userProfileBox.get('userProfile');
+      if (cachedProfileJson != null) {
+        return UserProfile.fromJson(jsonDecode(cachedProfileJson));
+      }
+      rethrow;
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  // Optimized banner fetching with caching
+  Future<List<String>> fetchBanners() async {
+    try {
+      // Check cache first
+      final cachedBanners = _getCachedData('banners');
+      if (cachedBanners != null) {
+        return List<String>.from(cachedBanners);
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/app/promotions/files'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final results = jsonDecode(response.body)['results'];
+        final banners =
+            results.map<String>((file) => file['files'] as String).toList();
+
+        // Update cache
+        _updateCache('banners', banners);
+
+        // Save to Hive
+        await bannersBox.put('banners', banners);
+
+        return banners;
+      }
+
+      // Fallback to cached data
+      return bannersBox.get('banners') ?? [];
+    } catch (e) {
+      debugPrint('Error fetching banners: $e');
+      return bannersBox.get('banners') ?? [];
+    }
+  }
+
+  // Optimized action grid with memoization
+  Widget _buildActionGrid(bool isDarkMode) {
+    return Consumer<ThemeNotifier>(
+      builder: (context, themeNotifier, child) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final crossAxisCount = screenWidth < 600 ? 3 : 3;
+
+        final List<Map<String, dynamic>> actionItems = [
+          {
+            'icon': 'assets/data-2.png',
+            'label': AppLocalizations.of(context)!.history,
+            'onTap': () => navigateToPage(const HistoryPage()),
+          },
+          {
+            'icon': 'assets/people.png',
+            'label': AppLocalizations.of(context)!.approvals,
+            'onTap': () => navigateToPage(const ApprovalsMainPage()),
+          },
+          {
+            'icon': 'assets/status-up.png',
+            'label': AppLocalizations.of(context)!.workTracking,
+            'onTap': () => navigateToPage(const WorkTrackingPage()),
+          },
+          {
+            'icon': 'assets/car_return.png',
+            'label': AppLocalizations.of(context)!.carReturn,
+            'onTap': () => navigateToPage(const ReturnCarPage()),
+          },
+          {
+            'icon': 'assets/KPI.png',
+            'label': AppLocalizations.of(context)!.kpi,
+            'onTap': () {},
+          },
+          {
+            'icon': 'assets/inventory.png',
+            'label': AppLocalizations.of(context)!.inventory,
+            'onTap': () {},
+          },
+        ];
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: GridView.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: 0.9,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 12,
+            ),
+            itemCount: actionItems.length,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemBuilder: (context, index) {
+              final item = actionItems[index];
+              return _buildActionCard(
+                context,
+                item['icon'] as String,
+                item['label'] as String,
+                isDarkMode,
+                item['onTap'] as VoidCallback,
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _positionStreamSubscription?.cancel();
+    _pageController.dispose();
+    _carouselTimer?.cancel();
+    super.dispose();
   }
 
   void refreshData() {
-    // Fetch user data and banners
+    if (!mounted) return;
+
+    setState(() {
+      // Update futures with new data
+      futureUserProfile = fetchUserProfile();
+      futureBanners = fetchBanners();
+    });
+
     Provider.of<UserProvider>(context, listen: false).fetchAndUpdateUser();
-    futureUserProfile = fetchUserProfile();
-    futureBanners = fetchBanners();
-    debugPrint('dashboard');
+    debugPrint('dashboard refreshed');
   }
 
   // Start the carousel auto-swipe timer
@@ -109,138 +357,147 @@ class DashboardState extends State<Dashboard> {
     });
   }
 
-  // Fetch user profile from API or Hive
-  Future<UserProfile> fetchUserProfile() async {
-    setState(() {
-      _isLoading = true; // Start loading
+  // Initialize Hive boxes
+  Future<void> _initializeHiveBoxes() async {
+    // Open 'userProfileBox' if not already open
+    if (!Hive.isBoxOpen('userProfileBox')) {
+      await Hive.openBox<String>('userProfileBox');
+    }
+    userProfileBox = Hive.box<String>('userProfileBox');
+
+    // Open 'bannersBox' if not already open
+    if (!Hive.isBoxOpen('bannersBox')) {
+      await Hive.openBox<List<String>>('bannersBox');
+    }
+    bannersBox = Hive.box<List<String>>('bannersBox');
+  }
+
+  // Add location initialization method
+  Future<void> _initializeLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        debugPrint('Location services are disabled');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          debugPrint('Location permissions are denied');
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        debugPrint('Location permissions are permanently denied');
+        return;
+      }
+
+      setState(() => _isLocationEnabled = true);
+
+      // Get initial position with timeout
+      try {
+        _lastKnownPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        ).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('Getting initial position timed out');
+            throw TimeoutException('Failed to get initial position');
+          },
+        );
+      } catch (e) {
+        debugPrint('Error getting initial position: $e');
+      }
+
+      // Start listening to position updates with more relaxed settings
+      _startLocationUpdates();
+    } catch (e) {
+      debugPrint('Error initializing location: $e');
+    }
+  }
+
+  void _startLocationUpdates() {
+    _positionStreamSubscription?.cancel();
+
+    _positionStreamSubscription = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy
+            .reduced, // Use reduced accuracy for better performance
+        distanceFilter: 50, // Only update if moved 50 meters
+        timeLimit: Duration(seconds: 10), // Shorter timeout
+      ),
+    ).listen(
+      (Position position) {
+        if (mounted) {
+          // Check if widget is still mounted before calling setState
+          setState(() => _lastKnownPosition = position);
+        }
+      },
+      onError: (error) {
+        if (mounted) {
+          // Check if widget is still mounted before handling error
+          debugPrint('Location stream error: $error');
+          _handleLocationError(error);
+        }
+      },
+      cancelOnError: false,
+    );
+  }
+
+  void _handleLocationError(dynamic error) {
+    if (!mounted) return; // Early return if widget is not mounted
+
+    if (error is TimeoutException) {
+      // Handle timeout specifically
+      _restartLocationUpdates();
+    } else {
+      // Handle other errors
+      debugPrint('Location error: $error');
+    }
+  }
+
+  void _restartLocationUpdates() {
+    if (!mounted) return; // Early return if widget is not mounted
+
+    debugPrint('Restarting location updates');
+    _positionStreamSubscription?.cancel();
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        // Check mounted state before restarting
+        _startLocationUpdates();
+      }
     });
-
-    final prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('token');
-
-    try {
-      // Try fetching profile data from the network
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/display/me'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseJson = jsonDecode(response.body);
-        final List<dynamic> results = responseJson['results'];
-        if (results.isNotEmpty) {
-          final Map<String, dynamic> userJson = results[0];
-          final userProfile = UserProfile.fromJson(userJson);
-
-          // Save the profile as a JSON string to Hive
-          await userProfileBox.put('userProfile', jsonEncode(userProfile.toJson()));
-
-          if (kDebugMode) {
-            print("Fetched and saved user profile to Hive successfully.");
-          }
-          return userProfile;
-        } else {
-          if (kDebugMode) {
-            print("Error: No data available in the response.");
-          }
-          throw Exception(AppLocalizations.of(context)!.noDataAvailable);
-        }
-      } else {
-        if (kDebugMode) {
-          print("Error: Failed to fetch data. Status Code: ${response.statusCode}");
-        }
-        throw Exception(AppLocalizations.of(context)!.errorWithDetails('Status Code: ${response.statusCode}'));
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print("Network error: $e. Attempting to retrieve profile from Hive.");
-      }
-
-      // Retrieve profile from Hive if network request fails
-      final cachedProfileJson = userProfileBox.get('userProfile');
-      if (cachedProfileJson != null) {
-        final userProfile = UserProfile.fromJson(jsonDecode(cachedProfileJson));
-        if (kDebugMode) {
-          print("Retrieved user profile from Hive successfully.");
-        }
-        return userProfile;
-      } else {
-        if (kDebugMode) {
-          print("Error: No cached profile data available in Hive.");
-        }
-        throw Exception(AppLocalizations.of(context)!.noDataAvailable);
-      }
-    } finally {
-      setState(() {
-        _isLoading = false; // End loading
-      });
-    }
-  }
-
-  // Fetch banners from API or Hive
-  Future<List<String>> fetchBanners() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('token');
-
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/app/promotions/files'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final results = jsonDecode(response.body)['results'];
-        final banners = results.map<String>((file) => file['files'] as String).toList();
-
-        // Save banners to Hive
-        await bannersBox.put('banners', banners);
-
-        return banners;
-      } else {
-        if (kDebugMode) {
-          print("Error: Failed to load banners. Status Code: ${response.statusCode}");
-        }
-        // Instead of throwing an exception, return cached banners or an empty list
-        return bannersBox.get('banners') ?? [];
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print("Error fetching banners: $e. Attempting to retrieve from Hive.");
-      }
-
-      // Retrieve from Hive if network request fails
-      return bannersBox.get('banners') ?? [];
-    }
-  }
-
-  // Refresh user profile manually
-  @override
-  void dispose() {
-    _pageController.dispose();
-    _carouselTimer?.cancel(); // Cancel the carousel timer to prevent memory leaks
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
+    // Show loading if data is not initialized
+    if (futureUserProfile == null || futureBanners == null) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return PopScope(
-      onPopInvokedWithResult: (e, result) => false, // Disable back button
+      onPopInvokedWithResult: (e, result) => false,
       child: Scaffold(
         backgroundColor: isDarkMode ? Colors.black : Colors.white,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(140.0),
           child: FutureBuilder<UserProfile>(
             future: futureUserProfile,
-            initialData: UserProfile.fromJson(jsonDecode(userProfileBox.get('userProfile') ?? '{}')), // Use cached profile data
+            initialData: UserProfile.fromJson(
+              jsonDecode(userProfileBox.get('userProfile') ?? '{}'),
+            ),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return _buildAppBarPlaceholder();
@@ -250,7 +507,9 @@ class DashboardState extends State<Dashboard> {
                 final userProfile = snapshot.data!;
                 return _buildAppBar(userProfile, isDarkMode);
               } else {
-                return _buildErrorAppBar(AppLocalizations.of(context)!.noDataAvailable);
+                return _buildErrorAppBar(
+                  AppLocalizations.of(context)!.noDataAvailable,
+                );
               }
             },
           ),
@@ -258,7 +517,6 @@ class DashboardState extends State<Dashboard> {
         body: Stack(
           children: [
             if (isDarkMode) _buildDarkBackground(),
-            // Make the body scrollable
             RefreshIndicator(
               onRefresh: () async {
                 refreshData();
@@ -318,23 +576,31 @@ class DashboardState extends State<Dashboard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.settings, color: isDarkMode ? Colors.white : Colors.black, size: 32),
+                    icon: Icon(Icons.settings,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                        size: 32),
                     onPressed: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const SettingsPage()),
+                      MaterialPageRoute(
+                          builder: (context) => const SettingsPage()),
                     ),
                   ),
                   GestureDetector(
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                      MaterialPageRoute(
+                          builder: (context) => const ProfileScreen()),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         CircleAvatar(
                           radius: 28,
-                          backgroundImage: userProfile.imgName != 'default_avatar.jpg' ? NetworkImage(userProfile.imgName) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                          backgroundImage: userProfile.imgName !=
+                                  'default_avatar.jpg'
+                              ? NetworkImage(userProfile.imgName)
+                              : const AssetImage('assets/default_avatar.jpg')
+                                  as ImageProvider,
                           backgroundColor: Colors.white,
                           onBackgroundImageError: (_, __) {
                             const AssetImage('assets/default_avatar.png');
@@ -342,7 +608,8 @@ class DashboardState extends State<Dashboard> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          AppLocalizations.of(context)!.greeting(userProfile.name),
+                          AppLocalizations.of(context)!
+                              .greeting(userProfile.name),
                           style: TextStyle(
                             color: isDarkMode ? Colors.white : Colors.black,
                             fontSize: 22,
@@ -352,7 +619,9 @@ class DashboardState extends State<Dashboard> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.power_settings_new, color: isDarkMode ? Colors.white : Colors.black, size: 32),
+                    icon: Icon(Icons.power_settings_new,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                        size: 32),
                     onPressed: () => _showLogoutDialog(context, isDarkMode),
                   ),
                 ],
@@ -398,21 +667,24 @@ class DashboardState extends State<Dashboard> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
-          } else if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
+            return Center(
+                child: Text(AppLocalizations.of(context)!
+                    .errorWithDetails(snapshot.error.toString())));
+          } else if (snapshot.hasData &&
+              snapshot.data != null &&
+              snapshot.data!.isNotEmpty) {
             return PageView.builder(
               controller: _pageController,
               itemCount: snapshot.data!.length,
-              onPageChanged: (int index) {
-                setState(() {
-                  _currentPage = index;
-                });
-              },
+              onPageChanged: _handleBannerPageChange,
               itemBuilder: (context, index) {
                 final bannerUrl = snapshot.data![index];
 
-                if (bannerUrl.isEmpty || Uri.tryParse(bannerUrl)?.hasAbsolutePath != true) {
-                  return Center(child: Text(AppLocalizations.of(context)!.noBannersAvailable));
+                if (bannerUrl.isEmpty ||
+                    Uri.tryParse(bannerUrl)?.hasAbsolutePath != true) {
+                  return Center(
+                      child: Text(
+                          AppLocalizations.of(context)!.noBannersAvailable));
                 }
 
                 return Container(
@@ -420,10 +692,12 @@ class DashboardState extends State<Dashboard> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
                     image: DecorationImage(
-                      image: CachedNetworkImageProvider(bannerUrl), // Use CachedNetworkImageProvider
+                      image: CachedNetworkImageProvider(
+                          bannerUrl), // Use CachedNetworkImageProvider
                       fit: BoxFit.cover,
                       colorFilter: isDarkMode
-                          ? ColorFilter.mode(Colors.white.withOpacity(0.1), BlendMode.lighten) // Brighter in dark mode
+                          ? ColorFilter.mode(Colors.white.withOpacity(0.1),
+                              BlendMode.lighten) // Brighter in dark mode
                           : null,
                     ),
                   ),
@@ -431,7 +705,8 @@ class DashboardState extends State<Dashboard> {
               },
             );
           } else {
-            return Center(child: Text(AppLocalizations.of(context)!.noBannersAvailable));
+            return Center(
+                child: Text(AppLocalizations.of(context)!.noBannersAvailable));
           }
         },
       ),
@@ -479,11 +754,10 @@ class DashboardState extends State<Dashboard> {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const NotificationPage()),
+                      MaterialPageRoute(
+                          builder: (context) => const NotificationPage()),
                     ).then((_) {
-                      setState(() {
-                        _hasUnreadNotifications = false;
-                      });
+                      _updateNotificationState();
                     });
                   },
                 ),
@@ -511,89 +785,8 @@ class DashboardState extends State<Dashboard> {
     );
   }
 
-  Widget _buildActionGrid(bool isDarkMode) {
-    final double screenWidth = MediaQuery.of(context).size.width;
-
-    // Determine the number of columns based on screen width
-    int crossAxisCount = screenWidth < 600 ? 3 : 3;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-      child: GridView.builder(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          childAspectRatio: 0.9,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 12,
-        ),
-        itemCount: 6,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemBuilder: (context, index) {
-          // List of action card data
-          final List<Map<String, dynamic>> actionItems = [
-            {
-              'icon': 'assets/data-2.png',
-              'label': AppLocalizations.of(context)!.history,
-              'onTap': () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const HistoryPage()),
-                  ),
-            },
-            {
-              'icon': 'assets/people.png',
-              'label': AppLocalizations.of(context)!.approvals,
-              'onTap': () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ApprovalsMainPage()),
-                  ),
-            },
-            {
-              'icon': 'assets/status-up.png',
-              'label': AppLocalizations.of(context)!.workTracking,
-              'onTap': () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const WorkTrackingPage()),
-                  ),
-            },
-            {
-              'icon': 'assets/car_return.png',
-              'label': AppLocalizations.of(context)!.carReturn,
-              'onTap': () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ReturnCarPage()),
-                  ),
-            },
-            {
-              'icon': 'assets/KPI.png',
-              'label': AppLocalizations.of(context)!.kpi,
-              'onTap': () {},
-            },
-            {
-              'icon': 'assets/inventory.png',
-              'label': AppLocalizations.of(context)!.inventory,
-              'onTap': () {},
-            },
-          ];
-
-          // Build each action card using the data
-          final item = actionItems[index];
-          return Tooltip(
-            message: item['label'],
-            child: _buildActionCard(
-              context,
-              item['icon'],
-              item['label'],
-              isDarkMode,
-              item['onTap'],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildActionCard(BuildContext context, String imagePath, String title, bool isDarkMode, VoidCallback onTap) {
+  Widget _buildActionCard(BuildContext context, String imagePath, String title,
+      bool isDarkMode, VoidCallback onTap) {
     return LayoutBuilder(
       builder: (context, constraints) {
         double iconSize = constraints.maxWidth * 0.4;
@@ -612,7 +805,8 @@ class DashboardState extends State<Dashboard> {
             splashColor: Colors.blue.withAlpha(50),
             splashFactory: InkRipple.splashFactory,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -672,7 +866,8 @@ class DashboardState extends State<Dashboard> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : const Color(0xFF9C640C),
+                      color:
+                          isDarkMode ? Colors.white : const Color(0xFF9C640C),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -694,8 +889,12 @@ class DashboardState extends State<Dashboard> {
                           Navigator.of(context).pop();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: isDarkMode ? Colors.grey[700] : const Color(0xFFF5F1E0),
-                          foregroundColor: isDarkMode ? Colors.white : const Color(0xFFDBB342),
+                          backgroundColor: isDarkMode
+                              ? Colors.grey[700]
+                              : const Color(0xFFF5F1E0),
+                          foregroundColor: isDarkMode
+                              ? Colors.white
+                              : const Color(0xFFDBB342),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                           ),
@@ -708,7 +907,8 @@ class DashboardState extends State<Dashboard> {
                       ),
                       ElevatedButton(
                         onPressed: () {
-                          Provider.of<UserProvider>(context, listen: false).logout();
+                          Provider.of<UserProvider>(context, listen: false)
+                              .logout();
                           Navigator.of(context).pushAndRemoveUntil(
                             MaterialPageRoute(
                               builder: (context) => const LoginPage(),
@@ -751,6 +951,20 @@ class DashboardState extends State<Dashboard> {
       ),
     );
   }
+
+  // Update notification state
+  void _updateNotificationState() {
+    setState(() {
+      _hasUnreadNotifications = false;
+    });
+  }
+
+  // Banner page change handler
+  void _handleBannerPageChange(int index) {
+    setState(() {
+      _currentPage = index;
+    });
+  }
 }
 
 // UserProfile Model
@@ -776,7 +990,10 @@ class UserProfile {
     if (json['roles'] is List) {
       rolesList = List<String>.from(json['roles']);
     } else if (json['roles'] is String) {
-      rolesList = (json['roles'] as String).split(',').map((role) => role.trim()).toList();
+      rolesList = (json['roles'] as String)
+          .split(',')
+          .map((role) => role.trim())
+          .toList();
     }
 
     return UserProfile(

@@ -37,7 +37,9 @@ class HomeCalendar extends StatefulWidget {
   HomeCalendarState createState() => HomeCalendarState();
 }
 
-class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixin implements Refreshable {
+class HomeCalendarState extends State<HomeCalendar>
+    with TickerProviderStateMixin
+    implements Refreshable {
   late Box eventsBox;
 
   // BaseUrl ENV initialization for debug and production
@@ -75,7 +77,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     super.initState();
     fetchData();
     _selectedDay = _focusedDay;
-    switchTime.value = (_focusedDay.hour < 18 && _focusedDay.hour > 6) ? false : true;
+    switchTime.value =
+        (_focusedDay.hour < 18 && _focusedDay.hour > 6) ? false : true;
 
     eventsForDay = [];
     eventsForAll = [];
@@ -113,11 +116,17 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     final detectDate = normalizeDate(date);
     if (events.value.containsKey(detectDate)) {
       // If the date already has events, add to the list
-      if (events.value[detectDate]!.where((desc) => desc.desc == event.desc).isEmpty) {
+      if (events.value[detectDate]!
+          .where((desc) => desc.desc == event.desc)
+          .isEmpty) {
         events.value[detectDate]!.add(event);
       } else {
         event.members?.forEach(
-              (e) => events.value[detectDate]!.where((desc) => desc.desc == event.desc).first.members?.add(e),
+          (e) => events.value[detectDate]!
+              .where((desc) => desc.desc == event.desc)
+              .first
+              .members
+              ?.add(e),
         );
       }
     } else {
@@ -131,16 +140,24 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final normalizedStartDay = normalizeDate(i.start);
       final normalizedEndDay = normalizeDate(i.end);
 
-      for (var day = normalizedStartDay; !day.isAfter(normalizedEndDay); day = day.add(const Duration(days: 1))) {
+      for (var day = normalizedStartDay;
+          !day.isAfter(normalizedEndDay);
+          day = day.add(const Duration(days: 1))) {
         final detectDate = normalizeDate(day);
 
         if (events.value.containsKey(detectDate)) {
           // If the date already has events, add to the list
-          if (events.value[detectDate]!.where((desc) => desc.desc == i.desc).isEmpty) {
+          if (events.value[detectDate]!
+              .where((desc) => desc.desc == i.desc)
+              .isEmpty) {
             events.value[detectDate]!.add(i);
           } else {
             i.members?.forEach(
-                  (e) => events.value[detectDate]!.where((desc) => desc.desc == i.desc).first.members?.add(e),
+              (e) => events.value[detectDate]!
+                  .where((desc) => desc.desc == i.desc)
+                  .first
+                  .members
+                  ?.add(e),
             );
           }
         } else {
@@ -218,8 +235,12 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         //   leaveType = resultType.firstOrNull['name'];
         // }
 
-        final DateTime startDate = item['take_leave_from'] != null ? normalizeDate(DateTime.parse(item['take_leave_from'])) : normalizeDate(DateTime.now());
-        final DateTime endDate = item['take_leave_to'] != null ? normalizeDate(DateTime.parse(item['take_leave_to'])) : normalizeDate(DateTime.now());
+        final DateTime startDate = item['take_leave_from'] != null
+            ? normalizeDate(DateTime.parse(item['take_leave_from']))
+            : normalizeDate(DateTime.now());
+        final DateTime endDate = item['take_leave_to'] != null
+            ? normalizeDate(DateTime.parse(item['take_leave_to']))
+            : normalizeDate(DateTime.now());
         final String uid = 'leave_${item['id']}';
         double days;
 
@@ -229,7 +250,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           days = item['days'];
         }
 
-        String status = item['is_approve'] != null ? _mapLeaveStatus(item['is_approve'].toString()) : 'Pending';
+        String status = item['is_approve'] != null
+            ? _mapLeaveStatus(item['is_approve'].toString())
+            : 'Pending';
 
         if (status == 'Cancelled') continue;
 
@@ -249,13 +272,13 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           leaveType: leaveType,
         );
 
-        for (var day = startDate; day.isBefore(endDate.add(const Duration(days: 1))); day = day.add(const Duration(days: 1))) {
+        for (var day = startDate;
+            day.isBefore(endDate.add(const Duration(days: 1)));
+            day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
-    } catch (e) {
-
-    }
+    } catch (e) {}
   }
 
   /// Maps API leave status to human-readable status
@@ -275,14 +298,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Fetches meeting data from the API
   Future<void> _fetchMinutesOfMeeting() async {
-    final response = await getRequest('/api/work-tracking/meeting/get-all-meeting');
+    final response =
+        await getRequest('/api/work-tracking/meeting/get-all-meeting');
     if (response == null) return;
 
     try {
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-
         return;
       }
 
@@ -290,12 +313,16 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
       for (var item in results) {
         // Ensure necessary fields are present
-        if (item['from_date'] == null || item['to_date'] == null || item['start_time'] == null || item['end_time'] == null) {
+        if (item['from_date'] == null ||
+            item['to_date'] == null ||
+            item['start_time'] == null ||
+            item['end_time'] == null) {
           showSnackBar('Missing date or time fields in meeting data.');
           continue;
         }
 
-        final responseMember = await getRequest('/api/work-tracking/meeting/Meetig-Member/${item['id']}');
+        final responseMember = await getRequest(
+            '/api/work-tracking/meeting/Meetig-Member/${item['id']}');
 
         dynamic dataMember;
         List<dynamic> resultsMember = [];
@@ -309,7 +336,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         final uniqueMembers = <Map<String, dynamic>>[];
 
         for (var member in resultsMember) {
-          if (member['employee_id'] != null && !seenEmployeeIds.contains(member['employee_id'])) {
+          if (member['employee_id'] != null &&
+              !seenEmployeeIds.contains(member['employee_id'])) {
             seenEmployeeIds.add(member['employee_id']);
             uniqueMembers.add(Map<String, dynamic>.from(member));
           }
@@ -321,7 +349,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         try {
           // Parse 'from_date' and 'start_time' separately and combine
           DateTime fromDate = DateTime.parse(item['from_date']);
-          List<String> startTimeParts = item['start_time'] != "" ? item['start_time'].split(':') : ["00", "00"];
+          List<String> startTimeParts = item['start_time'] != ""
+              ? item['start_time'].split(':')
+              : ["00", "00"];
           if (startTimeParts.length == 3) startTimeParts.removeLast();
           if (startTimeParts.length != 2) {
             throw const FormatException('Invalid start_time format');
@@ -336,7 +366,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
           // Parse 'to_date' and 'end_time' separately and combine
           DateTime toDate = DateTime.parse(item['to_date']);
-          List<String> endTimeParts = item['end_time'] != "" ? item['end_time'].split(':') : ["00", "00"];
+          List<String> endTimeParts = item['end_time'] != ""
+              ? item['end_time'].split(':')
+              : ["00", "00"];
           if (endTimeParts.length == 3) endTimeParts.removeLast();
           if (endTimeParts.length != 2) {
             throw const FormatException('Invalid end_time format');
@@ -353,8 +385,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           continue;
         }
 
-        final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
-        String status = item['s_name'] != null ? mapEventStatus(item['s_name'].toString()) : 'Pending';
+        final String uid =
+            item['meeting_id']?.toString() ?? UniqueKey().toString();
+        String status = item['s_name'] != null
+            ? mapEventStatus(item['s_name'].toString())
+            : 'Pending';
         if (status == 'Cancelled') continue;
 
         final event = Events(
@@ -370,7 +405,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           uid: uid,
           isRepeat: item['is_repeat']?.toString(),
           videoConference: item['video_conference']?.toString(),
-          backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
+          backgroundColor: item['backgroundColor'] != null
+              ? parseColor(item['backgroundColor'])
+              : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
           category: 'Minutes Of Meeting',
           fileName: item['file_name'],
@@ -381,7 +418,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         final normalizedStartDay = normalizeDate(startDateTime);
         final normalizedEndDay = normalizeDate(endDateTime);
 
-        for (var day = normalizedStartDay; !day.isAfter(normalizedEndDay); day = day.add(const Duration(days: 1))) {
+        for (var day = normalizedStartDay;
+            !day.isAfter(normalizedEndDay);
+            day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
@@ -392,14 +431,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Fetches meeting out data from the API
   Future<void> _fetchMeetingData() async {
-    final response = await getRequest('/api/work-tracking/out-meeting/out-meeting');
+    final response =
+        await getRequest('/api/work-tracking/out-meeting/out-meeting');
     if (response == null) return;
 
     try {
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-
         return;
       }
 
@@ -442,9 +481,12 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         }
 
         // Handle possible nulls with default values
-        final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
+        final String uid =
+            item['meeting_id']?.toString() ?? UniqueKey().toString();
 
-        String status = item['s_name'] != null ? mapEventStatus(item['s_name'].toString()) : 'Pending';
+        String status = item['s_name'] != null
+            ? mapEventStatus(item['s_name'].toString())
+            : 'Pending';
 
         if (status == 'Cancelled') continue;
 
@@ -463,17 +505,23 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           uid: uid,
           isRepeat: item['is_repeat']?.toString(),
           videoConference: item['video_conference']?.toString(),
-          backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
+          backgroundColor: item['backgroundColor'] != null
+              ? parseColor(item['backgroundColor'])
+              : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
           category: 'Add Meeting',
-          members: item['guests'] != null ? List<Map<String, dynamic>>.from(item['guests']) : [],
+          members: item['guests'] != null
+              ? List<Map<String, dynamic>>.from(item['guests'])
+              : [],
         );
 
         // Normalize the start and end dates for event mapping
         final normalizedStartDay = normalizeDate(startDateTime);
         final normalizedEndDay = normalizeDate(endDateTime);
 
-        for (var day = normalizedStartDay; !day.isAfter(normalizedEndDay); day = day.add(const Duration(days: 1))) {
+        for (var day = normalizedStartDay;
+            !day.isAfter(normalizedEndDay);
+            day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
@@ -486,14 +534,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Fetches meeting out data from the API
   Future<void> _fetchMeetingMembers() async {
-    final response = await getRequest('/api/work-tracking/out-meeting/outmeeting/my-members');
+    final response = await getRequest(
+        '/api/work-tracking/out-meeting/outmeeting/my-members');
     if (response == null) return;
 
     try {
       final data = json.decode(response.body);
 
       if (data == null || data['results'] == null || data['results'] is! List) {
-
         return;
       }
 
@@ -530,16 +578,22 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           continue;
         }
 
-        final String uid = item['meeting_id']?.toString() ?? UniqueKey().toString();
-        String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
+        final String uid =
+            item['meeting_id']?.toString() ?? UniqueKey().toString();
+        String status = item['status'] != null
+            ? mapEventStatus(item['status'].toString())
+            : 'Pending';
         if (status == 'Cancelled') continue;
 
         // Filter duplicates by employee_id for minutes of meeting members
-        List<Map<String, dynamic>> membersList = item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [];
+        List<Map<String, dynamic>> membersList = item['members'] != null
+            ? List<Map<String, dynamic>>.from(item['members'])
+            : [];
         final seenEmployeeIds = <dynamic>{};
         final uniqueMembers = <Map<String, dynamic>>[];
         for (var member in membersList) {
-          if (member['employee_id'] != null && !seenEmployeeIds.contains(member['employee_id'])) {
+          if (member['employee_id'] != null &&
+              !seenEmployeeIds.contains(member['employee_id'])) {
             seenEmployeeIds.add(member['employee_id']);
             uniqueMembers.add(member);
           }
@@ -559,7 +613,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           uid: uid,
           isRepeat: item['is_repeat']?.toString(),
           videoConference: item['video_conference']?.toString(),
-          backgroundColor: item['backgroundColor'] != null ? parseColor(item['backgroundColor']) : Colors.blue,
+          backgroundColor: item['backgroundColor'] != null
+              ? parseColor(item['backgroundColor'])
+              : Colors.blue,
           outmeetingUid: item['meeting_id']?.toString(),
           category: 'Minutes Of Meeting',
           members: uniqueMembers, // Use filtered unique members list
@@ -568,7 +624,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
         final normalizedStartDay = normalizeDate(startDateTime);
         final normalizedEndDay = normalizeDate(endDateTime);
 
-        for (var day = normalizedStartDay; !day.isAfter(normalizedEndDay); day = day.add(const Duration(days: 1))) {
+        for (var day = normalizedStartDay;
+            !day.isAfter(normalizedEndDay);
+            day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
@@ -579,7 +637,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Fetches meeting room bookings from the API
   Future<void> _fetchMeetingRoomInvite() async {
-    final response = await getRequest('/api/office-administration/book_meeting_room/invites-meeting');
+    final response = await getRequest(
+        '/api/office-administration/book_meeting_room/invites-meeting');
     if (response == null) return;
 
     try {
@@ -633,12 +692,13 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           continue;
         }
 
-        final String uid = item['project_id']?.toString() ?? UniqueKey().toString();
+        final String uid =
+            item['project_id']?.toString() ?? UniqueKey().toString();
 
         String status = item['statuss'] != null
             ? item['statuss'] == 1
-            ? 'Success'
-            : 'Pending'
+                ? 'Success'
+                : 'Pending'
             : 'Pending';
 
         if (status == 'Cancelled') continue;
@@ -659,7 +719,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           // members: List<Map<String, dynamic>>.from(resultMembers),
         );
 
-        for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+        for (var day = normalizeDate(startDateTime);
+            !day.isAfter(normalizeDate(endDateTime));
+            day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
@@ -671,7 +733,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Fetches meeting room bookings from the API
   Future<void> _fetchMeetingRoomBookings() async {
-    final response = await getRequest('/api/office-administration/book_meeting_room/my-requests');
+    final response = await getRequest(
+        '/api/office-administration/book_meeting_room/my-requests');
     if (response == null) return;
 
     try {
@@ -679,31 +742,42 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       final meetingRoomBookings = List<Map<String, dynamic>>.from(results);
 
       for (var item in meetingRoomBookings) {
-        final DateTime? startDateTime = item['from_date_time'] != null ? DateTime.parse(item['from_date_time']) : null;
-        final DateTime? endDateTime = item['to_date_time'] != null ? DateTime.parse(item['to_date_time']) : null;
+        final DateTime? startDateTime = item['from_date_time'] != null
+            ? DateTime.parse(item['from_date_time'])
+            : null;
+        final DateTime? endDateTime = item['to_date_time'] != null
+            ? DateTime.parse(item['to_date_time'])
+            : null;
 
         if (startDateTime == null || endDateTime == null) {
-          showSnackBar('Missing from_date_time or to_date_time in meeting room booking.');
+          showSnackBar(
+              'Missing from_date_time or to_date_time in meeting room booking.');
           continue;
         }
 
         final String uid = item['uid']?.toString() ?? UniqueKey().toString();
-        String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
+        String status = item['status'] != null
+            ? mapEventStatus(item['status'].toString())
+            : 'Pending';
         if (status == 'Cancelled') continue;
 
         // Filter duplicates by employee_id for meeting room members
-        List<Map<String, dynamic>> membersList = item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [];
+        List<Map<String, dynamic>> membersList = item['members'] != null
+            ? List<Map<String, dynamic>>.from(item['members'])
+            : [];
         final seenEmployeeIds = <dynamic>{};
         final uniqueMembers = <Map<String, dynamic>>[];
         for (var member in membersList) {
-          if (member['employee_id'] != null && !seenEmployeeIds.contains(member['employee_id'])) {
+          if (member['employee_id'] != null &&
+              !seenEmployeeIds.contains(member['employee_id'])) {
             seenEmployeeIds.add(member['employee_id']);
             uniqueMembers.add(member);
           }
         }
 
         final event = Events(
-          title: item['title'] ?? AppLocalizations.of(context)!.meetingRoomBookings,
+          title: item['title'] ??
+              AppLocalizations.of(context)!.meetingRoomBookings,
           start: startDateTime,
           end: endDateTime,
           desc: item['remark'] ?? 'Booking Pending',
@@ -718,7 +792,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           members: uniqueMembers, // Use filtered unique members list
         );
 
-        for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+        for (var day = normalizeDate(startDateTime);
+            !day.isAfter(normalizeDate(endDateTime));
+            day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
@@ -729,7 +805,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Fetches car bookings from the API
   Future<void> _fetchCarBookings() async {
-    final response = await getRequest('/api/office-administration/car_permits/me');
+    final response =
+        await getRequest('/api/office-administration/car_permits/me');
     if (response == null) return;
 
     try {
@@ -785,9 +862,12 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           continue;
         }
 
-        final String uid = 'car_${item['uid']?.toString() ?? UniqueKey().toString()}';
+        final String uid =
+            'car_${item['uid']?.toString() ?? UniqueKey().toString()}';
 
-        String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
+        String status = item['status'] != null
+            ? mapEventStatus(item['status'].toString())
+            : 'Pending';
 
         if (status == 'Cancelled') continue;
 
@@ -808,7 +888,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           createdAt: item['updated_at'],
         );
 
-        for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+        for (var day = normalizeDate(startDateTime);
+            !day.isAfter(normalizeDate(endDateTime));
+            day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
@@ -820,7 +902,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
   /// Fetches car bookings from the API
   Future<void> _fetchCarBookingsInvite() async {
-    final response = await getRequest('/api/office-administration/car_permits/invites-car-member');
+    final response = await getRequest(
+        '/api/office-administration/car_permits/invites-car-member');
     if (response == null) return;
 
     try {
@@ -875,16 +958,22 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           continue;
         }
 
-        final String uid = 'car_${item['uid']?.toString() ?? UniqueKey().toString()}';
-        String status = item['status'] != null ? mapEventStatus(item['status'].toString()) : 'Pending';
+        final String uid =
+            'car_${item['uid']?.toString() ?? UniqueKey().toString()}';
+        String status = item['status'] != null
+            ? mapEventStatus(item['status'].toString())
+            : 'Pending';
         if (status == 'Cancelled') continue;
 
         // Filter duplicates by employee_id for car booking members
-        List<Map<String, dynamic>> membersList = item['members'] != null ? List<Map<String, dynamic>>.from(item['members']) : [];
+        List<Map<String, dynamic>> membersList = item['members'] != null
+            ? List<Map<String, dynamic>>.from(item['members'])
+            : [];
         final seenEmployeeIds = <dynamic>{};
         final uniqueMembers = <Map<String, dynamic>>[];
         for (var member in membersList) {
-          if (member['employee_id'] != null && !seenEmployeeIds.contains(member['employee_id'])) {
+          if (member['employee_id'] != null &&
+              !seenEmployeeIds.contains(member['employee_id'])) {
             seenEmployeeIds.add(member['employee_id']);
             uniqueMembers.add(member);
           }
@@ -906,7 +995,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           members: uniqueMembers, // Use filtered unique members list
         );
 
-        for (var day = normalizeDate(startDateTime); !day.isAfter(normalizeDate(endDateTime)); day = day.add(const Duration(days: 1))) {
+        for (var day = normalizeDate(startDateTime);
+            !day.isAfter(normalizeDate(endDateTime));
+            day = day.add(const Duration(days: 1))) {
           addEvent(day, event);
         }
       }
@@ -973,13 +1064,16 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
     offlineProvider.insertCalendar(eventsForAll);
     List<Events> dayEvents = _getEventsForDay(_selectedDay!);
     if (_selectedCategory != 'All') {
-      dayEvents = dayEvents.where((event) => event.category == _selectedCategory).toList();
+      dayEvents = dayEvents
+          .where((event) => event.category == _selectedCategory)
+          .toList();
     }
     if (_searchQuery.isNotEmpty) {
       dayEvents = dayEvents.where((event) {
         final eventTitle = event.title.toLowerCase();
         final eventDescription = event.desc.toLowerCase();
-        return eventTitle.contains(_searchQuery.toLowerCase()) || eventDescription.contains(_searchQuery.toLowerCase());
+        return eventTitle.contains(_searchQuery.toLowerCase()) ||
+            eventDescription.contains(_searchQuery.toLowerCase());
       }).toList();
     }
     setState(() {
@@ -992,13 +1086,16 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
 
     List<Events> dayEvents = _getEventsForDay(_selectedDay!);
     if (_selectedCategory != 'All') {
-      dayEvents = dayEvents.where((event) => event.category == _selectedCategory).toList();
+      dayEvents = dayEvents
+          .where((event) => event.category == _selectedCategory)
+          .toList();
     }
     if (_searchQuery.isNotEmpty) {
       dayEvents = dayEvents.where((event) {
         final eventTitle = event.title.toLowerCase();
         final eventDescription = event.desc.toLowerCase();
-        return eventTitle.contains(_searchQuery.toLowerCase()) || eventDescription.contains(_searchQuery.toLowerCase());
+        return eventTitle.contains(_searchQuery.toLowerCase()) ||
+            eventDescription.contains(_searchQuery.toLowerCase());
       }).toList();
     }
     setState(() {
@@ -1038,11 +1135,16 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   width: 160,
                   decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.grey[850] : Colors.white, // Dark mode background
+                    color: isDarkMode
+                        ? Colors.grey[850]
+                        : Colors.white, // Dark mode background
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: isDarkMode ? Colors.black.withOpacity(0.6) : Colors.black.withOpacity(0.2), // Darker shadow for dark mode
+                        color: isDarkMode
+                            ? Colors.black.withOpacity(0.6)
+                            : Colors.black.withOpacity(
+                                0.2), // Darker shadow for dark mode
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -1098,7 +1200,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             Icon(
               icon,
               size: 20,
-              color: isDarkMode ? Colors.white70 : Colors.black54, // Dark mode: white, Light mode: black
+              color: isDarkMode
+                  ? Colors.white70
+                  : Colors.black54, // Dark mode: white, Light mode: black
               semanticLabel: label,
             ),
             const SizedBox(width: 12),
@@ -1106,7 +1210,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             Text(
               label,
               style: TextStyle(
-                color: isDarkMode ? Colors.white : Colors.black87, // Dark mode: white, Light mode: black
+                color: isDarkMode
+                    ? Colors.white
+                    : Colors.black87, // Dark mode: white, Light mode: black
               ),
             ),
           ],
@@ -1197,7 +1303,7 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
       key: _refreshKey,
       backgroundColor: isDarkMode ? Colors.black : Colors.white,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(130),
+        preferredSize: const Size.fromHeight(140),
         child: _buildCalendarHeader(isDarkMode),
       ),
       body: RefreshIndicator(
@@ -1237,7 +1343,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        DateFormat('EEEE').format(_selectedDay ?? DateTime.now()),
+                        DateFormat('EEEE')
+                            .format(_selectedDay ?? DateTime.now()),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -1261,22 +1368,22 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                   height: MediaQuery.of(context).size.height * 0.50,
                   child: eventsForDay.isEmpty
                       ? Center(
-                    child: Text(
-                      AppLocalizations.of(context)!.noEventsForThisDay,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  )
+                          child: Text(
+                            AppLocalizations.of(context)!.noEventsForThisDay,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        )
                       : CalendarDaySwitchView(
-                    selectedDay: _selectedDay,
-                    passDefaultCurrentHour: 0,
-                    passDefaultEndHour: 25,
-                    eventsCalendar: eventsForDay,
-                  ),
+                          selectedDay: _selectedDay,
+                          passDefaultCurrentHour: 0,
+                          passDefaultEndHour: 25,
+                          eventsCalendar: eventsForDay,
+                        ),
                 ),
               )
             ],
@@ -1295,7 +1402,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           height: 130,
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+              image: AssetImage(
+                  isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
             ),
             borderRadius: const BorderRadius.only(
@@ -1379,7 +1487,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                   return isSameDay(dateProvider.selectedDate, day);
                 },
                 onDaySelected: (selectedDay, focusedDay) {
-                  if (_singleTapSelectedDay != null && isSameDay(_singleTapSelectedDay, selectedDay)) {
+                  if (_singleTapSelectedDay != null &&
+                      isSameDay(_singleTapSelectedDay, selectedDay)) {
                     _showDayView(selectedDay);
                     _singleTapSelectedDay = null;
                   } else {
@@ -1435,10 +1544,14 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                 calendarBuilders: CalendarBuilders(
                   markerBuilder: (context, date, events) {
                     if (events.isNotEmpty) {
-                      final sortedEvents = events..sort((a, b) => b.start.compareTo(a.start));
+                      final sortedEvents = events
+                        ..sort((a, b) => b.start.compareTo(a.start));
                       final latestEvents = sortedEvents.take(3).toList();
                       final eventSpans = latestEvents.where((event) {
-                        return date.isAfter(event.start.subtract(const Duration(days: 1))) && date.isBefore(event.end.add(const Duration(days: 1)));
+                        return date.isAfter(event.start
+                                .subtract(const Duration(days: 1))) &&
+                            date.isBefore(
+                                event.end.add(const Duration(days: 1)));
                       }).toList();
 
                       return Column(
@@ -1448,7 +1561,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
                           final totalDays = event.end.difference(event.start);
                           return Container(
                             height: 2,
-                            margin: EdgeInsets.symmetric(vertical: 1, horizontal: totalDays.inDays > 0 ? 0 : 20),
+                            margin: EdgeInsets.symmetric(
+                                vertical: 1,
+                                horizontal: totalDays.inDays > 0 ? 0 : 20),
                             decoration: BoxDecoration(
                               color: ColorStandardization().colorDarkGreen,
                               shape: BoxShape.rectangle,
@@ -1478,9 +1593,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           // Previous Month Arrow with Border
           GestureDetector(
             onTap: () {
-              final previousMonth = DateTime(_focusedDay.year, _focusedDay.month - 1, _focusedDay.day);
+              final previousMonth = DateTime(
+                  _focusedDay.year, _focusedDay.month - 1, _focusedDay.day);
               _focusedDay = previousMonth;
-              Provider.of<DateProvider>(context, listen: false).updateSelectedDate(previousMonth);
+              Provider.of<DateProvider>(context, listen: false)
+                  .updateSelectedDate(previousMonth);
               setState(() {
                 _selectedDay = previousMonth;
                 _filterAndSearchEvents();
@@ -1488,7 +1605,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             },
             child: Container(
               decoration: BoxDecoration(
-                border: Border.all(color: isDarkMode ? Colors.white : Colors.grey),
+                border:
+                    Border.all(color: isDarkMode ? Colors.white : Colors.grey),
                 borderRadius: BorderRadius.circular(7.0),
               ),
               padding: const EdgeInsets.all(4.0),
@@ -1504,7 +1622,9 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           Consumer<DateProvider>(
             builder: (context, dateProvider, child) {
               return Text(
-                DateFormat.MMMM(sl<UserPreferences>().getLocalizeSupport().languageCode).format(dateProvider.selectedDate),
+                DateFormat.MMMM(
+                        sl<UserPreferences>().getLocalizeSupport().languageCode)
+                    .format(dateProvider.selectedDate),
                 style: TextStyle(
                   fontSize: 20.0,
                   fontWeight: FontWeight.bold,
@@ -1516,9 +1636,11 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
           // Next Month Arrow with Border
           GestureDetector(
             onTap: () {
-              final nextMonth = DateTime(_focusedDay.year, _focusedDay.month + 1, _focusedDay.day);
+              final nextMonth = DateTime(
+                  _focusedDay.year, _focusedDay.month + 1, _focusedDay.day);
               _focusedDay = nextMonth;
-              Provider.of<DateProvider>(context, listen: false).updateSelectedDate(nextMonth);
+              Provider.of<DateProvider>(context, listen: false)
+                  .updateSelectedDate(nextMonth);
               setState(() {
                 _selectedDay = nextMonth;
                 _filterAndSearchEvents();
@@ -1526,7 +1648,8 @@ class HomeCalendarState extends State<HomeCalendar> with TickerProviderStateMixi
             },
             child: Container(
               decoration: BoxDecoration(
-                border: Border.all(color: isDarkMode ? Colors.white : Colors.grey),
+                border:
+                    Border.all(color: isDarkMode ? Colors.white : Colors.grey),
                 borderRadius: BorderRadius.circular(7.0),
               ),
               padding: const EdgeInsets.all(4.0),
@@ -1557,7 +1680,8 @@ class GradientAnimationLine extends StatefulWidget {
   GradientAnimationLineState createState() => GradientAnimationLineState();
 }
 
-class GradientAnimationLineState extends State<GradientAnimationLine> with SingleTickerProviderStateMixin {
+class GradientAnimationLineState extends State<GradientAnimationLine>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<Color?> _colorAnimation1;
   late final Animation<Color?> _colorAnimation2;
@@ -1602,7 +1726,8 @@ class GradientAnimationLineState extends State<GradientAnimationLine> with Singl
               ],
             ),
           ),
-          margin: const EdgeInsets.only(bottom: 22.0, left: 15.0, right: 15.0, top: 20.0),
+          margin: const EdgeInsets.only(
+              bottom: 22.0, left: 15.0, right: 15.0, top: 20.0),
         );
       },
     );

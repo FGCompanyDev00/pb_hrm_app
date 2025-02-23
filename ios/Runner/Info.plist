@@ -68,5 +68,15 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER).backgroundTask</string>
+	</array>
+	<key>NSNotificationUsageDescription</key>
+	<string>We need to send you notifications to keep you updated with important information and updates.</string>
+	<key>NSUserNotificationUsageDescription</key>
+	<string>We need to send you notifications to keep you updated with important information and updates.</string>
+	<key>NSUserNotificationCenterDelegateClassName</key>
+	<string>$(PRODUCT_MODULE_NAME).AppDelegate</string>
 </dict>
 </plist>

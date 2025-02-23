@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.phongsavanhbank.pb_hrsystem"
+    package="com.psvsystem.next"
     android:versionCode="2"
     android:versionName="1.0">
 
@@ -38,7 +38,7 @@
         android:roundIcon="@mipmap/playstore"
         android:supportsRtl="true"
         android:theme="@style/LaunchTheme"
-        android:enableOnBackInvokedCallback="false"
+        android:enableOnBackInvokedCallback="true"
         android:requestLegacyExternalStorage="true">
 
         <receiver
@@ -52,7 +52,7 @@
 
         <!-- Flutter MainActivity configuration -->
         <activity
-            android:name="com.phongsavanhbank.pb_hrsystem.MainActivity"
+            android:name="com.psvsystem.next.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""

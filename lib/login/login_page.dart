@@ -29,56 +29,85 @@ class LoginPage extends StatefulWidget {
   LoginPageState createState() => LoginPageState();
 }
 
-class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
+class LoginPageState extends State<LoginPage>
+    with SingleTickerProviderStateMixin {
+  // Cache commonly used values
+  static const Duration _animationDuration = Duration(seconds: 1);
+  static const Duration _gradientDuration = Duration(seconds: 2);
+  static const Duration _successModalDuration = Duration(milliseconds: 600);
+
+  // Optimize state variables
+  final ValueNotifier<bool> _isLoading = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isPasswordVisible = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _rememberMe = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _biometricEnabled = ValueNotifier<bool>(false);
+  final ValueNotifier<String> _selectedLanguage =
+      ValueNotifier<String>('English');
+
+  // Existing variables
   bool _gradientAnimation = false;
-  String _selectedLanguage = 'English';
   final List<String> _languages = ['English', 'Laos', 'Chinese'];
   final LocalAuthentication auth = LocalAuthentication();
-  bool _rememberMe = false;
-  bool _isPasswordVisible = false;
-  bool _biometricEnabled = false;
   late Timer _timer;
   late AnimationController _animationController;
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _storage = const FlutterSecureStorage();
 
-  // BaseUrl ENV initialization for debug and production
-  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+  // Memoize expensive computations
+  String get baseUrl => dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   @override
   void initState() {
     super.initState();
+    _initializeApp();
+  }
 
+  Future<void> _initializeApp() async {
+    // Initialize animation controller
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 1),
+      duration: _animationDuration,
     )..repeat(reverse: true);
 
-    _checkLocale();
+    // Run initialization tasks concurrently
+    await Future.wait([
+      _checkLocale(),
+      _loadSavedCredentials(),
+      _loadBiometricSetting(),
+    ], eagerError: false)
+        .catchError((e) {
+      debugPrint('Initialization error: $e');
+    });
+
     _startGradientAnimation();
-    _loadSavedCredentials();
-    _loadBiometricSetting();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
+
+  void _startGradientAnimation() {
+    _timer = Timer.periodic(_gradientDuration, (timer) {
+      if (mounted) {
+        setState(() => _gradientAnimation = !_gradientAnimation);
+      }
+    });
   }
 
   @override
   void dispose() {
+    // Cancel timers and dispose controllers
     _timer.cancel();
+    _animationController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
-    _animationController.dispose();
-    super.dispose();
-  }
 
-  void _startGradientAnimation() {
-    _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (mounted) {
-        setState(() {
-          _gradientAnimation = !_gradientAnimation;
-        });
-      }
-    });
+    // Dispose ValueNotifiers
+    _isLoading.dispose();
+    _isPasswordVisible.dispose();
+    _rememberMe.dispose();
+    _biometricEnabled.dispose();
+    _selectedLanguage.dispose();
+
+    super.dispose();
   }
 
   Future<void> _checkLocale() async {
@@ -86,15 +115,16 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
 
     if (defaultLanguage != null && defaultLanguage.isNotEmpty) {
       setState(() {
-        _selectedLanguage = defaultLanguage;
+        _selectedLanguage.value = defaultLanguage;
       });
 
-      final languageNotifier = Provider.of<LanguageNotifier>(context, listen: false);
+      final languageNotifier =
+          Provider.of<LanguageNotifier>(context, listen: false);
       languageNotifier.changeLanguage(defaultLanguage);
     } else {
       // If nothing saved, default to English
       setState(() {
-        _selectedLanguage = 'English';
+        _selectedLanguage.value = 'English';
       });
     }
   }
@@ -105,107 +135,140 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
 
     String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
     setState(() {
-      _biometricEnabled = (biometricEnabled == 'true') && canCheckBiometrics && isDeviceSupported;
+      _biometricEnabled.value = (biometricEnabled == 'true') &&
+          canCheckBiometrics &&
+          isDeviceSupported;
     });
   }
 
   Future<void> _login() async {
-    bool isOnline = await InternetConnectionChecker().hasConnection;
-    final String username = _usernameController.text.trim();
-    final String password = _passwordController.text.trim();
+    if (!mounted) return;
 
-    if (username.isEmpty || password.isEmpty) {
-      if (mounted) _showCustomDialog(AppLocalizations.of(context)!.loginFailed, AppLocalizations.of(context)!.emptyFieldsMessage);
-      return;
-    }
+    _isLoading.value = true;
+    try {
+      bool isOnline = await InternetConnectionChecker().hasConnection;
+      final String username = _usernameController.text.trim();
+      final String password = _passwordController.text.trim();
 
-    if (isOnline) {
-      try {
-        final response = await http.post(
-          Uri.parse('$baseUrl/api/login'),
-          headers: <String, String>{
-            'Content-Type': 'application/json; charset=UTF-8',
-          },
-          body: jsonEncode(<String, String>{
-            'username': username,
-            'password': password,
-          }),
+      if (username.isEmpty || password.isEmpty) {
+        _showCustomDialog(
+          AppLocalizations.of(context)!.loginFailed,
+          AppLocalizations.of(context)!.emptyFieldsMessage,
         );
+        return;
+      }
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseBody = jsonDecode(response.body);
-          final String token = responseBody['token'];
-          final String employeeId = responseBody['id']; // Get the employee id
+      if (!isOnline) {
+        _showOfflineOptionModal(
+          AppLocalizations.of(context)!.noInternet,
+          AppLocalizations.of(context)!.offlineMessage,
+        );
+        return;
+      }
 
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('employee_id', employeeId); // Save employee id as current user id
-          sl<UserPreferences>().setToken(token);
-          sl<UserPreferences>().setLoggedIn(true);
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/login'),
+        headers: const <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, String>{
+          'username': username,
+          'password': password,
+        }),
+      );
 
-          if (_rememberMe) {
-            await _saveCredentials(username, password, token);
-          } else {
-            await _clearCredentials();
-          }
+      if (!mounted) return;
 
-          await _storage.write(key: 'username', value: username);
-          await _storage.write(key: 'password', value: password);
-
-          if (_biometricEnabled) {
-            await _storage.write(key: 'biometricEnabled', value: 'true');
-          }
-
-          if (mounted) Provider.of<UserProvider>(context, listen: false).login(token);
-
-          bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
-
-          if (isFirstLogin) {
-            if (mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const NotificationPermissionPage()),
-              );
-            }
-
-            await prefs.setBool('isFirstLogin', false);
-          } else {
-            if (mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const MainScreen()),
-              );
-            }
-          }
-        } else if (response.statusCode == 401) {
-          // Unauthorized (Incorrect Password)
-          _showCustomDialog(
-            AppLocalizations.of(context)!.loginFailed,
-            AppLocalizations.of(context)!.incorrectPassword,
-          );
-        } else if (response.statusCode == 500 || response.statusCode == 502 || response.statusCode == 403) {
-          // API Error
-          _showCustomDialog(
-            AppLocalizations.of(context)!.apiError,
-            AppLocalizations.of(context)!.apiErrorMessage,
-          );
-        } else {
-          _showCustomDialog(
-            AppLocalizations.of(context)!.loginFailed,
-            AppLocalizations.of(context)!.unknownError,
-          );
-        }
-      } catch (e) {
+      if (response.statusCode == 200) {
+        await _handleSuccessfulLogin(response);
+      } else {
+        _handleLoginError(response.statusCode);
+      }
+    } catch (e) {
+      debugPrint('Login error: $e');
+      if (mounted) {
         _showCustomDialog(
           AppLocalizations.of(context)!.serverError,
           AppLocalizations.of(context)!.serverErrorMessage,
         );
       }
-    } else {
-      // If offline, show offline option and allow offline login
-      _showOfflineOptionModal(
-        AppLocalizations.of(context)!.noInternet,
-        AppLocalizations.of(context)!.offlineMessage,
-      );
+    } finally {
+      if (mounted) {
+        _isLoading.value = false;
+      }
+    }
+  }
+
+  Future<void> _handleSuccessfulLogin(http.Response response) async {
+    final Map<String, dynamic> responseBody = jsonDecode(response.body);
+    final String token = responseBody['token'];
+    final String employeeId = responseBody['id'];
+
+    // Run tasks concurrently
+    await Future.wait([
+      SharedPreferences.getInstance().then((prefs) async {
+        await prefs.setString('employee_id', employeeId);
+        await prefs.setBool('isFirstLogin', false);
+      }),
+      sl<UserPreferences>().setToken(token),
+      sl<UserPreferences>().setLoggedIn(true),
+      _rememberMe.value
+          ? _saveCredentials(_usernameController.text.trim(),
+              _passwordController.text.trim(), token)
+          : _clearCredentials(),
+      _storage.write(key: 'username', value: _usernameController.text.trim()),
+      _storage.write(key: 'password', value: _passwordController.text.trim()),
+      if (_biometricEnabled.value)
+        _storage.write(key: 'biometricEnabled', value: 'true'),
+    ], eagerError: false);
+
+    if (!mounted) return;
+
+    Provider.of<UserProvider>(context, listen: false).login(token);
+
+    // Show success animation with optimized duration
+    await _showSuccessModal();
+
+    if (!mounted) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => isFirstLogin
+            ? const NotificationPermissionPage()
+            : const MainScreen(),
+      ),
+    );
+  }
+
+  void _handleLoginError(int statusCode) {
+    if (!mounted) return;
+
+    switch (statusCode) {
+      case 401:
+        _showCustomDialog(
+          AppLocalizations.of(context)!.loginFailed,
+          AppLocalizations.of(context)!.incorrectPassword,
+        );
+        break;
+      case 500:
+      case 502:
+      case 403:
+        _showCustomDialog(
+          AppLocalizations.of(context)!.apiError,
+          AppLocalizations.of(context)!.apiErrorMessage,
+        );
+        break;
+      default:
+        _showCustomDialog(
+          AppLocalizations.of(context)!.loginFailed,
+          AppLocalizations.of(context)!.unknownError,
+        );
     }
   }
 
@@ -221,7 +284,8 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
           child: Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+                image: AssetImage(
+                    isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
                 fit: BoxFit.cover,
               ),
               borderRadius: BorderRadius.circular(15),
@@ -237,7 +301,8 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     RotationTransition(
-                      turns: Tween(begin: -0.05, end: 0.05).animate(_animationController),
+                      turns: Tween(begin: -0.05, end: 0.05)
+                          .animate(_animationController),
                       child: const Icon(
                         Icons.warning_amber_rounded,
                         color: Colors.red,
@@ -280,14 +345,16 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                         ElevatedButton(
                           onPressed: () async {
                             Navigator.pop(context);
-                            if (title == AppLocalizations.of(context)!.noInternet) {
+                            if (title ==
+                                AppLocalizations.of(context)!.noInternet) {
                               // Allow offline login
                               await _offlineLogin();
                             } else {
                               // Prevent offline login if unauthorized
                               _showCustomDialog(
                                 AppLocalizations.of(context)!.unauthorizedError,
-                                AppLocalizations.of(context)!.offlineAccessDenied,
+                                AppLocalizations.of(context)!
+                                    .offlineAccessDenied,
                               );
                             }
                           },
@@ -323,7 +390,9 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
     final storedPassword = box.get('password');
     final token = box.get('token');
 
-    if (storedUsername == _usernameController.text.trim() && storedPassword == _passwordController.text.trim() && token != null) {
+    if (storedUsername == _usernameController.text.trim() &&
+        storedPassword == _passwordController.text.trim() &&
+        token != null) {
       if (mounted) {
         Provider.of<UserProvider>(context, listen: false).login(token);
         Navigator.pushReplacement(
@@ -342,8 +411,9 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
   }
 
   Future<void> _authenticate({bool useBiometric = true}) async {
-    if (!_biometricEnabled) {
-      _showCustomDialog('Biometric Disabled', 'Please enable biometric authentication.');
+    if (!_biometricEnabled.value) {
+      _showCustomDialog(
+          'Biometric Disabled', 'Please enable biometric authentication.');
       return;
     }
 
@@ -372,7 +442,8 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
     }
   }
 
-  Future<void> _saveCredentials(String username, String password, String token) async {
+  Future<void> _saveCredentials(
+      String username, String password, String token) async {
     final box = await Hive.openBox('loginBox');
     await box.put('username', username);
     await box.put('password', password);
@@ -382,9 +453,12 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
   Future<void> _loadSavedCredentials() async {
     final box = await Hive.openBox('loginBox');
     setState(() {
-      _usernameController.text = box.get('username', defaultValue: '') as String;
-      _passwordController.text = box.get('password', defaultValue: '') as String;
-      _rememberMe = box.containsKey('username') && box.containsKey('password');
+      _usernameController.text =
+          box.get('username', defaultValue: '') as String;
+      _passwordController.text =
+          box.get('password', defaultValue: '') as String;
+      _rememberMe.value =
+          box.containsKey('username') && box.containsKey('password');
     });
   }
 
@@ -398,13 +472,16 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: Provider.of<DateProvider>(context, listen: false).selectedDate,
+      initialDate:
+          Provider.of<DateProvider>(context, listen: false).selectedDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
 
     if (pickedDate != null) {
-      if (context.mounted) Provider.of<DateProvider>(context, listen: false).updateSelectedDate(pickedDate);
+      if (context.mounted)
+        Provider.of<DateProvider>(context, listen: false)
+            .updateSelectedDate(pickedDate);
     }
   }
 
@@ -413,7 +490,8 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -457,6 +535,83 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
     );
   }
 
+  Future<void> _showSuccessModal() async {
+    if (!mounted) return;
+
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return TweenAnimationBuilder(
+          duration: _successModalDuration,
+          tween: Tween<double>(begin: 0, end: 1),
+          builder: (context, double value, child) {
+            return Transform.scale(
+              scale: value,
+              child: AlertDialog(
+                backgroundColor: isDarkMode ? Colors.grey[850] : Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TweenAnimationBuilder(
+                      duration: const Duration(milliseconds: 800),
+                      tween: Tween<double>(begin: 0, end: 1),
+                      curve: Curves.easeOutBack,
+                      builder: (context, double value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.green.withOpacity(0.1),
+                            ),
+                            child: const Icon(
+                              Icons.check_circle_outline,
+                              color: Colors.green,
+                              size: 80,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Login Successful!',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Welcome back!',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: isDarkMode ? Colors.white70 : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    ).timeout(
+      const Duration(seconds: 2),
+      onTimeout: () {
+        if (mounted) Navigator.of(context).pop();
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     var languageNotifier = Provider.of<LanguageNotifier>(context);
@@ -474,7 +629,8 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
         height: double.infinity,
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+            image: AssetImage(
+                isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
         ),
@@ -495,7 +651,8 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         SizedBox(height: screenHeight * 0.045),
-                        _buildLanguageDropdown(languageNotifier, isDarkMode, screenWidth),
+                        _buildLanguageDropdown(
+                            languageNotifier, isDarkMode, screenWidth),
                         SizedBox(height: screenHeight * 0.005),
                         _buildLogoAndText(screenWidth, screenHeight),
                         SizedBox(height: screenHeight * 0.06),
@@ -518,7 +675,8 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
     );
   }
 
-  Widget _buildLanguageDropdown(LanguageNotifier languageNotifier, bool isDarkMode, double screenWidth) {
+  Widget _buildLanguageDropdown(
+      LanguageNotifier languageNotifier, bool isDarkMode, double screenWidth) {
     return Align(
       alignment: Alignment.topRight,
       child: Column(
@@ -529,7 +687,8 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
               showModalBottomSheet(
                 context: context,
                 shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30.0)),
+                  borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(30.0)),
                 ),
                 builder: (BuildContext context) {
                   return Container(
@@ -549,7 +708,9 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                               ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.close, color: isDarkMode ? Colors.white : Colors.black),
+                              icon: Icon(Icons.close,
+                                  color:
+                                      isDarkMode ? Colors.white : Colors.black),
                               onPressed: () {
                                 Navigator.pop(context);
                               },
@@ -577,12 +738,13 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                               onTap: () async {
                                 // 1) Update local state
                                 setState(() {
-                                  _selectedLanguage = language;
+                                  _selectedLanguage.value = language;
                                 });
                                 // 2) Notify language change
                                 languageNotifier.changeLanguage(language);
                                 // 3) Save the new default language in UserPreferences
-                                sl<UserPreferences>().setDefaultLanguage(language);
+                                sl<UserPreferences>()
+                                    .setDefaultLanguage(language);
 
                                 // Finally close the bottom sheet
                                 Navigator.pop(context);
@@ -605,11 +767,13 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
                   decoration: BoxDecoration(
                     color: isDarkMode ? Colors.black54 : Colors.white,
                     shape: BoxShape.circle,
-                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black12, blurRadius: 8)
+                    ],
                   ),
                   child: Center(
                     child: Image.asset(
-                      'assets/flags/${_selectedLanguage.toLowerCase()}.png',
+                      'assets/flags/${_selectedLanguage.value.toLowerCase()}.png',
                       width: screenWidth * 0.08,
                       height: screenWidth * 0.09,
                     ),
@@ -628,7 +792,7 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
           ),
           SizedBox(height: screenWidth * 0.017),
           Text(
-            _selectedLanguage,
+            _selectedLanguage.value,
             style: TextStyle(
               color: isDarkMode ? Colors.white : Colors.black,
               fontSize: screenWidth * 0.035,
@@ -644,7 +808,8 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start, // Aligns children to the start (left)
+      crossAxisAlignment:
+          CrossAxisAlignment.start, // Aligns children to the start (left)
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -679,7 +844,8 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
               Padding(
                 padding: EdgeInsets.only(left: screenWidth * 0.04),
                 child: Text(
-                  AppLocalizations.of(context)!.welcomeSubtitle1, // Localized Subtitle 1
+                  AppLocalizations.of(context)!
+                      .welcomeSubtitle1, // Localized Subtitle 1
                   style: TextStyle(
                     fontSize: 14,
                     color: isDarkMode ? Colors.white : Colors.black,
@@ -691,7 +857,8 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
               Padding(
                 padding: EdgeInsets.only(left: screenWidth * 0.08),
                 child: Text(
-                  AppLocalizations.of(context)!.welcomeSubtitle2, // Localized Subtitle 2
+                  AppLocalizations.of(context)!
+                      .welcomeSubtitle2, // Localized Subtitle 2
                   style: TextStyle(
                     fontSize: 14,
                     color: isDarkMode ? Colors.white : Colors.black,
@@ -732,7 +899,9 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
           borderRadius: BorderRadius.circular(screenWidth * 0.04),
           boxShadow: [
             BoxShadow(
-              color: isDarkMode ? Colors.black.withOpacity(0.5) : Colors.black.withOpacity(0.1),
+              color: isDarkMode
+                  ? Colors.black.withOpacity(0.5)
+                  : Colors.black.withOpacity(0.1),
               offset: Offset(screenWidth * 0.005, screenWidth * 0.005),
               blurRadius: screenWidth * 0.01,
             ),
@@ -778,7 +947,8 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
             style: TextStyle(color: isDarkMode ? Colors.black : Colors.black),
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.username,
-              labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              labelStyle:
+                  TextStyle(color: isDarkMode ? Colors.white : Colors.black),
               prefixIcon: const Icon(Icons.person_outline, color: Colors.black),
               filled: true,
               fillColor: isDarkMode ? Colors.grey : Colors.white,
@@ -794,20 +964,23 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
           width: screenWidth * 0.8,
           child: TextField(
             controller: _passwordController,
-            obscureText: !_isPasswordVisible,
+            obscureText: !_isPasswordVisible.value,
             style: TextStyle(color: isDarkMode ? Colors.black : Colors.black),
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.password,
-              labelStyle: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              labelStyle:
+                  TextStyle(color: isDarkMode ? Colors.white : Colors.black),
               prefixIcon: const Icon(Icons.lock_outline, color: Colors.black),
               suffixIcon: IconButton(
                 icon: Icon(
-                  _isPasswordVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  _isPasswordVisible.value
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                   color: Colors.black,
                 ),
                 onPressed: () {
                   setState(() {
-                    _isPasswordVisible = !_isPasswordVisible;
+                    _isPasswordVisible.value = !_isPasswordVisible.value;
                   });
                 },
               ),
@@ -832,10 +1005,10 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
       child: Row(
         children: [
           Checkbox(
-            value: _rememberMe,
+            value: _rememberMe.value,
             onChanged: (bool? value) {
               setState(() {
-                _rememberMe = value!;
+                _rememberMe.value = value!;
               });
             },
             activeColor: Colors.green,
@@ -859,7 +1032,7 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: _biometricEnabled
+            onTap: _biometricEnabled.value
                 ? () => _authenticate(useBiometric: true)
                 : () {
                     _showCustomDialog(
@@ -870,13 +1043,19 @@ class LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixi
             child: Container(
               width: screenWidth * 0.35,
               height: screenWidth * 0.125,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(screenWidth * 0.03), color: isDarkMode ? Colors.grey : Colors.white),
+              decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                  color: isDarkMode ? Colors.grey : Colors.white),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.face, size: screenWidth * 0.09, color: isDarkMode ? Colors.black : Colors.orange),
+                  Icon(Icons.face,
+                      size: screenWidth * 0.09,
+                      color: isDarkMode ? Colors.black : Colors.orange),
                   SizedBox(width: screenWidth * 0.025),
-                  Icon(Icons.fingerprint, size: screenWidth * 0.1, color: isDarkMode ? Colors.black : Colors.orange),
+                  Icon(Icons.fingerprint,
+                      size: screenWidth * 0.1,
+                      color: isDarkMode ? Colors.black : Colors.orange),
                 ],
               ),
             ),
