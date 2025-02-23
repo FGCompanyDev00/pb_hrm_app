@@ -39,7 +39,7 @@ class SettingsPageState extends State<SettingsPage> {
   bool _biometricEnabled = false;
   bool _isLoading = false;
   late Future<UserProfile> futureUserProfile;
-  String _appVersion = 'PSBV Next Demo v1.0.55(55)';
+  String _appVersion = 'PSBV Next Demo v1.0.56(56)';
   late Box<String> userProfileBox;
   late Box<List<String>> bannersBox;
 
@@ -66,7 +66,7 @@ class SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadAppVersion() async {
     setState(() {
-      _appVersion = 'PSBV Next Demo v1.0.55(55)';
+      _appVersion = 'PSBV Next Demo v1.0.56(56)';
       // _appVersion = 'PSBV Next v${packageInfo.version}';
     });
   }
