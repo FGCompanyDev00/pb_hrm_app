@@ -24,7 +24,11 @@ import 'package:geolocator/geolocator.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:internet_connection_checker/internet_connection_checker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:async';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/services.dart'; // Add this import for clipboard
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -38,10 +42,17 @@ class SettingsPageState extends State<SettingsPage> {
   final _storage = const FlutterSecureStorage();
   bool _biometricEnabled = false;
   bool _isLoading = false;
+  bool _debugModeEnabled = false;
   late Future<UserProfile> futureUserProfile;
   String _appVersion = 'PSBV Next Demo v1.0.56(56)';
   late Box<String> userProfileBox;
   late Box<List<String>> bannersBox;
+  String? _fcmToken;
+  String? _apnsToken;
+  String? _deviceId;
+  String? _bundleId;
+  String? _buildNumber;
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
 
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
@@ -57,6 +68,8 @@ class SettingsPageState extends State<SettingsPage> {
     futureUserProfile = fetchUserProfile();
     _loadAppVersion();
     _initializeHiveBoxes();
+    _loadDebugMode();
+    _initializeDeviceTokens();
   }
 
   Future<void> _initializeHiveBoxes() async {
@@ -238,6 +251,189 @@ class SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _loadDebugMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _debugModeEnabled = prefs.getBool('debugModeEnabled') ?? false;
+    });
+  }
+
+  Future<void> _saveDebugMode(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('debugModeEnabled', enabled);
+    setState(() {
+      _debugModeEnabled = enabled;
+    });
+  }
+
+  Future<void> _initializeDeviceTokens() async {
+    try {
+      // Get package info
+      final packageInfo = await PackageInfo.fromPlatform();
+      setState(() {
+        _bundleId = packageInfo.packageName;
+        _buildNumber = packageInfo.buildNumber;
+      });
+
+      // Get Firebase token
+      final firebaseToken = await _firebaseMessaging.getToken();
+
+      // Get device info
+      final deviceInfo = DeviceInfoPlugin();
+      String deviceId = '';
+
+      if (Platform.isIOS) {
+        try {
+          // Get APNS token for iOS
+          final apnsToken = await _firebaseMessaging.getAPNSToken();
+          setState(() {
+            _apnsToken = apnsToken;
+            _fcmToken = firebaseToken;
+          });
+
+          // Get iOS device ID with enhanced null safety
+          final iosInfo = await deviceInfo.iosInfo;
+          final Map<String, String> deviceInfoMap = {
+            'identifier': iosInfo.identifierForVendor ?? '',
+            'name': iosInfo.name ?? '',
+            'model': iosInfo.model ?? '',
+            'systemName': iosInfo.systemName ?? '',
+            'systemVersion': iosInfo.systemVersion ?? '',
+            'localizedModel': iosInfo.localizedModel ?? '',
+          };
+
+          // Filter out empty values and join with underscore
+          deviceId = deviceInfoMap.entries
+              .where((entry) => entry.value.isNotEmpty)
+              .map((entry) => entry.value)
+              .join('_');
+
+          // If deviceId is still empty, generate a fallback ID
+          if (deviceId.isEmpty) {
+            deviceId = 'ios_${DateTime.now().microsecondsSinceEpoch}';
+            debugPrint('Generated fallback iOS device ID: $deviceId');
+          }
+
+          // Store tokens only if they are not null
+          if (_apnsToken != null) {
+            await _storeDeviceToken('apns_token', _apnsToken!);
+          }
+          if (_fcmToken != null) {
+            await _storeDeviceToken('fcm_token', _fcmToken!);
+          }
+        } catch (e) {
+          debugPrint('Error getting iOS device info: $e');
+          // Generate a unique fallback ID if there's an error
+          deviceId = 'ios_${DateTime.now().millisecondsSinceEpoch}_fallback';
+        }
+      } else if (Platform.isAndroid) {
+        setState(() {
+          _fcmToken = firebaseToken;
+        });
+
+        try {
+          // Get Android device ID with enhanced null safety
+          final androidInfo = await deviceInfo.androidInfo;
+          final Map<String, String> deviceInfoMap = {
+            'id': androidInfo.id,
+            'brand': androidInfo.brand,
+            'device': androidInfo.device,
+            'model': androidInfo.model,
+            'product': androidInfo.product,
+            'hardware': androidInfo.hardware,
+            'manufacturer': androidInfo.manufacturer,
+            'serialNumber': androidInfo.serialNumber ?? '',
+          };
+
+          // Filter out empty values and join with underscore
+          final List<String> deviceInfoParts =
+              deviceInfoMap.values.where((value) => value.isNotEmpty).toList();
+
+          if (deviceInfoParts.isNotEmpty) {
+            deviceId = deviceInfoParts.join('_');
+          }
+
+          // If still empty, create a fallback device ID
+          if (deviceId.isEmpty) {
+            deviceId = 'android_${DateTime.now().millisecondsSinceEpoch}';
+          }
+        } catch (e) {
+          debugPrint('Error getting Android device info: $e');
+          deviceId =
+              'android_${DateTime.now().millisecondsSinceEpoch}_fallback';
+        }
+
+        // Save FCM token if not null
+        if (firebaseToken != null) {
+          await _storage.write(key: 'fcmToken', value: firebaseToken);
+        }
+      }
+
+      // Save and set device ID
+      if (deviceId.isNotEmpty) {
+        setState(() {
+          _deviceId = deviceId;
+        });
+        await _storage.write(key: 'deviceId', value: deviceId);
+      } else {
+        // Try to get from storage if current attempt failed
+        final storedDeviceId = await _storage.read(key: 'deviceId');
+        if (storedDeviceId != null && storedDeviceId.isNotEmpty) {
+          setState(() {
+            _deviceId = storedDeviceId;
+          });
+        } else {
+          // Last resort - generate a unique identifier with timestamp and random component
+          final fallbackId =
+              'device_${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}';
+          setState(() {
+            _deviceId = fallbackId;
+          });
+          await _storage.write(key: 'deviceId', value: fallbackId);
+        }
+      }
+
+      // Set up Firebase Messaging handlers
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('Got a message whilst in the foreground!');
+        debugPrint('Message data: ${message.data}');
+
+        if (message.notification != null) {
+          debugPrint(
+              'Message also contained a notification: ${message.notification}');
+        }
+      });
+
+      // Request notification permissions
+      await _firebaseMessaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
+    } catch (e) {
+      debugPrint('Error initializing device tokens: $e');
+      // Try to get from storage if current attempt failed
+      final storedDeviceId = await _storage.read(key: 'deviceId');
+      if (storedDeviceId != null && storedDeviceId.isNotEmpty) {
+        setState(() {
+          _deviceId = storedDeviceId;
+        });
+      } else {
+        // Generate a unique fallback ID with additional entropy
+        final fallbackId =
+            'device_${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}_recovery';
+        setState(() {
+          _deviceId = fallbackId;
+        });
+        await _storage.write(key: 'deviceId', value: fallbackId);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
@@ -413,10 +609,22 @@ class SettingsPageState extends State<SettingsPage> {
                     //     );
                     //   },
                     // ),
-                    // Display App Version
-                    const SizedBox(height: 20),
-                    // Debug Mode Section (Only visible in debug mode)
-                    if (kDebugMode) ...[
+                    // Add Debug Mode Toggle before the debug section
+                    _buildSettingsTile(
+                      context,
+                      title: 'Debug Mode',
+                      trailing: Switch(
+                        value: _debugModeEnabled,
+                        onChanged: (bool value) => _saveDebugMode(value),
+                        activeColor: const Color(0xFFDBB342),
+                        inactiveTrackColor: themeNotifier.isDarkMode
+                            ? Colors.grey[700]
+                            : Colors.grey[300],
+                      ),
+                    ),
+                    // Debug Mode Section (Only visible when debug mode is enabled)
+                    if (_debugModeEnabled) ...[
+                      const SizedBox(height: 20),
                       Row(
                         children: [
                           Image.asset(
@@ -440,6 +648,46 @@ class SettingsPageState extends State<SettingsPage> {
                         ],
                       ),
                       const SizedBox(height: 10),
+                      // Device Tokens Info with Refresh button
+                      _buildSettingsTile(
+                        context,
+                        title: 'Device Tokens',
+                        icon: Icons.perm_device_information,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_isLoading)
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFDBB342),
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: IconButton(
+                                  icon: const Icon(
+                                    Icons.key,
+                                    color: Color(0xFFDBB342),
+                                  ),
+                                  onPressed: _refreshTokens,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  iconSize: 20,
+                                ),
+                              ),
+                            const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: Colors.grey,
+                            ),
+                          ],
+                        ),
+                        onTap: () => _showDeviceTokens(),
+                      ),
                       // Test Local Notification
                       _buildSettingsTile(
                         context,
@@ -961,6 +1209,199 @@ class SettingsPageState extends State<SettingsPage> {
       'upload': 1024 / uploadTime, // Simulated MB/s
       'latency': latency.toDouble(),
     };
+  }
+
+  void _showDeviceTokens() {
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+    final isDarkMode = themeNotifier.isDarkMode;
+
+    final tokenData = {
+      'Device ID': _deviceId ?? 'Not available',
+      if (Platform.isIOS) 'APNS Token': _apnsToken ?? 'Not available',
+      if (Platform.isAndroid) 'FCM Token': _fcmToken ?? 'Not available',
+      'Bundle ID': _bundleId ?? 'Not available',
+      'Device Type': Platform.isIOS ? 'iOS' : 'Android',
+      'OS Version': Platform.operatingSystemVersion,
+      'App Version': _appVersion,
+      'Build Number': _buildNumber ?? 'Not available',
+      'Environment': kDebugMode ? 'Debug' : 'Release',
+      'Device Language': Platform.localeName,
+      'Device Time Zone': DateTime.now().timeZoneName,
+      'Last Token Update': DateTime.now().toString(),
+      'Firebase Messaging Status': 'Supported',
+      if (Platform.isAndroid) 'Android API Level': _getAndroidAPILevel(),
+    };
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
+        title: Text(
+          'Device Tokens',
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Special handling for the token
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDarkMode ? Colors.grey[800] : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDarkMode ? Colors.grey[700]! : Colors.grey[300]!,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      Platform.isIOS ? 'APNS Token' : 'FCM Token',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    InkWell(
+                      onTap: () {
+                        final token = Platform.isIOS ? _apnsToken : _fcmToken;
+                        if (token != null && token != 'Not available') {
+                          Clipboard.setData(ClipboardData(text: token))
+                              .then((_) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    '${Platform.isIOS ? 'APNS' : 'FCM'} Token copied to clipboard'),
+                                backgroundColor: const Color(0xFFDBB342),
+                              ),
+                            );
+                          });
+                        }
+                      },
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              Platform.isIOS
+                                  ? (_apnsToken ?? 'Not available')
+                                  : (_fcmToken ?? 'Not available'),
+                              style: TextStyle(
+                                color: isDarkMode
+                                    ? Colors.grey[300]
+                                    : Colors.grey[700],
+                                fontSize: 13,
+                              ),
+                              softWrap: true,
+                            ),
+                          ),
+                          Icon(
+                            Icons.copy,
+                            size: 20,
+                            color: isDarkMode
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Other device information
+              ...tokenData.entries
+                  .where((e) => e.key != 'APNS Token' && e.key != 'FCM Token')
+                  .map((e) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${e.key}:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      Text(
+                        '${e.value}',
+                        style: TextStyle(
+                          color:
+                              isDarkMode ? Colors.grey[300] : Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFDBB342),
+            ),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getAndroidAPILevel() {
+    try {
+      return Platform.version.split(' ').first;
+    } catch (e) {
+      return 'Not available';
+    }
+  }
+
+  // Add a method to refresh tokens
+  Future<void> _refreshTokens() async {
+    setState(() => _isLoading = true);
+    try {
+      await _initializeDeviceTokens();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tokens refreshed successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error refreshing tokens: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _storeDeviceToken(String key, String value) async {
+    try {
+      await _storage.write(key: key, value: value);
+      debugPrint('Successfully stored $key');
+    } catch (e) {
+      debugPrint('Error storing $key: $e');
+      // Attempt to store in SharedPreferences as fallback
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(key, value);
+        debugPrint('Successfully stored $key in SharedPreferences as fallback');
+      } catch (e) {
+        debugPrint('Error storing $key in fallback storage: $e');
+      }
+    }
   }
 }
 

@@ -1590,7 +1590,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         // Positioned container above the AppBar area
         Positioned(
           top: MediaQuery.of(context).padding.top + 84,
-          left: 200,
+          left: 270,
           right: 0,
           child: Center(
             child: _buildSectionContainer(),

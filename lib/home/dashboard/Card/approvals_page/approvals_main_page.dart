@@ -547,9 +547,13 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     String type = (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
-    String status = (item['status']?.toString() ?? item['is_approve']?.toString() ?? 'Pending').trim();
+    String status = (item['status']?.toString() ??
+            item['is_approve']?.toString() ??
+            'Pending')
+        .trim();
 
-    if (status == 'Branch Waiting') status = 'Waiting';
+    if (status == 'Branch Waiting')
+      status = 'Waiting';
     else if (status == 'Branch Approved') status = 'Approved';
 
     String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
@@ -560,8 +564,8 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
     String employeeImage = (imgPath.isNotEmpty && imgPath.startsWith('http'))
         ? imgPath
         : (imgName.isNotEmpty && imgName.startsWith('http'))
-        ? imgName
-        : 'https://via.placeholder.com/150'; // Fallback image
+            ? imgName
+            : 'https://via.placeholder.com/150'; // Fallback image
 
     Color typeColor = _getTypeColor(type);
     Color statusColor = _getStatusColor(status);
@@ -575,19 +579,23 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
     switch (type) {
       case 'meeting':
         title = item['title']?.toString() ?? 'No Title';
-        dateRange = _formatDateRange(item['from_date_time'], item['to_date_time']);
+        dateRange =
+            _formatDateRange(item['from_date_time'], item['to_date_time']);
         detailLabel = 'Employee';
         detailValue = employeeName;
         break;
       case 'leave':
         title = _leaveTypesMap[item['leave_type_id']] ?? 'Unknown Leave';
-        dateRange = _formatDateRange(item['take_leave_from'], item['take_leave_to'], alwaysShowTime: true);
+        dateRange = _formatDateRange(
+            item['take_leave_from'], item['take_leave_to'],
+            alwaysShowTime: true);
         detailLabel = 'Leave Type';
         detailValue = title;
         break;
       case 'car':
         title = item['purpose']?.toString() ?? 'No Purpose';
-        dateRange = _formatDateRange('${item['date_in']} ${item['time_in']}', '${item['date_out']} ${item['time_out']}');
+        dateRange = _formatDateRange('${item['date_in']} ${item['time_in']}',
+            '${item['date_out']} ${item['time_out']}');
         detailLabel = 'Requestor';
         detailValue = requestorName;
         break;
@@ -634,7 +642,8 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(typeIcon, color: typeColor, size: screenSize.width * 0.06),
+                    Icon(typeIcon,
+                        color: typeColor, size: screenSize.width * 0.06),
                     SizedBox(height: screenSize.height * 0.002),
                     Text(
                       type[0].toUpperCase() + type.substring(1),
@@ -667,7 +676,9 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                       Text(
                         dateRange,
                         style: TextStyle(
-                          color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                          color: isDarkMode
+                              ? Colors.white70
+                              : Colors.grey.shade700,
                           fontSize: screenSize.width * 0.028,
                         ),
                       ),
@@ -675,7 +686,8 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                     Text(
                       '$detailLabel: $detailValue',
                       style: TextStyle(
-                        color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                        color:
+                            isDarkMode ? Colors.white70 : Colors.grey.shade700,
                         fontSize: screenSize.width * 0.028,
                       ),
                     ),
@@ -697,7 +709,8 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                           ),
                           decoration: BoxDecoration(
                             color: statusColor,
-                            borderRadius: BorderRadius.circular(screenSize.width * 0.015),
+                            borderRadius:
+                                BorderRadius.circular(screenSize.width * 0.015),
                           ),
                           child: Text(
                             status[0].toUpperCase() + status.substring(1),
@@ -718,7 +731,8 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
               // Profile Image
               CircleAvatar(
                 radius: screenSize.width * 0.05,
-                backgroundColor: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
+                backgroundColor:
+                    isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
                 backgroundImage: NetworkImage(employeeImage),
               ),
             ],

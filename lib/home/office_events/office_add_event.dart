@@ -482,29 +482,37 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
   Future<void> _selectDateTime(BuildContext context, bool isStartDateTime) async {
     final DateTime currentDay = DateTime.now();
     DateTime initialDate;
-    TimeOfDay initialTime;
+    DateTime firstDate;
 
     if (isStartDateTime) {
-      initialDate = currentDay;
-      initialTime = const TimeOfDay(hour: 9, minute: 0);
+      // Use the existing start date if set, otherwise default to current day
+      initialDate = _startDateTime ?? currentDay;
+      // Allow past dates back to year 2000
+      firstDate = DateTime(2000);
     } else {
-      initialDate = _beforeEndDateTime.value ?? currentDay;
-      initialTime = const TimeOfDay(hour: 13, minute: 0);
+      if (_startDateTime != null) {
+        // Use the existing end date if set, otherwise default to 1 hour after start
+        initialDate = _endDateTime ?? _startDateTime!.add(const Duration(hours: 1));
+        // Set firstDate to the start date's date part to prevent selecting before start
+        firstDate = DateTime(_startDateTime!.year, _startDateTime!.month, _startDateTime!.day);
+      } else {
+        // If no start date is set, default to current day
+        initialDate = currentDay;
+        firstDate = currentDay;
+      }
     }
 
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
-      firstDate: initialDate,
+      firstDate: firstDate,
       lastDate: DateTime(2101),
     );
 
     if (pickedDate != null) {
-      // if (_selectedBookingType == '1. Add Meeting' || _selectedBookingType == '2. Meeting and Booking Meeting Room') {
-      // For Type 1 and Type 2, also pick time
       final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
-        initialTime: isStartDateTime ? initialTime : const TimeOfDay(hour: 13, minute: 0),
+        initialTime: isStartDateTime ? const TimeOfDay(hour: 9, minute: 0) : const TimeOfDay(hour: 13, minute: 0),
       );
 
       if (pickedTime != null) {
@@ -519,28 +527,15 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
         setState(() {
           if (isStartDateTime) {
             _startDateTime = pickedDateTime;
-            _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
+            // Adjust end date if it’s unset or before the new start date
+            if (_endDateTime == null || _endDateTime!.isBefore(_startDateTime!)) {
+              _endDateTime = _startDateTime!.add(const Duration(hours: 1));
+            }
           } else {
             _endDateTime = pickedDateTime;
           }
         });
       }
-      // } else {
-      // For Type 3, only date is needed
-      //   setState(() {
-      //     final DateTime pickedDateTime = DateTime(
-      //       pickedDate.year,
-      //       pickedDate.month,
-      //       pickedDate.day,
-      //     );
-      //     if (isStartDateTime) {
-      //       _startDateTime = pickedDateTime;
-      //       _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
-      //     } else {
-      //       _endDateTime = pickedDateTime;
-      //     }
-      //   });
-      // }
     }
   }
 

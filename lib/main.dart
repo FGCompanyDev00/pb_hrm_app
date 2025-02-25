@@ -64,31 +64,58 @@ class AppCache {
   String? deviceToken;
   Map<String, dynamic> userSettings = {};
 
-  // Add cache for commonly used values
-  final Map<String, dynamic> _cache = {};
+  final Map<String, _CacheItem> _cache = {};
   final Duration _cacheDuration = const Duration(minutes: 15);
+  static const int _maxCacheSize = 100; // Limit cache size
 
   void set(String key, dynamic value) {
-    _cache[key] = {
-      'value': value,
-      'timestamp': DateTime.now(),
-    };
+    // Clear old entries if cache is too large
+    if (_cache.length >= _maxCacheSize) {
+      _cleanCache();
+    }
+
+    _cache[key] = _CacheItem(
+      value: value,
+      timestamp: DateTime.now(),
+    );
   }
 
   dynamic get(String key) {
     final item = _cache[key];
     if (item == null) return null;
 
-    final timestamp = item['timestamp'] as DateTime;
-    if (DateTime.now().difference(timestamp) > _cacheDuration) {
+    if (DateTime.now().difference(item.timestamp) > _cacheDuration) {
       _cache.remove(key);
       return null;
     }
 
-    return item['value'];
+    return item.value;
+  }
+
+  void _cleanCache() {
+    final now = DateTime.now();
+    _cache.removeWhere(
+        (_, item) => now.difference(item.timestamp) > _cacheDuration);
+
+    // If still too large, remove oldest entries
+    if (_cache.length >= _maxCacheSize) {
+      final sortedEntries = _cache.entries.toList()
+        ..sort((a, b) => a.value.timestamp.compareTo(b.value.timestamp));
+
+      for (var i = 0; i < _maxCacheSize / 2; i++) {
+        _cache.remove(sortedEntries[i].key);
+      }
+    }
   }
 
   void clear() => _cache.clear();
+}
+
+class _CacheItem {
+  final dynamic value;
+  final DateTime timestamp;
+
+  _CacheItem({required this.value, required this.timestamp});
 }
 
 final appCache = AppCache();
@@ -157,7 +184,8 @@ Future<void> _initializeApp() async {
     }),
 
     // Environment loading with error handling
-    dotenv.load(fileName: ".env.demo").catchError((e) { // change it to .env.production for production mode
+    dotenv.load(fileName: ".env.demo").catchError((e) {
+      // change it to .env.production for production mode
       debugPrint("Error loading .env file: $e");
       return null;
     }),
@@ -477,8 +505,12 @@ class MainScreenState extends State<MainScreen> {
   final List<GlobalKey<NavigatorState>> _navigatorKeys =
       List.generate(4, (index) => GlobalKey<NavigatorState>());
 
-  // Add StreamSubscription for proper cleanup
-  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
+  late final StreamSubscription<List<ConnectivityResult>>
+      _connectivitySubscription;
+  bool _isDisposed = false;
+
+  // Memoize screens to prevent unnecessary rebuilds
+  late final List<Widget> _screens;
 
   @override
   void initState() {
@@ -486,37 +518,64 @@ class MainScreenState extends State<MainScreen> {
     BackButtonInterceptor.add(_routeInterceptor);
     offlineProvider.initialize();
 
-    // Optimize connectivity listener
+    // Initialize screens once
+    _screens = [
+      Navigator(
+        key: _navigatorKeys[0],
+        onGenerateRoute: (_) => MaterialPageRoute(
+          builder: (_) => const AttendanceScreen(),
+        ),
+      ),
+      Navigator(
+        key: _navigatorKeys[1],
+        onGenerateRoute: (_) => MaterialPageRoute(
+          builder: (_) => const HomeCalendar(),
+        ),
+      ),
+      Navigator(
+        key: _navigatorKeys[2],
+        onGenerateRoute: (_) => MaterialPageRoute(
+          builder: (_) => const Dashboard(),
+        ),
+      ),
+    ];
+
     _initializeConnectivity();
   }
 
   Future<void> _initializeConnectivity() async {
-    // Delay enabling connection check
-    Future.delayed(const Duration(seconds: 20))
-        .then((_) => _enableConnection = true);
+    // Delay enabling connection check using a more efficient approach
+    Future.delayed(const Duration(seconds: 20)).then((_) {
+      if (!_isDisposed) {
+        setState(() => _enableConnection = true);
+      }
+    });
 
     _connectivitySubscription =
         connectivityResult.onConnectivityChanged.listen((source) async {
-      if (!_enableConnection) return;
+      if (!_enableConnection || _isDisposed) return;
 
-      if (!mounted) return;
+      final bool hasInternet = source.contains(ConnectivityResult.wifi) ||
+          source.contains(ConnectivityResult.mobile);
 
-      if (source.contains(ConnectivityResult.none)) {
-        showToast('No internet', Colors.red, Icons.mobiledata_off_rounded);
-        await offlineProvider.autoOffline(true);
-      } else if (source.contains(ConnectivityResult.wifi) ||
-          source.contains(ConnectivityResult.mobile)) {
-        showToast(
-            source.contains(ConnectivityResult.wifi) ? 'WiFi' : 'Internet',
-            Colors.green,
-            Icons.wifi);
-        await offlineProvider.autoOffline(false);
+      if (mounted) {
+        if (!hasInternet) {
+          showToast('No internet', Colors.red, Icons.mobiledata_off_rounded);
+          await offlineProvider.autoOffline(true);
+        } else {
+          showToast(
+              source.contains(ConnectivityResult.wifi) ? 'WiFi' : 'Internet',
+              Colors.green,
+              Icons.wifi);
+          await offlineProvider.autoOffline(false);
+        }
       }
     });
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     _connectivitySubscription.cancel();
     BackButtonInterceptor.remove(_routeInterceptor);
     super.dispose();
@@ -579,15 +638,7 @@ class MainScreenState extends State<MainScreen> {
       child: Scaffold(
         body: IndexedStack(
           index: _selectedIndex,
-          children: List.generate(
-            3,
-            (index) => Navigator(
-              key: _navigatorKeys[index],
-              onGenerateRoute: (_) => MaterialPageRoute(
-                builder: (_) => _buildScreen(index),
-              ),
-            ),
-          ),
+          children: _screens,
         ),
         bottomNavigationBar: CustomBottomNavBar(
           currentIndex: _selectedIndex,
@@ -595,19 +646,6 @@ class MainScreenState extends State<MainScreen> {
         ),
       ),
     );
-  }
-
-  Widget _buildScreen(int index) {
-    switch (index) {
-      case 0:
-        return const AttendanceScreen();
-      case 1:
-        return const HomeCalendar();
-      case 2:
-        return const Dashboard();
-      default:
-        return const SizedBox.shrink();
-    }
   }
 }
 

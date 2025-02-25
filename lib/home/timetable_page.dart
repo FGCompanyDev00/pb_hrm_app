@@ -60,7 +60,8 @@ class TimetablePageState extends State<TimetablePage> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+              image: AssetImage(
+                  isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
             ),
             borderRadius: const BorderRadius.only(
@@ -99,7 +100,8 @@ class TimetablePageState extends State<TimetablePage> {
               horizontal: 25,
             ),
             child: Text(
-              DateFormat.yMMMM(sl<UserPreferences>().getLocalizeSupport().languageCode)
+              DateFormat.yMMMM(
+                      sl<UserPreferences>().getLocalizeSupport().languageCode)
                   .format(selectedDate),
               textAlign: TextAlign.left,
               style: TextStyle(
@@ -116,11 +118,13 @@ class TimetablePageState extends State<TimetablePage> {
               children: List.generate(7, (index) {
                 final day = selectedDate.add(Duration(days: index - 3));
                 final hasEvent = eventsForAll.any((event) =>
-                event.start.day == day.day &&
+                    event.start.day == day.day &&
                     event.start.month == day.month &&
                     event.start.year == day.year);
                 return _buildDateItem(
-                  DateFormat.E(sl<UserPreferences>().getLocalizeSupport().languageCode)
+                  DateFormat.E(sl<UserPreferences>()
+                          .getLocalizeSupport()
+                          .languageCode)
                       .format(day),
                   day.day,
                   isSelected: day.day == selectedDate.day,
@@ -162,7 +166,11 @@ class TimetablePageState extends State<TimetablePage> {
     );
   }
 
-  Widget _buildDateItem(String day, int date, {bool isSelected = false, bool hasEvent = false, required VoidCallback onTap, required bool isDarkMode}) {
+  Widget _buildDateItem(String day, int date,
+      {bool isSelected = false,
+      bool hasEvent = false,
+      required VoidCallback onTap,
+      required bool isDarkMode}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -175,10 +183,10 @@ class TimetablePageState extends State<TimetablePage> {
           color: isSelected
               ? const Color(0xFFD4A017)
               : hasEvent
-              ? Colors.green.withOpacity(0.5)
-              : isDarkMode
-              ? Colors.grey[700]
-              : Colors.white,
+                  ? Colors.green.withOpacity(0.5)
+                  : isDarkMode
+                      ? Colors.grey[700]
+                      : Colors.white,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
@@ -187,7 +195,9 @@ class TimetablePageState extends State<TimetablePage> {
               day.toUpperCase(),
               style: TextStyle(
                 fontSize: 12,
-                color: isSelected ? Colors.white : (isDarkMode ? Colors.white : Colors.grey),
+                color: isSelected
+                    ? Colors.white
+                    : (isDarkMode ? Colors.white : Colors.grey),
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -196,7 +206,9 @@ class TimetablePageState extends State<TimetablePage> {
               "$date",
               style: TextStyle(
                 fontSize: 16,
-                color: isSelected || hasEvent ? Colors.white : (isDarkMode ? Colors.white : Colors.black),
+                color: isSelected || hasEvent
+                    ? Colors.white
+                    : (isDarkMode ? Colors.white : Colors.black),
               ),
             ),
           ],

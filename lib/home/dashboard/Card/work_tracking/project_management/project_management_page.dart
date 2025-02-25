@@ -86,11 +86,12 @@ class ProjectManagementPageState extends State<ProjectManagementPage> with Ticke
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(90.0),
         child: AppBar(
           automaticallyImplyLeading: true,
-          backgroundColor: isDarkMode ? Colors.black : Colors.transparent, // Dark mode background
+          backgroundColor: isDarkMode ? Colors.black : Colors.white,
           elevation: 0,
           flexibleSpace: ClipRRect(
             borderRadius: const BorderRadius.only(

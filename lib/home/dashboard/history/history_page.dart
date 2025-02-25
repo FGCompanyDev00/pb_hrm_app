@@ -630,8 +630,10 @@ class HistoryPageState extends State<HistoryPage> {
       }
     }
 
-    String startDate = item['startDate'] != null ? formatDate(item['startDate']) : 'N/A';
-    String endDate = item['endDate'] != null ? formatDate(item['endDate']) : 'N/A';
+    String startDate =
+        item['startDate'] != null ? formatDate(item['startDate']) : 'N/A';
+    String endDate =
+        item['endDate'] != null ? formatDate(item['endDate']) : 'N/A';
 
     return GestureDetector(
       onTap: () {
@@ -668,7 +670,8 @@ class HistoryPageState extends State<HistoryPage> {
               // Icon
               SizedBox(
                 width: screenSize.width * 0.1,
-                child: _getIconWidgetForType(type, screenSize.width * 0.08, typeColor),
+                child: _getIconWidgetForType(
+                    type, screenSize.width * 0.08, typeColor),
               ),
               SizedBox(width: screenSize.width * 0.02),
               // Information Column
@@ -711,7 +714,8 @@ class HistoryPageState extends State<HistoryPage> {
                           ),
                           decoration: BoxDecoration(
                             color: statusColor,
-                            borderRadius: BorderRadius.circular(screenSize.width * 0.015),
+                            borderRadius:
+                                BorderRadius.circular(screenSize.width * 0.015),
                           ),
                           child: Text(
                             item['status'].toString().toUpperCase(),
@@ -732,7 +736,8 @@ class HistoryPageState extends State<HistoryPage> {
               CircleAvatar(
                 backgroundImage: NetworkImage(item['img_name']),
                 radius: screenSize.width * 0.05,
-                backgroundColor: isDarkMode ? Colors.grey[700] : Colors.grey[300],
+                backgroundColor:
+                    isDarkMode ? Colors.grey[700] : Colors.grey[300],
               ),
             ],
           ),
@@ -740,7 +745,6 @@ class HistoryPageState extends State<HistoryPage> {
       ),
     );
   }
-
 
 // Function to return proper detail label and text based on type
   Widget _buildDetailLabel(String type, Map<String, dynamic> item,

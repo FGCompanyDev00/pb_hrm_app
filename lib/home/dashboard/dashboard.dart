@@ -30,52 +30,177 @@ class Dashboard extends StatefulWidget {
 }
 
 class DashboardState extends State<Dashboard>
-    with AutomaticKeepAliveClientMixin {
-  // Cache management
-  static final Map<String, dynamic> _pageCache = {};
+    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
+  // Enhanced cache management with memory optimization
+  static final Map<String, _CacheData> _pageCache = {};
   static const Duration _cacheExpiry = Duration(minutes: 15);
+  static const int _maxCacheSize = 50;
   DateTime? _lastCacheUpdate;
 
-  // State management
+  // Optimized state management
   bool _hasUnreadNotifications = true;
   bool _isLoading = false;
   int _currentPage = 0;
+  bool _isDisposed = false;
+  bool _isPaused = false;
 
-  // Page controller optimization
+  // Memoized values
   late final PageController _pageController;
   Timer? _carouselTimer;
 
-  // Cached data - remove late keyword
-  Future<UserProfile>? futureUserProfile;
-  Future<List<String>>? futureBanners;
+  // Cached data with lazy loading
+  late Future<UserProfile> futureUserProfile;
+  late Future<List<String>> futureBanners;
 
-  // Navigation state
+  // Optimized navigation
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
-
-  // Route observer for navigation optimization
   final RouteObserver<PageRoute> _routeObserver = RouteObserver<PageRoute>();
 
-  // Add location-related variables
+  // Location optimization
   Position? _lastKnownPosition;
   bool _isLocationEnabled = false;
   StreamSubscription<Position>? _positionStreamSubscription;
 
+  // Hive boxes with lazy initialization
+  late final Box<String> userProfileBox;
+  late final Box<List<String>> bannersBox;
+
+  // Memoized action items - Move initialization to didChangeDependencies
+  List<Map<String, dynamic>>? _actionItems;
+
+  // Cached screen dimensions
+  late final double _screenWidth;
+  late final double _screenHeight;
+
   @override
   bool get wantKeepAlive => true;
 
-  // Hive boxes
-  late Box<String> userProfileBox;
-  late Box<List<String>> bannersBox;
-
-  // BaseUrl ENV initialization for debug and production
-  String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+  String get baseUrl => dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Initialize futures immediately to avoid late initialization errors
+    futureUserProfile = fetchUserProfile();
+    futureBanners = fetchBanners();
     _initializePageController();
     _initializeData();
     _initializeLocation();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _initializeActionItems();
+  }
+
+  void _initializeActionItems() {
+    if (_actionItems != null) return; // Only initialize once
+
+    _actionItems = [
+      {
+        'icon': 'assets/data-2.png',
+        'label': AppLocalizations.of(context)!.history,
+        'onTap': () => navigateToPage(const HistoryPage()),
+      },
+      {
+        'icon': 'assets/people.png',
+        'label': AppLocalizations.of(context)!.approvals,
+        'onTap': () => navigateToPage(const ApprovalsMainPage()),
+      },
+      {
+        'icon': 'assets/status-up.png',
+        'label': AppLocalizations.of(context)!.workTracking,
+        'onTap': () => navigateToPage(const WorkTrackingPage()),
+      },
+      {
+        'icon': 'assets/car_return.png',
+        'label': AppLocalizations.of(context)!.carReturn,
+        'onTap': () => navigateToPage(const ReturnCarPage()),
+      },
+      {
+        'icon': 'assets/KPI.png',
+        'label': AppLocalizations.of(context)!.kpi,
+        'onTap': () {},
+      },
+      {
+        'icon': 'assets/inventory.png',
+        'label': AppLocalizations.of(context)!.inventory,
+        'onTap': () {},
+      },
+    ];
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_isDisposed) return;
+
+    switch (state) {
+      case AppLifecycleState.paused:
+        _isPaused = true;
+        _carouselTimer?.cancel();
+        _positionStreamSubscription?.pause();
+        break;
+      case AppLifecycleState.resumed:
+        _isPaused = false;
+        if (!_isDisposed) {
+          _startCarouselTimer();
+          _positionStreamSubscription?.resume();
+          _refreshDataSafely();
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  // Safe refresh method
+  void _refreshDataSafely() {
+    if (!mounted || _isDisposed || _isPaused) return;
+
+    try {
+      setState(() {
+        futureUserProfile = fetchUserProfile();
+        futureBanners = fetchBanners();
+      });
+
+      if (!_isDisposed && mounted) {
+        Provider.of<UserProvider>(context, listen: false).fetchAndUpdateUser();
+      }
+    } catch (e) {
+      debugPrint('Error refreshing data: $e');
+    }
+  }
+
+  // Optimized navigation methods with error handling
+  Future<void> navigateToPage(Widget page) async {
+    if (!mounted || _isDisposed) return;
+
+    try {
+      final result = await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => page,
+          settings: RouteSettings(name: page.runtimeType.toString()),
+        ),
+      );
+
+      if (result == true && mounted && !_isDisposed) {
+        _refreshDataSafely();
+      }
+    } catch (e) {
+      debugPrint('Navigation error: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    WidgetsBinding.instance.removeObserver(this);
+    _positionStreamSubscription?.cancel();
+    _pageController.dispose();
+    _carouselTimer?.cancel();
+    super.dispose();
   }
 
   void _initializePageController() {
@@ -95,9 +220,11 @@ class DashboardState extends State<Dashboard>
     setState(() => _isLoading = true);
     try {
       await _initializeHiveBoxes();
-      // Initialize futures after Hive boxes are ready
-      futureUserProfile = fetchUserProfile();
-      futureBanners = fetchBanners();
+      // Refresh futures after Hive boxes are ready
+      setState(() {
+        futureUserProfile = fetchUserProfile();
+        futureBanners = fetchBanners();
+      });
     } catch (e) {
       debugPrint('Error initializing data: $e');
     } finally {
@@ -107,49 +234,11 @@ class DashboardState extends State<Dashboard>
     }
   }
 
-  // Optimized navigation methods
-  Future<void> navigateToPage(Widget page) async {
-    if (!mounted) return;
-
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => page,
-        settings: RouteSettings(name: page.runtimeType.toString()),
-      ),
-    );
-
-    if (result == true && mounted) {
-      refreshData();
-    }
-  }
-
-  // Cache management
-  void _updateCache(String key, dynamic data) {
-    _pageCache[key] = {
-      'data': data,
-      'timestamp': DateTime.now(),
-    };
-  }
-
-  dynamic _getCachedData(String key) {
-    final cachedItem = _pageCache[key];
-    if (cachedItem == null) return null;
-
-    final timestamp = cachedItem['timestamp'] as DateTime;
-    if (DateTime.now().difference(timestamp) > _cacheExpiry) {
-      _pageCache.remove(key);
-      return null;
-    }
-
-    return cachedItem['data'];
-  }
-
-  // Optimized data fetching with caching
+  // Optimized data fetching
   Future<UserProfile> fetchUserProfile() async {
-    setState(() => _isLoading = true);
+    if (_isDisposed) return UserProfile.fromJson({});
 
     try {
-      // Check cache first
       final cachedProfile = _getCachedData('userProfile');
       if (cachedProfile != null) {
         return cachedProfile as UserProfile;
@@ -166,7 +255,7 @@ class DashboardState extends State<Dashboard>
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseJson = jsonDecode(response.body);
@@ -174,37 +263,28 @@ class DashboardState extends State<Dashboard>
 
         if (results.isNotEmpty) {
           final userProfile = UserProfile.fromJson(results[0]);
-
-          // Update cache
           _updateCache('userProfile', userProfile);
-
-          // Save to Hive
           await userProfileBox.put(
               'userProfile', jsonEncode(userProfile.toJson()));
-
           return userProfile;
         }
       }
       throw Exception('Failed to fetch profile');
     } catch (e) {
       debugPrint('Error fetching profile: $e');
-      // Fallback to Hive cache
       final cachedProfileJson = userProfileBox.get('userProfile');
       if (cachedProfileJson != null) {
         return UserProfile.fromJson(jsonDecode(cachedProfileJson));
       }
       rethrow;
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
     }
   }
 
-  // Optimized banner fetching with caching
+  // Optimized banner fetching
   Future<List<String>> fetchBanners() async {
+    if (_isDisposed) return [];
+
     try {
-      // Check cache first
       final cachedBanners = _getCachedData('banners');
       if (cachedBanners != null) {
         return List<String>.from(cachedBanners);
@@ -219,23 +299,17 @@ class DashboardState extends State<Dashboard>
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final results = jsonDecode(response.body)['results'];
         final banners =
             results.map<String>((file) => file['files'] as String).toList();
-
-        // Update cache
         _updateCache('banners', banners);
-
-        // Save to Hive
         await bannersBox.put('banners', banners);
-
         return banners;
       }
 
-      // Fallback to cached data
       return bannersBox.get('banners') ?? [];
     } catch (e) {
       debugPrint('Error fetching banners: $e');
@@ -243,93 +317,47 @@ class DashboardState extends State<Dashboard>
     }
   }
 
-  // Optimized action grid with memoization
-  Widget _buildActionGrid(bool isDarkMode) {
-    return Consumer<ThemeNotifier>(
-      builder: (context, themeNotifier, child) {
-        final screenWidth = MediaQuery.of(context).size.width;
-        final crossAxisCount = screenWidth < 600 ? 3 : 3;
+  // Enhanced cache management
+  void _updateCache(String key, dynamic data) {
+    if (_pageCache.length >= _maxCacheSize) {
+      _cleanCache();
+    }
 
-        final List<Map<String, dynamic>> actionItems = [
-          {
-            'icon': 'assets/data-2.png',
-            'label': AppLocalizations.of(context)!.history,
-            'onTap': () => navigateToPage(const HistoryPage()),
-          },
-          {
-            'icon': 'assets/people.png',
-            'label': AppLocalizations.of(context)!.approvals,
-            'onTap': () => navigateToPage(const ApprovalsMainPage()),
-          },
-          {
-            'icon': 'assets/status-up.png',
-            'label': AppLocalizations.of(context)!.workTracking,
-            'onTap': () => navigateToPage(const WorkTrackingPage()),
-          },
-          {
-            'icon': 'assets/car_return.png',
-            'label': AppLocalizations.of(context)!.carReturn,
-            'onTap': () => navigateToPage(const ReturnCarPage()),
-          },
-          {
-            'icon': 'assets/KPI.png',
-            'label': AppLocalizations.of(context)!.kpi,
-            'onTap': () {},
-          },
-          {
-            'icon': 'assets/inventory.png',
-            'label': AppLocalizations.of(context)!.inventory,
-            'onTap': () {},
-          },
-        ];
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: GridView.builder(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              childAspectRatio: 0.9,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 12,
-            ),
-            itemCount: actionItems.length,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemBuilder: (context, index) {
-              final item = actionItems[index];
-              return _buildActionCard(
-                context,
-                item['icon'] as String,
-                item['label'] as String,
-                isDarkMode,
-                item['onTap'] as VoidCallback,
-              );
-            },
-          ),
-        );
-      },
+    _pageCache[key] = _CacheData(
+      data: data,
+      timestamp: DateTime.now(),
+      accessCount: 0,
     );
+    _lastCacheUpdate = DateTime.now();
   }
 
-  @override
-  void dispose() {
-    _positionStreamSubscription?.cancel();
-    _pageController.dispose();
-    _carouselTimer?.cancel();
-    super.dispose();
+  void _cleanCache() {
+    final now = DateTime.now();
+    _pageCache.removeWhere((_, item) =>
+        now.difference(item.timestamp) > _cacheExpiry ||
+        item.accessCount > 100);
+
+    if (_pageCache.length >= _maxCacheSize) {
+      final sortedEntries = _pageCache.entries.toList()
+        ..sort((a, b) => a.value.accessCount.compareTo(b.value.accessCount));
+
+      for (var i = 0; i < _maxCacheSize / 2; i++) {
+        _pageCache.remove(sortedEntries[i].key);
+      }
+    }
   }
 
-  void refreshData() {
-    if (!mounted) return;
+  dynamic _getCachedData(String key) {
+    final cachedItem = _pageCache[key];
+    if (cachedItem == null) return null;
 
-    setState(() {
-      // Update futures with new data
-      futureUserProfile = fetchUserProfile();
-      futureBanners = fetchBanners();
-    });
+    if (DateTime.now().difference(cachedItem.timestamp) > _cacheExpiry) {
+      _pageCache.remove(key);
+      return null;
+    }
 
-    Provider.of<UserProvider>(context, listen: false).fetchAndUpdateUser();
-    debugPrint('dashboard refreshed');
+    cachedItem.accessCount++;
+    return cachedItem.data;
   }
 
   // Start the carousel auto-swipe timer
@@ -475,11 +503,13 @@ class DashboardState extends State<Dashboard>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    if (_isDisposed) return const SizedBox.shrink();
+
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     // Show loading if data is not initialized
-    if (futureUserProfile == null || futureBanners == null) {
+    if (_actionItems == null) {
       return const Scaffold(
         body: Center(
           child: CircularProgressIndicator(),
@@ -495,17 +525,13 @@ class DashboardState extends State<Dashboard>
           preferredSize: const Size.fromHeight(140.0),
           child: FutureBuilder<UserProfile>(
             future: futureUserProfile,
-            initialData: UserProfile.fromJson(
-              jsonDecode(userProfileBox.get('userProfile') ?? '{}'),
-            ),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return _buildAppBarPlaceholder();
               } else if (snapshot.hasError) {
                 return _buildErrorAppBar(snapshot.error.toString());
               } else if (snapshot.hasData) {
-                final userProfile = snapshot.data!;
-                return _buildAppBar(userProfile, isDarkMode);
+                return _buildAppBar(snapshot.data!, isDarkMode);
               } else {
                 return _buildErrorAppBar(
                   AppLocalizations.of(context)!.noDataAvailable,
@@ -519,9 +545,10 @@ class DashboardState extends State<Dashboard>
             if (isDarkMode) _buildDarkBackground(),
             RefreshIndicator(
               onRefresh: () async {
-                refreshData();
+                _refreshDataSafely();
               },
               child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 child: _buildMainContent(context, isDarkMode),
               ),
             ),
@@ -785,6 +812,42 @@ class DashboardState extends State<Dashboard>
     );
   }
 
+  Widget _buildActionGrid(bool isDarkMode) {
+    if (_actionItems == null) return const SizedBox.shrink();
+
+    return Consumer<ThemeNotifier>(
+      builder: (context, themeNotifier, child) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final crossAxisCount = screenWidth < 600 ? 3 : 3;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: GridView.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: 0.9,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 12,
+            ),
+            itemCount: _actionItems!.length,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemBuilder: (context, index) {
+              final item = _actionItems![index];
+              return _buildActionCard(
+                context,
+                item['icon'] as String,
+                item['label'] as String,
+                isDarkMode,
+                item['onTap'] as VoidCallback,
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildActionCard(BuildContext context, String imagePath, String title,
       bool isDarkMode, VoidCallback onTap) {
     return LayoutBuilder(
@@ -1016,4 +1079,17 @@ class UserProfile {
       'roles': roles,
     };
   }
+}
+
+// Cache data model for better memory management
+class _CacheData {
+  final dynamic data;
+  final DateTime timestamp;
+  int accessCount;
+
+  _CacheData({
+    required this.data,
+    required this.timestamp,
+    this.accessCount = 0,
+  });
 }
