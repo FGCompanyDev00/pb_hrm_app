@@ -369,6 +369,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         flexibleSpace: Container(
