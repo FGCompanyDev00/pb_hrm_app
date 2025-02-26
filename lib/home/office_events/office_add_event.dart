@@ -20,7 +20,6 @@ class OfficeAddEventPage extends StatefulWidget {
 }
 
 class OfficeAddEventPageState extends State<OfficeAddEventPage> {
-
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
@@ -28,7 +27,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
   String? _selectedBookingType;
 
   // Date and time variables
-  final ValueNotifier<DateTime?> _beforeEndDateTime = ValueNotifier<DateTime?>(null);
+  final ValueNotifier<DateTime?> _beforeEndDateTime =
+      ValueNotifier<DateTime?>(null);
   DateTime? _startDateTime;
   DateTime? _endDateTime;
 
@@ -51,7 +51,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
   String? _roomId;
   String? _roomName;
   int? _notification; // Notification time in minutes
-  String? _location; // For Add Meeting and Meeting Type for Booking Meeting Room
+  String?
+      _location; // For Add Meeting and Meeting Type for Booking Meeting Room
 
   String? _employeeId; // Current user's employee ID
 
@@ -59,7 +60,11 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
   List<Map<String, dynamic>> _rooms = [];
 
   // Location options for Add Meeting and Meeting Type for Booking Meeting Room
-  final List<String> _locationOptions = ["Meeting at Local Office", "Meeting Online", "Deadline"];
+  final List<String> _locationOptions = [
+    "Meeting at Local Office",
+    "Meeting Online",
+    "Deadline"
+  ];
 
   // Notification options
   final List<int> _notificationOptions = [5, 10, 30];
@@ -148,10 +153,16 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
       // Handle different booking types (type 1,2 and 3)
       if (_selectedBookingType == '1. Add Meeting') {
         // URL for Type 1
-        url = '$baseUrl/work-tracking/out-meeting/insert';
+        url = '$baseUrl/api/work-tracking/out-meeting/insert';
 
         // Determine status based on the presence of members
         String status = _selectedMembers.isEmpty ? 'private' : 'public';
+
+        // Debug print the dates before formatting
+        debugPrint(
+            'Type 1 - Original Start DateTime: ${_startDateTime?.toString()}');
+        debugPrint(
+            'Type 1 - Original End DateTime: ${_endDateTime?.toString()}');
 
         // Request body
         body = {
@@ -164,14 +175,17 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
           "location": _location ?? '',
           "status": status,
           "notification": _notification ?? 5,
-          "guests": _selectedMembers.map((member) {
-            Map<String, dynamic> guest = {"value": member['employee_id']};
-            if (member['employee_name'] != null) {
-              guest['name'] = member['employee_name'];
-            }
-            return guest;
-          }).toList(),
+          "guests": _selectedMembers
+              .map((member) => {
+                    "value": member['employee_id'],
+                    "name": member['employee_name'] ?? ''
+                  })
+              .toList(),
         };
+
+        // Debug print the formatted dates
+        debugPrint('Type 1 - Formatted fromdate: ${body['fromdate']}');
+        debugPrint('Type 1 - Formatted todate: ${body['todate']}');
 
         // Sending the POST request
         final response = await http.post(
@@ -182,6 +196,9 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
           },
           body: jsonEncode(body),
         );
+
+        debugPrint('Response status code: ${response.statusCode}');
+        debugPrint('Response body: ${response.body}');
 
         // Handle the response
         if (response.statusCode == 200 || response.statusCode == 201) {
@@ -193,16 +210,19 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
             debugPrint('Error response body: ${response.body}');
             try {
               final errorResponse = jsonDecode(response.body);
-              errorMsg = 'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
+              errorMsg =
+                  'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
             } catch (e) {
               errorMsg = 'Failed to add event: Unable to parse error message.';
             }
           }
           _showErrorMessage(errorMsg);
         }
-      } else if (_selectedBookingType == '2. Meeting and Booking Meeting Room') {
+      } else if (_selectedBookingType ==
+          '2. Meeting and Booking Meeting Room') {
         // URL for Type 2
         url = '$baseUrl/api/office-administration/book_meeting_room';
+
         // Building the request body
         body = {
           "room_id": _roomId,
@@ -213,8 +233,18 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
           "remark": _remarkController.text.trim(),
           "meeting_type": _location ?? '',
           "notification": _notification ?? 5,
-          "members": _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList(),
+          "members": _selectedMembers
+              .map((member) => {
+                    "employee_id": member['employee_id'],
+                    "name": member['employee_name'] ?? ''
+                  })
+              .toList(),
         };
+
+        debugPrint('Type 2 Request URL: $url');
+        debugPrint('Type 2 Request body: ${jsonEncode(body)}');
+        debugPrint('Start Time (Local): ${_startDateTime?.toLocal()}');
+        debugPrint('End Time (Local): ${_endDateTime?.toLocal()}');
 
         // Sending the POST request
         final response = await http.post(
@@ -226,16 +256,24 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
           body: jsonEncode(body),
         );
 
+        debugPrint('Type 2 Response status code: ${response.statusCode}');
+        debugPrint('Type 2 Response body: ${response.body}');
+
         // Handle the response
-        if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.statusCode == 200 ||
+            response.statusCode == 201 ||
+            response.statusCode == 204) {
           _showSuccessMessage('Event added successfully!');
           _resetForm(); // Reset the form after successful submission
+          Navigator.pop(
+              context); // Add this to return to previous screen after success
         } else {
           String errorMsg = 'Failed to add event.';
           if (response.body.isNotEmpty) {
             try {
               final errorResponse = jsonDecode(response.body);
-              errorMsg = 'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
+              errorMsg =
+                  'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
             } catch (_) {}
           }
           _showErrorMessage(errorMsg);
@@ -245,13 +283,17 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
         url = '$baseUrl/api/office-administration/car_permit';
         // Building the request body
         body = {
-          "employee_id": _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : null,
+          "employee_id": _nameController.text.trim().isNotEmpty
+              ? _nameController.text.trim()
+              : null,
           "place": _placeController.text.trim(),
           "purpose": _purposeController.text.trim(),
           "date_in": formatDateTime(_startDateTime),
           "date_out": formatDateTime(_endDateTime),
           "notification": _notification ?? 5,
-          "members": _selectedMembers.map((member) => {"employee_id": member['employee_id']}).toList(),
+          "members": _selectedMembers
+              .map((member) => {"employee_id": member['employee_id']})
+              .toList(),
           "permit_branch": 0,
         };
 
@@ -274,7 +316,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
           if (response.body.isNotEmpty) {
             try {
               final errorResponse = jsonDecode(response.body);
-              errorMsg = 'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
+              errorMsg =
+                  'Failed to add event: ${errorResponse['message'] ?? 'Please try again.'}';
             } catch (_) {}
           }
           _showErrorMessage(errorMsg);
@@ -283,7 +326,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
         _showErrorMessage('Invalid booking type selected.');
       }
     } catch (e) {
-      _showErrorMessage('An error occurred while submitting the event. Please try again.');
+      _showErrorMessage(
+          'An error occurred while submitting the event. Please try again.');
     } finally {
       setState(() {
         _isLoading = false; // Hide loading indicator
@@ -294,12 +338,21 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
   /// Formats DateTime based on booking type
   String formatDateTime(DateTime? dateTime) {
     if (dateTime == null) return '';
-    // if (_selectedBookingType == '1. Add Meeting' || _selectedBookingType == '2. Meeting and Booking Meeting Room') {
-    // Send in UTC to ensure correct interpretation by the API
-    return DateFormat('yyyy-MM-dd HH:mm:ss').format(dateTime);
-    // } else {
-    //   return DateFormat('yyyy-MM-dd').format(dateTime);
-    // }
+
+    // Create a local copy of the date time
+    final DateTime localDateTime = dateTime.toLocal();
+
+    // Format the date time in the required format: "yyyy-MM-dd HH:mm:ss"
+    final String formattedDateTime =
+        DateFormat('yyyy-MM-dd HH:mm:ss').format(localDateTime);
+
+    // Add debug logging
+    debugPrint('Original DateTime: $dateTime');
+    debugPrint('Local DateTime: $localDateTime');
+    debugPrint('Formatted DateTime: $formattedDateTime');
+    debugPrint('Hour: ${localDateTime.hour}, Minute: ${localDateTime.minute}');
+
+    return formattedDateTime;
   }
 
   String formatTime(DateTime? dateTime) {
@@ -413,13 +466,16 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
     }
 
     // Validate date-times based on booking type
-    if (_selectedBookingType == '1. Add Meeting' || _selectedBookingType == '2. Meeting and Booking Meeting Room') {
+    if (_selectedBookingType == '1. Add Meeting' ||
+        _selectedBookingType == '2. Meeting and Booking Meeting Room') {
       if (_startDateTime == null || _endDateTime == null) {
         _showErrorMessage('Please select start and end date-times.');
         return false;
       }
 
-      if (_startDateTime != null && _endDateTime != null && _startDateTime!.isAfter(_endDateTime!)) {
+      if (_startDateTime != null &&
+          _endDateTime != null &&
+          _startDateTime!.isAfter(_endDateTime!)) {
         _showErrorMessage('Start date-time must be before end date-time.');
         return false;
       }
@@ -429,7 +485,9 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
         return false;
       }
 
-      if (_startDateTime != null && _endDateTime != null && _startDateTime!.isAfter(_endDateTime!)) {
+      if (_startDateTime != null &&
+          _endDateTime != null &&
+          _startDateTime!.isAfter(_endDateTime!)) {
         _showErrorMessage('Start date must be before end date.');
         return false;
       }
@@ -479,43 +537,43 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
   }
 
   /// Shows date and time picker for selecting date and time
-  Future<void> _selectDateTime(BuildContext context, bool isStartDateTime) async {
+  Future<void> _selectDateTime(
+      BuildContext context, bool isStartDateTime) async {
     final DateTime currentDay = DateTime.now();
     DateTime initialDate;
-    DateTime firstDate;
+    TimeOfDay initialTime;
 
     if (isStartDateTime) {
-      // Use the existing start date if set, otherwise default to current day
       initialDate = _startDateTime ?? currentDay;
-      // Allow past dates back to year 2000
-      firstDate = DateTime(2000);
+      initialTime = _startDateTime != null
+          ? TimeOfDay(
+              hour: _startDateTime!.hour, minute: _startDateTime!.minute)
+          : const TimeOfDay(hour: 9, minute: 0);
     } else {
-      if (_startDateTime != null) {
-        // Use the existing end date if set, otherwise default to 1 hour after start
-        initialDate = _endDateTime ?? _startDateTime!.add(const Duration(hours: 1));
-        // Set firstDate to the start date's date part to prevent selecting before start
-        firstDate = DateTime(_startDateTime!.year, _startDateTime!.month, _startDateTime!.day);
-      } else {
-        // If no start date is set, default to current day
-        initialDate = currentDay;
-        firstDate = currentDay;
-      }
+      initialDate = _endDateTime ?? _beforeEndDateTime.value ?? currentDay;
+      initialTime = _endDateTime != null
+          ? TimeOfDay(hour: _endDateTime!.hour, minute: _endDateTime!.minute)
+          : const TimeOfDay(hour: 13, minute: 0);
     }
+
+    debugPrint('Initial Date before picker: $initialDate');
+    debugPrint('Initial Time before picker: ${initialTime.format(context)}');
 
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate: initialDate,
-      firstDate: firstDate,
+      firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
 
     if (pickedDate != null) {
       final TimeOfDay? pickedTime = await showTimePicker(
         context: context,
-        initialTime: isStartDateTime ? const TimeOfDay(hour: 9, minute: 0) : const TimeOfDay(hour: 13, minute: 0),
+        initialTime: initialTime,
       );
 
       if (pickedTime != null) {
+        // Create the DateTime with the exact hours and minutes selected
         final DateTime pickedDateTime = DateTime(
           pickedDate.year,
           pickedDate.month,
@@ -524,15 +582,19 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
           pickedTime.minute,
         );
 
+        debugPrint('Picked Date: $pickedDate');
+        debugPrint('Picked Time: ${pickedTime.format(context)}');
+        debugPrint('Final DateTime: $pickedDateTime');
+
         setState(() {
           if (isStartDateTime) {
             _startDateTime = pickedDateTime;
-            // Adjust end date if it’s unset or before the new start date
-            if (_endDateTime == null || _endDateTime!.isBefore(_startDateTime!)) {
-              _endDateTime = _startDateTime!.add(const Duration(hours: 1));
-            }
+            _beforeEndDateTime.value =
+                _startDateTime?.add(const Duration(hours: 1));
+            debugPrint('Set _startDateTime to: $_startDateTime');
           } else {
             _endDateTime = pickedDateTime;
+            debugPrint('Set _endDateTime to: $_endDateTime');
           }
         });
       }
@@ -551,8 +613,11 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
     if (selectedMembers != null && selectedMembers.isNotEmpty) {
       setState(() {
         // Ensure that only unique members are added based on 'employee_id'
-        final existingIds = _selectedMembers.map((m) => m['employee_id']).toSet();
-        final newMembers = (selectedMembers as List<Map<String, dynamic>>).where((member) => !existingIds.contains(member['employee_id'])).toList();
+        final existingIds =
+            _selectedMembers.map((m) => m['employee_id']).toSet();
+        final newMembers = (selectedMembers as List<Map<String, dynamic>>)
+            .where((member) => !existingIds.contains(member['employee_id']))
+            .toList();
         _selectedMembers.addAll(newMembers);
       });
     }
@@ -583,9 +648,12 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                     // Initialize start and end date-times if not already set
                     if (_startDateTime == null || _endDateTime == null) {
                       final DateTime now = DateTime.now();
-                      _startDateTime = DateTime(now.year, now.month, now.day, 9, 0);
-                      _endDateTime = DateTime(now.year, now.month, now.day, 13, 0);
-                      _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
+                      _startDateTime =
+                          DateTime(now.year, now.month, now.day, 9, 0);
+                      _endDateTime =
+                          DateTime(now.year, now.month, now.day, 13, 0);
+                      _beforeEndDateTime.value =
+                          _startDateTime?.add(const Duration(hours: 1));
                     }
                   });
                   Navigator.pop(context);
@@ -595,16 +663,20 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 title: const Text('2. Meeting and Booking Meeting Room'),
                 onTap: () {
                   setState(() {
-                    _selectedBookingType = '2. Meeting and Booking Meeting Room';
+                    _selectedBookingType =
+                        '2. Meeting and Booking Meeting Room';
                     // Set default values
                     _location = "Meeting at Local Office";
                     _notification = 5;
                     // Initialize start and end date-times if not already set
                     if (_startDateTime == null || _endDateTime == null) {
                       final DateTime now = DateTime.now();
-                      _startDateTime = DateTime(now.year, now.month, now.day, 9, 0);
-                      _endDateTime = DateTime(now.year, now.month, now.day, 13, 0);
-                      _beforeEndDateTime.value = _startDateTime?.add(const Duration(hours: 1));
+                      _startDateTime =
+                          DateTime(now.year, now.month, now.day, 9, 0);
+                      _endDateTime =
+                          DateTime(now.year, now.month, now.day, 13, 0);
+                      _beforeEndDateTime.value =
+                          _startDateTime?.add(const Duration(hours: 1));
                     }
                   });
                   Navigator.pop(context);
@@ -622,7 +694,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                       final DateTime now = DateTime.now();
                       _startDateTime = DateTime(now.year, now.month, now.day);
                       _endDateTime = DateTime(now.year, now.month, now.day);
-                      _beforeEndDateTime.value = null; // Not needed for Booking Car
+                      _beforeEndDateTime.value =
+                          null; // Not needed for Booking Car
                     }
                   });
                   Navigator.pop(context);
@@ -674,7 +747,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         '${index + 1}. ${room['room_name']}',
                         style: TextStyle(
                           color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.white70 // Slightly dimmed white text for dark mode
+                              ? Colors
+                                  .white70 // Slightly dimmed white text for dark mode
                               : Colors.black87, // Darker black for light mode
                         ),
                       ),
@@ -698,19 +772,22 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
 
   /// Shows the notification time dropdown based on booking type
   Widget _buildNotificationDropdown() {
-    final List<DropdownMenuItem<int>> numberedNotificationOptions = _notificationOptions
-        .asMap()
-        .entries
-        .map((entry) => DropdownMenuItem<int>(
-              value: entry.value,
-              child: Text('${entry.key + 1}. Notify me ${entry.value} min before'),
-            ))
-        .toList();
+    final List<DropdownMenuItem<int>> numberedNotificationOptions =
+        _notificationOptions
+            .asMap()
+            .entries
+            .map((entry) => DropdownMenuItem<int>(
+                  value: entry.value,
+                  child: Text(
+                      '${entry.key + 1}. Notify me ${entry.value} min before'),
+                ))
+            .toList();
 
     return DropdownButtonFormField<int>(
       decoration: InputDecoration(
         labelText: 'Notification*',
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.0),
         ),
@@ -740,7 +817,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
         labelText: 'Type of meeting*',
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10.0),
         ),
@@ -774,7 +852,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
             TextField(
               controller: _titleController,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12.0, vertical: 12.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
@@ -791,7 +870,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
               controller: _descriptionController,
               maxLines: 3,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12.0, vertical: 12.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
@@ -804,14 +884,16 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 Expanded(
                   child: Text(
                     'Start Date & Time*',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
                   ),
                 ),
                 SizedBox(width: 12.0),
                 Expanded(
                   child: Text(
                     'End Date & Time*',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
                   ),
                 ),
               ],
@@ -828,11 +910,15 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         borderRadius: BorderRadius.circular(20.0),
                         border: Border.all(color: Colors.grey),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0, vertical: 12.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_startDateTime == null ? 'dd/mm/yy - 09:00' : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
+                          Text(_startDateTime == null
+                              ? 'dd/mm/yy - 09:00'
+                              : DateFormat('dd/MM/yy - HH:mm')
+                                  .format(_startDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -848,11 +934,15 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         borderRadius: BorderRadius.circular(20.0),
                         border: Border.all(color: Colors.grey),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0, vertical: 12.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_endDateTime == null ? 'dd/mm/yy - 13:00' : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
+                          Text(_endDateTime == null
+                              ? 'dd/mm/yy - 13:00'
+                              : DateFormat('dd/MM/yy - HH:mm')
+                                  .format(_endDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -875,13 +965,15 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ElevatedButton(
                   onPressed: _showAddPeoplePage,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.orange // Use orange in dark mode
-                        : Colors.green, // Use green in light mode
+                    backgroundColor:
+                        Theme.of(context).brightness == Brightness.dark
+                            ? Colors.orange // Use orange in dark mode
+                            : Colors.green, // Use green in light mode
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20.0),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 12.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32.0, vertical: 12.0),
                   ),
                   child: const Text(
                     '+ Add People',
@@ -898,23 +990,33 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    for (int i = 0; i < (_selectedMembers.length > 5 ? 5 : _selectedMembers.length); i++)
+                    for (int i = 0;
+                        i <
+                            (_selectedMembers.length > 5
+                                ? 5
+                                : _selectedMembers.length);
+                        i++)
                       Positioned(
                         left: i * 20.0, // Adjust this value to control overlap
                         child: FutureBuilder<String?>(
-                          future: _fetchProfileImage(_selectedMembers[i]['employee_id']),
+                          future: _fetchProfileImage(
+                              _selectedMembers[i]['employee_id']),
                           builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
                               return const CircleAvatar(
                                 radius: 22.0,
-                                child: CircularProgressIndicator(strokeWidth: 2.0),
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2.0),
                               );
                             } else if (snapshot.hasError) {
                               return const CircleAvatar(
                                 radius: 22.0,
                                 child: Icon(Icons.error),
                               );
-                            } else if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
+                            } else if (snapshot.hasData &&
+                                snapshot.data != null &&
+                                snapshot.data!.isNotEmpty) {
                               return CircleAvatar(
                                 backgroundImage: NetworkImage(snapshot.data!),
                                 radius: 22.0,
@@ -936,7 +1038,9 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                           backgroundColor: Colors.grey.shade400,
                           child: Text(
                             '+${_selectedMembers.length - 5}',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -960,7 +1064,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
             TextField(
               controller: _titleController,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12.0, vertical: 12.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
@@ -977,7 +1082,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
               controller: _employeeTelController,
               keyboardType: TextInputType.phone,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12.0, vertical: 12.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
@@ -994,7 +1100,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
               controller: _remarkController,
               maxLines: 3,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12.0, vertical: 12.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
@@ -1007,14 +1114,16 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 Expanded(
                   child: Text(
                     'Start Date & Time*',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
                   ),
                 ),
                 SizedBox(width: 12.0),
                 Expanded(
                   child: Text(
                     'End Date & Time*',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
                   ),
                 ),
               ],
@@ -1031,11 +1140,15 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         borderRadius: BorderRadius.circular(20.0),
                         border: Border.all(color: Colors.grey),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0, vertical: 12.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_startDateTime == null ? 'dd/mm/yy - 09:00' : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
+                          Text(_startDateTime == null
+                              ? 'dd/mm/yy - 09:00'
+                              : DateFormat('dd/MM/yy - HH:mm')
+                                  .format(_startDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1051,11 +1164,15 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         borderRadius: BorderRadius.circular(20.0),
                         border: Border.all(color: Colors.grey),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0, vertical: 12.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_endDateTime == null ? 'dd/mm/yy - 13:00' : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
+                          Text(_endDateTime == null
+                              ? 'dd/mm/yy - 13:00'
+                              : DateFormat('dd/MM/yy - HH:mm')
+                                  .format(_endDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1080,13 +1197,16 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         : Colors.grey, // Normal border color in light mode
                   ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12.0, vertical: 12.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Display selected room or prompt to select
                     Text(
-                      _roomId != null ? '${_rooms.indexWhere((room) => room['room_id'] == _roomId) + 1}. $_roomName' : 'Room Selection',
+                      _roomId != null
+                          ? '${_rooms.indexWhere((room) => room['room_id'] == _roomId) + 1}. $_roomName'
+                          : 'Room Selection',
                       style: TextStyle(
                         color: Theme.of(context).brightness == Brightness.dark
                             ? Colors.white // White text for dark mode
@@ -1114,13 +1234,15 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ElevatedButton(
                   onPressed: _showAddPeoplePage,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.orange // Use orange in dark mode
-                        : Colors.green, // Use green in light mode
+                    backgroundColor:
+                        Theme.of(context).brightness == Brightness.dark
+                            ? Colors.orange // Use orange in dark mode
+                            : Colors.green, // Use green in light mode
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20.0),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 12.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32.0, vertical: 12.0),
                   ),
                   child: const Text(
                     '+ Add People',
@@ -1148,7 +1270,9 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                           radius: 24.0,
                           child: Icon(Icons.error),
                         );
-                      } else if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
+                      } else if (snapshot.hasData &&
+                          snapshot.data != null &&
+                          snapshot.data!.isNotEmpty) {
                         return CircleAvatar(
                           backgroundImage: NetworkImage(snapshot.data!),
                           radius: 24.0,
@@ -1180,7 +1304,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
             TextField(
               controller: _nameController,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12.0, vertical: 12.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
@@ -1196,7 +1321,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
             TextField(
               controller: _placeController,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12.0, vertical: 12.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
@@ -1213,7 +1339,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
               controller: _purposeController,
               maxLines: 3,
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12.0, vertical: 12.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10.0),
                 ),
@@ -1226,14 +1353,16 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 Expanded(
                   child: Text(
                     'Start Date & Time*',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
                   ),
                 ),
                 SizedBox(width: 12.0),
                 Expanded(
                   child: Text(
                     'End Date & Time*',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
                   ),
                 ),
               ],
@@ -1250,11 +1379,15 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         borderRadius: BorderRadius.circular(20.0),
                         border: Border.all(color: Colors.grey),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0, vertical: 12.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_startDateTime == null ? 'dd/mm/yy - 09:00' : DateFormat('dd/MM/yy - HH:mm').format(_startDateTime!)),
+                          Text(_startDateTime == null
+                              ? 'dd/mm/yy - 09:00'
+                              : DateFormat('dd/MM/yy - HH:mm')
+                                  .format(_startDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1270,11 +1403,15 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         borderRadius: BorderRadius.circular(20.0),
                         border: Border.all(color: Colors.grey),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0, vertical: 12.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(_endDateTime == null ? 'dd/mm/yy - 13:00' : DateFormat('dd/MM/yy - HH:mm').format(_endDateTime!)),
+                          Text(_endDateTime == null
+                              ? 'dd/mm/yy - 13:00'
+                              : DateFormat('dd/MM/yy - HH:mm')
+                                  .format(_endDateTime!)),
                           const Icon(Icons.calendar_today),
                         ],
                       ),
@@ -1294,13 +1431,15 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                 ElevatedButton(
                   onPressed: _showAddPeoplePage,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.orange // Use orange in dark mode
-                        : Colors.green, // Use green in light mode
+                    backgroundColor:
+                        Theme.of(context).brightness == Brightness.dark
+                            ? Colors.orange // Use orange in dark mode
+                            : Colors.green, // Use green in light mode
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20.0),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 12.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32.0, vertical: 12.0),
                   ),
                   child: const Text(
                     '+ Add People',
@@ -1328,7 +1467,9 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                           radius: 24.0,
                           child: Icon(Icons.error),
                         );
-                      } else if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
+                      } else if (snapshot.hasData &&
+                          snapshot.data != null &&
+                          snapshot.data!.isNotEmpty) {
                         return CircleAvatar(
                           backgroundImage: NetworkImage(snapshot.data!),
                           radius: 24.0,
@@ -1356,8 +1497,10 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
-    final double horizontalPadding = MediaQuery.of(context).size.width < 360 ? 16.0 : 14.0;
-    final double verticalPadding = MediaQuery.of(context).size.height < 600 ? 10.0 : 16.0;
+    final double horizontalPadding =
+        MediaQuery.of(context).size.width < 360 ? 16.0 : 14.0;
+    final double verticalPadding =
+        MediaQuery.of(context).size.height < 600 ? 10.0 : 16.0;
 
     return Scaffold(
       appBar: AppBar(
@@ -1377,7 +1520,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+              image: AssetImage(
+                  isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
             ),
             borderRadius: const BorderRadius.only(
@@ -1395,7 +1539,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
       body: Stack(
         children: [
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: verticalPadding),
+            padding: EdgeInsets.symmetric(
+                horizontal: horizontalPadding, vertical: verticalPadding),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1406,17 +1551,23 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                     child: ElevatedButton(
                       onPressed: _submitEvent,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.green // Use green for dark mode
-                            : const Color(0xFFE2AD30), // Default color for light mode
+                        backgroundColor:
+                            Theme.of(context).brightness == Brightness.dark
+                                ? Colors.green // Use green for dark mode
+                                : const Color(
+                                    0xFFE2AD30), // Default color for light mode
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20.0),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 40.0, vertical: 12.0),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 40.0, vertical: 12.0),
                         elevation: 2.0,
-                        shadowColor: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.black.withOpacity(0.5) // Dark shadow for dark mode
-                            : Colors.grey.withOpacity(0.5), // Light shadow for light mode
+                        shadowColor: Theme.of(context).brightness ==
+                                Brightness.dark
+                            ? Colors.black
+                                .withOpacity(0.5) // Dark shadow for dark mode
+                            : Colors.grey.withOpacity(
+                                0.5), // Light shadow for light mode
                       ),
                       child: Text(
                         '+ Add',
@@ -1433,7 +1584,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                   // Booking type selection
                   Text(
                     '${AppLocalizations.of(context)!.typeOfBooking}*',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.0),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14.0),
                   ),
                   const SizedBox(height: 4.0),
                   GestureDetector(
@@ -1443,7 +1595,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
                         borderRadius: BorderRadius.circular(10.0),
                         border: Border.all(color: Colors.grey),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12.0, vertical: 12.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -1479,7 +1632,8 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
       String token = await _fetchToken();
 
       final response = await http.get(
-        Uri.parse('https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
+        Uri.parse(
+            'https://demo-application-api.flexiflows.co/api/profile/$employeeId'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
