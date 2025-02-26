@@ -49,20 +49,11 @@ import AdSupport
   private func initializeNotifications(_ application: UIApplication) {
     if #available(iOS 10.0, *) {
       notificationCenter.delegate = self
-      let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound, .provisional]
       
-      notificationCenter.requestAuthorization(options: authOptions) { [weak self] granted, error in
-        if let error = error {
-          print("Notification authorization error: \(error)")
-          return
-        }
-        print("Notification authorization granted: \(granted)")
-        
-        // Register for notifications on main thread
-        DispatchQueue.main.async {
-          application.registerForRemoteNotifications()
-          self?.notificationCenter.delegate = self
-        }
+      // Register for notifications without requesting permission
+      DispatchQueue.main.async {
+        application.registerForRemoteNotifications()
+        self.notificationCenter.delegate = self
       }
     } else {
       DispatchQueue.main.async {

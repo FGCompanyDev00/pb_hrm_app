@@ -144,8 +144,8 @@ Future<void> _showNotification(RemoteMessage message) async {
     return;
   }
 
-  final platformChannelSpecifics = NotificationDetails(
-    android: const AndroidNotificationDetails(
+  const platformChannelSpecifics = NotificationDetails(
+    android: AndroidNotificationDetails(
       'psbv_next_notification',
       'PSBV Next',
       channelDescription: 'Notifications',
@@ -154,7 +154,7 @@ Future<void> _showNotification(RemoteMessage message) async {
       enableVibration: true,
       playSound: true,
     ),
-    iOS: const DarwinNotificationDetails(
+    iOS: DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
@@ -184,7 +184,7 @@ Future<void> _initializeApp() async {
     }),
 
     // Environment loading with error handling
-    dotenv.load(fileName: ".env.demo").catchError((e) {
+    dotenv.load(fileName: ".env.demo").catchError((e) { // Change this to .env.production for production build ya
       // change it to .env.production for production mode
       debugPrint("Error loading .env file: $e");
       return null;
@@ -229,30 +229,17 @@ Future<void> _initializeNotifications() async {
 }
 
 Future<void> _initializeFirebaseMessaging() async {
-  // Request permissions
-  final settings = await FirebaseMessaging.instance.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-    provisional: false,
-  );
+  // Register handlers without requesting permissions
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-    debugPrint('User granted permission');
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    debugPrint("Firebase message received in foreground: ${message.messageId}");
+    _showNotification(message);
+  });
 
-    // Register handlers
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      debugPrint(
-          "Firebase message received in foreground: ${message.messageId}");
-      _showNotification(message);
-    });
-
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      debugPrint("Notification tapped: ${message.data}");
-    });
-  }
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    debugPrint("Notification tapped: ${message.data}");
+  });
 }
 
 Future<void> _initializeHiveOptimized() async {
@@ -329,12 +316,12 @@ Future<void> _initializeLocalNotifications() async {
   const AndroidInitializationSettings initializationSettingsAndroid =
       AndroidInitializationSettings('@mipmap/playstore');
 
-  // For iOS
+  // For iOS - don't request permissions on initialization
   final DarwinInitializationSettings initializationSettingsIOS =
       DarwinInitializationSettings(
-    requestAlertPermission: true,
-    requestBadgePermission: true,
-    requestSoundPermission: true,
+    requestAlertPermission: false,
+    requestBadgePermission: false,
+    requestSoundPermission: false,
     onDidReceiveLocalNotification:
         (int id, String? title, String? body, String? payload) async {
       debugPrint(
@@ -356,7 +343,7 @@ Future<void> _initializeLocalNotifications() async {
     },
   );
 
-  // Create notification channels for both platforms
+  // Create notification channels for Android
   if (Platform.isAndroid) {
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'psbv_next_notification',

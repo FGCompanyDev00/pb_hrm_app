@@ -90,6 +90,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     officeApiUrl = '$baseUrl/api/attendance/checkin-checkout/office';
     offsiteApiUrl = '$baseUrl/api/attendance/checkin-checkout/offsite';
 
+    _isOffsite.value = false;
+
     // Initialize in parallel
     _initializeServices();
   }
@@ -164,7 +166,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     _lastLocationUpdate = now;
     _lastKnownPosition = position;
-    _determineSectionFromPosition(position);
+    // _determineSectionFromPosition(position);
   }
 
   // Optimize API calls with caching
@@ -289,7 +291,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     Position? currentPosition = await _getCurrentPosition();
     if (currentPosition != null) {
-      _determineSectionFromPosition(currentPosition);
+      // _determineSectionFromPosition(currentPosition);
     }
 
     setState(() {
@@ -1485,18 +1487,14 @@ class AttendanceScreenState extends State<AttendanceScreen> {
             // Show dialog based on the new state
             if (_isOffsite.value) {
               _showCustomDialog(
-                AppLocalizations.of(context)!
-                    .offsiteModeTitle, // e.g., "Offsite Mode"
-                AppLocalizations.of(context)!
-                    .offsiteModeMessage, // e.g., "You're in offsite attendance mode."
+                AppLocalizations.of(context)!.offsiteModeTitle,
+                AppLocalizations.of(context)!.offsiteModeMessage,
                 isSuccess: true,
               );
             } else {
               _showCustomDialog(
-                AppLocalizations.of(context)!
-                    .officeModeTitle, // e.g., "Office Mode"
-                AppLocalizations.of(context)!
-                    .officeModeMessage, // e.g., "You're in office/home attendance mode."
+                AppLocalizations.of(context)!.officeModeTitle,
+                AppLocalizations.of(context)!.officeModeMessage,
                 isSuccess: true,
               );
             }

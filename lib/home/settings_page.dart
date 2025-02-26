@@ -44,7 +44,7 @@ class SettingsPageState extends State<SettingsPage> {
   bool _isLoading = false;
   bool _debugModeEnabled = false;
   late Future<UserProfile> futureUserProfile;
-  String _appVersion = 'PSBV Next Demo v1.0.57(57)';
+  String _appVersion = 'PSBV Next Demo v1.0.58(58)';
   late Box<String> userProfileBox;
   late Box<List<String>> bannersBox;
   String? _fcmToken;
@@ -79,7 +79,7 @@ class SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadAppVersion() async {
     setState(() {
-      _appVersion = 'PSBV Next Demo v1.0.57(57)';
+      _appVersion = 'PSBV Next Demo v1.0.58(58)';
       // _appVersion = 'PSBV Next v${packageInfo.version}';
     });
   }
@@ -403,17 +403,6 @@ class SettingsPageState extends State<SettingsPage> {
               'Message also contained a notification: ${message.notification}');
         }
       });
-
-      // Request notification permissions
-      await _firebaseMessaging.requestPermission(
-        alert: true,
-        announcement: false,
-        badge: true,
-        carPlay: false,
-        criticalAlert: false,
-        provisional: false,
-        sound: true,
-      );
     } catch (e) {
       debugPrint('Error initializing device tokens: $e');
       // Try to get from storage if current attempt failed
