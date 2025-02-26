@@ -10,7 +10,7 @@ def keystoreProperties = new Properties()
 keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 
 android {
-    namespace = "com.psvsystem.next"
+    namespace = "com.phongsavanh.pb_hrsystem"
 
     ndkVersion = "25.1.8937393"
     compileSdkVersion 34
@@ -24,11 +24,11 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.psvsystem.next"
+        applicationId = "com.phongsavanh.pb_hrsystem"
         minSdk = 24
         targetSdk = 34
-        versionCode = 56
-        versionName = "1.0.56"
+        versionCode = 57
+        versionName = "1.0.57"
     }
 
     signingConfigs {

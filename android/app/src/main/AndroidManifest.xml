@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.psvsystem.next"
+    package="com.phongsavanh.pb_hrsystem"
     android:versionCode="2"
     android:versionName="1.0">
 
@@ -52,7 +52,7 @@
 
         <!-- Flutter MainActivity configuration -->
         <activity
-            android:name="com.psvsystem.next.MainActivity"
+            android:name="com.phongsavanh.pb_hrsystem.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
