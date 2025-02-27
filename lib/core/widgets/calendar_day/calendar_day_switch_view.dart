@@ -520,7 +520,7 @@ class CalendarDaySwitchView extends HookWidget {
                                                               children: [
                                                                 const Icon(Icons.title, size: 15),
                                                                 const SizedBox(width: 5),
-                                                                Text(event.desc, style: const TextStyle(fontSize: 10)),
+                                                                Text(event.title, style: const TextStyle(fontSize: 10)),
                                                               ],
                                                             ),
                                                             Row(children: _buildMembersAvatars(event, context)),
@@ -565,7 +565,7 @@ class CalendarDaySwitchView extends HookWidget {
                                                             children: [
                                                               const Icon(Icons.title, size: 15),
                                                               const SizedBox(width: 5),
-                                                              Text(event.desc, style: const TextStyle(fontSize: 10)),
+                                                              Text(event.title, style: const TextStyle(fontSize: 10)),
                                                             ],
                                                           ),
                                                         ],

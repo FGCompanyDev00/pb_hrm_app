@@ -189,7 +189,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
       child: Container(
         margin: const EdgeInsets.only(top: 6.0, left: 8.0, right: 8.0, bottom: 14.0),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark ? Colors.black87 : Colors.white, // Dark mode background
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.grey[850] : Colors.white, // Dark mode background
           boxShadow: [
             BoxShadow(
               color: statusColor.withOpacity(0.4),

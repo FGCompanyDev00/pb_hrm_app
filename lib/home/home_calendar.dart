@@ -877,7 +877,7 @@ class HomeCalendarState extends State<HomeCalendar>
           title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
           start: startDateTime,
           end: endDateTime,
-          desc: item['place'] ?? 'Car Booking Pending',
+          desc: item['desc'] ?? 'Car Booking Pending',
           status: status,
           isMeeting: false,
           category: 'Booking Car',

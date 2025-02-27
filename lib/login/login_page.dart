@@ -119,9 +119,10 @@ class LoginPageState extends State<LoginPage>
     final String password = _passwordController.text.trim();
 
     if (username.isEmpty || password.isEmpty) {
-      if (mounted)
+      if (mounted) {
         _showCustomDialog(AppLocalizations.of(context)!.loginFailed,
             AppLocalizations.of(context)!.emptyFieldsMessage);
+      }
       return;
     }
 
@@ -141,13 +142,23 @@ class LoginPageState extends State<LoginPage>
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseBody = jsonDecode(response.body);
           final String token = responseBody['token'];
-          final String employeeId = responseBody['id']; // Get the employee id
+          final String employeeId = responseBody['id'];
 
+          // Store in secure storage first
+          await _storage.write(key: 'token', value: token);
+          await _storage.write(key: 'employee_id', value: employeeId);
+          await _storage.write(
+              key: 'loginTime', value: DateTime.now().toIso8601String());
+
+          // Then store in SharedPreferences as backup
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(
-              'employee_id', employeeId); // Save employee id as current user id
+          await prefs.setString('employee_id', employeeId);
+
+          // Update UserPreferences
           sl<UserPreferences>().setToken(token);
           sl<UserPreferences>().setLoggedIn(true);
+          sl<UserPreferences>()
+              .setLoginSession(DateTime.now().toIso8601String());
 
           if (_rememberMe) {
             await _saveCredentials(username, password, token);
@@ -155,15 +166,15 @@ class LoginPageState extends State<LoginPage>
             await _clearCredentials();
           }
 
-          await _storage.write(key: 'username', value: username);
-          await _storage.write(key: 'password', value: password);
-
           if (_biometricEnabled) {
             await _storage.write(key: 'biometricEnabled', value: 'true');
+            await _storage.write(key: 'username', value: username);
+            await _storage.write(key: 'password', value: password);
           }
 
-          if (mounted)
+          if (mounted) {
             Provider.of<UserProvider>(context, listen: false).login(token);
+          }
 
           bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
 
@@ -175,7 +186,6 @@ class LoginPageState extends State<LoginPage>
                     builder: (context) => const NotificationPermissionPage()),
               );
             }
-
             await prefs.setBool('isFirstLogin', false);
           } else {
             if (mounted) {
@@ -186,15 +196,11 @@ class LoginPageState extends State<LoginPage>
             }
           }
         } else if (response.statusCode == 401) {
-          // Unauthorized (Incorrect Password)
           _showCustomDialog(
             AppLocalizations.of(context)!.loginFailed,
             AppLocalizations.of(context)!.incorrectPassword,
           );
-        } else if (response.statusCode == 500 ||
-            response.statusCode == 502 ||
-            response.statusCode == 403) {
-          // API Error
+        } else if (response.statusCode == 502 || response.statusCode == 403) {
           _showCustomDialog(
             AppLocalizations.of(context)!.apiError,
             AppLocalizations.of(context)!.apiErrorMessage,
@@ -212,7 +218,6 @@ class LoginPageState extends State<LoginPage>
         );
       }
     } else {
-      // If offline, show offline option and allow offline login
       _showOfflineOptionModal(
         AppLocalizations.of(context)!.noInternet,
         AppLocalizations.of(context)!.offlineMessage,
@@ -393,9 +398,16 @@ class LoginPageState extends State<LoginPage>
   Future<void> _saveCredentials(
       String username, String password, String token) async {
     final box = await Hive.openBox('loginBox');
+
+    // Store in Hive
     await box.put('username', username);
     await box.put('password', password);
     await box.put('token', token);
+
+    // Store in secure storage as backup
+    await _storage.write(key: 'saved_username', value: username);
+    await _storage.write(key: 'saved_password', value: password);
+    await _storage.write(key: 'saved_token', value: token);
   }
 
   Future<void> _loadSavedCredentials() async {

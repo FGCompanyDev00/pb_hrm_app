@@ -489,30 +489,30 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
             ),
           ),
           const SizedBox(height: 25),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.folder_open),
-                  const SizedBox(
-                    width: 10,
-                  ),
-                  Text(
-                    AppLocalizations.of(context)!.description,
-                    textAlign: TextAlign.left,
-                    style: const TextStyle(
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
-          Text(
-            widget.event['description'],
-          ),
+          // Row(
+          //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          //   children: [
+          //     Row(
+          //       children: [
+          //         const Icon(Icons.folder_open),
+          //         const SizedBox(
+          //           width: 10,
+          //         ),
+          //         Text(
+          //           AppLocalizations.of(context)!.description,
+          //           textAlign: TextAlign.left,
+          //           style: const TextStyle(
+          //             fontSize: 16,
+          //           ),
+          //         ),
+          //       ],
+          //     ),
+          //   ],
+          // ),
+          // const SizedBox(height: 15),
+          // Text(
+          //   widget.event['description'],
+          // ),
         ],
       ),
     );
@@ -842,6 +842,7 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     String? title = widget.event['title'];
     String? location = widget.event['location'];
     String? leaveType = widget.event['leave_type'];
+    String? description = widget.event['description']; // Add this line
     final startDate = DateTime.parse(widget.event['startDateTime']);
     final endDate = DateTime.parse(widget.event['endDateTime']);
     String startDisplay12 = "${(startDate.hour % 12 == 0 ? 12 : startDate.hour % 12).toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')} ${startDate.hour >= 12 ? 'PM' : 'AM'}";
@@ -886,6 +887,55 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
                 fontSize: 18,
                 color: Colors.orange,
               ),
+            ),
+          ),
+        // Add description section
+        if (description != null && description.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.description_outlined),
+                    const SizedBox(width: 10),
+                    Text(
+                      AppLocalizations.of(context)!.description,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[800]
+                        : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[700]!
+                          : Colors.grey[300]!,
+                    ),
+                  ),
+                  child: Text(
+                    description,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[200]
+                          : Colors.grey[800],
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
       ],

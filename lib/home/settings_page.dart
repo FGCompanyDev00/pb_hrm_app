@@ -44,7 +44,7 @@ class SettingsPageState extends State<SettingsPage> {
   bool _isLoading = false;
   bool _debugModeEnabled = false;
   late Future<UserProfile> futureUserProfile;
-  String _appVersion = 'PSBV Next Demo v1.0.59(59)';
+  String _appVersion = 'PSBV Next Demo v1.0.60(60)';
   late Box<String> userProfileBox;
   late Box<List<String>> bannersBox;
   String? _fcmToken;
@@ -79,7 +79,7 @@ class SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadAppVersion() async {
     setState(() {
-      _appVersion = 'PSBV Next Demo v1.0.59(59)';
+      _appVersion = 'PSBV Next Demo v1.0.60(60)';
       // _appVersion = 'PSBV Next v${packageInfo.version}';
     });
   }
