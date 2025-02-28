@@ -72,6 +72,10 @@ class HomeCalendarState extends State<HomeCalendar>
   // Loading State
   bool _isLoading = false;
 
+  // Add at the top of the class after other variables
+  final _eventCountsCache = <DateTime, Map<String, int>>{};
+  final _processedEventsCache = <DateTime, List<Events>>{};
+
   @override
   void initState() {
     super.initState();
@@ -89,12 +93,14 @@ class HomeCalendarState extends State<HomeCalendar>
       duration: const Duration(milliseconds: 300),
     );
 
+    // Clear cache when connectivity changes
     connectivityResult.onConnectivityChanged.listen((source) async {
+      _eventCountsCache.clear();
+      _processedEventsCache.clear();
       if (source.contains(ConnectivityResult.none)) {
         eventsForDay = await offlineProvider.getCalendar();
         if (events.value.isEmpty) addEventOffline(eventsForDay);
       } else {
-        // Fetch initial data
         fetchData();
       }
     });
@@ -102,6 +108,8 @@ class HomeCalendarState extends State<HomeCalendar>
 
   @override
   void dispose() {
+    _eventCountsCache.clear();
+    _processedEventsCache.clear();
     events.dispose();
     _animationController.dispose();
     _doubleTapTimer?.cancel();
@@ -1010,17 +1018,19 @@ class HomeCalendarState extends State<HomeCalendar>
   Key _refreshKey = UniqueKey();
 
   Future<void> _onRefresh() async {
+    _clearCaches(); // Clear caches on refresh
+
     connectivityResult.checkConnectivity().then((e) async {
       if (e.contains(ConnectivityResult.none)) {
         eventsForDay = await offlineProvider.getCalendar();
         setState(() {
           addEventOffline(eventsForDay);
-          _refreshKey = UniqueKey(); // Trigger full page rebuild
+          _refreshKey = UniqueKey();
         });
       } else {
         await fetchData();
         setState(() {
-          _refreshKey = UniqueKey(); // Trigger full page rebuild
+          _refreshKey = UniqueKey();
         });
       }
     });
@@ -1031,53 +1041,68 @@ class HomeCalendarState extends State<HomeCalendar>
     return hour;
   }
 
-  /// Retrieves events for a specific day
+  /// Optimized event retrieval with caching
   List<Events> _getEventsForDay(DateTime day) {
     final normalizedDay = normalizeDate(day);
-    return events.value[normalizedDay] ?? [];
+    if (_processedEventsCache.containsKey(normalizedDay)) {
+      return _processedEventsCache[normalizedDay]!;
+    }
+    final result = events.value[normalizedDay] ?? [];
+    _processedEventsCache[normalizedDay] = result;
+    return result;
   }
 
-  /// Retrieves events for a specific day
-  List<Events> _getDubplicateEventsForDay(DateTime day) {
+  /// Optimized event counts with caching
+  Map<String, int> _getEventCountsByCategory(DateTime day) {
     final normalizedDay = normalizeDate(day);
-    final listEvent = events.value[normalizedDay] ?? [];
-    List<Events> updateEvents = [];
-    if (listEvent.length > 4) {
-      for (var i in listEvent) {
-        if (updateEvents.isEmpty) {
-          updateEvents.add(i);
-        } else if (updateEvents.any((u) => u.category.contains(i.category))) {
-        } else {
-          updateEvents.add(i);
-        }
-      }
-    } else {
-      updateEvents = listEvent;
+    if (_eventCountsCache.containsKey(normalizedDay)) {
+      return _eventCountsCache[normalizedDay]!;
     }
 
-    return updateEvents;
+    final events = _getEventsForDay(day);
+    final counts = <String, int>{};
+
+    for (var event in events) {
+      counts[event.category] = (counts[event.category] ?? 0) + 1;
+    }
+
+    _eventCountsCache[normalizedDay] = counts;
+    return counts;
   }
 
-  /// Filters and searches events based on selected category and search query
+  /// Clear caches when data is updated
+  void _clearCaches() {
+    _eventCountsCache.clear();
+    _processedEventsCache.clear();
+  }
+
+  /// Optimized filter and search
   void _filterAndSearchEvents() {
     if (_selectedDay == null) return;
+
+    _clearCaches(); // Clear caches when events are filtered
     offlineProvider.insertCalendar(eventsForAll);
-    List<Events> dayEvents = _getEventsForDay(_selectedDay!);
+
+    final dayEvents = _getEventsForDay(_selectedDay!);
+    List<Events> filteredEvents = dayEvents;
+
     if (_selectedCategory != 'All') {
-      dayEvents = dayEvents
+      filteredEvents = filteredEvents
           .where((event) => event.category == _selectedCategory)
           .toList();
     }
+
     if (_searchQuery.isNotEmpty) {
-      dayEvents = dayEvents.where((event) {
-        final eventTitle = event.title.toLowerCase();
-        final eventDescription = event.desc.toLowerCase();
-        return eventTitle.contains(_searchQuery.toLowerCase()) ||
-            eventDescription.contains(_searchQuery.toLowerCase());
+      final query = _searchQuery.toLowerCase();
+      filteredEvents = filteredEvents.where((event) {
+        final title = event.title.toLowerCase();
+        final description = event.desc.toLowerCase();
+        return title.contains(query) || description.contains(query);
       }).toList();
     }
+
     setState(() {
-      eventsForDay = dayEvents;
+      eventsForDay = filteredEvents;
     });
   }
 
@@ -1294,6 +1319,205 @@ class HomeCalendarState extends State<HomeCalendar>
     });
   }
 
+  /// Shows a modern snackbar with event counts
+  void _showEventCountsSnackbar(DateTime day, bool isDarkMode) {
+    final counts = _getEventCountsByCategory(day);
+    if (counts.isEmpty) return;
+
+    final formattedDate = DateFormat('EEE, dd MMM').format(day);
+
+    const categoryOrder = {
+      'Add Meeting': 1,
+      'Meeting Room Bookings': 2,
+      'Booking Car': 3,
+      'Minutes Of Meeting': 4,
+      'Leave': 5,
+    };
+
+    final sortedCounts = counts.entries.toList()
+      ..sort((a, b) => (categoryOrder[a.key] ?? 99).compareTo(categoryOrder[b.key] ?? 99));
+
+    final snackBar = SnackBar(
+      content: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 40,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    ColorStandardization().colorDarkGold,
+                    ColorStandardization().colorDarkGreen,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        formattedDate,
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black87,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: sortedCounts.map((entry) {
+                      final category = entry.key;
+                      final count = entry.value;
+                      final color = categoryColors[category] ?? Colors.grey;
+                      String displayCategory = '';
+
+                      switch (category) {
+                        case 'Add Meeting':
+                          displayCategory = AppLocalizations.of(context)!.meetingTitle;
+                        case 'Leave':
+                          displayCategory = AppLocalizations.of(context)!.leave;
+                        case 'Meeting Room Bookings':
+                          displayCategory = AppLocalizations.of(context)!.meetingRoomBookings;
+                        case 'Booking Car':
+                          displayCategory = AppLocalizations.of(context)!.bookingCar;
+                        case 'Minutes Of Meeting':
+                          displayCategory = AppLocalizations.of(context)!.minutesOfMeeting;
+                        default:
+                          displayCategory = category;
+                      }
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.15),
+                          border: Border.all(color: color.withOpacity(0.3), width: 1),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              categoryIcon[category] != null ? Icons.circle : Icons.event,
+                              size: 8,
+                              color: color,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              displayCategory,
+                              style: TextStyle(
+                                color: isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black87,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Container(
+                              margin: const EdgeInsets.only(left: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                count.toString(),
+                                style: TextStyle(
+                                  color: isDarkMode ? Colors.white : Colors.black87,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.05),
+          width: 1,
+        ),
+      ),
+
+      margin: const EdgeInsets.fromLTRB(12, 50, 12, 30), // Top: 50, Bottom: 12
+      duration: const Duration(seconds: 4),
+      animation: CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.elasticOut,
+        reverseCurve: Curves.easeOut,
+      ),
+      elevation: isDarkMode ? 8 : 4,
+      action: SnackBarAction(
+        label: 'OK',
+        textColor: ColorStandardization().colorDarkGold,
+        onPressed: () {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        },
+      ),
+    );
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    _animationController.forward(from: 0.0);
+  }
+
+  /// Retrieves events for a specific day with duplicates filtered
+  List<Events> _getDubplicateEventsForDay(DateTime day) {
+    final normalizedDay = normalizeDate(day);
+    final listEvent = events.value[normalizedDay] ?? [];
+    List<Events> updateEvents = [];
+    if (listEvent.length > 4) {
+      for (var i in listEvent) {
+        if (updateEvents.isEmpty) {
+          updateEvents.add(i);
+        } else if (updateEvents.any((u) => u.category.contains(i.category))) {
+          // Skip duplicate categories
+        } else {
+          updateEvents.add(i);
+        }
+      }
+    } else {
+      updateEvents = listEvent;
+    }
+
+    return updateEvents;
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
@@ -1499,6 +1723,9 @@ class HomeCalendarState extends State<HomeCalendar>
                       _focusedDay = focusedDay;
                       _filterAndSearchEvents();
                     });
+
+                    // Show event counts snackbar
+                    _showEventCountsSnackbar(selectedDay, isDarkMode);
                   }
                 },
                 onFormatChanged: (format) {

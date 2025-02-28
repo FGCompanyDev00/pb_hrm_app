@@ -23,7 +23,8 @@ Future<http.Response?> getRequest(String endpoint) async {
     if (response.statusCode == 200) {
       return response;
     } else {
-      showSnackBar('Failed to load data. Status Code: ${response.statusCode}. Message: ${response.body}');
+      showSnackBar(
+          'Failed to load data. Status Code: ${response.statusCode}. Message: ${response.body}');
       return null;
     }
   } catch (e) {

@@ -188,7 +188,7 @@ class CalendarDaySwitchView extends HookWidget {
         'Add Meeting': 1,
         'Meeting Room Bookings': 2,
         'Booking Car': 3,
-        'Minutes Of Meeting': 4,  // Lower priority
+        'Minutes Of Meeting': 4,
         'Leave': 5,
       };
 
