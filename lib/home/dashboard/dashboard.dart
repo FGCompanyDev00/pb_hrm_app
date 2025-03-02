@@ -425,19 +425,24 @@ class DashboardState extends State<Dashboard>
 
       setState(() => _isLocationEnabled = true);
 
-      // Get initial position with timeout
+      // Get initial position with improved error handling
       try {
         _lastKnownPosition = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
+          desiredAccuracy: LocationAccuracy
+              .reduced, // Gunakan ketepatan yang lebih rendah untuk prestasi yang lebih baik
         ).timeout(
-          const Duration(seconds: 10),
+          const Duration(seconds: 15), // Tambah masa timeout
           onTimeout: () {
-            debugPrint('Getting initial position timed out');
-            throw TimeoutException('Failed to get initial position');
+            debugPrint(
+                'Getting initial position timed out, continuing without initial position');
+            // Tidak boleh return null, jadi kita biarkan exception berlaku
+            throw TimeoutException(
+                'Failed to get initial position, but will continue');
           },
         );
       } catch (e) {
         debugPrint('Error getting initial position: $e');
+        // Continue without initial position
       }
 
       // Start listening to position updates with more relaxed settings
@@ -453,20 +458,20 @@ class DashboardState extends State<Dashboard>
     _positionStreamSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy
-            .reduced, // Use reduced accuracy for better performance
-        distanceFilter: 50, // Only update if moved 50 meters
-        timeLimit: Duration(seconds: 10), // Shorter timeout
+            .reduced, // Gunakan ketepatan yang lebih rendah untuk prestasi yang lebih baik
+        distanceFilter: 50, // Hanya kemas kini jika bergerak 50 meter
+        // Buang timeLimit untuk mengelakkan TimeoutException
       ),
     ).listen(
       (Position position) {
         if (mounted) {
-          // Check if widget is still mounted before calling setState
+          // Periksa jika widget masih dipasang sebelum memanggil setState
           setState(() => _lastKnownPosition = position);
         }
       },
       onError: (error) {
         if (mounted) {
-          // Check if widget is still mounted before handling error
+          // Periksa jika widget masih dipasang sebelum mengendalikan ralat
           debugPrint('Location stream error: $error');
           _handleLocationError(error);
         }
@@ -476,28 +481,36 @@ class DashboardState extends State<Dashboard>
   }
 
   void _handleLocationError(dynamic error) {
-    if (!mounted) return; // Early return if widget is not mounted
+    if (!mounted) return; // Kembali awal jika widget tidak dipasang
 
     if (error is TimeoutException) {
-      // Handle timeout specifically
-      _restartLocationUpdates();
+      // Tunggu lebih lama sebelum cuba semula untuk TimeoutException
+      _restartLocationUpdatesWithDelay(3); // Tunggu 3 saat
+    } else if (error.toString().contains('location service disabled')) {
+      // Jangan cuba semula jika perkhidmatan lokasi dimatikan
+      debugPrint('Location services are disabled. Not restarting updates.');
     } else {
-      // Handle other errors
+      // Kendalikan ralat lain
       debugPrint('Location error: $error');
+      _restartLocationUpdatesWithDelay(1); // Tunggu 1 saat untuk ralat lain
     }
   }
 
-  void _restartLocationUpdates() {
-    if (!mounted) return; // Early return if widget is not mounted
+  void _restartLocationUpdatesWithDelay(int seconds) {
+    if (!mounted) return; // Kembali awal jika widget tidak dipasang
 
-    debugPrint('Restarting location updates');
+    debugPrint('Restarting location updates in $seconds seconds');
     _positionStreamSubscription?.cancel();
-    Future.delayed(const Duration(seconds: 1), () {
+    Future.delayed(Duration(seconds: seconds), () {
       if (mounted) {
-        // Check mounted state before restarting
+        // Periksa keadaan mounted sebelum memulakan semula
         _startLocationUpdates();
       }
     });
+  }
+
+  void _restartLocationUpdates() {
+    _restartLocationUpdatesWithDelay(1);
   }
 
   @override

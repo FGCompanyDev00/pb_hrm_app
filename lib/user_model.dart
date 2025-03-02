@@ -1,15 +1,13 @@
 //user_model.dart
 
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:pb_hrsystem/services/network_service.dart';
-import 'dart:async';
+import 'dart:io' show Platform;
 
 // User Model
 class User {
@@ -27,14 +25,11 @@ class User {
 // User Provider that includes token management and API interaction
 class UserProvider extends ChangeNotifier {
   final prefs = sl<UserPreferences>();
-  final _storage = const FlutterSecureStorage();
-  final _networkService = NetworkService();
   User _currentUser = User(id: '1', name: 'Default User', roles: ['User']);
   bool _isLoggedIn = false;
   String _token = '';
   DateTime? _loginTime;
-  Timer? _tokenRefreshTimer;
-  bool _isRefreshing = false;
+  final _secureStorage = const FlutterSecureStorage();
 
   User get currentUser => _currentUser;
   bool get isLoggedIn => _isLoggedIn;
@@ -44,104 +39,61 @@ class UserProvider extends ChangeNotifier {
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   UserProvider() {
-    _initializeProvider();
+    loadUser();
   }
 
-  Future<void> _initializeProvider() async {
-    await _networkService.initialize();
-    await loadUser();
-    _startTokenRefreshTimer();
-  }
-
-  void _startTokenRefreshTimer() {
-    _tokenRefreshTimer?.cancel();
-    // Refresh token every 7 hours (before 8-hour expiry)
-    _tokenRefreshTimer = Timer.periodic(const Duration(hours: 7), (timer) {
-      _refreshTokenIfNeeded();
-    });
-  }
-
-  Future<void> _refreshTokenIfNeeded() async {
-    if (!_isLoggedIn || _isRefreshing) return;
-
-    try {
-      _isRefreshing = true;
-
-      // Check if we need to refresh (token is older than 7 hours)
-      if (_loginTime != null &&
-          DateTime.now().difference(_loginTime!).inHours >= 7) {
-        // Check network connectivity first
-        if (await _networkService.isConnected()) {
-          final response = await http.post(
-            Uri.parse('$baseUrl/api/refresh-token'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $_token',
-            },
-          );
-
-          if (response.statusCode == 200) {
-            final Map<String, dynamic> data = jsonDecode(response.body);
-            final String newToken = data['token'];
-
-            // Update token in all storage locations
-            await _storage.write(key: 'token', value: newToken);
-            await prefs.setToken(newToken);
-
-            // Update login time
-            _loginTime = DateTime.now();
-            await _storage.write(
-                key: 'loginTime', value: _loginTime!.toIso8601String());
-            await prefs.setLoginSession(_loginTime!.toIso8601String());
-
-            _token = newToken;
-            notifyListeners();
-          } else if (response.statusCode == 401) {
-            // Token is invalid/expired, force logout
-            await logout();
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Error refreshing token: $e');
-      // Don't logout on network errors, will try again next time
-    } finally {
-      _isRefreshing = false;
-    }
-  }
-
-  // Enhanced loadUser method
+  // Public method to load user login status and token from shared preferences
   Future<void> loadUser() async {
-    try {
-      // First try secure storage
-      String? token = await _storage.read(key: 'token');
-      String? loginTimeStr = await _storage.read(key: 'loginTime');
+    // Try to load from secure storage first (especially for iOS)
+    if (Platform.isIOS) {
+      final secureToken = await _secureStorage.read(key: 'secure_token');
+      final secureLoginTime =
+          await _secureStorage.read(key: 'secure_login_time');
+      final secureIsLoggedIn =
+          await _secureStorage.read(key: 'secure_is_logged_in');
 
-      // If not found in secure storage, try shared preferences as fallback
-      if (token == null) {
-        token = prefs.getToken();
-        _loginTime = prefs.getLoginSession();
-      } else {
-        _loginTime = loginTimeStr != null ? DateTime.parse(loginTimeStr) : null;
-      }
+      if (secureToken != null && secureIsLoggedIn == 'true') {
+        _token = secureToken;
+        _isLoggedIn = true;
+        _loginTime =
+            secureLoginTime != null ? DateTime.tryParse(secureLoginTime) : null;
 
-      _isLoggedIn = token != null && _loginTime != null;
-      _token = token ?? '';
-
-      if (_isLoggedIn) {
-        // Validate session and refresh token if needed
-        if (!isSessionValid) {
-          await logout();
-        } else {
-          await _refreshTokenIfNeeded();
+        // Sync with SharedPreferences for consistency
+        if (_token.isNotEmpty) {
+          await prefs.setToken(_token);
         }
-      }
+        if (_isLoggedIn) {
+          await prefs.setLoggedIn(true);
+        }
+        if (_loginTime != null) {
+          await prefs.setLoginSession(_loginTime.toString());
+        }
 
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error loading user session: $e');
-      await logout();
+        debugPrint(
+            'iOS: Loaded session from secure storage: token=$_token, isLoggedIn=$_isLoggedIn, loginTime=$_loginTime');
+        notifyListeners();
+        return;
+      }
     }
+
+    // Fall back to SharedPreferences (works reliably on Android)
+    if (Platform.isIOS) {
+      // Use async methods for iOS
+      _isLoggedIn = await prefs.getLoggedInAsync() ?? false;
+      _token = await prefs.getTokenAsync() ?? '';
+      _loginTime = await prefs.getLoginSessionAsync();
+      debugPrint(
+          'iOS: Loaded session from SharedPreferences: token=$_token, isLoggedIn=$_isLoggedIn, loginTime=$_loginTime');
+    } else {
+      // Use sync methods for Android
+      _isLoggedIn = prefs.getLoggedIn() ?? false;
+      _token = prefs.getToken() ?? '';
+      _loginTime = prefs.getLoginSession();
+      debugPrint(
+          'Android: Loaded session: token=$_token, isLoggedIn=$_isLoggedIn, loginTime=$_loginTime');
+    }
+
+    notifyListeners();
   }
 
   bool get isSessionValid {
@@ -201,47 +153,46 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
-  // Enhanced login method
+  // Log in the user, save token and notify listeners
   Future<void> login(String token) async {
     _isLoggedIn = true;
     _token = token;
     _loginTime = DateTime.now();
 
-    // Store in both secure storage and shared preferences
-    await _storage.write(key: 'token', value: token);
-    await _storage.write(
-        key: 'loginTime', value: _loginTime!.toIso8601String());
+    // Store in SharedPreferences (works well for Android)
+    prefs.setLoggedIn(true);
+    prefs.setToken(token);
+    await setLoginTime(); // Save login time immediately after login
 
-    await prefs.setLoggedIn(true);
-    await prefs.setToken(token);
-    await prefs.setLoginSession(_loginTime!.toIso8601String());
-
-    // Start token refresh timer
-    _startTokenRefreshTimer();
+    // Also store in secure storage (more reliable for iOS)
+    if (Platform.isIOS) {
+      await _secureStorage.write(key: 'secure_token', value: token);
+      await _secureStorage.write(
+          key: 'secure_login_time', value: _loginTime.toString());
+      await _secureStorage.write(key: 'secure_is_logged_in', value: 'true');
+    }
 
     notifyListeners();
   }
 
-  // Enhanced logout method
+  // Log out the user, clear token and notify listeners
   Future<void> logout() async {
-    _tokenRefreshTimer?.cancel();
     _isLoggedIn = false;
     _token = '';
     _loginTime = null;
 
-    // Clear both storage mechanisms
-    await _storage.delete(key: 'token');
-    await _storage.delete(key: 'loginTime');
+    // Clear SharedPreferences
     await prefs.setLoggedOff();
     await prefs.removeToken();
     await prefs.removeLoginSession();
 
-    notifyListeners();
-  }
+    // Also clear secure storage
+    if (Platform.isIOS) {
+      await _secureStorage.delete(key: 'secure_token');
+      await _secureStorage.delete(key: 'secure_login_time');
+      await _secureStorage.delete(key: 'secure_is_logged_in');
+    }
 
-  @override
-  void dispose() {
-    _tokenRefreshTimer?.cancel();
-    super.dispose();
+    notifyListeners();
   }
 }

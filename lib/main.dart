@@ -176,13 +176,6 @@ Future<void> _initializeApp() async {
 
   // Create a list to hold all initialization futures
   final List<Future> initializationTasks = [
-    // Firebase initialization with error handling
-    Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)
-        .catchError((e) {
-      debugPrint("Firebase initialization failed: $e");
-      return null;
-    }),
-
     // Environment loading with error handling
     dotenv.load(fileName: ".env.demo").catchError((e) {
       // Change this to .env.production for production build ya
@@ -195,6 +188,9 @@ Future<void> _initializeApp() async {
 
     // System orientation
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
+
+    // Initialize secure storage with iOS-specific options
+    _initializeSecureStorage(),
   ];
 
   // Wait for all initialization tasks to complete concurrently
@@ -204,42 +200,86 @@ Future<void> _initializeApp() async {
   // Cache base URL after environment is loaded
   appCache.baseUrl = dotenv.env['BASE_URL'];
 
-  // Initialize remaining services concurrently
-  await Future.wait([
-    _initializeServices(),
-    _initializeNotifications(),
-  ], eagerError: false);
+  // Initialize remaining services
+  await _initializeServices();
+
+  // Try to initialize Firebase and notifications, but don't block app startup if they fail
+  _initializeFirebaseAndNotifications();
 }
 
 Future<void> _initializeServices() async {
-  // Initialize Dio with optimized settings
-  final dio = createSecureDio();
-  sl.registerSingleton<Dio>(dio);
+  try {
+    // Initialize Dio with optimized settings
+    final dio = createSecureDio();
+    sl.registerSingleton<Dio>(dio);
 
-  // Initialize remaining services
-  await setupServiceLocator();
-  await sl<OfflineProvider>().initializeCalendar();
+    // Initialize remaining services
+    await setupServiceLocator();
+
+    // Initialize calendar database with proper error handling
+    try {
+      await sl<OfflineProvider>().initializeCalendar();
+      debugPrint("Calendar database initialized successfully");
+    } catch (e) {
+      debugPrint("Error initializing calendar: $e");
+      // Don't rethrow - allow app to continue even if calendar fails
+
+      // If database was closed unexpectedly, try to reset connections
+      if (e.toString().contains('database_closed')) {
+        debugPrint("Attempting to reset calendar database connection...");
+        await sl<OfflineProvider>().resetDatabases();
+      }
+    }
+
+    // Initialize history database separately to isolate potential issues
+    try {
+      await sl<OfflineProvider>().initializeHistory();
+      debugPrint("History database initialized successfully");
+    } catch (e) {
+      debugPrint("Error initializing history database: $e");
+      // Don't rethrow - allow app to continue even if history database fails
+
+      // If database was closed unexpectedly, try to reset connections
+      if (e.toString().contains('database_closed')) {
+        debugPrint("Attempting to reset history database connection...");
+        await sl<OfflineProvider>().resetDatabases();
+      }
+    }
+  } catch (e) {
+    debugPrint("Error initializing services: $e");
+    logger.e("Service initialization error: $e");
+    // Log error but don't block app startup
+  }
 }
 
 Future<void> _initializeNotifications() async {
-  await Future.wait([
-    _initializeLocalNotifications(),
-    _initializeFirebaseMessaging(),
-  ], eagerError: false);
+  // Initialize local notifications but don't request permissions yet
+  await _initializeLocalNotifications();
+
+  // Initialize Firebase Messaging without requesting permissions
+  await _initializeFirebaseMessagingWithoutPermissions();
 }
 
-Future<void> _initializeFirebaseMessaging() async {
-  // Register handlers without requesting permissions
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+Future<void> _initializeFirebaseMessagingWithoutPermissions() async {
+  try {
+    // Register handlers without requesting permissions
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    debugPrint("Firebase message received in foreground: ${message.messageId}");
-    _showNotification(message);
-  });
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      debugPrint(
+          "Firebase message received in foreground: ${message.messageId}");
+      _showNotification(message);
+    });
 
-  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-    debugPrint("Notification tapped: ${message.data}");
-  });
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      debugPrint("Notification tapped: ${message.data}");
+    });
+
+    // Don't request notification permissions here - let the user decide in the permission flow
+  } catch (e) {
+    // Catch any errors to prevent app from crashing if Firebase is not available
+    debugPrint("Error initializing Firebase Messaging: $e");
+  }
 }
 
 Future<void> _initializeHiveOptimized() async {
@@ -284,6 +324,51 @@ Future<void> _initializeHiveOptimized() async {
   }
 }
 
+/// Initialize secure storage with iOS-specific options
+Future<void> _initializeSecureStorage() async {
+  if (Platform.isIOS) {
+    // Configure secure storage for iOS with accessibility options
+    const secureStorage = FlutterSecureStorage(
+      iOptions: IOSOptions(
+        accessibility: KeychainAccessibility.unlocked,
+        synchronizable: true, // Allow iCloud sync
+      ),
+    );
+
+    // Test storage to ensure it's working
+    try {
+      await secureStorage.write(key: 'test_key', value: 'test_value');
+      final testValue = await secureStorage.read(key: 'test_key');
+      if (testValue == 'test_value') {
+        debugPrint('Secure storage initialized successfully on iOS');
+      } else {
+        debugPrint('Secure storage test failed on iOS');
+      }
+      await secureStorage.delete(key: 'test_key');
+    } catch (e) {
+      debugPrint('Error initializing secure storage on iOS: $e');
+    }
+  }
+}
+
+Future<void> _initializeFirebaseAndNotifications() async {
+  try {
+    // Initialize Firebase (optional)
+    await Firebase.initializeApp(
+            options: DefaultFirebaseOptions.currentPlatform)
+        .catchError((e) {
+      debugPrint("Firebase initialization failed: $e");
+      return null;
+    });
+
+    // Initialize notifications (optional)
+    await _initializeNotifications();
+  } catch (e) {
+    // Log error but don't block app startup
+    debugPrint("Error initializing Firebase and notifications: $e");
+  }
+}
+
 void main() {
   runZonedGuarded(() async {
     await _initializeApp();
@@ -305,6 +390,14 @@ void main() {
       logger.e("Uncaught error: $error");
       logger.e(stack);
     }
+
+    // Tangani ralat lokasi secara khusus
+    if (error is TimeoutException &&
+        error.toString().contains('position update')) {
+      debugPrint(
+          "Location timeout detected, this is expected behavior in some cases");
+      // Tidak perlu melakukan apa-apa, kerana ini akan ditangani oleh _handleLocationError
+    }
   });
 }
 
@@ -312,50 +405,56 @@ void main() {
 /// 4) A private method for plugin initialization
 /// ------------------------------------------
 Future<void> _initializeLocalNotifications() async {
-  // For Android
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/playstore');
+  try {
+    // For Android
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/playstore');
 
-  // For iOS - don't request permissions on initialization
-  final DarwinInitializationSettings initializationSettingsIOS =
-      DarwinInitializationSettings(
-    requestAlertPermission: false,
-    requestBadgePermission: false,
-    requestSoundPermission: false,
-    onDidReceiveLocalNotification:
-        (int id, String? title, String? body, String? payload) async {
-      debugPrint(
-          'Received iOS local notification: id=$id, title=$title, body=$body');
-    },
-  );
-
-  // Combine settings
-  final InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-    iOS: initializationSettingsIOS,
-  );
-
-  // Initialize the plugin
-  await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings,
-    onDidReceiveNotificationResponse: (NotificationResponse response) {
-      debugPrint('Notification response received: ${response.payload}');
-    },
-  );
-
-  // Create notification channels for Android
-  if (Platform.isAndroid) {
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'psbv_next_notification',
-      'PSBV Next',
-      description: 'Notifications',
-      importance: Importance.high,
+    // For iOS - don't request permissions on initialization
+    final DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+      onDidReceiveLocalNotification:
+          (int id, String? title, String? body, String? payload) async {
+        debugPrint(
+            'Received iOS local notification: id=$id, title=$title, body=$body');
+      },
     );
 
-    await flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.createNotificationChannel(channel);
+    // Combine settings
+    final InitializationSettings initializationSettings =
+        InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
+    );
+
+    // Initialize the plugin
+    await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        debugPrint('Notification response received: ${response.payload}');
+      },
+    );
+
+    // Create notification channels for Android
+    if (Platform.isAndroid) {
+      const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        'psbv_next_notification',
+        'PSBV Next',
+        description: 'Notifications',
+        importance: Importance.high,
+      );
+
+      await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(channel);
+    }
+  } catch (e) {
+    // Catch any errors to prevent app from crashing if notifications are not available
+    debugPrint("Error initializing local notifications: $e");
   }
 }
 

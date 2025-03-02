@@ -34,25 +34,40 @@ class OfflineProvider extends ChangeNotifier {
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
+  // Flag to track initialization status
+  bool _isInitializing = false;
+  bool _isInitialized = false;
+
   //Calendar offline with improved error handling and caching
   Future<void> initializeCalendar() async {
-    try {
-      if (_calendarDb == null) {
-        _calendarDb =
-            await calendarDatabaseService.initializeDatabase('calendar');
-        debugPrint('Calendar database initialized successfully');
+    // Prevent multiple concurrent initializations
+    if (_isInitializing) {
+      debugPrint('Calendar initialization already in progress, waiting...');
+      // Wait for the current initialization to complete
+      while (_isInitializing) {
+        await Future.delayed(const Duration(milliseconds: 100));
       }
+      return;
+    }
+
+    // If already initialized, return
+    if (_isInitialized) {
+      debugPrint('Calendar already initialized');
+      return;
+    }
+
+    _isInitializing = true;
+
+    try {
+      await calendarDatabaseService.initializeDatabase('calendar');
+      _isInitialized = true;
+      debugPrint('Calendar database initialized successfully');
     } catch (e) {
       debugPrint('Error initializing calendar database: $e');
-      // Reset database instance and try to recover
-      _calendarDb = null;
-      // Try to reinitialize once
-      try {
-        _calendarDb =
-            await calendarDatabaseService.initializeDatabase('calendar');
-      } catch (retryError) {
-        debugPrint('Failed to recover calendar database: $retryError');
-      }
+      // Reset initialization flags to allow retry
+      _isInitialized = false;
+    } finally {
+      _isInitializing = false;
     }
   }
 
@@ -61,7 +76,7 @@ class OfflineProvider extends ChangeNotifier {
 
     try {
       // Ensure database is initialized
-      if (_calendarDb == null) {
+      if (!_isInitialized) {
         await initializeCalendar();
       }
 
@@ -80,24 +95,32 @@ class OfflineProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error inserting calendar events: $e');
       debugPrint('Error details: ${e.toString()}');
-      // Reset database instance and try to recover
-      _calendarDb = null;
-      rethrow;
+
+      // Reset initialization flag if database is closed
+      if (e.toString().contains('database_closed')) {
+        _isInitialized = false;
+        await initializeCalendar();
+      }
     }
   }
 
   Future<List<Events>> getCalendar() async {
     try {
       // Ensure database is initialized
-      if (_calendarDb == null) {
+      if (!_isInitialized) {
         await initializeCalendar();
       }
       return await calendarDatabaseService.getListEvents();
     } catch (e) {
       debugPrint('Error fetching calendar events: $e');
       debugPrint('Error details: ${e.toString()}');
-      // Reset database instance
-      _calendarDb = null;
+
+      // Reset initialization flag if database is closed
+      if (e.toString().contains('database_closed')) {
+        _isInitialized = false;
+        await initializeCalendar();
+      }
+
       return [];
     }
   }
@@ -342,11 +365,34 @@ class OfflineProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    // Close databases properly
-    _calendarDb?.close();
-    _historyDb?.close();
-    _calendarDb = null;
-    _historyDb = null;
+    // Close databases properly when provider is disposed
+    _closeAllDatabases();
     super.dispose();
+  }
+
+  // Method to properly close all databases
+  Future<void> _closeAllDatabases() async {
+    try {
+      await calendarDatabaseService.closeDatabase();
+      if (_historyDb != null && _historyDb!.isOpen) {
+        await _historyDb!.close();
+        _historyDb = null;
+      }
+      debugPrint('All databases closed properly');
+    } catch (e) {
+      debugPrint('Error closing databases: $e');
+    }
+  }
+
+  // Reset database connections if needed
+  Future<void> resetDatabases() async {
+    await _closeAllDatabases();
+    _isInitialized = false;
+    _isInitializing = false;
+
+    // Reinitialize databases
+    await initializeCalendar();
+    await initializeHistory();
+    debugPrint('Databases reset and reinitialized');
   }
 }

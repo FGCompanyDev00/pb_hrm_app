@@ -106,6 +106,10 @@ class SplashScreenState extends State<SplashScreen>
       if (_isDisposed) return;
 
       if (mounted) {
+        // Add a debug print to help diagnose the issue
+        debugPrint(
+            'Session check: isLoggedIn=${userProvider.isLoggedIn}, isSessionValid=${userProvider.isSessionValid}');
+
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(

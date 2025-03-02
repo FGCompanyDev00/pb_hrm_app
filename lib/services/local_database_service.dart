@@ -13,7 +13,9 @@ class CalendarDatabaseService {
 
   // Getter for our database
   Future<Database> get database async {
-    _database ??= await initializeDatabase('calendar');
+    if (_database == null || !_database!.isOpen) {
+      _database = await initializeDatabase('calendar');
+    }
     return _database!;
   }
 
@@ -24,8 +26,22 @@ class CalendarDatabaseService {
       Directory directory = await getApplicationDocumentsDirectory();
       String path = '${directory.path}$nameDb.db';
 
-      // Delete existing database if it exists
+      // Check if database exists and is valid
+      bool shouldRecreate = false;
       if (await databaseExists(path)) {
+        try {
+          // Try to open the database to check if it's valid
+          final testDb = await openDatabase(path, readOnly: true);
+          await testDb.close();
+        } catch (e) {
+          // If opening fails, mark for recreation
+          debugPrint("Existing database is corrupted, will recreate: $e");
+          shouldRecreate = true;
+        }
+      }
+
+      // Delete existing database if needed
+      if (shouldRecreate && await databaseExists(path)) {
         await deleteDatabase(path);
         debugPrint("Deleted existing database for clean initialization");
       }
@@ -36,6 +52,9 @@ class CalendarDatabaseService {
         version: _currentVersion,
         onCreate: _createDatabase,
         onUpgrade: _onUpgrade,
+        onOpen: (db) {
+          debugPrint("Database opened successfully");
+        },
       );
 
       debugPrint("Database Created/Opened Successfully");
@@ -105,14 +124,23 @@ class CalendarDatabaseService {
   Future<void> insertEvents(List<Events> events) async {
     if (events.isEmpty) return;
 
-    final Database db = await database;
-    final List<Events> eventsCopy = List<Events>.from(events);
-
     try {
+      final Database db = await database;
+
+      // Check if database is open
+      if (!db.isOpen) {
+        debugPrint("Database is closed, reopening...");
+        _database = await initializeDatabase('calendar');
+      }
+
+      final List<Events> eventsCopy = List<Events>.from(events);
+
       await db.transaction((txn) async {
         final batch = txn.batch();
 
         for (var event in eventsCopy) {
+          if (event.uid == null) continue;
+
           Map<String, dynamic> eventJson = event.toJson();
 
           // Clean and prepare data
@@ -154,6 +182,12 @@ class CalendarDatabaseService {
     } catch (e) {
       debugPrint("Error inserting events: $e");
       debugPrint("Error details: ${e.toString()}");
+
+      // If database is closed, reset it so it can be reopened
+      if (e.toString().contains('database_closed')) {
+        _database = null;
+      }
+
       rethrow;
     }
   }
@@ -162,6 +196,13 @@ class CalendarDatabaseService {
   Future<List<Events>> getListEvents() async {
     try {
       final Database db = await database;
+
+      // Check if database is open
+      if (!db.isOpen) {
+        debugPrint("Database is closed, reopening...");
+        _database = await initializeDatabase('calendar');
+      }
+
       final result = await db.query(
         calendarTable,
         orderBy: 'startDateTime ASC',
@@ -170,16 +211,26 @@ class CalendarDatabaseService {
       return result
           .map((e) {
             try {
+              // Create a copy of the map to avoid modifying a read-only map
+              final Map<String, dynamic> mutableMap =
+                  Map<String, dynamic>.from(e);
+
               // Handle members JSON parsing
-              if (e['members'] != null && e['members'] is String) {
+              if (mutableMap['members'] != null &&
+                  mutableMap['members'] is String) {
                 try {
-                  e['members'] = jsonDecode(e['members'] as String);
+                  final String membersString = mutableMap['members'] as String;
+                  if (membersString.isNotEmpty && membersString != 'null') {
+                    mutableMap['members'] = jsonDecode(membersString);
+                  } else {
+                    mutableMap['members'] = [];
+                  }
                 } catch (error) {
                   debugPrint('Error parsing members JSON: $error');
-                  e['members'] = [];
+                  mutableMap['members'] = [];
                 }
               }
-              return Events.fromJson(e);
+              return Events.fromJson(mutableMap);
             } catch (error) {
               debugPrint('Error converting record to Event: $error');
               return null;
@@ -189,39 +240,24 @@ class CalendarDatabaseService {
           .toList();
     } catch (e) {
       debugPrint('Error fetching events: $e');
+
+      // If database is closed, reset it so it can be reopened
+      if (e.toString().contains('database_closed')) {
+        _database = null;
+      }
+
       return [];
     }
   }
 
-  // //Fetch operation
-  // Future<List<Map<String, dynamic>>> getPerson(String email) async {
-  //   Database db = await this.database;
-  //   var result = await db.rawQuery('SELECT * FROM $personTable WHERE $personEmail = \'$email\' ');
-  //   return result;
-  // }
-
-  // // Insert Operation
-  // Future<int> insertPerson(Person person) async {
-  //   Database db = await this.database;
-  //   var result = await db.insert(personTable, person.toMap());
-  //   print("Person details inserted in the $personTable.");
-  //   print("$personTable contains $result records.");
-  //   return result;
-  // }
-
-  // // Update Operation
-  // Future<int> updatePerson(Person person) async {
-  //   Database db = await this.database;
-  //   var result = await db.update(personTable, person.toMap(), where: '$personEmail = ?', whereArgs: [person.email]);
-  //   return result;
-  // }
-
-  // // Delete Operation
-  // Future<int> deletePerson(String email) async {
-  //   Database db = await this.database;
-  //   var result = await db.rawDelete('DELETE FROM $personTable WHERE $personEmail = ?', [email]);
-  //   return result;
-  // }
+  // Close database properly
+  Future<void> closeDatabase() async {
+    if (_database != null && _database!.isOpen) {
+      await _database!.close();
+      _database = null;
+      debugPrint("Calendar database closed properly");
+    }
+  }
 }
 
 class HistoryDatabaseService {
@@ -351,24 +387,110 @@ class HistoryDatabaseService {
 
   //Fetch operation
   Future<List<Events>> getListHistory() async {
-    Database db = await database;
-    var result = await db.rawQuery('SELECT * FROM $historyTable');
-    List<Events> storeEvents = [];
-    for (var e in result) {
-      storeEvents.add(Events.fromJson(e));
+    try {
+      Database db = await database;
+
+      // Check if database is open
+      if (!db.isOpen) {
+        debugPrint("History database is closed, reopening...");
+        _database = await initializeDatabase('history');
+        db = _database!;
+      }
+
+      var result = await db.rawQuery('SELECT * FROM $historyTable');
+      List<Events> storeEvents = [];
+
+      for (var e in result) {
+        try {
+          // Create a copy of the map to avoid modifying a read-only map
+          final Map<String, dynamic> mutableMap = Map<String, dynamic>.from(e);
+
+          // Handle members JSON parsing
+          if (mutableMap['members'] != null &&
+              mutableMap['members'] is String) {
+            try {
+              final String membersString = mutableMap['members'] as String;
+              if (membersString.isNotEmpty && membersString != 'null') {
+                mutableMap['members'] = jsonDecode(membersString);
+              } else {
+                mutableMap['members'] = [];
+              }
+            } catch (error) {
+              debugPrint('Error parsing members JSON in history: $error');
+              mutableMap['members'] = [];
+            }
+          }
+
+          storeEvents.add(Events.fromJson(mutableMap));
+        } catch (error) {
+          debugPrint('Error converting history record to Event: $error');
+        }
+      }
+      return storeEvents;
+    } catch (e) {
+      debugPrint('Error fetching history events: $e');
+
+      // If database is closed, reset it so it can be reopened
+      if (e.toString().contains('database_closed')) {
+        _database = null;
+      }
+
+      return [];
     }
-    return storeEvents;
   }
 
   //Fetch Pending operation
   Future<List<Events>> getListPending() async {
-    Database db = await databasePending;
-    var result = await db.rawQuery('SELECT * FROM $historyPendingTable');
-    List<Events> storeEvents = [];
-    for (var e in result) {
-      storeEvents.add(Events.fromJson(e));
+    try {
+      Database db = await databasePending;
+
+      // Check if database is open
+      if (!db.isOpen) {
+        debugPrint("History pending database is closed, reopening...");
+        _database = await initializeDatabase('history_pending');
+        db = _database!;
+      }
+
+      var result = await db.rawQuery('SELECT * FROM $historyPendingTable');
+      List<Events> storeEvents = [];
+
+      for (var e in result) {
+        try {
+          // Create a copy of the map to avoid modifying a read-only map
+          final Map<String, dynamic> mutableMap = Map<String, dynamic>.from(e);
+
+          // Handle members JSON parsing
+          if (mutableMap['members'] != null &&
+              mutableMap['members'] is String) {
+            try {
+              final String membersString = mutableMap['members'] as String;
+              if (membersString.isNotEmpty && membersString != 'null') {
+                mutableMap['members'] = jsonDecode(membersString);
+              } else {
+                mutableMap['members'] = [];
+              }
+            } catch (error) {
+              debugPrint('Error parsing members JSON in pending: $error');
+              mutableMap['members'] = [];
+            }
+          }
+
+          storeEvents.add(Events.fromJson(mutableMap));
+        } catch (error) {
+          debugPrint('Error converting pending record to Event: $error');
+        }
+      }
+      return storeEvents;
+    } catch (e) {
+      debugPrint('Error fetching pending events: $e');
+
+      // If database is closed, reset it so it can be reopened
+      if (e.toString().contains('database_closed')) {
+        _database = null;
+      }
+
+      return [];
     }
-    return storeEvents;
   }
 
   // Insert Operation

@@ -109,7 +109,9 @@ class Events {
       uid: json['uid'],
       isRepeat: json['isRepeat'],
       videoConference: json['videoConference'],
-      backgroundColor: json['backgroundColor'] != null ? parseColorTime(json['backgroundColor']) : null,
+      backgroundColor: json['backgroundColor'] != null
+          ? parseColorTime(json['backgroundColor'])
+          : null,
       outmeetingUid: json['outmeetingUid'],
       leaveType: json['leaveType'],
       fileName: json['fileName'],
@@ -123,27 +125,57 @@ class Events {
   String get formattedTime => DateFormat.jm().format(start);
 
   @override
-  String toString() => '$title ($status) from ${DateFormat.yMMMd().format(start)} to ${DateFormat.yMMMd().format(end)}';
+  String toString() =>
+      '$title ($status) from ${DateFormat.yMMMd().format(start)} to ${DateFormat.yMMMd().format(end)}';
 
   static List<Map<String, dynamic>>? parseMembers(dynamic members) {
     if (members == null || members == 'null') {
       return null;
     }
-    if (members is String) {
-      try {
-        // Parse the JSON string into a list of maps
-        final List<dynamic> decoded = jsonDecode(members);
-        return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
-      } catch (e) {
-        // Handle invalid JSON strings gracefully
-        debugPrint('Error decoding members: $e');
-        return null;
+
+    try {
+      if (members is String) {
+        try {
+          // Parse the JSON string into a list of maps
+          if (members.isEmpty) {
+            return [];
+          }
+          final List<dynamic> decoded = jsonDecode(members);
+          return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+        } catch (e) {
+          // Handle invalid JSON strings gracefully
+          debugPrint('Error decoding members string: $e');
+          return [];
+        }
+      } else if (members is List) {
+        try {
+          // Create a new list to avoid modifying a read-only list
+          return members.map((e) {
+            if (e is Map) {
+              return Map<String, dynamic>.from(e);
+            } else {
+              debugPrint('Invalid member format: $e');
+              return <String, dynamic>{};
+            }
+          }).toList();
+        } catch (e) {
+          debugPrint('Error processing members list: $e');
+          return [];
+        }
+      } else if (members is Map) {
+        // Handle case where members is a single map
+        try {
+          return [Map<String, dynamic>.from(members)];
+        } catch (e) {
+          debugPrint('Error processing members map: $e');
+          return [];
+        }
       }
-    } else if (members is List) {
-      // Directly return if it's already a list
-      return members.map((e) => Map<String, dynamic>.from(e)).toList();
+    } catch (e) {
+      debugPrint('Unexpected error in parseMembers: $e');
     }
-    return null;
+
+    return [];
   }
 }
 
@@ -170,13 +202,17 @@ class OverTimeEventsRow<T extends Object> {
   }
 
   @override
-  String toString() => 'OverTimeEventsRow(events: $events, start: $start, end: $end)';
+  String toString() =>
+      'OverTimeEventsRow(events: $events, start: $start, end: $end)';
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
-    return other is OverTimeEventsRow<T> && listEquals(other.events, events) && other.start == start && other.end == end;
+    return other is OverTimeEventsRow<T> &&
+        listEquals(other.events, events) &&
+        other.start == start &&
+        other.end == end;
   }
 
   @override
@@ -191,7 +227,10 @@ extension TimetableExtension on Events {
   int minutesFrom(DateTime timePoint) => start.difference(timePoint).inMinutes;
 
   bool isInThisGap(DateTime timePoint, int gap) {
-    final dif = start.copyWith(second: 00).difference(timePoint.copyWith(second: 00)).inSeconds;
+    final dif = start
+        .copyWith(second: 00)
+        .difference(timePoint.copyWith(second: 00))
+        .inSeconds;
     return dif <= gap && dif >= 0;
     // return start.hour == timePoint.hour &&
     //     (start.minute >= timePoint.minute &&
@@ -199,10 +238,12 @@ extension TimetableExtension on Events {
   }
 
   bool startInThisGap(DateTime timePoint, int gap) {
-    return start.isAfter(timePoint) && start.isBefore(timePoint.add(Duration(minutes: gap)));
+    return start.isAfter(timePoint) &&
+        start.isBefore(timePoint.add(Duration(minutes: gap)));
   }
 
-  bool startAt(DateTime timePoint) => start.hour == timePoint.hour && timePoint.minute == start.minute;
+  bool startAt(DateTime timePoint) =>
+      start.hour == timePoint.hour && timePoint.minute == start.minute;
   bool startAtHour(DateTime timePoint) => start.hour == timePoint.hour;
 
   int compare(Events other) {

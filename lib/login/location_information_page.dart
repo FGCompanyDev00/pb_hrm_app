@@ -14,87 +14,28 @@ class LocationInformationPage extends StatelessWidget {
   Future<void> _requestLocationPermission(BuildContext context) async {
     PermissionStatus status = await Permission.locationWhenInUse.status;
 
-    if (status.isGranted || status.isLimited) {
-      // Permission is granted (limited status is iOS-specific)
+    // Request permission but proceed regardless of the result
+    if (status.isDenied || status.isRestricted) {
+      await Permission.locationWhenInUse.request();
+    }
+
+    // Proceed to next screen regardless of permission status
+    if (context.mounted) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) {
-            return const CameraPage();
-          },
+          builder: (context) => const CameraPage(),
         ),
       );
-      return;
-    }
-
-    // Request permission
-    PermissionStatus newStatus = await Permission.locationWhenInUse.request();
-
-    if (newStatus.isGranted || newStatus.isLimited) {
-      // Permission granted (or limited)
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) {
-            return const CameraPage();
-          },
-        ),
-      );
-    } else if (newStatus.isDenied) {
-      // Permission denied but not permanently
-      _showPermissionDeniedDialog(context, false);
-    } else if (newStatus.isPermanentlyDenied) {
-      // Permission permanently denied
-      _showPermissionDeniedDialog(context, true);
-    } else if (newStatus.isRestricted) {
-      // iOS-specific restricted status
-      _showErrorDialog(context, AppLocalizations.of(context)!.permissionRestricted);
-    } else {
-      // Other statuses like error or failed
-      _showErrorDialog(context, '${AppLocalizations.of(context)!.permissionStatus}: $newStatus');
     }
   }
 
-  void _showPermissionDeniedDialog(BuildContext context, bool isPermanentlyDenied) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.permissionDenied),
-          content: Text(isPermanentlyDenied ? AppLocalizations.of(context)!.locationAccessPermanentlyDenied : AppLocalizations.of(context)!.locationPermissionRequired),
-          actions: [
-            TextButton(
-              onPressed: () {
-                if (isPermanentlyDenied) {
-                  openAppSettings(); // Prompt user to manually change settings
-                }
-                Navigator.of(context).pop();
-              },
-              child: Text(AppLocalizations.of(context)!.ok),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showErrorDialog(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.error), // Ensure 'error' key exists
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-              },
-              child: Text(AppLocalizations.of(context)!.ok),
-            ),
-          ],
-        );
-      },
+  void _skipLocationPermission(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CameraPage(),
+      ),
     );
   }
 
@@ -106,7 +47,8 @@ class LocationInformationPage extends StatelessWidget {
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+            image: AssetImage(
+                isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
         ),
@@ -128,10 +70,10 @@ class LocationInformationPage extends StatelessWidget {
               Center(
                 child: Text(
                   AppLocalizations.of(context)!.locationInformation,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
               ),
@@ -140,24 +82,41 @@ class LocationInformationPage extends StatelessWidget {
                 child: Text(
                   AppLocalizations.of(context)!.weCollectInformation,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
-                    color: Colors.black,
+                    color: isDarkMode ? Colors.white70 : Colors.black,
                   ),
                 ),
               ),
               const Spacer(),
               Center(
-                child: ElevatedButton(
-                  onPressed: () => _requestLocationPermission(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
+                child: Column(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => _requestLocationPermission(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 100, vertical: 20),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                      ),
+                      child: Text(AppLocalizations.of(context)!.next,
+                          style: const TextStyle(fontSize: 18)),
                     ),
-                  ),
-                  child: Text(AppLocalizations.of(context)!.next, style: const TextStyle(fontSize: 18)),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => _skipLocationPermission(context),
+                      child: Text(
+                        'Skip',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 10),
@@ -174,8 +133,11 @@ class LocationInformationPage extends StatelessWidget {
               const SizedBox(height: 10),
               Center(
                 child: Text(
-                  AppLocalizations.of(context)!.pageIndicator2of3, // Ensure this key exists
-                  style: const TextStyle(fontSize: 16, color: Colors.black),
+                  AppLocalizations.of(context)!.pageIndicator2of3,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isDarkMode ? Colors.white70 : Colors.black,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),

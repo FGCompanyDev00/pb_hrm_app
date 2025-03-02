@@ -29,6 +29,19 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
   // Loading state
   bool _isLoading = true;
 
+  // Variables to control the number of items displayed
+  int _pendingItemsToShow = 15;
+  int _historyItemsToShow = 15;
+  final int _maxItemsToShow = 40;
+
+  // Scroll controllers to detect when user is near the end
+  final ScrollController _pendingScrollController = ScrollController();
+  final ScrollController _historyScrollController = ScrollController();
+
+  // Variables to control button visibility
+  bool _showPendingViewMoreButton = false;
+  bool _showHistoryViewMoreButton = false;
+
   // Known types
   final Set<String> _knownTypes = {'meeting', 'leave', 'car'};
 
@@ -42,6 +55,71 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
   void initState() {
     super.initState();
     _fetchInitialData();
+
+    // Add scroll listeners
+    _pendingScrollController.addListener(_checkPendingScrollPosition);
+    _historyScrollController.addListener(_checkHistoryScrollPosition);
+  }
+
+  @override
+  void dispose() {
+    _pendingScrollController.dispose();
+    _historyScrollController.dispose();
+    super.dispose();
+  }
+
+  // Check if user has scrolled near the end of pending items
+  void _checkPendingScrollPosition() {
+    if (_pendingItems.length <= _pendingItemsToShow ||
+        _pendingItemsToShow >= _maxItemsToShow) {
+      setState(() {
+        _showPendingViewMoreButton = false;
+      });
+      return;
+    }
+
+    // Show button when user has scrolled to about 80% of the visible content
+    if (_pendingScrollController.position.pixels >
+        _pendingScrollController.position.maxScrollExtent * 0.8) {
+      if (!_showPendingViewMoreButton) {
+        setState(() {
+          _showPendingViewMoreButton = true;
+        });
+      }
+    } else {
+      if (_showPendingViewMoreButton) {
+        setState(() {
+          _showPendingViewMoreButton = false;
+        });
+      }
+    }
+  }
+
+  // Check if user has scrolled near the end of history items
+  void _checkHistoryScrollPosition() {
+    if (_historyItems.length <= _historyItemsToShow ||
+        _historyItemsToShow >= _maxItemsToShow) {
+      setState(() {
+        _showHistoryViewMoreButton = false;
+      });
+      return;
+    }
+
+    // Show button when user has scrolled to about 80% of the visible content
+    if (_historyScrollController.position.pixels >
+        _historyScrollController.position.maxScrollExtent * 0.8) {
+      if (!_showHistoryViewMoreButton) {
+        setState(() {
+          _showHistoryViewMoreButton = true;
+        });
+      }
+    } else {
+      if (_showHistoryViewMoreButton) {
+        setState(() {
+          _showHistoryViewMoreButton = false;
+        });
+      }
+    }
   }
 
   /// Initializes data fetching for leave types, pending items, and history items
@@ -311,21 +389,58 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                                       ),
                                     ),
                                   )
-                                : ListView.builder(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: screenSize.width * 0.04,
-                                      vertical: screenSize.height * 0.008,
-                                    ),
-                                    itemCount: _pendingItems.length,
-                                    itemBuilder: (context, index) {
-                                      final item = _pendingItems[index];
-                                      return _buildItemCard(
-                                        context,
-                                        item,
-                                        isHistory: false,
-                                        screenSize: screenSize,
-                                      );
-                                    },
+                                : Stack(
+                                    children: [
+                                      ListView.builder(
+                                        controller: _pendingScrollController,
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: screenSize.width * 0.04,
+                                          vertical: screenSize.height * 0.008,
+                                        ),
+                                        // Only show the limited number of items
+                                        itemCount: _pendingItems.length >
+                                                _pendingItemsToShow
+                                            ? _pendingItemsToShow
+                                            : _pendingItems.length,
+                                        itemBuilder: (context, index) {
+                                          final item = _pendingItems[index];
+                                          return _buildItemCard(
+                                            context,
+                                            item,
+                                            isHistory: false,
+                                            screenSize: screenSize,
+                                          );
+                                        },
+                                      ),
+                                      // Show "View More" button if there are more items and user has scrolled near the end
+                                      if (_pendingItems.length >
+                                              _pendingItemsToShow &&
+                                          _pendingItemsToShow < _maxItemsToShow)
+                                        AnimatedPositioned(
+                                          duration:
+                                              const Duration(milliseconds: 300),
+                                          curve: Curves.easeInOut,
+                                          bottom: _showPendingViewMoreButton
+                                              ? 20
+                                              : -60,
+                                          left: 0,
+                                          right: 0,
+                                          child: Center(
+                                            child: _buildViewMoreButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  _pendingItemsToShow =
+                                                      _maxItemsToShow;
+                                                  _showPendingViewMoreButton =
+                                                      false;
+                                                });
+                                              },
+                                              screenSize: screenSize,
+                                              isDarkMode: isDarkMode,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   )
                             : _historyItems.isEmpty
                                 ? Center(
@@ -336,21 +451,58 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                                       ),
                                     ),
                                   )
-                                : ListView.builder(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: screenSize.width * 0.04,
-                                      vertical: screenSize.height * 0.008,
-                                    ),
-                                    itemCount: _historyItems.length,
-                                    itemBuilder: (context, index) {
-                                      final item = _historyItems[index];
-                                      return _buildItemCard(
-                                        context,
-                                        item,
-                                        isHistory: true,
-                                        screenSize: screenSize,
-                                      );
-                                    },
+                                : Stack(
+                                    children: [
+                                      ListView.builder(
+                                        controller: _historyScrollController,
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: screenSize.width * 0.04,
+                                          vertical: screenSize.height * 0.008,
+                                        ),
+                                        // Only show the limited number of items
+                                        itemCount: _historyItems.length >
+                                                _historyItemsToShow
+                                            ? _historyItemsToShow
+                                            : _historyItems.length,
+                                        itemBuilder: (context, index) {
+                                          final item = _historyItems[index];
+                                          return _buildItemCard(
+                                            context,
+                                            item,
+                                            isHistory: true,
+                                            screenSize: screenSize,
+                                          );
+                                        },
+                                      ),
+                                      // Show "View More" button if there are more items and user has scrolled near the end
+                                      if (_historyItems.length >
+                                              _historyItemsToShow &&
+                                          _historyItemsToShow < _maxItemsToShow)
+                                        AnimatedPositioned(
+                                          duration:
+                                              const Duration(milliseconds: 300),
+                                          curve: Curves.easeInOut,
+                                          bottom: _showHistoryViewMoreButton
+                                              ? 20
+                                              : -60,
+                                          left: 0,
+                                          right: 0,
+                                          child: Center(
+                                            child: _buildViewMoreButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  _historyItemsToShow =
+                                                      _maxItemsToShow;
+                                                  _showHistoryViewMoreButton =
+                                                      false;
+                                                });
+                                              },
+                                              screenSize: screenSize,
+                                              isDarkMode: isDarkMode,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                       ),
                     ),
@@ -858,5 +1010,71 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
       default:
         return Icons.info;
     }
+  }
+
+  // Enhanced method to build the "View More" button
+  Widget _buildViewMoreButton({
+    required VoidCallback onPressed,
+    required Size screenSize,
+    required bool isDarkMode,
+  }) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.8, end: 1.0),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.elasticOut,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          child: Container(
+            width: screenSize.width * 0.4, // More compact width
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 5,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: ElevatedButton(
+              onPressed: onPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(
+                  vertical: screenSize.height * 0.012,
+                  horizontal: screenSize.width * 0.03,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(screenSize.width * 0.05),
+                  side: BorderSide(
+                    color: Colors.white,
+                    width: 2,
+                  ),
+                ),
+                elevation: 5,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'View More',
+                    style: TextStyle(
+                      fontSize: screenSize.width * 0.035,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(width: screenSize.width * 0.02),
+                  Icon(
+                    Icons.arrow_downward,
+                    size: screenSize.width * 0.04,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 }

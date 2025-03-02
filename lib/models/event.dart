@@ -83,7 +83,9 @@ class Events {
       uid: json['uid'],
       isRepeat: json['isRepeat'],
       videoConference: json['videoConference'],
-      backgroundColor: json['backgroundColor'] != null ? parseColor(json['backgroundColor']) : null,
+      backgroundColor: json['backgroundColor'] != null
+          ? parseColor(json['backgroundColor'])
+          : null,
       outmeetingUid: json['outmeetingUid'],
       leaveType: json['leaveType'],
       category: json['category'],
@@ -96,26 +98,56 @@ class Events {
   String get formattedTime => DateFormat.jm().format(startDateTime);
 
   @override
-  String toString() => '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
+  String toString() =>
+      '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
 
   static List<Map<String, dynamic>>? parseMembers(dynamic members) {
     if (members == null || members == 'null') {
       return null;
     }
-    if (members is String) {
-      try {
-        // Parse the JSON string into a list of maps
-        final List<dynamic> decoded = jsonDecode(members);
-        return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
-      } catch (e) {
-        // Handle invalid JSON strings gracefully
-        debugPrint('Error decoding members: $e');
-        return null;
+
+    try {
+      if (members is String) {
+        try {
+          // Parse the JSON string into a list of maps
+          if (members.isEmpty) {
+            return [];
+          }
+          final List<dynamic> decoded = jsonDecode(members);
+          return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+        } catch (e) {
+          // Handle invalid JSON strings gracefully
+          debugPrint('Error decoding members string: $e');
+          return [];
+        }
+      } else if (members is List) {
+        try {
+          // Create a new list to avoid modifying a read-only list
+          return members.map((e) {
+            if (e is Map) {
+              return Map<String, dynamic>.from(e);
+            } else {
+              debugPrint('Invalid member format: $e');
+              return <String, dynamic>{};
+            }
+          }).toList();
+        } catch (e) {
+          debugPrint('Error processing members list: $e');
+          return [];
+        }
+      } else if (members is Map) {
+        // Handle case where members is a single map
+        try {
+          return [Map<String, dynamic>.from(members)];
+        } catch (e) {
+          debugPrint('Error processing members map: $e');
+          return [];
+        }
       }
-    } else if (members is List) {
-      // Directly return if it's already a list
-      return members.map((e) => Map<String, dynamic>.from(e)).toList();
+    } catch (e) {
+      debugPrint('Unexpected error in parseMembers: $e');
     }
-    return null;
+
+    return [];
   }
 }

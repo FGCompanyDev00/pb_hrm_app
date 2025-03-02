@@ -16,57 +16,25 @@ class CameraPage extends StatelessWidget {
     // Check the current status of the camera permission.
     PermissionStatus status = await Permission.camera.status;
 
-    if (status.isGranted) {
-      // If permission is already granted, navigate to ReadyPage.
+    // Request permission if not already granted
+    if (status.isDenied || status.isRestricted) {
+      await Permission.camera.request();
+    }
+
+    // Proceed to next screen regardless of permission status
+    if (context.mounted) {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const ReadyPage()),
       );
-    } else if (status.isRestricted || status.isPermanentlyDenied) {
-      // Handle cases where permission is restricted or permanently denied.
-      _showPermissionDeniedDialog(context, isPermanentlyDenied: true);
-    } else if (status.isDenied) {
-      // Request camera permission if it's denied but not permanently.
-      PermissionStatus newStatus = await Permission.camera.request();
-      if (newStatus.isGranted) {
-        // If the user grants permission after the request, navigate to ReadyPage.
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ReadyPage()),
-        );
-      } else {
-        // If the user denies permission again, show a denial dialog.
-        _showPermissionDeniedDialog(context, isPermanentlyDenied: false);
-      }
     }
   }
 
-  /// Displays a dialog informing the user that camera permission was denied.
-  void _showPermissionDeniedDialog(BuildContext context, {required bool isPermanentlyDenied}) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.permissionDenied),
-          content: Text(
-            isPermanentlyDenied
-                ? AppLocalizations.of(context)!.cameraAccessPermanentlyDenied
-                : AppLocalizations.of(context)!.cameraPermissionRequired,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                if (isPermanentlyDenied) {
-                  // If permission is permanently denied, open app settings.
-                  openAppSettings();
-                }
-                Navigator.of(context).pop(); // Close the dialog.
-              },
-              child: Text(AppLocalizations.of(context)!.ok),
-            ),
-          ],
-        );
-      },
+  /// Skip camera permission and proceed to next screen
+  void _skipCameraPermission(BuildContext context) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ReadyPage()),
     );
   }
 
@@ -81,7 +49,8 @@ class CameraPage extends StatelessWidget {
         decoration: BoxDecoration(
           image: DecorationImage(
             // Use different background images based on the current theme.
-            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+            image: AssetImage(
+                isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
         ),
@@ -106,7 +75,9 @@ class CameraPage extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black, // Adjust text color based on theme.
+                    color: isDarkMode
+                        ? Colors.white
+                        : Colors.black, // Adjust text color based on theme.
                   ),
                 ),
               ),
@@ -117,17 +88,22 @@ class CameraPage extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
-                    color: isDarkMode ? Colors.white70 : Colors.black54, // Adjust text color based on theme.
+                    color: isDarkMode
+                        ? Colors.white70
+                        : Colors.black54, // Adjust text color based on theme.
                   ),
                 ),
               ),
               const Spacer(),
               Center(
-                child: ElevatedButton(
+                child: Column(
+                  children: [
+                    ElevatedButton(
                   onPressed: () => _requestCameraPermission(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 20),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 100, vertical: 20),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8.0),
                     ),
@@ -136,6 +112,19 @@ class CameraPage extends StatelessWidget {
                     AppLocalizations.of(context)!.next,
                     style: const TextStyle(fontSize: 18),
                   ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => _skipCameraPermission(context),
+                      child: Text(
+                        'Skip',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 10),
@@ -155,7 +144,9 @@ class CameraPage extends StatelessWidget {
                   AppLocalizations.of(context)!.pageIndicator3of3,
                   style: TextStyle(
                     fontSize: 16,
-                    color: isDarkMode ? Colors.white70 : Colors.black54, // Adjust text color based on theme.
+                    color: isDarkMode
+                        ? Colors.white70
+                        : Colors.black54, // Adjust text color based on theme.
                   ),
                 ),
               ),

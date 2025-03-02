@@ -13,10 +13,12 @@ class NotificationPermissionPage extends StatefulWidget {
   const NotificationPermissionPage({super.key});
 
   @override
-  NotificationPermissionPageState createState() => NotificationPermissionPageState();
+  NotificationPermissionPageState createState() =>
+      NotificationPermissionPageState();
 }
 
-class NotificationPermissionPageState extends State<NotificationPermissionPage> {
+class NotificationPermissionPageState
+    extends State<NotificationPermissionPage> {
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
 
   @override
@@ -27,18 +29,22 @@ class NotificationPermissionPageState extends State<NotificationPermissionPage> 
   }
 
   Future<void> _initializeNotifications() async {
-    final DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-      onDidReceiveLocalNotification: (int id, String? title, String? body, String? payload) async {
+    final DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings(
+      requestAlertPermission: false, // Don't request on initialization
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+      onDidReceiveLocalNotification:
+          (int id, String? title, String? body, String? payload) async {
         // Handle notification received on iOS
       },
     );
 
-    const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    final InitializationSettings initializationSettings = InitializationSettings(
+    final InitializationSettings initializationSettings =
+        InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
@@ -48,65 +54,54 @@ class NotificationPermissionPageState extends State<NotificationPermissionPage> 
 
   Future<void> _requestNotificationPermission() async {
     if (Platform.isIOS) {
-      final bool? result = await flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()?.requestPermissions(
+      final bool? result = await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(
             alert: true,
             badge: true,
             sound: true,
           );
-      if (result == true) {
+
+      // Whether permission is granted or not, proceed to the next screen
+      if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const LocationInformationPage()),
+          MaterialPageRoute(
+              builder: (context) => const LocationInformationPage()),
         );
-      } else {
-        _showPermissionDeniedDialog();
       }
     } else {
       // Android permission flow
       final status = await Permission.notification.status;
 
-      if (status.isGranted) {
+      if (status.isGranted || status.isDenied || status.isPermanentlyDenied) {
+        // Proceed to next screen regardless of permission status
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const LocationInformationPage()),
+            MaterialPageRoute(
+                builder: (context) => const LocationInformationPage()),
           );
         }
       } else {
-        final newStatus = await Permission.notification.request();
-        if (newStatus.isGranted) {
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const LocationInformationPage()),
-            );
-          }
-        } else if (newStatus.isDenied) {
-          _showPermissionDeniedDialog();
-        } else if (newStatus.isPermanentlyDenied) {
-          openAppSettings();
+        // Request permission but don't block if denied
+        await Permission.notification.request();
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const LocationInformationPage()),
+          );
         }
       }
     }
   }
 
-  void _showPermissionDeniedDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.permissionDenied),
-          content: Text(AppLocalizations.of(context)!.notificationPermissionRequired),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text(AppLocalizations.of(context)!.ok),
-            ),
-          ],
-        );
-      },
+  void _skipNotificationPermission() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LocationInformationPage()),
     );
   }
 
@@ -118,7 +113,8 @@ class NotificationPermissionPageState extends State<NotificationPermissionPage> 
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+            image: AssetImage(
+                isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
         ),
@@ -140,10 +136,10 @@ class NotificationPermissionPageState extends State<NotificationPermissionPage> 
               Center(
                 child: Text(
                   AppLocalizations.of(context)!.notification,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
               ),
@@ -152,24 +148,41 @@ class NotificationPermissionPageState extends State<NotificationPermissionPage> 
                 child: Text(
                   AppLocalizations.of(context)!.weWantToSendYou,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
-                    color: Colors.black,
+                    color: isDarkMode ? Colors.white70 : Colors.black,
                   ),
                 ),
               ),
               const Spacer(),
               Center(
-                child: ElevatedButton(
-                  onPressed: () => _requestNotificationPermission(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(horizontal: 100, vertical: 20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.0),
+                child: Column(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => _requestNotificationPermission(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 100, vertical: 20),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8.0),
+                        ),
+                      ),
+                      child: Text(AppLocalizations.of(context)!.next,
+                          style: const TextStyle(fontSize: 18)),
                     ),
-                  ),
-                  child: Text(AppLocalizations.of(context)!.next, style: const TextStyle(fontSize: 18)),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: _skipNotificationPermission,
+                      child: Text(
+                        'Skip',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 10),
@@ -186,8 +199,11 @@ class NotificationPermissionPageState extends State<NotificationPermissionPage> 
               const SizedBox(height: 10),
               Center(
                 child: Text(
-                  AppLocalizations.of(context)!.pageIndicator1of3, // Ensure this key exists
-                  style: const TextStyle(fontSize: 16, color: Colors.black),
+                  AppLocalizations.of(context)!
+                      .pageIndicator1of3, // Ensure this key exists
+                  style: TextStyle(
+                      fontSize: 16,
+                      color: isDarkMode ? Colors.white70 : Colors.black),
                 ),
               ),
               const SizedBox(height: 10),
