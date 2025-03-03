@@ -29,6 +29,7 @@ import 'package:pb_hrsystem/models/qr_profile_page.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
 import 'package:pb_hrsystem/services/offline_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
+import 'package:pb_hrsystem/services/session_service.dart';
 import 'package:pb_hrsystem/splash/splashscreen.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
@@ -41,6 +42,8 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'hive_helper/model/attendance_record.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'firebase_options.dart';
+import 'package:pb_hrsystem/login/login_page.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
 
 /// ------------------------------------------------------------
 /// 1) Global instance of FlutterLocalNotificationsPlugin
@@ -172,36 +175,61 @@ Future<void> _showNotification(RemoteMessage message) async {
 }
 
 Future<void> _initializeApp() async {
+  // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Create a list to hold all initialization futures
-  final List<Future> initializationTasks = [
-    // Environment loading with error handling
-    dotenv.load(fileName: ".env.demo").catchError((e) {
-      // Change this to .env.production for production build ya
-      debugPrint("Error loading .env file: $e");
-      return null;
-    }),
+  // Set preferred orientations
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
 
-    // Hive initialization
-    _initializeHiveOptimized(),
+  // Load environment variables
+  await dotenv.load(fileName: ".env.demo");
 
-    // System orientation
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]),
+  // Initialize secure storage for iOS
+  await _initializeSecureStorage();
 
-    // Initialize secure storage with iOS-specific options
-    _initializeSecureStorage(),
-  ];
-
-  // Wait for all initialization tasks to complete concurrently
-  await Future.wait(initializationTasks, eagerError: false)
-      .catchError((e) => debugPrint("Initialization error: $e"));
+  // Initialize Hive database
+  await _initializeHiveOptimized();
 
   // Cache base URL after environment is loaded
   appCache.baseUrl = dotenv.env['BASE_URL'];
 
   // Initialize remaining services
   await _initializeServices();
+
+  // Initialize session service for background checks
+  try {
+    // Use a timeout to prevent hanging if workmanager is problematic
+    bool sessionInitialized = false;
+
+    try {
+      await SessionService.initialize().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint("Session service initialization timed out");
+          return;
+        },
+      );
+      sessionInitialized = true;
+    } catch (e) {
+      debugPrint("Error during session service initialization: $e");
+    }
+
+    // Set up a fallback for session checks if workmanager isn't available
+    _setupSessionCheckFallback();
+
+    if (sessionInitialized) {
+      debugPrint("Session service initialization completed successfully");
+    } else {
+      debugPrint("Using fallback session check mechanism");
+    }
+  } catch (e) {
+    debugPrint("Error initializing session service: $e");
+    // Set up fallback mechanism for session checks
+    _setupSessionCheckFallback();
+  }
 
   // Try to initialize Firebase and notifications, but don't block app startup if they fail
   _initializeFirebaseAndNotifications();
@@ -369,6 +397,27 @@ Future<void> _initializeFirebaseAndNotifications() async {
   }
 }
 
+// Fallback mechanism for session checks when workmanager isn't available
+void _setupSessionCheckFallback() {
+  // Check session every 15 minutes using a regular Timer
+  Timer.periodic(const Duration(minutes: 15), (_) {
+    try {
+      SessionService.checkSessionStatus();
+    } catch (e) {
+      debugPrint("Error in fallback session check: $e");
+    }
+  });
+
+  // Also check immediately
+  Future.delayed(const Duration(seconds: 10), () {
+    try {
+      SessionService.checkSessionStatus();
+    } catch (e) {
+      debugPrint("Error in initial fallback session check: $e");
+    }
+  });
+}
+
 void main() {
   runZonedGuarded(() async {
     await _initializeApp();
@@ -472,6 +521,13 @@ void onDidReceiveLocalNotification(
 @pragma('vm:entry-point')
 void onDidReceiveNotificationResponse(NotificationResponse response) {
   debugPrint('Notification response tapped. Payload: ${response.payload}');
+
+  // Handle session expiry notifications
+  if (response.payload == 'session_expired') {
+    // Navigate to login page
+    navigatorKey.currentState
+        ?.pushNamedAndRemoveUntil('/login', (route) => false);
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -522,6 +578,9 @@ class MyApp extends StatelessWidget {
           ],
           locale: languageNotifier.currentLocale,
           home: const SplashScreen(),
+          routes: {
+            '/login': (context) => const LoginPage(),
+          },
         );
       },
     );
@@ -587,16 +646,19 @@ class MainScreen extends StatefulWidget {
 
 class MainScreenState extends State<MainScreen> {
   int _selectedIndex = 1;
-  bool _enableConnection = false;
   final List<GlobalKey<NavigatorState>> _navigatorKeys =
       List.generate(4, (index) => GlobalKey<NavigatorState>());
 
   late final StreamSubscription<List<ConnectivityResult>>
       _connectivitySubscription;
+  bool _enableConnection = false;
   bool _isDisposed = false;
 
   // Memoize screens to prevent unnecessary rebuilds
   late final List<Widget> _screens;
+
+  // Timer for session check
+  Timer? _sessionCheckTimer;
 
   @override
   void initState() {
@@ -627,6 +689,27 @@ class MainScreenState extends State<MainScreen> {
     ];
 
     _initializeConnectivity();
+    _startSessionCheck();
+  }
+
+  // Start periodic session check
+  void _startSessionCheck() {
+    // Check session every 5 minutes
+    _sessionCheckTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (_isDisposed) return;
+      _checkSessionStatus();
+    });
+
+    // Also check immediately
+    _checkSessionStatus();
+  }
+
+  // Check session status and show dialog if expired
+  void _checkSessionStatus() {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    if (mounted && userProvider.isLoggedIn) {
+      userProvider.checkSessionStatus(context);
+    }
   }
 
   Future<void> _initializeConnectivity() async {
@@ -663,6 +746,7 @@ class MainScreenState extends State<MainScreen> {
   void dispose() {
     _isDisposed = true;
     _connectivitySubscription.cancel();
+    _sessionCheckTimer?.cancel();
     BackButtonInterceptor.remove(_routeInterceptor);
     super.dispose();
   }

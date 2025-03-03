@@ -62,13 +62,10 @@ class NotificationPageState extends State<NotificationPage> {
         debugPrint('Initial data fetched successfully.');
       }
     } catch (e, stackTrace) {
-      if (kDebugMode) {
-
-      }
+      if (kDebugMode) {}
       if (kDebugMode) {
         debugPrint(stackTrace.toString());
       }
-
     } finally {
       setState(() {
         _isLoading = false;
@@ -97,24 +94,31 @@ class NotificationPageState extends State<NotificationPage> {
       );
 
       if (kDebugMode) {
-        debugPrint('Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
+        debugPrint(
+            'Fetching leave types: Status Code ${leaveTypesResponse.statusCode}');
       }
 
       if (leaveTypesResponse.statusCode == 200) {
         final responseBody = jsonDecode(leaveTypesResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
           final List<dynamic> leaveTypesData = responseBody['results'];
           setState(() {
-            _leaveTypesMap = {for (var item in leaveTypesData) item['leave_type_id'] as int: item['name'].toString()};
+            _leaveTypesMap = {
+              for (var item in leaveTypesData)
+                item['leave_type_id'] as int: item['name'].toString()
+            };
           });
           if (kDebugMode) {
             debugPrint('Leave types loaded: $_leaveTypesMap');
           }
         } else {
-          throw Exception(responseBody['message'] ?? 'Failed to load leave types');
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load leave types');
         }
       } else {
-        throw Exception('Failed to load leave types: ${leaveTypesResponse.statusCode}');
+        throw Exception(
+            'Failed to load leave types: ${leaveTypesResponse.statusCode}');
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
@@ -151,16 +155,24 @@ class NotificationPageState extends State<NotificationPage> {
       );
 
       if (kDebugMode) {
-        debugPrint('Fetching pending items: Status Code ${pendingResponse.statusCode}');
+        debugPrint(
+            'Fetching pending items: Status Code ${pendingResponse.statusCode}');
       }
 
       if (pendingResponse.statusCode == 200) {
         final responseBody = jsonDecode(pendingResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
           final List<dynamic> pendingData = responseBody['results'];
 
           // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = pendingData.where((item) => item != null).map((item) => Map<String, dynamic>.from(item)).where((item) => item['types'] != null && _knownTypes.contains(item['types'].toString().toLowerCase())).toList();
+          final List<Map<String, dynamic>> filteredData = pendingData
+              .where((item) => item != null)
+              .map((item) => Map<String, dynamic>.from(item))
+              .where((item) =>
+                  item['types'] != null &&
+                  _knownTypes.contains(item['types'].toString().toLowerCase()))
+              .toList();
 
           setState(() {
             _pendingItems = filteredData;
@@ -169,10 +181,12 @@ class NotificationPageState extends State<NotificationPage> {
             debugPrint('Pending items loaded: ${_pendingItems.length} items.');
           }
         } else {
-          throw Exception(responseBody['message'] ?? 'Failed to load pending data');
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load pending data');
         }
       } else {
-        throw Exception('Failed to load pending data: ${pendingResponse.statusCode}');
+        throw Exception(
+            'Failed to load pending data: ${pendingResponse.statusCode}');
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
@@ -209,16 +223,24 @@ class NotificationPageState extends State<NotificationPage> {
       );
 
       if (kDebugMode) {
-        debugPrint('Fetching history items: Status Code ${historyResponse.statusCode}');
+        debugPrint(
+            'Fetching history items: Status Code ${historyResponse.statusCode}');
       }
 
       if (historyResponse.statusCode == 200) {
         final responseBody = jsonDecode(historyResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
           final List<dynamic> historyData = responseBody['results'];
 
           // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = historyData.where((item) => item != null).map((item) => Map<String, dynamic>.from(item)).where((item) => item['types'] != null && _knownTypes.contains(item['types'].toString().toLowerCase())).toList();
+          final List<Map<String, dynamic>> filteredData = historyData
+              .where((item) => item != null)
+              .map((item) => Map<String, dynamic>.from(item))
+              .where((item) =>
+                  item['types'] != null &&
+                  _knownTypes.contains(item['types'].toString().toLowerCase()))
+              .toList();
 
           setState(() {
             _historyItems = filteredData;
@@ -227,10 +249,12 @@ class NotificationPageState extends State<NotificationPage> {
             debugPrint('History items loaded: ${_historyItems.length} items.');
           }
         } else {
-          throw Exception(responseBody['message'] ?? 'Failed to load history data');
+          throw Exception(
+              responseBody['message'] ?? 'Failed to load history data');
         }
       } else {
-        throw Exception('Failed to load history data: ${historyResponse.statusCode}');
+        throw Exception(
+            'Failed to load history data: ${historyResponse.statusCode}');
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
@@ -266,10 +290,12 @@ class NotificationPageState extends State<NotificationPage> {
       List<Map<String, dynamic>> allMeetings = [];
 
       // Fetch Meeting and Booking Room Invites
-      await _fetchMeetingsFromUrl(meetingInvitesApiUrl, token, allMeetings, 'meeting');
+      await _fetchMeetingsFromUrl(
+          meetingInvitesApiUrl, token, allMeetings, 'meeting');
 
       // Fetch Out Meeting Invites
-      await _fetchMeetingsFromUrl(outMeetingApiUrl, token, allMeetings, 'out-meeting');
+      await _fetchMeetingsFromUrl(
+          outMeetingApiUrl, token, allMeetings, 'out-meeting');
 
       setState(() {
         _meetingInvites = allMeetings;
@@ -298,15 +324,14 @@ class NotificationPageState extends State<NotificationPage> {
             duration: const Duration(seconds: 3),
           ),
         );
-
       }
 
       rethrow;
     }
   }
 
-  Future<void> _fetchMeetingsFromUrl(
-      String url, String token, List<Map<String, dynamic>> allMeetings, String type) async {
+  Future<void> _fetchMeetingsFromUrl(String url, String token,
+      List<Map<String, dynamic>> allMeetings, String type) async {
     final response = await http.get(
       Uri.parse(url),
       headers: {
@@ -321,10 +346,12 @@ class NotificationPageState extends State<NotificationPage> {
 
     if (response.statusCode == 200) {
       final responseBody = jsonDecode(response.body);
-      if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+      if (responseBody['statusCode'] == 200 &&
+          responseBody['results'] != null) {
         final List<dynamic> meetingData = responseBody['results'];
         for (var item in meetingData) {
-          final Map<String, dynamic> meetingItem = Map<String, dynamic>.from(item);
+          final Map<String, dynamic> meetingItem =
+              Map<String, dynamic>.from(item);
           meetingItem['types'] = type;
           allMeetings.add(meetingItem);
         }
@@ -387,9 +414,13 @@ class NotificationPageState extends State<NotificationPage> {
 
   /// Builds the Meeting list with View More functionality
   Widget _buildMeetingList(Size screenSize) {
-    int itemCount = _isMeetingExpanded ? _meetingInvites.length : (_meetingInvites.length > 30 ? 30 : _meetingInvites.length);
+    // Change from 30 to 15 for initial display, and limit max to 40 items
+    int itemCount = _isMeetingExpanded
+        ? (_meetingInvites.length > 40 ? 40 : _meetingInvites.length)
+        : (_meetingInvites.length > 15 ? 15 : _meetingInvites.length);
 
-    bool showViewMore = _meetingInvites.length > 30 && !_isMeetingExpanded;
+    // Show View More if there are more than 15 items and not expanded
+    bool showViewMore = _meetingInvites.length > 15 && !_isMeetingExpanded;
 
     return ListView.builder(
       padding: EdgeInsets.symmetric(
@@ -424,11 +455,23 @@ class NotificationPageState extends State<NotificationPage> {
 
   /// Builds the Approval list with View More functionality
   Widget _buildApprovalList(Size screenSize) {
-    List<Map<String, dynamic>> combinedApprovalItems = [..._pendingItems, ..._historyItems];
+    List<Map<String, dynamic>> combinedApprovalItems = [
+      ..._pendingItems,
+      ..._historyItems
+    ];
 
-    int itemCount = _isApprovalExpanded ? combinedApprovalItems.length : (combinedApprovalItems.length > 30 ? 30 : combinedApprovalItems.length);
+    // Change from 30 to 15 for initial display, and limit max to 40 items
+    int itemCount = _isApprovalExpanded
+        ? (combinedApprovalItems.length > 40
+            ? 40
+            : combinedApprovalItems.length)
+        : (combinedApprovalItems.length > 15
+            ? 15
+            : combinedApprovalItems.length);
 
-    bool showViewMore = combinedApprovalItems.length > 30 && !_isApprovalExpanded;
+    // Show View More if there are more than 15 items and not expanded
+    bool showViewMore =
+        combinedApprovalItems.length > 15 && !_isApprovalExpanded;
 
     return ListView.builder(
       padding: EdgeInsets.symmetric(
@@ -538,7 +581,11 @@ class NotificationPageState extends State<NotificationPage> {
                   vertical: screenSize.height * 0.010,
                 ),
                 decoration: BoxDecoration(
-                  color: _isMeetingSelected ? (isDarkMode ? Colors.amber.shade700 : Colors.amber) : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
+                  color: _isMeetingSelected
+                      ? (isDarkMode ? Colors.amber.shade700 : Colors.amber)
+                      : (isDarkMode
+                          ? Colors.grey.shade700
+                          : Colors.grey.shade300),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(20.0),
                     bottomLeft: Radius.circular(20.0),
@@ -550,13 +597,21 @@ class NotificationPageState extends State<NotificationPage> {
                     Icon(
                       Icons.meeting_room,
                       size: screenSize.width * 0.07,
-                      color: _isMeetingSelected ? Colors.white : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                      color: _isMeetingSelected
+                          ? Colors.white
+                          : (isDarkMode
+                              ? Colors.grey.shade300
+                              : Colors.grey.shade600),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Meeting',
                       style: TextStyle(
-                        color: _isMeetingSelected ? Colors.white : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                        color: _isMeetingSelected
+                            ? Colors.white
+                            : (isDarkMode
+                                ? Colors.grey.shade300
+                                : Colors.grey.shade600),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -581,7 +636,11 @@ class NotificationPageState extends State<NotificationPage> {
                   vertical: screenSize.height * 0.010,
                 ),
                 decoration: BoxDecoration(
-                  color: !_isMeetingSelected ? (isDarkMode ? Colors.amber.shade700 : Colors.amber) : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
+                  color: !_isMeetingSelected
+                      ? (isDarkMode ? Colors.amber.shade700 : Colors.amber)
+                      : (isDarkMode
+                          ? Colors.grey.shade700
+                          : Colors.grey.shade300),
                   borderRadius: const BorderRadius.only(
                     topRight: Radius.circular(20.0),
                     bottomRight: Radius.circular(20.0),
@@ -594,13 +653,21 @@ class NotificationPageState extends State<NotificationPage> {
                       'assets/pending.png',
                       width: screenSize.width * 0.07,
                       height: screenSize.width * 0.07,
-                      color: !_isMeetingSelected ? Colors.white : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                      color: !_isMeetingSelected
+                          ? Colors.white
+                          : (isDarkMode
+                              ? Colors.grey.shade300
+                              : Colors.grey.shade600),
                     ),
                     SizedBox(width: screenSize.width * 0.02),
                     Text(
                       'Approval',
                       style: TextStyle(
-                        color: !_isMeetingSelected ? Colors.white : (isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600),
+                        color: !_isMeetingSelected
+                            ? Colors.white
+                            : (isDarkMode
+                                ? Colors.grey.shade300
+                                : Colors.grey.shade600),
                         fontWeight: FontWeight.bold,
                         fontSize: screenSize.width * 0.04,
                       ),
@@ -626,7 +693,8 @@ class NotificationPageState extends State<NotificationPage> {
     String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
     String requestorName = (item['requestor_name']?.toString() ?? 'N/A').trim();
 
-    if (status.toLowerCase() == 'branch approved') status = 'Approved';
+    if (status.toLowerCase() == 'branch approved')
+      status = 'Approved';
     else if (status.toLowerCase() == 'branch waiting') status = 'Waiting';
 
     String id = (item['uid']?.toString() ?? '').trim();
@@ -639,8 +707,8 @@ class NotificationPageState extends State<NotificationPage> {
     String employeeImage = (imgPath.isNotEmpty && imgPath.startsWith('http'))
         ? imgPath
         : (imgName.isNotEmpty && imgName.startsWith('http'))
-        ? imgName
-        : 'https://via.placeholder.com/150';
+            ? imgName
+            : 'https://via.placeholder.com/150';
 
     Color typeColor = _getTypeColor(type);
     Color statusColor = _getStatusColor(status);
@@ -718,7 +786,8 @@ class NotificationPageState extends State<NotificationPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(typeIcon, color: typeColor, size: screenSize.width * 0.06),
+                    Icon(typeIcon,
+                        color: typeColor, size: screenSize.width * 0.06),
                     SizedBox(height: screenSize.height * 0.002),
                     Text(
                       type[0].toUpperCase() + type.substring(1),
@@ -752,7 +821,9 @@ class NotificationPageState extends State<NotificationPage> {
                       Text(
                         '${_formatDate(startDate)} → ${_formatDate(endDate)}',
                         style: TextStyle(
-                          color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                          color: isDarkMode
+                              ? Colors.white70
+                              : Colors.grey.shade700,
                           fontSize: screenSize.width * 0.028,
                         ),
                       ),
@@ -760,7 +831,8 @@ class NotificationPageState extends State<NotificationPage> {
                     Text(
                       '$detailLabel: $detailValue',
                       style: TextStyle(
-                        color: isDarkMode ? Colors.white70 : Colors.grey.shade700,
+                        color:
+                            isDarkMode ? Colors.white70 : Colors.grey.shade700,
                         fontSize: screenSize.width * 0.028,
                       ),
                     ),
@@ -782,7 +854,8 @@ class NotificationPageState extends State<NotificationPage> {
                           ),
                           decoration: BoxDecoration(
                             color: statusColor,
-                            borderRadius: BorderRadius.circular(screenSize.width * 0.015),
+                            borderRadius:
+                                BorderRadius.circular(screenSize.width * 0.015),
                           ),
                           child: Text(
                             status[0].toUpperCase() + status.substring(1),
@@ -803,7 +876,8 @@ class NotificationPageState extends State<NotificationPage> {
               // Profile Image
               CircleAvatar(
                 radius: screenSize.width * 0.05,
-                backgroundColor: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
+                backgroundColor:
+                    isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300,
                 backgroundImage: NetworkImage(employeeImage),
               ),
             ],

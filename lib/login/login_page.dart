@@ -91,7 +91,7 @@ class LoginPageState extends State<LoginPage>
       });
 
       final languageNotifier =
-          Provider.of<LanguageNotifier>(context, listen: false);
+      Provider.of<LanguageNotifier>(context, listen: false);
       languageNotifier.changeLanguage(defaultLanguage);
     } else {
       // If nothing saved, default to English
@@ -402,9 +402,9 @@ class LoginPageState extends State<LoginPage>
     final box = await Hive.openBox('loginBox');
     setState(() {
       _usernameController.text =
-          box.get('username', defaultValue: '') as String;
+      box.get('username', defaultValue: '') as String;
       _passwordController.text =
-          box.get('password', defaultValue: '') as String;
+      box.get('password', defaultValue: '') as String;
       _rememberMe = box.containsKey('username') && box.containsKey('password');
     });
   }
@@ -420,7 +420,7 @@ class LoginPageState extends State<LoginPage>
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate:
-          Provider.of<DateProvider>(context, listen: false).selectedDate,
+      Provider.of<DateProvider>(context, listen: false).selectedDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
@@ -438,7 +438,7 @@ class LoginPageState extends State<LoginPage>
       builder: (BuildContext context) {
         return AlertDialog(
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -558,7 +558,7 @@ class LoginPageState extends State<LoginPage>
                 context: context,
                 shape: const RoundedRectangleBorder(
                   borderRadius:
-                      BorderRadius.vertical(top: Radius.circular(30.0)),
+                  BorderRadius.vertical(top: Radius.circular(30.0)),
                 ),
                 builder: (BuildContext context) {
                   return Container(
@@ -580,7 +580,7 @@ class LoginPageState extends State<LoginPage>
                             IconButton(
                               icon: Icon(Icons.close,
                                   color:
-                                      isDarkMode ? Colors.white : Colors.black),
+                                  isDarkMode ? Colors.white : Colors.black),
                               onPressed: () {
                                 Navigator.pop(context);
                               },
@@ -679,7 +679,7 @@ class LoginPageState extends State<LoginPage>
     final bool isDarkMode = themeNotifier.isDarkMode;
     return Column(
       crossAxisAlignment:
-          CrossAxisAlignment.start, // Aligns children to the start (left)
+      CrossAxisAlignment.start, // Aligns children to the start (left)
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -757,15 +757,15 @@ class LoginPageState extends State<LoginPage>
         decoration: BoxDecoration(
           gradient: isDarkMode
               ? const LinearGradient(
-                  colors: [Color(0xFF2C2C2C), Color(0xFF3A3A3A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
+            colors: [Color(0xFF2C2C2C), Color(0xFF3A3A3A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
               : const LinearGradient(
-                  colors: [Color(0xFFFEE9C3), Color(0xFFFFF3D6)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+            colors: [Color(0xFFFEE9C3), Color(0xFFFFF3D6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(screenWidth * 0.04),
           boxShadow: [
             BoxShadow(
@@ -818,7 +818,7 @@ class LoginPageState extends State<LoginPage>
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.username,
               labelStyle:
-                  TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              TextStyle(color: isDarkMode ? Colors.white : Colors.black),
               prefixIcon: const Icon(Icons.person_outline, color: Colors.black),
               filled: true,
               fillColor: isDarkMode ? Colors.grey : Colors.white,
@@ -839,7 +839,7 @@ class LoginPageState extends State<LoginPage>
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.password,
               labelStyle:
-                  TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+              TextStyle(color: isDarkMode ? Colors.white : Colors.black),
               prefixIcon: const Icon(Icons.lock_outline, color: Colors.black),
               suffixIcon: IconButton(
                 icon: Icon(
@@ -905,11 +905,11 @@ class LoginPageState extends State<LoginPage>
             onTap: _biometricEnabled
                 ? () => _authenticate(useBiometric: true)
                 : () {
-                    _showCustomDialog(
-                      AppLocalizations.of(context)!.biometricDisabled,
-                      AppLocalizations.of(context)!.enableBiometric,
-                    );
-                  },
+              _showCustomDialog(
+                AppLocalizations.of(context)!.biometricDisabled,
+                AppLocalizations.of(context)!.enableBiometric,
+              );
+            },
             child: Container(
               width: screenWidth * 0.35,
               height: screenWidth * 0.125,

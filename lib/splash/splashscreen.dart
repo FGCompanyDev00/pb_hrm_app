@@ -4,6 +4,7 @@ import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/user_model.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -155,8 +156,7 @@ class SplashScreenState extends State<SplashScreen>
         fit: StackFit.expand,
         children: [
           // Animated Background with Gradient Overlay
-          AnimatedContainer(
-            duration: _animationDuration,
+          Container(
             decoration: BoxDecoration(
               image: DecorationImage(
                 image: AssetImage(
@@ -164,25 +164,30 @@ class SplashScreenState extends State<SplashScreen>
                 fit: BoxFit.cover,
               ),
             ),
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      isDarkMode
-                          ? Colors.black.withOpacity(0.3)
-                          : Colors.white.withOpacity(0.3),
-                    ],
-                  ),
-                ),
+          )
+              .animate()
+              .fadeIn(duration: 800.ms, curve: Curves.easeOut)
+              .then()
+              .blurXY(
+                  begin: 5, end: 0, duration: 1000.ms, curve: Curves.easeOut),
+
+          // Gradient Overlay
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  isDarkMode
+                      ? Colors.black.withOpacity(0.3)
+                      : Colors.white.withOpacity(0.3),
+                ],
               ),
             ),
-          ),
-          // Main Content with Combined Animations
+          ).animate().fadeIn(delay: 300.ms, duration: 800.ms),
+
+          // Main Content with Staggered Animations
           Center(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(
@@ -193,118 +198,117 @@ class SplashScreenState extends State<SplashScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Animated Logo
-                  Transform.translate(
-                    offset: Offset(0, _slideAnimation.value),
-                    child: Transform.rotate(
-                      angle: _rotateAnimation.value,
-                      child: ScaleTransition(
-                        scale: _scaleAnimation,
-                        child: FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: Image.asset(
-                            'assets/logo.png',
-                            width: logoSize,
-                            height: logoSize,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  Image.asset(
+                    'assets/logo.png',
+                    width: logoSize,
+                    height: logoSize,
+                    fit: BoxFit.contain,
+                  )
+                      .animate()
+                      .scale(
+                          begin: const Offset(0.5, 0.5),
+                          end: const Offset(1.0, 1.0),
+                          duration: 800.ms,
+                          curve: Curves.elasticOut)
+                      .rotate(
+                          begin: 0.2,
+                          end: 0,
+                          duration: 1000.ms,
+                          curve: Curves.easeOutBack)
+                      .moveY(
+                          begin: 30,
+                          end: 0,
+                          duration: 800.ms,
+                          curve: Curves.easeOutQuad)
+                      .fadeIn(duration: 600.ms),
+
                   SizedBox(height: spacing * 2),
+
                   // Animated Welcome Text
-                  Transform.translate(
-                    offset: Offset(0, _slideAnimation.value),
-                    child: FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: Text(
-                        "Welcome to PSVB",
-                        style: TextStyle(
-                          fontSize: welcomeFontSize,
-                          fontWeight: FontWeight.bold,
-                          color: welcomeTextColor,
-                          shadows: [
-                            Shadow(
-                              blurRadius: 10,
-                              color: isDarkMode
-                                  ? Colors.white.withOpacity(0.3)
-                                  : Colors.black.withOpacity(0.1),
-                              offset: const Offset(2, 2),
-                            ),
-                          ],
+                  Text(
+                    "Welcome to PSVB",
+                    style: TextStyle(
+                      fontSize: welcomeFontSize,
+                      fontWeight: FontWeight.bold,
+                      color: welcomeTextColor,
+                      shadows: [
+                        Shadow(
+                          blurRadius: 10,
+                          color: isDarkMode
+                              ? Colors.white.withOpacity(0.3)
+                              : Colors.black.withOpacity(0.1),
+                          offset: const Offset(2, 2),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
+                      ],
                     ),
-                  ),
+                    textAlign: TextAlign.center,
+                  )
+                      .animate(delay: 400.ms)
+                      .moveY(
+                          begin: 30,
+                          end: 0,
+                          duration: 800.ms,
+                          curve: Curves.easeOutQuad)
+                      .fadeIn(duration: 800.ms),
+
                   SizedBox(height: spacing),
+
                   // Animated Subtitle
-                  Transform.translate(
-                    offset: Offset(0, _slideAnimation.value * 1.2),
-                    child: FadeTransition(
-                      opacity: _fadeAnimation,
-                      child: Text(
-                        "You're not just another customer.\nWe're not just another Bank...",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: subtitleFontSize,
-                          color: subtitleTextColor,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                  Text(
+                    "You're not just another customer.\nWe're not just another Bank...",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: subtitleFontSize,
+                      color: subtitleTextColor,
+                      letterSpacing: 0.5,
                     ),
-                  ),
+                  )
+                      .animate(delay: 600.ms)
+                      .moveY(
+                          begin: 30,
+                          end: 0,
+                          duration: 800.ms,
+                          curve: Curves.easeOutQuad)
+                      .fadeIn(duration: 800.ms),
+
                   SizedBox(height: spacing * 3),
+
                   // Enhanced Loading Indicator
-                  FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: RepaintBoundary(
-                      child: TweenAnimationBuilder(
-                        tween: Tween<double>(begin: 0.0, end: 1.0),
-                        duration: _animationDuration,
-                        builder: (context, value, child) {
-                          return Transform.scale(
-                            scale: 0.8 + (value * 0.2),
-                            child: ShaderMask(
-                              shaderCallback: (rect) {
-                                return SweepGradient(
-                                  startAngle: 0.0,
-                                  endAngle: value * 3 * 3.14159,
-                                  colors: const [
-                                    Colors.green,
-                                    Colors.yellow,
-                                    Colors.orange,
-                                    Colors.green,
-                                  ],
-                                  stops: [0.0, value, value + 0.5, 1.0],
-                                ).createShader(rect);
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isDarkMode
-                                        ? Colors.white.withOpacity(0.2)
-                                        : Colors.black.withOpacity(0.1),
-                                    width: 2,
-                                  ),
-                                ),
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 5.0,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    isDarkMode
-                                        ? Colors.white.withOpacity(0.8)
-                                        : Colors.orangeAccent,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDarkMode
+                            ? Colors.white.withOpacity(0.2)
+                            : Colors.black.withOpacity(0.1),
+                        width: 2,
                       ),
                     ),
-                  ),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 5.0,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        isDarkMode
+                            ? Colors.white.withOpacity(0.8)
+                            : Colors.orangeAccent,
+                      ),
+                    ),
+                  )
+                      .animate(delay: 800.ms)
+                      .scale(
+                        begin: const Offset(0.5, 0.5),
+                        end: const Offset(1.0, 1.0),
+                        duration: 600.ms,
+                      )
+                      .fadeIn(duration: 600.ms)
+                      .then()
+                      .animate(
+                        onPlay: (controller) => controller.repeat(),
+                      )
+                      .shimmer(
+                        duration: 1800.ms,
+                        color: isDarkMode ? Colors.white24 : Colors.black12,
+                      ),
                 ],
               ),
             ),

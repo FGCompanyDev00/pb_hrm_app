@@ -8,6 +8,8 @@ import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:io' show Platform;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 // User Model
 class User {
@@ -30,6 +32,13 @@ class UserProvider extends ChangeNotifier {
   String _token = '';
   DateTime? _loginTime;
   final _secureStorage = const FlutterSecureStorage();
+  // Session expiry notification ID
+  static const int sessionExpiryNotificationId = 9999;
+  // Global navigator key to access context from anywhere
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+  // Flag to prevent showing multiple expiry dialogs
+  bool _isShowingExpiryDialog = false;
 
   User get currentUser => _currentUser;
   bool get isLoggedIn => _isLoggedIn;
@@ -101,6 +110,108 @@ class UserProvider extends ChangeNotifier {
     return DateTime.now().difference(_loginTime!).inHours < 8;
   }
 
+  // Check if session is about to expire (less than 30 minutes remaining)
+  bool get isSessionAboutToExpire {
+    if (_loginTime == null) return false;
+    final Duration timeLeft =
+        Duration(hours: 8) - DateTime.now().difference(_loginTime!);
+    return timeLeft.inMinutes > 0 && timeLeft.inMinutes < 30;
+  }
+
+  // Get remaining session time in minutes
+  int get remainingSessionTimeInMinutes {
+    if (_loginTime == null) return 0;
+    final Duration timeLeft =
+        Duration(hours: 8) - DateTime.now().difference(_loginTime!);
+    return timeLeft.inMinutes > 0 ? timeLeft.inMinutes : 0;
+  }
+
+  // Check session status and show expiry dialog if needed
+  Future<void> checkSessionStatus(BuildContext context) async {
+    if (!_isLoggedIn) return;
+
+    if (!isSessionValid && !_isShowingExpiryDialog) {
+      _isShowingExpiryDialog = true;
+      await showSessionExpiredDialog(context);
+      _isShowingExpiryDialog = false;
+    } else if (isSessionAboutToExpire) {
+      // Schedule a notification if session is about to expire
+      await scheduleSessionExpiryNotification();
+    }
+  }
+
+  // Show session expired dialog and redirect to login
+  Future<void> showSessionExpiredDialog(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    final l10n = AppLocalizations.of(context);
+
+    // Show dialog
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(l10n?.tokenExpiredTitle ?? 'Session Expired'),
+          content: Text(l10n?.tokenExpiredMessage ??
+              'Your session has expired. Please log in again.'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    // Logout and redirect to login page
+    await logout();
+    navigator.pushNamedAndRemoveUntil('/login', (route) => false);
+  }
+
+  // Schedule a notification to alert user about session expiry
+  Future<void> scheduleSessionExpiryNotification() async {
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+
+    // Only schedule if we have more than 1 minute left
+    if (remainingSessionTimeInMinutes <= 1) return;
+
+    // Android notification details
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'session_expiry_channel',
+      'Session Expiry Notifications',
+      channelDescription: 'Notifications about session expiry',
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+
+    // iOS notification details
+    const DarwinNotificationDetails iOSPlatformChannelSpecifics =
+        DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    // Combined platform-specific details
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+      iOS: iOSPlatformChannelSpecifics,
+    );
+
+    // Schedule the notification
+    await flutterLocalNotificationsPlugin.show(
+      sessionExpiryNotificationId,
+      'Session Expiring Soon',
+      'Your session will expire in ${remainingSessionTimeInMinutes} minutes. Please save your work.',
+      platformChannelSpecifics,
+    );
+  }
+
   Future<void> setLoginTime() async {
     _loginTime = DateTime.now();
     prefs.setLoginSession(_loginTime.toString());
@@ -158,6 +269,7 @@ class UserProvider extends ChangeNotifier {
     _isLoggedIn = true;
     _token = token;
     _loginTime = DateTime.now();
+    _isShowingExpiryDialog = false;
 
     // Store in SharedPreferences (works well for Android)
     prefs.setLoggedIn(true);

@@ -107,20 +107,20 @@ class Events {
     }
 
     try {
-      if (members is String) {
-        try {
-          // Parse the JSON string into a list of maps
+    if (members is String) {
+      try {
+        // Parse the JSON string into a list of maps
           if (members.isEmpty) {
             return [];
           }
-          final List<dynamic> decoded = jsonDecode(members);
-          return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
-        } catch (e) {
-          // Handle invalid JSON strings gracefully
+        final List<dynamic> decoded = jsonDecode(members);
+        return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+      } catch (e) {
+        // Handle invalid JSON strings gracefully
           debugPrint('Error decoding members string: $e');
           return [];
-        }
-      } else if (members is List) {
+      }
+    } else if (members is List) {
         try {
           // Create a new list to avoid modifying a read-only list
           return members.map((e) {
