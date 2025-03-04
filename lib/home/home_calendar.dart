@@ -1541,7 +1541,7 @@ class HomeCalendarState extends State<HomeCalendar>
       key: _refreshKey,
       backgroundColor: isDarkMode ? Colors.black : Colors.white,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(140),
+        preferredSize: const Size.fromHeight(160),
         child: _buildCalendarHeader(isDarkMode),
       ),
       body: RefreshIndicator(
@@ -1633,66 +1633,53 @@ class HomeCalendarState extends State<HomeCalendar>
 
   /// Builds the calendar header with background and add button
   Widget _buildCalendarHeader(bool isDarkMode) {
-    return Stack(
-      children: [
-        Container(
-          width: double.infinity,
-          height: 130,
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage(
-                  isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
-              fit: BoxFit.cover,
-            ),
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(20),
-              bottomRight: Radius.circular(20),
-            ),
-          ),
-          child: Stack(
-            children: [
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: 47),
-                    Text(
-                      AppLocalizations.of(context)!.calendar,
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black,
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Positioned(
-                top: 47,
-                right: 15,
-                child: IconButton(
-                  icon: Icon(
-                    Icons.add_circle,
-                    size: 55,
-                    color: Colors.green,
-                    semanticLabel: AppLocalizations.of(context)!.addEvent,
-                  ),
-                  onPressed: showAddEventOptionsPopup,
-                ),
-              ),
-            ],
-          ),
+    return Container(
+      width: double.infinity,
+      height: 150,
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage(
+              isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+          fit: BoxFit.cover,
         ),
-        if (_isLoading)
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: LinearProgressIndicator(
-              backgroundColor: Colors.blue,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 60),
+                Text(
+                  AppLocalizations.of(context)!.calendar,
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black,
+                    fontSize: 30,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ),
-      ],
+          Positioned(
+            top: 60,
+            right: 15,
+            child: IconButton(
+              icon: Icon(
+                Icons.add_circle,
+                size: 55,
+                color: Colors.green,
+                semanticLabel: AppLocalizations.of(context)!.addEvent,
+              ),
+              onPressed: showAddEventOptionsPopup,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

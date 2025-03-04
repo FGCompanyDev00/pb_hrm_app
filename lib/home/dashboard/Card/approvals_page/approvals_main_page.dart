@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math';
 
 class ApprovalsMainPage extends StatefulWidget {
   const ApprovalsMainPage({super.key});
@@ -18,9 +19,14 @@ class ApprovalsMainPage extends StatefulWidget {
   ApprovalsMainPageState createState() => ApprovalsMainPageState();
 }
 
-class ApprovalsMainPageState extends State<ApprovalsMainPage> {
+class ApprovalsMainPageState extends State<ApprovalsMainPage>
+    with SingleTickerProviderStateMixin {
   // Tab selection flag: true for Approvals, false for History
   bool _isPendingSelected = true;
+
+  // Animation controller for list items
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
 
   // Data lists
   List<Map<String, dynamic>> _pendingItems = [];
@@ -54,8 +60,17 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
   @override
   void initState() {
     super.initState();
-    _fetchInitialData();
 
+    // Initialize animation controller
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+
+    _fetchInitialData();
     // Add scroll listeners
     _pendingScrollController.addListener(_checkPendingScrollPosition);
     _historyScrollController.addListener(_checkHistoryScrollPosition);
@@ -63,6 +78,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
 
   @override
   void dispose() {
+    _fadeController.dispose();
     _pendingScrollController.dispose();
     _historyScrollController.dispose();
     super.dispose();
@@ -135,6 +151,9 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
         _fetchHistoryItems(),
       ]);
       debugPrint('Initial data fetched successfully.');
+      if (mounted) {
+        _fadeController.forward(); // Start fade animation after data is loaded
+      }
     } catch (e, stackTrace) {
       debugPrint('Error during initial data fetch: $e');
       debugPrint(stackTrace.toString());
@@ -373,8 +392,204 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
               _buildTabBar(screenSize),
               SizedBox(height: screenSize.height * 0.005),
               _isLoading
-                  ? const Expanded(
-                      child: Center(child: CircularProgressIndicator()),
+                  ? Expanded(
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: isDarkMode
+                                    ? Colors.grey[850]
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: isDarkMode
+                                        ? Colors.black.withOpacity(0.3)
+                                        : Colors.grey.withOpacity(0.2),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 5),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // People Icon Animation Container
+                                  Container(
+                                    width: 80,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      color: isDarkMode
+                                          ? Colors.grey[800]
+                                          : Colors.grey[100],
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        // Outer rotating circle
+                                        TweenAnimationBuilder(
+                                          duration: const Duration(seconds: 2),
+                                          tween: Tween(begin: 0.0, end: 1.0),
+                                          builder: (context, value, child) {
+                                            return Transform.rotate(
+                                              angle: value * 2 * 3.14159,
+                                              child: child,
+                                            );
+                                          },
+                                          child: Container(
+                                            width: 70,
+                                            height: 70,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: isDarkMode
+                                                    ? Colors.amber[700]!
+                                                    : Colors.amber,
+                                                width: 2,
+                                                strokeAlign: BorderSide
+                                                    .strokeAlignOutside,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        // People Icon with Pulse Animation
+                                        TweenAnimationBuilder(
+                                          duration: const Duration(
+                                              milliseconds: 1500),
+                                          tween: Tween(begin: 0.8, end: 1.0),
+                                          builder: (context, value, child) {
+                                            return Transform.scale(
+                                              scale: value,
+                                              child: child,
+                                            );
+                                          },
+                                          child: Icon(
+                                            Icons.people_outline,
+                                            size: 40,
+                                            color: isDarkMode
+                                                ? Colors.amber[700]
+                                                : Colors.amber[600],
+                                          ),
+                                        ),
+                                        // Animated dots
+                                        ...List.generate(
+                                          8,
+                                          (index) => Positioned(
+                                            top: 35 +
+                                                25 * sin(index * 3.14159 / 4),
+                                            left: 35 +
+                                                25 * cos(index * 3.14159 / 4),
+                                            child: TweenAnimationBuilder(
+                                              duration: Duration(
+                                                  milliseconds:
+                                                      1000 + index * 100),
+                                              tween:
+                                                  Tween(begin: 0.0, end: 1.0),
+                                              builder: (context, value, child) {
+                                                return Transform.scale(
+                                                  scale: value,
+                                                  child: Container(
+                                                    width: 4,
+                                                    height: 4,
+                                                    decoration: BoxDecoration(
+                                                      color: isDarkMode
+                                                          ? Colors.amber[700]
+                                                              ?.withOpacity(
+                                                                  value)
+                                                          : Colors.amber[600]
+                                                              ?.withOpacity(
+                                                                  value),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ).toList(),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  // Loading Text with Shimmer Effect
+                                  ShaderMask(
+                                    shaderCallback: (bounds) => LinearGradient(
+                                      colors: [
+                                        isDarkMode
+                                            ? Colors.grey[300]!
+                                            : Colors.grey[800]!,
+                                        isDarkMode
+                                            ? Colors.grey[500]!
+                                            : Colors.grey[600]!,
+                                        isDarkMode
+                                            ? Colors.grey[300]!
+                                            : Colors.grey[800]!,
+                                      ],
+                                      stops: const [0.0, 0.5, 1.0],
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                      tileMode: TileMode.mirror,
+                                    ).createShader(bounds),
+                                    child: Text(
+                                      'Fetching Approvals Data',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Please wait a moment...',
+                                    style: TextStyle(
+                                      color: isDarkMode
+                                          ? Colors.grey[500]
+                                          : Colors.grey[600],
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  // Progress Dots
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: List.generate(
+                                      3,
+                                      (index) => TweenAnimationBuilder(
+                                        duration: Duration(
+                                            milliseconds: 400 + (index * 200)),
+                                        tween: Tween(begin: 0.0, end: 1.0),
+                                        builder: (context, value, child) {
+                                          return Opacity(
+                                            opacity: value,
+                                            child: Container(
+                                              margin:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 4),
+                                              width: 8,
+                                              height: 8,
+                                              decoration: BoxDecoration(
+                                                color: isDarkMode
+                                                    ? Colors.amber[700]
+                                                    : Colors.amber[600],
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     )
                   : Expanded(
                       child: RefreshIndicator(
@@ -391,26 +606,29 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                                   )
                                 : Stack(
                                     children: [
-                                      ListView.builder(
-                                        controller: _pendingScrollController,
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: screenSize.width * 0.04,
-                                          vertical: screenSize.height * 0.008,
+                                      FadeTransition(
+                                        opacity: _fadeAnimation,
+                                        child: ListView.builder(
+                                          controller: _pendingScrollController,
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: screenSize.width * 0.04,
+                                            vertical: screenSize.height * 0.008,
+                                          ),
+                                          // Only show the limited number of items
+                                          itemCount: _pendingItems.length >
+                                                  _pendingItemsToShow
+                                              ? _pendingItemsToShow
+                                              : _pendingItems.length,
+                                          itemBuilder: (context, index) {
+                                            final item = _pendingItems[index];
+                                            return _buildItemCard(
+                                              context,
+                                              item,
+                                              isHistory: false,
+                                              screenSize: screenSize,
+                                            );
+                                          },
                                         ),
-                                        // Only show the limited number of items
-                                        itemCount: _pendingItems.length >
-                                                _pendingItemsToShow
-                                            ? _pendingItemsToShow
-                                            : _pendingItems.length,
-                                        itemBuilder: (context, index) {
-                                          final item = _pendingItems[index];
-                                          return _buildItemCard(
-                                            context,
-                                            item,
-                                            isHistory: false,
-                                            screenSize: screenSize,
-                                          );
-                                        },
                                       ),
                                       // Show "View More" button if there are more items and user has scrolled near the end
                                       if (_pendingItems.length >
@@ -453,26 +671,29 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage> {
                                   )
                                 : Stack(
                                     children: [
-                                      ListView.builder(
-                                        controller: _historyScrollController,
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: screenSize.width * 0.04,
-                                          vertical: screenSize.height * 0.008,
+                                      FadeTransition(
+                                        opacity: _fadeAnimation,
+                                        child: ListView.builder(
+                                          controller: _historyScrollController,
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: screenSize.width * 0.04,
+                                            vertical: screenSize.height * 0.008,
+                                          ),
+                                          // Only show the limited number of items
+                                          itemCount: _historyItems.length >
+                                                  _historyItemsToShow
+                                              ? _historyItemsToShow
+                                              : _historyItems.length,
+                                          itemBuilder: (context, index) {
+                                            final item = _historyItems[index];
+                                            return _buildItemCard(
+                                              context,
+                                              item,
+                                              isHistory: true,
+                                              screenSize: screenSize,
+                                            );
+                                          },
                                         ),
-                                        // Only show the limited number of items
-                                        itemCount: _historyItems.length >
-                                                _historyItemsToShow
-                                            ? _historyItemsToShow
-                                            : _historyItems.length,
-                                        itemBuilder: (context, index) {
-                                          final item = _historyItems[index];
-                                          return _buildItemCard(
-                                            context,
-                                            item,
-                                            isHistory: true,
-                                            screenSize: screenSize,
-                                          );
-                                        },
                                       ),
                                       // Show "View More" button if there are more items and user has scrolled near the end
                                       if (_historyItems.length >

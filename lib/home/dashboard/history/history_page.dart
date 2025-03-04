@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'dart:math' show sin, cos;
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -17,12 +18,18 @@ class HistoryPage extends StatefulWidget {
   HistoryPageState createState() => HistoryPageState();
 }
 
-class HistoryPageState extends State<HistoryPage> {
+class HistoryPageState extends State<HistoryPage>
+    with SingleTickerProviderStateMixin {
   bool _isPendingSelected = true;
   List<Map<String, dynamic>> _pendingItems = [];
   List<Map<String, dynamic>> _historyItems = [];
   Map<int, String> _leaveTypes = {};
   bool _isLoading = true;
+  bool _showContent = false;
+
+  // Animation controllers
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
 
   // Variables to control the number of items displayed
   int _pendingItemsToShow = 15;
@@ -43,8 +50,16 @@ class HistoryPageState extends State<HistoryPage> {
   @override
   void initState() {
     super.initState();
-    _fetchHistoryData();
+    // Initialize animation controller
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
 
+    _fetchHistoryData();
     // Add scroll listeners
     _pendingScrollController.addListener(_checkPendingScrollPosition);
     _historyScrollController.addListener(_checkHistoryScrollPosition);
@@ -52,6 +67,7 @@ class HistoryPageState extends State<HistoryPage> {
 
   @override
   void dispose() {
+    _fadeController.dispose();
     _pendingScrollController.dispose();
     _historyScrollController.dispose();
     super.dispose();
@@ -113,6 +129,11 @@ class HistoryPageState extends State<HistoryPage> {
 
   /// Fetches leave types, pending items, and history items from the API
   Future<void> _fetchHistoryData() async {
+    setState(() {
+      _isLoading = true;
+      _showContent = false;
+    });
+
     final String pendingApiUrl = '$baseUrl/api/app/users/history/pending';
     final String historyApiUrl = '$baseUrl/api/app/users/history';
     final String leaveTypesUrl = '$baseUrl/api/leave-types';
@@ -240,6 +261,11 @@ class HistoryPageState extends State<HistoryPage> {
         _isLoading = false;
       });
 
+      // Start fade in animation after data is loaded
+      await Future.delayed(const Duration(milliseconds: 300));
+      setState(() => _showContent = true);
+      _fadeController.forward();
+
       debugPrint(
           'Pending items loaded and sorted: ${_pendingItems.length} items.');
       debugPrint(
@@ -247,6 +273,7 @@ class HistoryPageState extends State<HistoryPage> {
     } catch (e, stackTrace) {
       setState(() {
         _isLoading = false;
+        _showContent = true;
       });
       debugPrint('Error fetching data: $e');
       debugPrint(stackTrace.toString());
@@ -457,142 +484,354 @@ class HistoryPageState extends State<HistoryPage> {
             _buildTabBar(screenSize),
             SizedBox(height: screenSize.height * 0.005),
             _isLoading
-                ? const Expanded(
-                    child: Center(child: CircularProgressIndicator()),
+                ? Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color:
+                                  isDarkMode ? Colors.grey[850] : Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: isDarkMode
+                                      ? Colors.black.withOpacity(0.3)
+                                      : Colors.grey.withOpacity(0.2),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // People Icon Animation Container
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode
+                                        ? Colors.grey[800]
+                                        : Colors.grey[100],
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      // Outer rotating circle
+                                      TweenAnimationBuilder(
+                                        duration: const Duration(seconds: 2),
+                                        tween: Tween(begin: 0.0, end: 1.0),
+                                        builder: (context, value, child) {
+                                          return Transform.rotate(
+                                            angle: value * 2 * 3.14159,
+                                            child: child,
+                                          );
+                                        },
+                                        child: Container(
+                                          width: 70,
+                                          height: 70,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: isDarkMode
+                                                  ? Colors.amber[700]!
+                                                  : Colors.amber,
+                                              width: 2,
+                                              strokeAlign:
+                                                  BorderSide.strokeAlignOutside,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      // People Icon with Pulse Animation
+                                      TweenAnimationBuilder(
+                                        duration:
+                                            const Duration(milliseconds: 1500),
+                                        tween: Tween(begin: 0.8, end: 1.0),
+                                        builder: (context, value, child) {
+                                          return Transform.scale(
+                                            scale: value,
+                                            child: child,
+                                          );
+                                        },
+                                        child: Icon(
+                                          Icons.people_outline,
+                                          size: 40,
+                                          color: isDarkMode
+                                              ? Colors.amber[700]
+                                              : Colors.amber[600],
+                                        ),
+                                      ),
+                                      // Animated dots
+                                      ...List.generate(
+                                        8,
+                                        (index) => Positioned(
+                                          top: 35 +
+                                              25 * sin(index * 3.14159 / 4),
+                                          left: 35 +
+                                              25 * cos(index * 3.14159 / 4),
+                                          child: TweenAnimationBuilder(
+                                            duration: Duration(
+                                                milliseconds:
+                                                    1000 + index * 100),
+                                            tween: Tween(begin: 0.0, end: 1.0),
+                                            builder: (context, value, child) {
+                                              return Transform.scale(
+                                                scale: value,
+                                                child: Container(
+                                                  width: 4,
+                                                  height: 4,
+                                                  decoration: BoxDecoration(
+                                                    color: isDarkMode
+                                                        ? Colors.amber[700]
+                                                            ?.withOpacity(value)
+                                                        : Colors.amber[600]
+                                                            ?.withOpacity(
+                                                                value),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ).toList(),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                // Loading Text with Shimmer Effect
+                                ShaderMask(
+                                  shaderCallback: (bounds) => LinearGradient(
+                                    colors: [
+                                      isDarkMode
+                                          ? Colors.grey[300]!
+                                          : Colors.grey[800]!,
+                                      isDarkMode
+                                          ? Colors.grey[500]!
+                                          : Colors.grey[600]!,
+                                      isDarkMode
+                                          ? Colors.grey[300]!
+                                          : Colors.grey[800]!,
+                                    ],
+                                    stops: const [0.0, 0.5, 1.0],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                    tileMode: TileMode.mirror,
+                                  ).createShader(bounds),
+                                  child: Text(
+                                    'Fetching History Data',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Please wait a moment...',
+                                  style: TextStyle(
+                                    color: isDarkMode
+                                        ? Colors.grey[500]
+                                        : Colors.grey[600],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                // Progress Dots
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: List.generate(
+                                    3,
+                                    (index) => TweenAnimationBuilder(
+                                      duration: Duration(
+                                          milliseconds: 400 + (index * 200)),
+                                      tween: Tween(begin: 0.0, end: 1.0),
+                                      builder: (context, value, child) {
+                                        return Opacity(
+                                          opacity: value,
+                                          child: Container(
+                                            margin: const EdgeInsets.symmetric(
+                                                horizontal: 4),
+                                            width: 8,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              color: isDarkMode
+                                                  ? Colors.amber[700]
+                                                  : Colors.amber[600],
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   )
                 : Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: _fetchHistoryData,
-                      child: _isPendingSelected
-                          ? _pendingItems.isEmpty
-                              ? Center(
-                                  child: Text(
+                    child: AnimatedOpacity(
+                      opacity: _showContent ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeInOut,
+                      child: RefreshIndicator(
+                        onRefresh: _fetchHistoryData,
+                        child: _isPendingSelected
+                            ? _pendingItems.isEmpty
+                                ? _buildEmptyState(
                                     AppLocalizations.of(context)!
                                         .noPendingItems,
-                                    style: TextStyle(
-                                      fontSize: screenSize.width * 0.04,
-                                    ),
-                                  ),
-                                )
-                              : Stack(
-                                  children: [
-                                    ListView.builder(
-                                      controller: _pendingScrollController,
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: screenSize.width * 0.04,
-                                        vertical: screenSize.height * 0.008,
-                                      ),
-                                      // Only show the limited number of items
-                                      itemCount: _pendingItems.length >
-                                              _pendingItemsToShow
-                                          ? _pendingItemsToShow
-                                          : _pendingItems.length,
-                                      itemBuilder: (context, index) {
-                                        final item = _pendingItems[index];
-                                        return _buildHistoryCard(
-                                          context,
-                                          item,
-                                          isHistory: false,
-                                          screenSize: screenSize,
-                                        );
-                                      },
-                                    ),
-                                    // Show "View More" button if there are more items and user has scrolled near the end
-                                    if (_pendingItems.length >
-                                            _pendingItemsToShow &&
-                                        _pendingItemsToShow < _maxItemsToShow)
-                                      AnimatedPositioned(
-                                        duration:
-                                            const Duration(milliseconds: 300),
-                                        curve: Curves.easeInOut,
-                                        bottom: _showPendingViewMoreButton
-                                            ? 20
-                                            : -60,
-                                        left: 0,
-                                        right: 0,
-                                        child: Center(
-                                          child: _buildViewMoreButton(
-                                            onPressed: () {
-                                              setState(() {
-                                                _pendingItemsToShow =
-                                                    _maxItemsToShow;
-                                                _showPendingViewMoreButton =
-                                                    false;
-                                              });
-                                            },
-                                            screenSize: screenSize,
-                                            isDarkMode: isDarkMode,
-                                          ),
+                                    screenSize,
+                                    isDarkMode,
+                                  )
+                                : Stack(
+                                    children: [
+                                      ListView.builder(
+                                        controller: _pendingScrollController,
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: screenSize.width * 0.04,
+                                          vertical: screenSize.height * 0.008,
                                         ),
+                                        itemCount: _pendingItems.length >
+                                                _pendingItemsToShow
+                                            ? _pendingItemsToShow
+                                            : _pendingItems.length,
+                                        itemBuilder: (context, index) {
+                                          final item = _pendingItems[index];
+                                          return AnimatedBuilder(
+                                            animation: _fadeAnimation,
+                                            builder: (context, child) {
+                                              return Transform.translate(
+                                                offset: Offset(
+                                                  0.0,
+                                                  (1 - _fadeAnimation.value) *
+                                                      20,
+                                                ),
+                                                child: Opacity(
+                                                  opacity: _fadeAnimation.value,
+                                                  child: child,
+                                                ),
+                                              );
+                                            },
+                                            child: _buildHistoryCard(
+                                              context,
+                                              item,
+                                              isHistory: false,
+                                              screenSize: screenSize,
+                                            ),
+                                          );
+                                        },
                                       ),
-                                  ],
-                                )
-                          : _historyItems.isEmpty
-                              ? Center(
-                                  child: Text(
+                                      if (_showPendingViewMoreButton)
+                                        _buildViewMoreButtonPosition(),
+                                    ],
+                                  )
+                            : _historyItems.isEmpty
+                                ? _buildEmptyState(
                                     AppLocalizations.of(context)!
                                         .myHistoryItems,
-                                    style: TextStyle(
-                                      fontSize: screenSize.width * 0.04,
-                                    ),
-                                  ),
-                                )
-                              : Stack(
-                                  children: [
-                                    ListView.builder(
-                                      controller: _historyScrollController,
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: screenSize.width * 0.04,
-                                        vertical: screenSize.height * 0.008,
-                                      ),
-                                      // Only show the limited number of items
-                                      itemCount: _historyItems.length >
-                                              _historyItemsToShow
-                                          ? _historyItemsToShow
-                                          : _historyItems.length,
-                                      itemBuilder: (context, index) {
-                                        final item = _historyItems[index];
-                                        return _buildHistoryCard(
-                                          context,
-                                          item,
-                                          isHistory: true,
-                                          screenSize: screenSize,
-                                        );
-                                      },
-                                    ),
-                                    // Show "View More" button if there are more items and user has scrolled near the end
-                                    if (_historyItems.length >
-                                            _historyItemsToShow &&
-                                        _historyItemsToShow < _maxItemsToShow)
-                                      AnimatedPositioned(
-                                        duration:
-                                            const Duration(milliseconds: 300),
-                                        curve: Curves.easeInOut,
-                                        bottom: _showHistoryViewMoreButton
-                                            ? 20
-                                            : -60,
-                                        left: 0,
-                                        right: 0,
-                                        child: Center(
-                                          child: _buildViewMoreButton(
-                                            onPressed: () {
-                                              setState(() {
-                                                _historyItemsToShow =
-                                                    _maxItemsToShow;
-                                                _showHistoryViewMoreButton =
-                                                    false;
-                                              });
-                                            },
-                                            screenSize: screenSize,
-                                            isDarkMode: isDarkMode,
-                                          ),
+                                    screenSize,
+                                    isDarkMode,
+                                  )
+                                : Stack(
+                                    children: [
+                                      ListView.builder(
+                                        controller: _historyScrollController,
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: screenSize.width * 0.04,
+                                          vertical: screenSize.height * 0.008,
                                         ),
+                                        itemCount: _historyItems.length >
+                                                _historyItemsToShow
+                                            ? _historyItemsToShow
+                                            : _historyItems.length,
+                                        itemBuilder: (context, index) {
+                                          final item = _historyItems[index];
+                                          return AnimatedBuilder(
+                                            animation: _fadeAnimation,
+                                            builder: (context, child) {
+                                              return Transform.translate(
+                                                offset: Offset(
+                                                  0.0,
+                                                  (1 - _fadeAnimation.value) *
+                                                      20,
+                                                ),
+                                                child: Opacity(
+                                                  opacity: _fadeAnimation.value,
+                                                  child: child,
+                                                ),
+                                              );
+                                            },
+                                            child: _buildHistoryCard(
+                                              context,
+                                              item,
+                                              isHistory: true,
+                                              screenSize: screenSize,
+                                            ),
+                                          );
+                                        },
                                       ),
-                                  ],
-                                ),
+                                      if (_showHistoryViewMoreButton)
+                                        _buildViewMoreButtonPosition(),
+                                    ],
+                                  ),
+                      ),
                     ),
                   ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message, Size screenSize, bool isDarkMode) {
+    return Center(
+      child: AnimatedOpacity(
+        opacity: _showContent ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 500),
+        child: Text(
+          message,
+          style: TextStyle(
+            fontSize: screenSize.width * 0.04,
+            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildViewMoreButtonPosition() {
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      bottom: 20,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: _buildViewMoreButton(
+          onPressed: () {
+            setState(() {
+              if (_isPendingSelected) {
+                _pendingItemsToShow = _maxItemsToShow;
+                _showPendingViewMoreButton = false;
+              } else {
+                _historyItemsToShow = _maxItemsToShow;
+                _showHistoryViewMoreButton = false;
+              }
+            });
+          },
+          screenSize: MediaQuery.of(context).size,
+          isDarkMode: Theme.of(context).brightness == Brightness.dark,
         ),
       ),
     );
