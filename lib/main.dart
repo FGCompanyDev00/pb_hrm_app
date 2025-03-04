@@ -45,6 +45,10 @@ import 'package:encrypt/encrypt.dart' as encrypt;
 import 'firebase_options.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:hive/hive.dart';
+import 'package:pb_hrsystem/hive_helper/model/event_record.dart';
+import 'package:pb_hrsystem/hive_helper/model/calendar_events_record.dart';
+import 'package:pb_hrsystem/hive_helper/model/calendar_events_list_record.dart';
 
 /// ------------------------------------------------------------
 /// 1) Global instance of FlutterLocalNotificationsPlugin
@@ -320,9 +324,14 @@ Future<void> _initializeHiveOptimized() async {
     final appDocumentDir = await getApplicationDocumentsDirectory();
     final path = appDocumentDir.path;
 
-    // Register adapters
+    // Register all adapters
     Hive.registerAdapter(AttendanceRecordAdapter());
     Hive.registerAdapter(AddAssignmentRecordAdapter());
+    Hive.registerAdapter(UserProfileRecordAdapter());
+    Hive.registerAdapter(QRRecordAdapter());
+    Hive.registerAdapter(EventRecordAdapter());
+    Hive.registerAdapter(CalendarEventsRecordAdapter());
+    Hive.registerAdapter(CalendarEventsListRecordAdapter());
 
     // Initialize boxes with proper path configuration
     await Hive.openBox('loginBox', path: '$path/login.hive');

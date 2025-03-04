@@ -15,8 +15,11 @@ class MyProfilePage extends StatefulWidget {
   MyProfilePageState createState() => MyProfilePageState();
 }
 
-class MyProfilePageState extends State<MyProfilePage> {
+class MyProfilePageState extends State<MyProfilePage>
+    with SingleTickerProviderStateMixin {
   late Future<UserProfile> futureUserProfile;
+  late AnimationController _loadingController;
+  late Animation<double> _loadingAnimation;
 
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
@@ -25,6 +28,27 @@ class MyProfilePageState extends State<MyProfilePage> {
   void initState() {
     super.initState();
     futureUserProfile = fetchUserProfile();
+
+    // Initialize loading animation controller
+    _loadingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+
+    // Create loading animation with custom curve
+    _loadingAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _loadingController,
+      curve: Curves.easeInOutCubic,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _loadingController.dispose();
+    super.dispose();
   }
 
   Future<UserProfile> fetchUserProfile() async {
@@ -71,7 +95,8 @@ class MyProfilePageState extends State<MyProfilePage> {
 
       return userProfile;
     } else {
-      throw Exception(AppLocalizations.of(context)!.failedToLoadUserProfile(response.reasonPhrase as Object));
+      throw Exception(AppLocalizations.of(context)!
+          .failedToLoadUserProfile(response.reasonPhrase as Object));
     }
   }
 
@@ -101,7 +126,9 @@ class MyProfilePageState extends State<MyProfilePage> {
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 16,
-              color: isDarkMode ? Colors.white : Colors.black, // Color based on theme
+              color: isDarkMode
+                  ? Colors.white
+                  : Colors.black, // Color based on theme
             ),
           ),
           const SizedBox(height: 4),
@@ -113,14 +140,240 @@ class MyProfilePageState extends State<MyProfilePage> {
                 label: Text(
                   role.trim(),
                   style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black, // Text color based on theme
+                    color: isDarkMode
+                        ? Colors.white
+                        : Colors.black, // Text color based on theme
                   ),
                 ),
-                backgroundColor: isDarkMode ? Colors.deepPurple : Colors.green[200], // Background color based on theme
+                backgroundColor: isDarkMode
+                    ? Colors.deepPurple
+                    : Colors.green[200], // Background color based on theme
               );
             }).toList(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingShimmer(BuildContext context, bool isDarkMode) {
+    final size = MediaQuery.of(context).size;
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Profile Info Card Loading
+            Card(
+              elevation: 2.0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0),
+              ),
+              color: isDarkMode ? Colors.grey[850] : Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: List.generate(
+                    8,
+                    (index) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Row(
+                        children: [
+                          AnimatedBuilder(
+                            animation: _loadingAnimation,
+                            builder: (context, child) {
+                              return Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      isDarkMode
+                                          ? Colors.grey[800]!
+                                          : Colors.grey[300]!,
+                                      isDarkMode
+                                          ? Colors.grey[700]!
+                                          : Colors.grey[200]!,
+                                      isDarkMode
+                                          ? Colors.grey[800]!
+                                          : Colors.grey[300]!,
+                                    ],
+                                    stops: [
+                                      0.0,
+                                      _loadingAnimation.value,
+                                      1.0,
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                AnimatedBuilder(
+                                  animation: _loadingAnimation,
+                                  builder: (context, child) {
+                                    return Container(
+                                      height: 14,
+                                      width: size.width * 0.3,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(7),
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            isDarkMode
+                                                ? Colors.grey[800]!
+                                                : Colors.grey[300]!,
+                                            isDarkMode
+                                                ? Colors.grey[700]!
+                                                : Colors.grey[200]!,
+                                            isDarkMode
+                                                ? Colors.grey[800]!
+                                                : Colors.grey[300]!,
+                                          ],
+                                          stops: [
+                                            0.0,
+                                            _loadingAnimation.value,
+                                            1.0,
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 4),
+                                AnimatedBuilder(
+                                  animation: _loadingAnimation,
+                                  builder: (context, child) {
+                                    return Container(
+                                      height: 12,
+                                      width: size.width * 0.5,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(6),
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            isDarkMode
+                                                ? Colors.grey[800]!
+                                                : Colors.grey[300]!,
+                                            isDarkMode
+                                                ? Colors.grey[700]!
+                                                : Colors.grey[200]!,
+                                            isDarkMode
+                                                ? Colors.grey[800]!
+                                                : Colors.grey[300]!,
+                                          ],
+                                          stops: [
+                                            0.0,
+                                            _loadingAnimation.value,
+                                            1.0,
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20.0),
+            // Roles Info Card Loading
+            Card(
+              elevation: 2.0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0),
+              ),
+              color: isDarkMode ? Colors.grey[850] : Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _loadingAnimation,
+                      builder: (context, child) {
+                        return Container(
+                          height: 16,
+                          width: size.width * 0.3,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            gradient: LinearGradient(
+                              colors: [
+                                isDarkMode
+                                    ? Colors.grey[800]!
+                                    : Colors.grey[300]!,
+                                isDarkMode
+                                    ? Colors.grey[700]!
+                                    : Colors.grey[200]!,
+                                isDarkMode
+                                    ? Colors.grey[800]!
+                                    : Colors.grey[300]!,
+                              ],
+                              stops: [
+                                0.0,
+                                _loadingAnimation.value,
+                                1.0,
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 4.0,
+                      children: List.generate(
+                        4,
+                        (index) => AnimatedBuilder(
+                          animation: _loadingAnimation,
+                          builder: (context, child) {
+                            return Container(
+                              height: 32,
+                              width: 80,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    isDarkMode
+                                        ? Colors.grey[800]!
+                                        : Colors.grey[300]!,
+                                    isDarkMode
+                                        ? Colors.grey[700]!
+                                        : Colors.grey[200]!,
+                                    isDarkMode
+                                        ? Colors.grey[800]!
+                                        : Colors.grey[300]!,
+                                  ],
+                                  stops: [
+                                    0.0,
+                                    _loadingAnimation.value,
+                                    1.0,
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -135,7 +388,8 @@ class MyProfilePageState extends State<MyProfilePage> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+              image: AssetImage(
+                  isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
             ),
             borderRadius: const BorderRadius.only(
@@ -172,13 +426,16 @@ class MyProfilePageState extends State<MyProfilePage> {
         future: futureUserProfile,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return _buildLoadingShimmer(context, isDarkMode);
           } else if (snapshot.hasError) {
-            return Center(child: Text(AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString())));
+            return Center(
+                child: Text(AppLocalizations.of(context)!
+                    .errorWithDetails(snapshot.error.toString())));
           } else if (snapshot.hasData) {
             return SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 24.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -197,57 +454,79 @@ class MyProfilePageState extends State<MyProfilePage> {
                             ProfileInfoRow(
                               icon: Icons.person,
                               label: AppLocalizations.of(context)!.gender,
-                              value: snapshot.data!.gender.isNotEmpty ? snapshot.data!.gender : AppLocalizations.of(context)!.notAvailable,
-                              textColor: isDarkMode ? Colors.white : Colors.black,
+                              value: snapshot.data!.gender.isNotEmpty
+                                  ? snapshot.data!.gender
+                                  : AppLocalizations.of(context)!.notAvailable,
+                              textColor:
+                                  isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.badge,
-                              label: AppLocalizations.of(context)!.nameAndSurname,
-                              value: '${snapshot.data!.name} ${snapshot.data!.surname}',
-                              textColor: isDarkMode ? Colors.white : Colors.black,
+                              label:
+                                  AppLocalizations.of(context)!.nameAndSurname,
+                              value:
+                                  '${snapshot.data!.name} ${snapshot.data!.surname}',
+                              textColor:
+                                  isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.date_range,
-                              label: AppLocalizations.of(context)!.dateStartWork,
+                              label:
+                                  AppLocalizations.of(context)!.dateStartWork,
                               value: formatDate(snapshot.data!.createAt),
-                              textColor: isDarkMode ? Colors.white : Colors.black,
+                              textColor:
+                                  isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.date_range,
-                              label: AppLocalizations.of(context)!.probationEndDate,
+                              label: AppLocalizations.of(context)!
+                                  .probationEndDate,
                               value: formatDate(snapshot.data!.updateAt),
-                              textColor: isDarkMode ? Colors.white : Colors.black,
+                              textColor:
+                                  isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.account_balance,
                               label: AppLocalizations.of(context)!.department,
-                              value: snapshot.data!.departmentName.isNotEmpty ? snapshot.data!.departmentName : AppLocalizations.of(context)!.notAvailable,
-                              textColor: isDarkMode ? Colors.white : Colors.black,
+                              value: snapshot.data!.departmentName.isNotEmpty
+                                  ? snapshot.data!.departmentName
+                                  : AppLocalizations.of(context)!.notAvailable,
+                              textColor:
+                                  isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.location_on,
                               label: AppLocalizations.of(context)!.branch,
-                              value: snapshot.data!.branchName.isNotEmpty ? snapshot.data!.branchName : AppLocalizations.of(context)!.notAvailable,
-                              textColor: isDarkMode ? Colors.white : Colors.black,
+                              value: snapshot.data!.branchName.isNotEmpty
+                                  ? snapshot.data!.branchName
+                                  : AppLocalizations.of(context)!.notAvailable,
+                              textColor:
+                                  isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.phone,
                               label: AppLocalizations.of(context)!.telephone,
-                              value: snapshot.data!.tel.isNotEmpty ? snapshot.data!.tel : AppLocalizations.of(context)!.notAvailable,
-                              textColor: isDarkMode ? Colors.white : Colors.black,
+                              value: snapshot.data!.tel.isNotEmpty
+                                  ? snapshot.data!.tel
+                                  : AppLocalizations.of(context)!.notAvailable,
+                              textColor:
+                                  isDarkMode ? Colors.white : Colors.black,
                             ),
                             const SizedBox(height: 10.0),
                             ProfileInfoRow(
                               icon: Icons.email,
                               label: AppLocalizations.of(context)!.emails,
-                              value: snapshot.data!.email.isNotEmpty ? snapshot.data!.email : AppLocalizations.of(context)!.notAvailable,
-                              textColor: isDarkMode ? Colors.white : Colors.black,
+                              value: snapshot.data!.email.isNotEmpty
+                                  ? snapshot.data!.email
+                                  : AppLocalizations.of(context)!.notAvailable,
+                              textColor:
+                                  isDarkMode ? Colors.white : Colors.black,
                             ),
                           ],
                         ),
@@ -271,7 +550,8 @@ class MyProfilePageState extends State<MyProfilePage> {
               ),
             );
           } else {
-            return Center(child: Text(AppLocalizations.of(context)!.noDataAvailable));
+            return Center(
+                child: Text(AppLocalizations.of(context)!.noDataAvailable));
           }
         },
       ),
@@ -343,7 +623,12 @@ class ProfileInfoRow extends StatelessWidget {
   final String value;
   final Color textColor;
 
-  const ProfileInfoRow({super.key, required this.icon, required this.label, required this.value, required this.textColor});
+  const ProfileInfoRow(
+      {super.key,
+      required this.icon,
+      required this.label,
+      required this.value,
+      required this.textColor});
 
   @override
   Widget build(BuildContext context) {

@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 
 part 'event_record.g.dart';
 
-@HiveType(typeId: 3)
+@HiveType(typeId: 4)
 class EventRecord {
   @HiveField(0)
   final String title;
@@ -118,5 +118,6 @@ class EventRecord {
   String get formattedTime => DateFormat.jm().format(startDateTime);
 
   @override
-  String toString() => '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
+  String toString() =>
+      '$title ($status) from ${DateFormat.yMMMd().format(startDateTime)} to ${DateFormat.yMMMd().format(endDateTime)}';
 }

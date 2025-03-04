@@ -124,18 +124,28 @@ class TicketShapeClipper extends CustomClipper<Path> {
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
-class ProfileScreenState extends State<ProfileScreen> {
+class ProfileScreenState extends State<ProfileScreen>
+    with TickerProviderStateMixin {
   late Future<Map<String, dynamic>> _profileData;
   late Future<Map<String, dynamic>> _displayData;
   late OfflineProvider offlineProvider;
   final GlobalKey qrKey = GlobalKey();
   final GlobalKey qrFullScreenKey = GlobalKey();
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
+  late AnimationController _loadingController;
+  late Animation<double> _loadingAnimation;
+  bool _isQRCodeFullScreen = false;
+  bool _isQRCodeLoaded = false;
+
+  // Memoization for better performance
+  String? _cachedVCardData;
+  Map<String, dynamic>? _cachedData;
 
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
-  bool _isQRCodeFullScreen = false;
 
   @override
   void initState() {
@@ -143,6 +153,57 @@ class ProfileScreenState extends State<ProfileScreen> {
     offlineProvider = Provider.of<OfflineProvider>(context, listen: false);
     _profileData = _fetchProfileData();
     _displayData = _fetchDisplayData();
+
+    // Initialize animation controller for hover effect
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+
+    // Create scale animation with smoother curve
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOutCubic,
+      ),
+    );
+
+    // Initialize loading animation controller with smoother duration
+    _loadingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat();
+
+    // Create loading animation with custom curve
+    _loadingAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 60.0,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 40.0,
+      ),
+    ]).animate(_loadingController);
+
+    // Simulate QR code generation with smoother timing
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (mounted) {
+        setState(() {
+          _isQRCodeLoaded = true;
+        });
+        _loadingController.stop();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _loadingController.dispose();
+    super.dispose();
   }
 
   Future<Map<String, dynamic>> _fetchProfileData() async {
@@ -164,13 +225,16 @@ class ProfileScreenState extends State<ProfileScreen> {
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(response.body);
-        if (responseBody.containsKey('results') && responseBody['results'] is Map<String, dynamic>) {
+        if (responseBody.containsKey('results') &&
+            responseBody['results'] is Map<String, dynamic>) {
           return responseBody['results'];
         } else {
-          throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
+          throw Exception(
+              AppLocalizations.of(context)!.invalidResponseStructure);
         }
       } else {
-        debugPrint('Failed to load profile data - Status Code: ${response.statusCode}');
+        debugPrint(
+            'Failed to load profile data - Status Code: ${response.statusCode}');
         debugPrint('Response Body: ${response.body}');
         throw Exception(AppLocalizations.of(context)!.failedToLoadProfileData);
       }
@@ -207,8 +271,11 @@ class ProfileScreenState extends State<ProfileScreen> {
 
         if (response.statusCode == 200) {
           final responseBody = jsonDecode(response.body);
-          if (responseBody.containsKey('results') && responseBody['results'] is List<dynamic> && responseBody['results'].isNotEmpty) {
-            final record = UserProfileRecord.fromJson(responseBody['results'][0]);
+          if (responseBody.containsKey('results') &&
+              responseBody['results'] is List<dynamic> &&
+              responseBody['results'].isNotEmpty) {
+            final record =
+                UserProfileRecord.fromJson(responseBody['results'][0]);
 
             if (offlineProvider.isExistedProfile()) {
               await offlineProvider.updateProfile(record);
@@ -218,12 +285,15 @@ class ProfileScreenState extends State<ProfileScreen> {
 
             return responseBody['results'][0];
           } else {
-            throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
+            throw Exception(
+                AppLocalizations.of(context)!.invalidResponseStructure);
           }
         } else {
-          debugPrint('Failed to load display data - Status Code: ${response.statusCode}');
+          debugPrint(
+              'Failed to load display data - Status Code: ${response.statusCode}');
           debugPrint('Response Body: ${response.body}');
-          throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
+          throw Exception(
+              AppLocalizations.of(context)!.failedToLoadDisplayData);
         }
       } catch (e) {
         debugPrint('Error in _fetchDisplayData: $e');
@@ -234,7 +304,8 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _shareQRCode() async {
     try {
-      final RenderRepaintBoundary? boundary = qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      final RenderRepaintBoundary? boundary =
+          qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
 
       if (boundary == null) {
         Fluttertoast.showToast(
@@ -253,7 +324,8 @@ class ProfileScreenState extends State<ProfileScreen> {
       final file = await File('${tempDir.path}/qr_code.png').create();
       await file.writeAsBytes(uint8List);
 
-      await Share.shareXFiles([XFile(file.path)], text: AppLocalizations.of(context)!.shareQRCodeText);
+      await Share.shareXFiles([XFile(file.path)],
+          text: AppLocalizations.of(context)!.shareQRCodeText);
     } catch (e) {
       debugPrint('Error sharing QR code: $e');
       Fluttertoast.showToast(
@@ -266,7 +338,8 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _downloadQRCode() async {
     try {
-      final RenderRepaintBoundary? boundary = qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      final RenderRepaintBoundary? boundary =
+          qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
 
       if (boundary == null) {
         Fluttertoast.showToast(
@@ -317,7 +390,8 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _saveQRCodeToGallery() async {
     try {
-      final RenderRepaintBoundary? boundary = qrFullScreenKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      final RenderRepaintBoundary? boundary = qrFullScreenKey.currentContext
+          ?.findRenderObject() as RenderRepaintBoundary?;
 
       if (boundary == null) {
         Fluttertoast.showToast(
@@ -375,7 +449,8 @@ class ProfileScreenState extends State<ProfileScreen> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+              image: AssetImage(
+                  isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
             ),
             borderRadius: const BorderRadius.only(
@@ -408,7 +483,8 @@ class ProfileScreenState extends State<ProfileScreen> {
       body: Padding(
         padding: const EdgeInsets.only(top: kToolbarHeight + 50.0),
         child: FutureBuilder<Map<String, dynamic>>(
-          future: Future.wait([_profileData, _displayData]).then((results) => {...results[0], ...results[1]}),
+          future: Future.wait([_profileData, _displayData])
+              .then((results) => {...results[0], ...results[1]}),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -451,8 +527,10 @@ END:VCARD
                       final shouldSave = await showDialog<bool>(
                         context: context,
                         builder: (context) => AlertDialog(
-                          title: Text(AppLocalizations.of(context)!.saveImageTitle),
-                          content: Text(AppLocalizations.of(context)!.saveImageConfirmation),
+                          title: Text(
+                              AppLocalizations.of(context)!.saveImageTitle),
+                          content: Text(AppLocalizations.of(context)!
+                              .saveImageConfirmation),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(false),
@@ -491,18 +569,21 @@ END:VCARD
                               version: QrVersions.auto,
                               size: size.width * 0.8,
                               gapless: false,
-                              embeddedImage: const AssetImage('assets/playstore.png'),
-                              embeddedImageStyle: const QrEmbeddedImageStyle(
-                                size: Size(40, 40),
+                              embeddedImage:
+                                  const AssetImage('assets/playstore.png'),
+                              embeddedImageStyle: QrEmbeddedImageStyle(
+                                size:
+                                    Size(size.width * 0.15, size.width * 0.15),
                               ),
+                              padding: EdgeInsets.all(size.width * 0.03),
                               backgroundColor: Colors.white,
                               eyeStyle: const QrEyeStyle(
                                 eyeShape: QrEyeShape.circle,
-                                color: Colors.black,
+                                color: Colors.green,
                               ),
                               dataModuleStyle: const QrDataModuleStyle(
-                                dataModuleShape: QrDataModuleShape.square,
-                                color: Colors.black,
+                                dataModuleShape: QrDataModuleShape.circle,
+                                color: Colors.black87,
                               ),
                             ),
                           ),
@@ -513,10 +594,12 @@ END:VCARD
                 else
                   Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 30.0, vertical: 20.0),
                       child: SingleChildScrollView(
                         child: ConstrainedBox(
-                          constraints: BoxConstraints(maxHeight: size.height * 0.8),
+                          constraints:
+                              BoxConstraints(maxHeight: size.height * 0.8),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -527,12 +610,21 @@ END:VCARD
                                   Center(
                                     child: CircleAvatar(
                                       radius: size.width * 0.12,
-                                      backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                                      backgroundColor: isDarkMode
+                                          ? Colors.grey[800]
+                                          : Colors.grey[200],
                                       child: CircleAvatar(
                                           radius: size.width * 0.1,
-                                          backgroundImage: data['images'] != null && data['images'].isNotEmpty ? NetworkImage(data['images']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                                          backgroundImage: data['images'] !=
+                                                      null &&
+                                                  data['images'].isNotEmpty
+                                              ? NetworkImage(data['images'])
+                                              : const AssetImage(
+                                                      'assets/default_avatar.png')
+                                                  as ImageProvider,
                                           onBackgroundImageError: (_, __) {
-                                            const AssetImage('assets/default_avatar.png');
+                                            const AssetImage(
+                                                'assets/default_avatar.png');
                                           }),
                                     ),
                                   ),
@@ -545,17 +637,21 @@ END:VCARD
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => const MyProfilePage(),
+                                            builder: (context) =>
+                                                const MyProfilePage(),
                                           ),
                                         );
                                       },
                                       child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Icon(
                                             Icons.arrow_forward_ios,
                                             size: 24,
-                                            color: isDarkMode ? Colors.white : Colors.black,
+                                            color: isDarkMode
+                                                ? Colors.white
+                                                : Colors.black,
                                           ),
                                           const SizedBox(height: 10),
                                           Text(
@@ -563,7 +659,9 @@ END:VCARD
                                             style: TextStyle(
                                               fontSize: size.width * 0.04,
                                               fontWeight: FontWeight.w500,
-                                              color: isDarkMode ? Colors.white : Colors.black,
+                                              color: isDarkMode
+                                                  ? Colors.white
+                                                  : Colors.black,
                                             ),
                                           ),
                                         ],
@@ -574,10 +672,12 @@ END:VCARD
                               ),
                               SizedBox(height: size.height * 0.02),
                               Text(
-                                AppLocalizations.of(context)!.greeting(data['employee_name']),
+                                AppLocalizations.of(context)!
+                                    .greeting(data['employee_name']),
                                 style: TextStyle(
                                   fontSize: 18,
-                                  color: isDarkMode ? Colors.green : Colors.green,
+                                  color:
+                                      isDarkMode ? Colors.green : Colors.green,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -587,7 +687,9 @@ END:VCARD
                                 child: Container(
                                   padding: EdgeInsets.all(size.width * 0.04),
                                   decoration: BoxDecoration(
-                                    color: isDarkMode ? const Color(0xFF303030) : const Color(0xFFEAF9E5),
+                                    color: isDarkMode
+                                        ? const Color(0xFF303030)
+                                        : const Color(0xFFEAF9E5),
                                     boxShadow: const [
                                       BoxShadow(
                                         color: Colors.black26,
@@ -600,11 +702,14 @@ END:VCARD
                                   child: Column(
                                     children: [
                                       Text(
-                                        AppLocalizations.of(context)!.scanToSaveContact,
+                                        AppLocalizations.of(context)!
+                                            .scanToSaveContact,
                                         style: TextStyle(
                                           fontSize: size.width * 0.045,
                                           fontWeight: FontWeight.bold,
-                                          color: isDarkMode ? Colors.white : Colors.black87,
+                                          color: isDarkMode
+                                              ? Colors.white
+                                              : Colors.black87,
                                         ),
                                       ),
                                       SizedBox(height: size.height * 0.015),
@@ -637,32 +742,55 @@ END:VCARD
                                       Container(
                                         decoration: BoxDecoration(
                                           color: Colors.white,
-                                          borderRadius: BorderRadius.circular(10.0),
+                                          borderRadius:
+                                              BorderRadius.circular(16.0),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black
+                                                  .withOpacity(0.08),
+                                              blurRadius: 15,
+                                              offset: const Offset(0, 5),
+                                            ),
+                                          ],
                                         ),
-                                        child: GestureDetector(
-                                          onTap: () {
-                                            setState(() {
-                                              _isQRCodeFullScreen = true;
-                                            });
-                                          },
-                                          child: RepaintBoundary(
-                                            key: qrKey,
-                                            child: QrImageView(
-                                              data: vCardData,
-                                              version: QrVersions.auto,
-                                              size: size.width * 0.5,
-                                              gapless: false,
-                                              backgroundColor: isDarkMode ? const Color(0xFF303030) : const Color(0xFFEAF9E5),
-                                              eyeStyle: QrEyeStyle(
-                                                eyeShape: QrEyeShape.circle,
-                                                color: isDarkMode ? Colors.white : Colors.black,
-                                              ),
-                                              dataModuleStyle: QrDataModuleStyle(
-                                                dataModuleShape: QrDataModuleShape.square,
-                                                color: isDarkMode ? Colors.white : Colors.black,
+                                        padding: const EdgeInsets.all(16.0),
+                                        child: Column(
+                                          children: [
+                                            MouseRegion(
+                                              onEnter: (_) =>
+                                                  _animationController
+                                                      .forward(),
+                                              onExit: (_) =>
+                                                  _animationController
+                                                      .reverse(),
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  if (_isQRCodeLoaded) {
+                                                    setState(() {
+                                                      _isQRCodeFullScreen =
+                                                          true;
+                                                    });
+                                                  }
+                                                },
+                                                child: ScaleTransition(
+                                                  scale: _scaleAnimation,
+                                                  child: _buildQRCodeContainer(
+                                                      vCardData,
+                                                      size,
+                                                      isDarkMode),
+                                                ),
                                               ),
                                             ),
-                                          ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Tap to expand',
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
@@ -699,8 +827,10 @@ END:VCARD
                       final shouldSave = await showDialog<bool>(
                         context: context,
                         builder: (context) => AlertDialog(
-                          title: Text(AppLocalizations.of(context)!.saveImageTitle),
-                          content: Text(AppLocalizations.of(context)!.saveImageConfirmation),
+                          title: Text(
+                              AppLocalizations.of(context)!.saveImageTitle),
+                          content: Text(AppLocalizations.of(context)!
+                              .saveImageConfirmation),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(false),
@@ -739,18 +869,21 @@ END:VCARD
                               version: QrVersions.auto,
                               size: size.width * 0.8,
                               gapless: false,
-                              embeddedImage: const AssetImage('assets/playstore.png'),
-                              embeddedImageStyle: const QrEmbeddedImageStyle(
-                                size: Size(40, 40),
+                              embeddedImage:
+                                  const AssetImage('assets/playstore.png'),
+                              embeddedImageStyle: QrEmbeddedImageStyle(
+                                size:
+                                    Size(size.width * 0.15, size.width * 0.15),
                               ),
+                              padding: EdgeInsets.all(size.width * 0.03),
                               backgroundColor: Colors.white,
                               eyeStyle: const QrEyeStyle(
                                 eyeShape: QrEyeShape.circle,
-                                color: Colors.black,
+                                color: Colors.green,
                               ),
                               dataModuleStyle: const QrDataModuleStyle(
-                                dataModuleShape: QrDataModuleShape.square,
-                                color: Colors.black,
+                                dataModuleShape: QrDataModuleShape.circle,
+                                color: Colors.black87,
                               ),
                             ),
                           ),
@@ -761,10 +894,12 @@ END:VCARD
                 else
                   Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 20.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 30.0, vertical: 20.0),
                       child: SingleChildScrollView(
                         child: ConstrainedBox(
-                          constraints: BoxConstraints(maxHeight: size.height * 0.8),
+                          constraints:
+                              BoxConstraints(maxHeight: size.height * 0.8),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -775,12 +910,21 @@ END:VCARD
                                   Center(
                                     child: CircleAvatar(
                                       radius: size.width * 0.12,
-                                      backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                                      backgroundColor: isDarkMode
+                                          ? Colors.grey[800]
+                                          : Colors.grey[200],
                                       child: CircleAvatar(
                                           radius: size.width * 0.1,
-                                          backgroundImage: data['images'] != null && data['images'].isNotEmpty ? NetworkImage(data['images']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                                          backgroundImage: data['images'] !=
+                                                      null &&
+                                                  data['images'].isNotEmpty
+                                              ? NetworkImage(data['images'])
+                                              : const AssetImage(
+                                                      'assets/default_avatar.png')
+                                                  as ImageProvider,
                                           onBackgroundImageError: (_, __) {
-                                            const AssetImage('assets/default_avatar.png');
+                                            const AssetImage(
+                                                'assets/default_avatar.png');
                                           }),
                                     ),
                                   ),
@@ -793,24 +937,30 @@ END:VCARD
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => const MyProfilePage(),
+                                            builder: (context) =>
+                                                const MyProfilePage(),
                                           ),
                                         );
                                       },
                                       child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Icon(
                                             Icons.arrow_forward_ios,
                                             size: 24,
-                                            color: isDarkMode ? Colors.white : Colors.black,
+                                            color: isDarkMode
+                                                ? Colors.white
+                                                : Colors.black,
                                           ),
                                           Text(
                                             AppLocalizations.of(context)!.more,
                                             style: TextStyle(
                                               fontSize: size.width * 0.04,
                                               fontWeight: FontWeight.w500,
-                                              color: isDarkMode ? Colors.white : Colors.black,
+                                              color: isDarkMode
+                                                  ? Colors.white
+                                                  : Colors.black,
                                             ),
                                           ),
                                         ],
@@ -821,10 +971,12 @@ END:VCARD
                               ),
                               SizedBox(height: size.height * 0.02),
                               Text(
-                                AppLocalizations.of(context)!.greeting(data['employee_name']),
+                                AppLocalizations.of(context)!
+                                    .greeting(data['employee_name']),
                                 style: TextStyle(
                                   fontSize: 18,
-                                  color: isDarkMode ? Colors.green : Colors.green,
+                                  color:
+                                      isDarkMode ? Colors.green : Colors.green,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -834,7 +986,9 @@ END:VCARD
                                 child: Container(
                                   padding: EdgeInsets.all(size.width * 0.04),
                                   decoration: BoxDecoration(
-                                    color: isDarkMode ? const Color(0xFF303030) : const Color(0xFFEAF9E5),
+                                    color: isDarkMode
+                                        ? const Color(0xFF303030)
+                                        : const Color(0xFFEAF9E5),
                                     boxShadow: const [
                                       BoxShadow(
                                         color: Colors.black26,
@@ -847,11 +1001,14 @@ END:VCARD
                                   child: Column(
                                     children: [
                                       Text(
-                                        AppLocalizations.of(context)!.scanToSaveContact,
+                                        AppLocalizations.of(context)!
+                                            .scanToSaveContact,
                                         style: TextStyle(
                                           fontSize: size.width * 0.045,
                                           fontWeight: FontWeight.bold,
-                                          color: isDarkMode ? Colors.white : Colors.black87,
+                                          color: isDarkMode
+                                              ? Colors.white
+                                              : Colors.black87,
                                         ),
                                       ),
                                       SizedBox(height: size.height * 0.015),
@@ -884,32 +1041,55 @@ END:VCARD
                                       Container(
                                         decoration: BoxDecoration(
                                           color: Colors.white,
-                                          borderRadius: BorderRadius.circular(10.0),
+                                          borderRadius:
+                                              BorderRadius.circular(16.0),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black
+                                                  .withOpacity(0.08),
+                                              blurRadius: 15,
+                                              offset: const Offset(0, 5),
+                                            ),
+                                          ],
                                         ),
-                                        child: GestureDetector(
-                                          onTap: () {
-                                            setState(() {
-                                              _isQRCodeFullScreen = true;
-                                            });
-                                          },
-                                          child: RepaintBoundary(
-                                            key: qrKey,
-                                            child: QrImageView(
-                                              data: vCardData,
-                                              version: QrVersions.auto,
-                                              size: size.width * 0.5,
-                                              gapless: false,
-                                              backgroundColor: isDarkMode ? const Color(0xFF303030) : const Color(0xFFEAF9E5),
-                                              eyeStyle: QrEyeStyle(
-                                                eyeShape: QrEyeShape.circle,
-                                                color: isDarkMode ? Colors.white : Colors.black,
-                                              ),
-                                              dataModuleStyle: QrDataModuleStyle(
-                                                dataModuleShape: QrDataModuleShape.square,
-                                                color: isDarkMode ? Colors.white : Colors.black,
+                                        padding: const EdgeInsets.all(16.0),
+                                        child: Column(
+                                          children: [
+                                            MouseRegion(
+                                              onEnter: (_) =>
+                                                  _animationController
+                                                      .forward(),
+                                              onExit: (_) =>
+                                                  _animationController
+                                                      .reverse(),
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  if (_isQRCodeLoaded) {
+                                                    setState(() {
+                                                      _isQRCodeFullScreen =
+                                                          true;
+                                                    });
+                                                  }
+                                                },
+                                                child: ScaleTransition(
+                                                  scale: _scaleAnimation,
+                                                  child: _buildQRCodeContainer(
+                                                      vCardData,
+                                                      size,
+                                                      isDarkMode),
+                                                ),
                                               ),
                                             ),
-                                          ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Tap to expand',
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
@@ -926,6 +1106,179 @@ END:VCARD
               // return const Center(child: Text('No data available.'));
             }
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQRCodeContainer(String vCardData, Size size, bool isDarkMode) {
+    if (!_isQRCodeLoaded) {
+      return Container(
+        width: size.width * 0.5,
+        height: size.width * 0.5,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Background gradient animation
+            AnimatedBuilder(
+              animation: _loadingAnimation,
+              builder: (context, child) {
+                return Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20.0),
+                    gradient: SweepGradient(
+                      center: Alignment.center,
+                      startAngle: 0,
+                      endAngle: 3.14 * 2,
+                      transform:
+                          GradientRotation(_loadingAnimation.value * 2 * 3.14),
+                      colors: const [
+                        Color(0xFF4CAF50), // Material Green
+                        Color(0xFF81C784), // Light Green
+                        Color(0xFFA5D6A7), // Lighter Green
+                        Colors.white,
+                        Colors.white,
+                      ],
+                      stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                    ),
+                  ),
+                );
+              },
+            ),
+            // White overlay for soft effect
+            Container(
+              margin: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(18.0),
+              ),
+            ),
+            // Content
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Rotating QR icon
+                RotationTransition(
+                  turns: _loadingAnimation,
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color(0xFF43A047), // Darker Green
+                          Color(0xFF66BB6A), // Material Green
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF43A047).withOpacity(0.3),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.qr_code_scanner,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Animated text
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 800),
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: Transform.translate(
+                        offset: Offset(0, 20 * (1 - value)),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Column(
+                    children: [
+                      Text(
+                        'QR Code is being generated...',
+                        style: TextStyle(
+                          color: Colors.grey[800],
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Please wait a moment',
+                        style: TextStyle(
+                          color: Colors.grey[500],
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RepaintBoundary(
+      key: qrKey,
+      child: Container(
+        padding: const EdgeInsets.all(12.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12.0),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white,
+              Colors.green.withOpacity(0.05),
+            ],
+          ),
+        ),
+        child: QrImageView(
+          data: vCardData,
+          version: QrVersions.auto,
+          size: size.width * 0.5,
+          gapless: false,
+          embeddedImage: const AssetImage('assets/playstore.png'),
+          embeddedImageStyle: QrEmbeddedImageStyle(
+            size: Size(size.width * 0.1, size.width * 0.1),
+          ),
+          padding: EdgeInsets.all(size.width * 0.02),
+          backgroundColor: Colors.white,
+          eyeStyle: const QrEyeStyle(
+            eyeShape: QrEyeShape.circle,
+            color: Colors.green,
+          ),
+          dataModuleStyle: const QrDataModuleStyle(
+            dataModuleShape: QrDataModuleShape.circle,
+            color: Colors.black87,
+          ),
         ),
       ),
     );
@@ -985,7 +1338,8 @@ class ProfileInfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: MediaQuery.of(context).size.height * 0.01),
+      padding: EdgeInsets.symmetric(
+          vertical: MediaQuery.of(context).size.height * 0.01),
       child: Row(
         children: [
           Icon(icon, color: Colors.green),

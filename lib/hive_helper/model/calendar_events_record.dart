@@ -4,7 +4,7 @@ import 'package:hive/hive.dart';
 
 part 'calendar_events_record.g.dart';
 
-@HiveType(typeId: 0)
+@HiveType(typeId: 5)
 class CalendarEventsRecord extends HiveObject {
   @HiveField(0)
   String title;
