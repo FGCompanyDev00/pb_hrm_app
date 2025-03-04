@@ -194,7 +194,7 @@ class HomeCalendarState extends State<HomeCalendar>
         _fetchMeetingMembers(),
       ]);
     } catch (e) {
-      showSnackBar('Error fetching data: $e');
+      showSnackBar('Network Error');
     } finally {
       setState(() {
         _isLoading = false;
@@ -217,7 +217,7 @@ class HomeCalendarState extends State<HomeCalendar>
         _fetchMeetingMembers(),
       ]);
     } catch (e) {
-      showSnackBar('Error fetching data: $e');
+      showSnackBar('Network Error');
     } finally {}
   }
 
@@ -433,7 +433,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing minutes of meeting data: $e');
+      showSnackBar('Data Error');
     }
   }
 
@@ -534,7 +534,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing meeting data: $e');
+      showSnackBar('Data Error');
     }
 
     return;
@@ -639,7 +639,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing meeting data: $e');
+      showSnackBar('Data Error');
     }
   }
 
@@ -734,7 +734,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing meeting room bookings: $e');
+      showSnackBar('Data Error');
     }
     return;
   }
@@ -807,7 +807,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing meeting room bookings: $e');
+      showSnackBar('Data Error');
     }
   }
 
@@ -903,7 +903,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing booking car: $e');
+      showSnackBar('Data Error');
     }
     return;
   }
@@ -1010,7 +1010,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Error parsing booking car: $e');
+      showSnackBar('Data Error');
     }
   }
 
@@ -1335,7 +1335,8 @@ class HomeCalendarState extends State<HomeCalendar>
     };
 
     final sortedCounts = counts.entries.toList()
-      ..sort((a, b) => (categoryOrder[a.key] ?? 99).compareTo(categoryOrder[b.key] ?? 99));
+      ..sort((a, b) =>
+          (categoryOrder[a.key] ?? 99).compareTo(categoryOrder[b.key] ?? 99));
 
     final snackBar = SnackBar(
       content: Container(
@@ -1393,24 +1394,30 @@ class HomeCalendarState extends State<HomeCalendar>
 
                       switch (category) {
                         case 'Add Meeting':
-                          displayCategory = AppLocalizations.of(context)!.meetingTitle;
+                          displayCategory =
+                              AppLocalizations.of(context)!.meetingTitle;
                         case 'Leave':
                           displayCategory = AppLocalizations.of(context)!.leave;
                         case 'Meeting Room Bookings':
-                          displayCategory = AppLocalizations.of(context)!.meetingRoomBookings;
+                          displayCategory =
+                              AppLocalizations.of(context)!.meetingRoomBookings;
                         case 'Booking Car':
-                          displayCategory = AppLocalizations.of(context)!.bookingCar;
+                          displayCategory =
+                              AppLocalizations.of(context)!.bookingCar;
                         case 'Minutes Of Meeting':
-                          displayCategory = AppLocalizations.of(context)!.minutesOfMeeting;
+                          displayCategory =
+                              AppLocalizations.of(context)!.minutesOfMeeting;
                         default:
                           displayCategory = category;
                       }
 
                       return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: color.withOpacity(0.15),
-                          border: Border.all(color: color.withOpacity(0.3), width: 1),
+                          border: Border.all(
+                              color: color.withOpacity(0.3), width: 1),
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
@@ -1424,7 +1431,9 @@ class HomeCalendarState extends State<HomeCalendar>
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              categoryIcon[category] != null ? Icons.circle : Icons.event,
+                              categoryIcon[category] != null
+                                  ? Icons.circle
+                                  : Icons.event,
                               size: 8,
                               color: color,
                             ),
@@ -1432,14 +1441,17 @@ class HomeCalendarState extends State<HomeCalendar>
                             Text(
                               displayCategory,
                               style: TextStyle(
-                                color: isDarkMode ? Colors.white.withOpacity(0.9) : Colors.black87,
+                                color: isDarkMode
+                                    ? Colors.white.withOpacity(0.9)
+                                    : Colors.black87,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
                             Container(
                               margin: const EdgeInsets.only(left: 6),
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 1),
                               decoration: BoxDecoration(
                                 color: color.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(10),
@@ -1447,7 +1459,9 @@ class HomeCalendarState extends State<HomeCalendar>
                               child: Text(
                                 count.toString(),
                                 style: TextStyle(
-                                  color: isDarkMode ? Colors.white : Colors.black87,
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : Colors.black87,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                 ),

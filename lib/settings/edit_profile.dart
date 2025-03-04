@@ -45,9 +45,9 @@ class EditProfilePageState extends State<EditProfilePage> {
   void initState() {
     super.initState();
     baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
-    profileEndpoint = '$baseUrl/profile';
-    displayMeEndpoint = '$baseUrl/display/me';
-    requestChangeEndpoint = '$baseUrl/profile/request-change';
+    profileEndpoint = '$baseUrl/api/profile/';
+    displayMeEndpoint = '$baseUrl/api/display/me';
+    requestChangeEndpoint = '$baseUrl/api/profile/request-change';
 
     _loadProfile();
   }

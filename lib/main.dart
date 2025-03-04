@@ -19,6 +19,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:logger/logger.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
@@ -311,44 +312,29 @@ Future<void> _initializeFirebaseMessagingWithoutPermissions() async {
 }
 
 Future<void> _initializeHiveOptimized() async {
-  await Hive.initFlutter();
-
-  // Register adapters sequentially to avoid type issues
-  Hive.registerAdapter(AttendanceRecordAdapter());
-  Hive.registerAdapter(AddAssignmentRecordAdapter());
-  Hive.registerAdapter(UserProfileRecordAdapter());
-  Hive.registerAdapter(QRRecordAdapter());
-
-  // Get encryption key
-  final storedKey = await secureStorage.read(key: 'hive_encryption_key');
-  final encryptionKey = storedKey != null
-      ? base64Url.decode(storedKey)
-      : encrypt.Key.fromSecureRandom(32).bytes;
-
-  if (storedKey == null) {
-    await secureStorage.write(
-      key: 'hive_encryption_key',
-      value: base64UrlEncode(encryptionKey),
-    );
-  }
-
-  final cipher = HiveAesCipher(encryptionKey);
-
-  // Open boxes concurrently with error handling
   try {
-    await Future.wait<void>([
-      Hive.openBox<AttendanceRecord>('pending_attendance',
-          encryptionCipher: cipher),
-      Hive.openBox<AddAssignmentRecord>('add_assignment',
-          encryptionCipher: cipher),
-      Hive.openBox<UserProfileRecord>('user_profile', encryptionCipher: cipher),
-      Hive.openBox<QRRecord>('qr_profile', encryptionCipher: cipher),
-      Hive.openBox<String>('userProfileBox', encryptionCipher: cipher),
-      Hive.openBox<List<String>>('bannersBox', encryptionCipher: cipher),
-      Hive.openBox('loginBox', encryptionCipher: cipher),
-    ], eagerError: false);
+    // Initialize Hive
+    await Hive.initFlutter();
+
+    // Get the application documents directory
+    final appDocumentDir = await getApplicationDocumentsDirectory();
+    final path = appDocumentDir.path;
+
+    // Register adapters
+    Hive.registerAdapter(AttendanceRecordAdapter());
+    Hive.registerAdapter(AddAssignmentRecordAdapter());
+
+    // Initialize boxes with proper path configuration
+    await Hive.openBox('loginBox', path: '$path/login.hive');
+    await Hive.openBox('attendanceBox', path: '$path/attendance.hive');
+    await Hive.openBox('assignmentBox', path: '$path/assignment.hive');
+    await Hive.openBox('calendarBox', path: '$path/calendar.hive');
+    await Hive.openBox('historyBox', path: '$path/history.hive');
+
+    debugPrint('Hive initialized successfully with path: $path');
   } catch (e) {
-    debugPrint('Error opening Hive boxes: $e');
+    debugPrint('Error initializing Hive: $e');
+    // Implement fallback mechanism if needed
   }
 }
 

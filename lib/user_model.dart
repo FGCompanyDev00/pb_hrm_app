@@ -10,6 +10,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:io' show Platform;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:hive/hive.dart';
 
 // User Model
 class User {
@@ -53,56 +54,94 @@ class UserProvider extends ChangeNotifier {
 
   // Public method to load user login status and token from shared preferences
   Future<void> loadUser() async {
-    // Try to load from secure storage first (especially for iOS)
-    if (Platform.isIOS) {
-      final secureToken = await _secureStorage.read(key: 'secure_token');
+    String? token;
+    DateTime? loginTime;
+    bool isLoggedIn = false;
+
+    // Try secure storage first
+    try {
+      token = await _secureStorage.read(key: 'secure_token');
       final secureLoginTime =
           await _secureStorage.read(key: 'secure_login_time');
       final secureIsLoggedIn =
           await _secureStorage.read(key: 'secure_is_logged_in');
 
-      if (secureToken != null && secureIsLoggedIn == 'true') {
-        _token = secureToken;
-        _isLoggedIn = true;
-        _loginTime =
-            secureLoginTime != null ? DateTime.tryParse(secureLoginTime) : null;
+      if (token != null &&
+          secureIsLoggedIn == 'true' &&
+          secureLoginTime != null) {
+        loginTime = DateTime.tryParse(secureLoginTime);
+        isLoggedIn = true;
+      }
+    } catch (e) {
+      debugPrint('Error reading from secure storage: $e');
+    }
 
-        // Sync with SharedPreferences for consistency
-        if (_token.isNotEmpty) {
-          await prefs.setToken(_token);
-        }
-        if (_isLoggedIn) {
-          await prefs.setLoggedIn(true);
-        }
-        if (_loginTime != null) {
-          await prefs.setLoginSession(_loginTime.toString());
-        }
+    // If secure storage failed, try SharedPreferences
+    if (token == null) {
+      token = await prefs.getTokenAsync();
+      loginTime = await prefs.getLoginSessionAsync();
+      isLoggedIn = await prefs.getLoggedInAsync() ?? false;
+    }
 
-        debugPrint(
-            'iOS: Loaded session from secure storage: token=$_token, isLoggedIn=$_isLoggedIn, loginTime=$_loginTime');
-        notifyListeners();
-        return;
+    // If both failed, try Hive as last resort
+    if (token == null) {
+      try {
+        final box = await Hive.openBox('loginBox');
+        token = box.get('token');
+        final hiveLoginTime = box.get('login_time');
+        loginTime =
+            hiveLoginTime != null ? DateTime.tryParse(hiveLoginTime) : null;
+        isLoggedIn = box.get('is_logged_in') ?? false;
+      } catch (e) {
+        debugPrint('Error reading from Hive: $e');
       }
     }
 
-    // Fall back to SharedPreferences (works reliably on Android)
-    if (Platform.isIOS) {
-      // Use async methods for iOS
-      _isLoggedIn = await prefs.getLoggedInAsync() ?? false;
-      _token = await prefs.getTokenAsync() ?? '';
-      _loginTime = await prefs.getLoginSessionAsync();
-      debugPrint(
-          'iOS: Loaded session from SharedPreferences: token=$_token, isLoggedIn=$_isLoggedIn, loginTime=$_loginTime');
+    // Update state if we found valid data
+    if (token != null && isLoggedIn && loginTime != null) {
+      _token = token;
+      _loginTime = loginTime;
+      _isLoggedIn = isLoggedIn;
+
+      // Validate session duration
+      if (DateTime.now().difference(_loginTime!).inHours >= 8) {
+        await logout(); // Session expired
+        return;
+      }
+
+      // Sync data across all storage methods
+      await _syncStorageData(token, loginTime, isLoggedIn);
     } else {
-      // Use sync methods for Android
-      _isLoggedIn = prefs.getLoggedIn() ?? false;
-      _token = prefs.getToken() ?? '';
-      _loginTime = prefs.getLoginSession();
-      debugPrint(
-          'Android: Loaded session: token=$_token, isLoggedIn=$_isLoggedIn, loginTime=$_loginTime');
+      await logout(); // No valid session found
     }
 
     notifyListeners();
+  }
+
+  // Helper method to sync data across storage methods
+  Future<void> _syncStorageData(
+      String token, DateTime loginTime, bool isLoggedIn) async {
+    try {
+      // Update SharedPreferences
+      await prefs.setToken(token);
+      await prefs.setLoginSession(loginTime.toString());
+      await prefs.setLoggedIn(isLoggedIn);
+
+      // Update secure storage
+      await _secureStorage.write(key: 'secure_token', value: token);
+      await _secureStorage.write(
+          key: 'secure_login_time', value: loginTime.toString());
+      await _secureStorage.write(
+          key: 'secure_is_logged_in', value: isLoggedIn.toString());
+
+      // Update Hive
+      final box = await Hive.openBox('loginBox');
+      await box.put('token', token);
+      await box.put('login_time', loginTime.toString());
+      await box.put('is_logged_in', isLoggedIn);
+    } catch (e) {
+      debugPrint('Error syncing storage data: $e');
+    }
   }
 
   bool get isSessionValid {
@@ -271,18 +310,22 @@ class UserProvider extends ChangeNotifier {
     _loginTime = DateTime.now();
     _isShowingExpiryDialog = false;
 
-    // Store in SharedPreferences (works well for Android)
-    prefs.setLoggedIn(true);
-    prefs.setToken(token);
-    await setLoginTime(); // Save login time immediately after login
+    // Store in both SharedPreferences and secure storage for both platforms
+    await prefs.setLoggedIn(true);
+    await prefs.setToken(token);
+    await prefs.setLoginSession(_loginTime.toString());
 
-    // Also store in secure storage (more reliable for iOS)
-    if (Platform.isIOS) {
-      await _secureStorage.write(key: 'secure_token', value: token);
-      await _secureStorage.write(
-          key: 'secure_login_time', value: _loginTime.toString());
-      await _secureStorage.write(key: 'secure_is_logged_in', value: 'true');
-    }
+    // Store in secure storage for both platforms for better security
+    await _secureStorage.write(key: 'secure_token', value: token);
+    await _secureStorage.write(
+        key: 'secure_login_time', value: _loginTime.toString());
+    await _secureStorage.write(key: 'secure_is_logged_in', value: 'true');
+
+    // Store in Hive for offline access
+    final box = await Hive.openBox('loginBox');
+    await box.put('token', token);
+    await box.put('login_time', _loginTime.toString());
+    await box.put('is_logged_in', true);
 
     notifyListeners();
   }

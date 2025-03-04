@@ -8,6 +8,7 @@ import flutter_local_notifications
 import AppTrackingTransparency
 #endif
 import AdSupport
+import flutter_background_service_ios
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -19,7 +20,11 @@ import AdSupport
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Register plugins first
     GeneratedPluginRegistrant.register(with: self)
+    
+    // Configure background service
+    SwiftFlutterBackgroundServicePlugin.taskIdentifier = "com.phongsavanh.pb_hrsystem.sessionService"
     
     // Initialize method channel early
     if let controller = window?.rootViewController as? FlutterViewController {
@@ -89,13 +94,13 @@ import AdSupport
     _ application: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
   ) {
-    // Optimize token formatting
-    let tokenString = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-    print("APNs device token: \(tokenString)")
+    let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
+    let token = tokenParts.joined()
+    print("Device Token: \(token)")
     
     // Send token to Flutter on main thread
     DispatchQueue.main.async { [weak self] in
-      self?.notificationChannel?.invokeMethod("updateToken", arguments: tokenString)
+      self?.notificationChannel?.invokeMethod("updateToken", arguments: token)
     }
   }
 
@@ -103,7 +108,7 @@ import AdSupport
     _ application: UIApplication,
     didFailToRegisterForRemoteNotificationsWithError error: Error
   ) {
-    print("Failed to register for remote notifications: \(error.localizedDescription)")
+    print("Failed to register for remote notifications: \(error)")
   }
 
   override func application(

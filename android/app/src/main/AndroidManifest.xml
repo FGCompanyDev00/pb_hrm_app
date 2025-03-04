@@ -26,10 +26,10 @@
     <uses-permission android:name="android.permission.MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <!-- <uses-permission android:name="android.permission.FOREGROUND_SERVICE" /> -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <!-- Adapt to the foreground service type(s) desired, these are just examples -->
-    <!-- <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" /> -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
 
     <application
         android:allowBackup="true"
@@ -83,6 +83,21 @@
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@mipmap/playstore"
             android:value="psbv_next_notification" />
+
+        <!-- Workmanager Provider -->
+        <provider
+            android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmBroadcastReceiver$ScheduledAlarmProvider"
+            android:authorities="${applicationId}.workmanager-scheduled-alarm"
+            android:exported="false" />
+
+        <receiver
+            android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmBroadcastReceiver"
+            android:exported="false" />
+
+        <service
+            android:name="dev.fluttercommunity.plus.androidalarmmanager.AlarmService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
 
     </application>
 

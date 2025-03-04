@@ -12,347 +12,226 @@ class SessionService {
   static const String sessionCheckTaskName = 'sessionExpiryCheck';
   static const int sessionExpiryNotificationId = 9999;
   static const int sessionWarningNotificationId = 9998;
+  static const Duration sessionDuration = Duration(hours: 8);
+  static const Duration warningThreshold = Duration(minutes: 30);
 
-  // Flag to track if workmanager is available
-  static bool _isWorkmanagerAvailable = false;
+  // Fallback timer-based check
+  static Timer? _fallbackTimer;
+  static bool _isInitialized = false;
+  static bool _isWorkManagerInitialized = false;
 
   // Initialize the session service
   static Future<void> initialize() async {
-    try {
-      // Only initialize on supported mobile platforms and not in web or desktop
-      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-        // Check if we're running on a simulator/emulator
-        bool isEmulator = false;
-        try {
-          // Simple check for emulator - can be enhanced with device_info_plus
-          if (Platform.isAndroid) {
-            isEmulator = await _isAndroidEmulator();
-          } else if (Platform.isIOS) {
-            isEmulator = await _isIosSimulator();
-          }
-        } catch (e) {
-          debugPrint('Error detecting emulator: $e');
-          // Assume it's not an emulator if detection fails
-          isEmulator = false;
-        }
-
-        // Workmanager might not work properly on emulators
-        if (isEmulator) {
-          debugPrint(
-              'Running on emulator - workmanager may not function properly');
-        }
-
-        // Try to initialize workmanager with error handling
-        try {
-          await Workmanager().initialize(
-            callbackDispatcher,
-            isInDebugMode: false,
-          );
-          _isWorkmanagerAvailable = true;
-
-          // Only register task if initialization was successful
-          await registerSessionExpiryCheck();
-          debugPrint('SessionService initialized successfully');
-        } catch (e) {
-          _isWorkmanagerAvailable = false;
-          // Handle specific MissingPluginException
-          if (e.toString().contains('MissingPluginException')) {
-            debugPrint(
-                'Workmanager plugin not available on this platform or build');
-          } else {
-            debugPrint('Error initializing workmanager: $e');
-          }
-          // Continue app execution even if workmanager fails
-        }
-      } else {
-        debugPrint(
-            'SessionService: Workmanager not supported on this platform');
-      }
-    } catch (e) {
-      // Catch any platform-related errors
-      debugPrint('SessionService initialization error: $e');
-    }
-  }
-
-  // Simple check for Android emulator
-  static Future<bool> _isAndroidEmulator() async {
-    try {
-      // This is a simple check - for production, use device_info_plus
-      return Platform.environment.containsKey('ANDROID_EMULATOR') ||
-          Platform.environment.containsKey('ANDROID_SDK_ROOT');
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // Simple check for iOS simulator
-  static Future<bool> _isIosSimulator() async {
-    try {
-      // This is a simple check - for production, use device_info_plus
-      return !File('/dev/disk0').existsSync();
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // Register the background task for session expiry check
-  static Future<void> registerSessionExpiryCheck() async {
-    // Skip if workmanager is not available
-    if (!_isWorkmanagerAvailable) {
-      debugPrint(
-          'Skipping session expiry check registration - workmanager not available');
+    if (_isInitialized) {
+      debugPrint('Session service already initialized');
       return;
     }
 
     try {
+      if (Platform.isAndroid) {
+        // For Android, try to initialize Workmanager first
+        await _initializeAndroidBackgroundService();
+      }
+
+      // Always set up timer-based checks as a fallback
+      _setupPeriodicCheck();
+      _isInitialized = true;
+      debugPrint('Session service initialized successfully');
+    } catch (e) {
+      debugPrint('Error initializing session service: $e');
+      // Ensure fallback timer is running even if initialization fails
+      _setupPeriodicCheck();
+    }
+  }
+
+  static Future<void> _initializeAndroidBackgroundService() async {
+    if (_isWorkManagerInitialized) return;
+
+    try {
+      await Workmanager().initialize(callbackDispatcher);
       await Workmanager().registerPeriodicTask(
-        sessionCheckTaskName,
+        'sessionCheck',
         sessionCheckTaskName,
         frequency: const Duration(minutes: 15),
         constraints: Constraints(
           networkType: NetworkType.connected,
-          requiresBatteryNotLow: false,
-          requiresCharging: false,
-          requiresDeviceIdle: false,
-          requiresStorageNotLow: false,
+          requiresBatteryNotLow: true,
         ),
         existingWorkPolicy: ExistingWorkPolicy.replace,
-        backoffPolicy: BackoffPolicy.linear,
-        backoffPolicyDelay: const Duration(minutes: 5),
+        backoffPolicy: BackoffPolicy.exponential,
       );
-      debugPrint('Session expiry check registered successfully');
+      _isWorkManagerInitialized = true;
+      debugPrint('Android background service initialized successfully');
     } catch (e) {
-      debugPrint('Error registering session expiry check: $e');
-      // Continue app execution even if registration fails
+      debugPrint('Error initializing Android background service: $e');
+      throw e; // Propagate error to trigger fallback
     }
   }
 
-  // Cancel the background task
-  static Future<void> cancelSessionExpiryCheck() async {
-    // Skip if workmanager is not available
-    if (!_isWorkmanagerAvailable) {
-      debugPrint(
-          'Skipping session expiry check cancellation - workmanager not available');
-      return;
-    }
+  static void _setupPeriodicCheck() {
+    _fallbackTimer?.cancel();
+    _fallbackTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
+      debugPrint('Running periodic session check (Timer-based)');
+      await checkSessionStatus();
+    });
 
-    try {
-      await Workmanager().cancelByUniqueName(sessionCheckTaskName);
-      debugPrint('Session expiry check cancelled successfully');
-    } catch (e) {
-      debugPrint('Error cancelling session expiry check: $e');
-    }
+    // Also check immediately
+    Future.delayed(const Duration(seconds: 1), () {
+      checkSessionStatus();
+    });
   }
 
-  // Check session status manually (can be used as fallback when workmanager is unavailable)
-  static Future<void> checkSessionStatus() async {
+  static Future<void> _checkSessionExpiry() async {
     try {
-      await _checkSessionExpiry();
-    } catch (e) {
-      debugPrint('Error checking session status manually: $e');
-    }
-  }
-}
+      final prefs = sl<UserPreferences>();
 
-/// The callback function that will be called by Workmanager
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((taskName, inputData) async {
-    try {
-      if (taskName == SessionService.sessionCheckTaskName) {
-        await _checkSessionExpiry();
+      // Check if user is logged in
+      final isLoggedIn = await prefs.getLoggedInAsync() ?? false;
+      if (!isLoggedIn) {
+        debugPrint('User not logged in, skipping session check');
+        return;
       }
-      return Future.value(true);
+
+      // Get login time
+      final loginTime = await prefs.getLoginSessionAsync();
+      if (loginTime == null) {
+        debugPrint('No login time found, skipping session check');
+        return;
+      }
+
+      // Calculate time difference
+      final now = DateTime.now();
+      final difference = now.difference(loginTime);
+      debugPrint('Session time elapsed: ${difference.inMinutes} minutes');
+
+      if (difference >= sessionDuration) {
+        debugPrint('Session expired, showing notification');
+        await _showSessionExpiredNotification();
+        // Force logout
+        await prefs.setLoggedOff();
+      } else if (sessionDuration - difference <= warningThreshold) {
+        final minutesLeft = (sessionDuration - difference).inMinutes;
+        debugPrint('Session expiring soon, $minutesLeft minutes left');
+        await _showSessionExpiryWarningNotification(minutesLeft);
+      }
     } catch (e) {
-      debugPrint('Error in background task: $e');
-      // Return true to prevent Workmanager from retrying the task
-      return Future.value(true);
+      debugPrint('Error checking session expiry: $e');
     }
-  });
-}
-
-/// Check if the session has expired or is about to expire
-Future<void> _checkSessionExpiry() async {
-  try {
-    final prefs = sl<UserPreferences>();
-
-    // Check if user is logged in
-    final isLoggedIn = await prefs.getLoggedInAsync() ?? false;
-    if (!isLoggedIn) return;
-
-    // Get login time
-    final loginTime = await prefs.getLoginSessionAsync();
-    if (loginTime == null) return;
-
-    // Calculate time difference
-    final now = DateTime.now();
-    final difference = now.difference(loginTime);
-
-    // Session validity is 8 hours
-    const sessionDuration = Duration(hours: 8);
-
-    if (difference >= sessionDuration) {
-      // Session has expired - show notification
-      await _showSessionExpiredNotification();
-    } else if (sessionDuration - difference <= const Duration(minutes: 30)) {
-      // Session will expire in less than 30 minutes - show warning
-      final minutesLeft = (sessionDuration - difference).inMinutes;
-      await _showSessionExpiryWarningNotification(minutesLeft);
-    }
-  } catch (e) {
-    debugPrint('Error checking session expiry: $e');
   }
-}
 
-/// Show a notification that the session has expired
-Future<void> _showSessionExpiredNotification() async {
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  // Public method to check session status
+  static Future<void> checkSessionStatus() async {
+    await _checkSessionExpiry();
+  }
 
-  // Initialize notification settings
-  await _initializeNotifications();
-
-  // Android notification details
-  const AndroidNotificationDetails androidPlatformChannelSpecifics =
-      AndroidNotificationDetails(
-    'session_expiry_channel',
-    'Session Expiry Notifications',
-    channelDescription: 'Notifications about session expiry',
-    importance: Importance.high,
-    priority: Priority.high,
-  );
-
-  // iOS notification details
-  const DarwinNotificationDetails iOSPlatformChannelSpecifics =
-      DarwinNotificationDetails(
-    presentAlert: true,
-    presentBadge: true,
-    presentSound: true,
-  );
-
-  // Combined platform-specific details
-  const NotificationDetails platformChannelSpecifics = NotificationDetails(
-    android: androidPlatformChannelSpecifics,
-    iOS: iOSPlatformChannelSpecifics,
-  );
-
-  // Show the notification
-  await flutterLocalNotificationsPlugin.show(
-    SessionService.sessionExpiryNotificationId,
-    'Session Expired',
-    'Your session has expired. Please log in again.',
-    platformChannelSpecifics,
-    payload: 'session_expired',
-  );
-}
-
-/// Show a notification warning that the session will expire soon
-Future<void> _showSessionExpiryWarningNotification(int minutesLeft) async {
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
-
-  // Initialize notification settings
-  await _initializeNotifications();
-
-  // Android notification details
-  const AndroidNotificationDetails androidPlatformChannelSpecifics =
-      AndroidNotificationDetails(
-    'session_expiry_channel',
-    'Session Expiry Notifications',
-    channelDescription: 'Notifications about session expiry',
-    importance: Importance.high,
-    priority: Priority.high,
-  );
-
-  // iOS notification details
-  const DarwinNotificationDetails iOSPlatformChannelSpecifics =
-      DarwinNotificationDetails(
-    presentAlert: true,
-    presentBadge: true,
-    presentSound: true,
-  );
-
-  // Combined platform-specific details
-  const NotificationDetails platformChannelSpecifics = NotificationDetails(
-    android: androidPlatformChannelSpecifics,
-    iOS: iOSPlatformChannelSpecifics,
-  );
-
-  // Show the notification
-  await flutterLocalNotificationsPlugin.show(
-    SessionService.sessionWarningNotificationId,
-    'Session Expiring Soon',
-    'Your session will expire in $minutesLeft minutes. Please save your work.',
-    platformChannelSpecifics,
-    payload: 'session_warning',
-  );
-}
-
-/// Initialize the notifications plugin
-Future<void> _initializeNotifications() async {
-  try {
+  static Future<void> _showSessionExpiredNotification() async {
     final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
         FlutterLocalNotificationsPlugin();
 
-    // For Android
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/playstore');
-
-    // For iOS
-    final DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
-      onDidReceiveLocalNotification:
-          (int id, String? title, String? body, String? payload) async {
-        debugPrint(
-            'Received iOS local notification: id=$id, title=$title, body=$body');
-      },
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'session_expiry_channel',
+      'Session Expiry Notifications',
+      channelDescription: 'Notifications about session expiry',
+      importance: Importance.high,
+      priority: Priority.high,
+      enableVibration: true,
+      playSound: true,
     );
 
-    // Combine settings
-    final InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
+    const DarwinNotificationDetails iOSPlatformChannelSpecifics =
+        DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      interruptionLevel: InterruptionLevel.timeSensitive,
     );
 
-    // Initialize the plugin with error handling
-    await flutterLocalNotificationsPlugin.initialize(
-      initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        debugPrint('Notification response received: ${response.payload}');
-      },
-    ).timeout(
-      const Duration(seconds: 5),
-      onTimeout: () {
-        debugPrint('Notification initialization timed out');
-        throw TimeoutException('Notification initialization timed out');
-      },
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+      iOS: iOSPlatformChannelSpecifics,
     );
 
-    // Create notification channel for Android
-    if (!kIsWeb && Platform.isAndroid) {
+    await flutterLocalNotificationsPlugin.show(
+      sessionExpiryNotificationId,
+      'Session Expired',
+      'Your session has expired. Please log in again.',
+      platformChannelSpecifics,
+      payload: 'session_expired',
+    );
+  }
+
+  static Future<void> _showSessionExpiryWarningNotification(
+      int minutesLeft) async {
+    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+        FlutterLocalNotificationsPlugin();
+
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'session_warning_channel',
+      'Session Warning Notifications',
+      channelDescription: 'Notifications about session expiry warnings',
+      importance: Importance.high,
+      priority: Priority.high,
+      enableVibration: true,
+      playSound: true,
+    );
+
+    const DarwinNotificationDetails iOSPlatformChannelSpecifics =
+        DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+      interruptionLevel: InterruptionLevel.active,
+    );
+
+    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+      iOS: iOSPlatformChannelSpecifics,
+    );
+
+    await flutterLocalNotificationsPlugin.show(
+      sessionWarningNotificationId,
+      'Session Expiring Soon',
+      'Your session will expire in $minutesLeft minutes. Please save your work.',
+      platformChannelSpecifics,
+      payload: 'session_warning',
+    );
+  }
+
+  // Cleanup method
+  static Future<void> dispose() async {
+    _fallbackTimer?.cancel();
+    _fallbackTimer = null;
+
+    if (_isWorkManagerInitialized && Platform.isAndroid) {
       try {
-        const AndroidNotificationChannel channel = AndroidNotificationChannel(
-          'session_expiry_channel',
-          'Session Expiry Notifications',
-          description: 'Notifications about session expiry',
-          importance: Importance.high,
-        );
-
-        await flutterLocalNotificationsPlugin
-            .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin>()
-            ?.createNotificationChannel(channel);
+        await Workmanager().cancelAll();
+        _isWorkManagerInitialized = false;
       } catch (e) {
-        debugPrint('Error creating Android notification channel: $e');
-        // Continue even if channel creation fails
+        debugPrint('Error canceling Workmanager tasks: $e');
       }
     }
-  } catch (e) {
-    debugPrint('Error initializing notifications: $e');
-    // Continue even if notification initialization fails
+
+    _isInitialized = false;
+    debugPrint('Session service disposed');
   }
+}
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      switch (task) {
+        case SessionService.sessionCheckTaskName:
+          debugPrint('Executing background session check via Workmanager');
+          await SessionService.checkSessionStatus();
+          break;
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Background task error: $e');
+      return false;
+    }
+  });
 }
