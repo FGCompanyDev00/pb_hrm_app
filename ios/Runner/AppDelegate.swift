@@ -24,12 +24,12 @@ import flutter_background_service_ios
     GeneratedPluginRegistrant.register(with: self)
     
     // Configure background service
-    SwiftFlutterBackgroundServicePlugin.taskIdentifier = "com.phongsavanh.pb_hrsystem.sessionService"
+    SwiftFlutterBackgroundServicePlugin.taskIdentifier = "com.psvsystem.next.sessionService"
     
     // Initialize method channel early
     if let controller = window?.rootViewController as? FlutterViewController {
       notificationChannel = FlutterMethodChannel(
-        name: "com.psbv.next/notifications",
+        name: "com.psvsystem.next/notifications",
         binaryMessenger: controller.binaryMessenger
       )
     }

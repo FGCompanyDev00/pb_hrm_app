@@ -71,7 +71,7 @@
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER).backgroundTask</string>
-		<string>com.phongsavanh.pb_hrsystem.sessionService</string>
+		<string>com.psvsystem.next.sessionService</string>
 		<string>dev.flutter.background.refresh</string>
 	</array>
 	<key>NSNotificationUsageDescription</key>
