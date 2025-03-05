@@ -703,6 +703,12 @@ class MainScreenState extends State<MainScreen> {
   void _checkSessionStatus() {
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     if (mounted && userProvider.isLoggedIn) {
+      if (!userProvider.isSessionValid) {
+        userProvider.logout();
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/login', (route) => false);
+        return;
+      }
       userProvider.checkSessionStatus(context);
     }
   }

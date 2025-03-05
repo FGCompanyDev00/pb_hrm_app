@@ -107,17 +107,36 @@ class SplashScreenState extends State<SplashScreen>
       if (_isDisposed) return;
 
       if (mounted) {
-        // Add a debug print to help diagnose the issue
-        debugPrint(
-            'Session check: isLoggedIn=${userProvider.isLoggedIn}, isSessionValid=${userProvider.isSessionValid}');
+        // Add debug prints to help diagnose the issue
+        debugPrint('Splash screen session check:');
+        debugPrint('- isLoggedIn: ${userProvider.isLoggedIn}');
+        debugPrint('- isSessionValid: ${userProvider.isSessionValid}');
+        debugPrint('- hasToken: ${userProvider.token.isNotEmpty}');
 
+        // First check if we should go to login page
+        if (!userProvider.isLoggedIn ||
+            !userProvider.isSessionValid ||
+            userProvider.token.isEmpty) {
+          debugPrint('Redirecting to login page due to invalid session');
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  const LoginPage(),
+              transitionsBuilder: _buildTransition,
+              transitionDuration: _transitionDuration,
+            ),
+          );
+          return;
+        }
+
+        // If we get here, we have a valid session
+        debugPrint('Session is valid, proceeding to main screen');
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
-                userProvider.isLoggedIn && userProvider.isSessionValid
-                    ? const MainScreen()
-                    : const LoginPage(),
+                const MainScreen(),
             transitionsBuilder: _buildTransition,
             transitionDuration: _transitionDuration,
           ),

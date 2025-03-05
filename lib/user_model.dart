@@ -58,61 +58,62 @@ class UserProvider extends ChangeNotifier {
     DateTime? loginTime;
     bool isLoggedIn = false;
 
-    // Try secure storage first
     try {
-      token = await _secureStorage.read(key: 'secure_token');
-      final secureLoginTime =
-          await _secureStorage.read(key: 'secure_login_time');
-      final secureIsLoggedIn =
-          await _secureStorage.read(key: 'secure_is_logged_in');
+      // Check Hive first
+      final box = await Hive.openBox('loginBox');
+      isLoggedIn = box.get('is_logged_in') ?? false;
+      token = box.get('token');
+      final hiveLoginTime = box.get('login_time');
+      loginTime =
+          hiveLoginTime != null ? DateTime.tryParse(hiveLoginTime) : null;
 
-      if (token != null &&
-          secureIsLoggedIn == 'true' &&
-          secureLoginTime != null) {
-        loginTime = DateTime.tryParse(secureLoginTime);
-        isLoggedIn = true;
+      // If not found in Hive, try secure storage
+      if (token == null || loginTime == null) {
+        token = await _secureStorage.read(key: 'secure_token');
+        final secureLoginTime =
+            await _secureStorage.read(key: 'secure_login_time');
+        final secureIsLoggedIn =
+            await _secureStorage.read(key: 'secure_is_logged_in');
+
+        if (token != null &&
+            secureIsLoggedIn == 'true' &&
+            secureLoginTime != null) {
+          loginTime = DateTime.tryParse(secureLoginTime);
+          isLoggedIn = true;
+        }
+      }
+
+      // If still not found, try SharedPreferences
+      if (token == null || loginTime == null) {
+        token = await prefs.getTokenAsync();
+        loginTime = await prefs.getLoginSessionAsync();
+        isLoggedIn = await prefs.getLoggedInAsync() ?? false;
+      }
+
+      // Update state if we found valid data
+      if (token != null && isLoggedIn && loginTime != null) {
+        // Validate session duration
+        if (DateTime.now().difference(loginTime).inHours >= 8) {
+          debugPrint('Session expired, logging out');
+          await logout();
+          return;
+        }
+
+        // Valid session found
+        _token = token;
+        _loginTime = loginTime;
+        _isLoggedIn = true;
+
+        // Sync data across all storage methods
+        await _syncStorageData(token, loginTime, true);
+      } else {
+        // No valid session found
+        debugPrint('No valid session found, logging out');
+        await logout();
       }
     } catch (e) {
-      debugPrint('Error reading from secure storage: $e');
-    }
-
-    // If secure storage failed, try SharedPreferences
-    if (token == null) {
-      token = await prefs.getTokenAsync();
-      loginTime = await prefs.getLoginSessionAsync();
-      isLoggedIn = await prefs.getLoggedInAsync() ?? false;
-    }
-
-    // If both failed, try Hive as last resort
-    if (token == null) {
-      try {
-        final box = await Hive.openBox('loginBox');
-        token = box.get('token');
-        final hiveLoginTime = box.get('login_time');
-        loginTime =
-            hiveLoginTime != null ? DateTime.tryParse(hiveLoginTime) : null;
-        isLoggedIn = box.get('is_logged_in') ?? false;
-      } catch (e) {
-        debugPrint('Error reading from Hive: $e');
-      }
-    }
-
-    // Update state if we found valid data
-    if (token != null && isLoggedIn && loginTime != null) {
-      _token = token;
-      _loginTime = loginTime;
-      _isLoggedIn = isLoggedIn;
-
-      // Validate session duration
-      if (DateTime.now().difference(_loginTime!).inHours >= 8) {
-        await logout(); // Session expired
-        return;
-      }
-
-      // Sync data across all storage methods
-      await _syncStorageData(token, loginTime, isLoggedIn);
-    } else {
-      await logout(); // No valid session found
+      debugPrint('Error during loadUser: $e');
+      await logout();
     }
 
     notifyListeners();
@@ -145,7 +146,7 @@ class UserProvider extends ChangeNotifier {
   }
 
   bool get isSessionValid {
-    if (_loginTime == null) return false;
+    if (_loginTime == null || !_isLoggedIn || _token.isEmpty) return false;
     return DateTime.now().difference(_loginTime!).inHours < 8;
   }
 
@@ -336,16 +337,41 @@ class UserProvider extends ChangeNotifier {
     _token = '';
     _loginTime = null;
 
-    // Clear SharedPreferences
-    await prefs.setLoggedOff();
-    await prefs.removeToken();
-    await prefs.removeLoginSession();
+    try {
+      // Clear SharedPreferences
+      await prefs.setLoggedOff();
+      await prefs.removeToken();
+      await prefs.removeLoginSession();
 
-    // Also clear secure storage
-    if (Platform.isIOS) {
-      await _secureStorage.delete(key: 'secure_token');
-      await _secureStorage.delete(key: 'secure_login_time');
-      await _secureStorage.delete(key: 'secure_is_logged_in');
+      // Clear secure storage
+      await _secureStorage.deleteAll();
+
+      // Clear Hive storage
+      final box = await Hive.openBox('loginBox');
+      await box.clear();
+      await box.put('is_logged_in', false); // Explicitly set to false
+      await box.close();
+
+      // Clear any other Hive boxes that might contain user data
+      final attendanceBox = await Hive.openBox('attendanceBox');
+      await attendanceBox.clear();
+      await attendanceBox.close();
+
+      final assignmentBox = await Hive.openBox('assignmentBox');
+      await assignmentBox.clear();
+      await assignmentBox.close();
+
+      final calendarBox = await Hive.openBox('calendarBox');
+      await calendarBox.clear();
+      await calendarBox.close();
+
+      final historyBox = await Hive.openBox('historyBox');
+      await historyBox.clear();
+      await historyBox.close();
+
+      debugPrint('Successfully cleared all storage locations during logout');
+    } catch (e) {
+      debugPrint('Error during logout cleanup: $e');
     }
 
     notifyListeners();
