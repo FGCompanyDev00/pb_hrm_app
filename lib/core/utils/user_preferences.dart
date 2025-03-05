@@ -63,8 +63,16 @@ class UserPreferences {
     await prefs.setBool(_isLoggedIn, isAccess);
     // Also store in secure storage for iOS
     if (Platform.isIOS) {
-      await _secureStorage.write(
-          key: 'secure_is_logged_in', value: isAccess.toString());
+      try {
+        // Delete existing value first
+        await _secureStorage.delete(key: 'secure_is_logged_in');
+        // Then write new value
+        await _secureStorage.write(
+            key: 'secure_is_logged_in', value: isAccess.toString());
+      } catch (e) {
+        debugPrint('Error updating secure storage: $e');
+        // Still continue as SharedPreferences is our primary storage
+      }
     }
   }
 
