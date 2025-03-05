@@ -32,31 +32,44 @@ List<Widget> buildMembersAvatars(
 }
 
 List<Widget> buildMembersAvatarsTimeTable(
-  Events event,
-  BuildContext context,
-) {
-  List<Widget> membersAvatar = [];
-  List<Widget> membersList = [];
-  int moreMembers = 0;
-  int countMembers = 0;
-  bool isEnoughCount = false;
+    Events event,
+    BuildContext context,
+    ) {
+  // Filter duplicate members based on employee_id
+  List<dynamic> filteredMembers = [];
+  final seenIds = <dynamic>{};
 
   if (event.members != null) {
-    event.members?.forEach((v) {
-      countMembers += 1;
-      membersList.add(avatarUserList(v['img_name'], v['member_name']));
-      if (isEnoughCount) return;
-      if (countMembers < 4) {
-        membersAvatar.add(avatarUser(v['img_name']));
-      } else {
-        moreMembers = (event.members?.length ?? 0) - (countMembers - 1);
-        membersAvatar.add(
-          avatarMore(context, membersList, count: '+ $moreMembers'),
-        );
-        isEnoughCount = true;
+    for (var member in event.members!) {
+      if (member['employee_id'] != null && seenIds.contains(member['employee_id'])) {
+        continue;
       }
-    });
+      seenIds.add(member['employee_id']);
+      filteredMembers.add(member);
+    }
   }
+
+  List<Widget> membersAvatar = [];
+  List<Widget> membersList = [];
+
+  // Build a list of member details once
+  for (var v in filteredMembers) {
+    membersList.add(avatarUserList(v['img_name'], v['member_name']));
+  }
+
+  // Display up to 3 avatars
+  for (int i = 0; i < filteredMembers.length && i < 3; i++) {
+    membersAvatar.add(avatarUser(filteredMembers[i]['img_name']));
+  }
+
+  // Show "+ more" if there are more than 3 members
+  if (filteredMembers.length > 3) {
+    int remaining = filteredMembers.length - 3;
+    membersAvatar.add(
+      avatarMore(context, membersList, count: '+ $remaining'),
+    );
+  }
+
   return membersAvatar;
 }
 
