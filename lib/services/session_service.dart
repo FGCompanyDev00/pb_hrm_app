@@ -28,7 +28,7 @@ class SessionService {
     }
 
     try {
-      if (Platform.isAndroid) {
+      if (!kIsWeb && Platform.isAndroid) {
         // For Android, try to initialize Workmanager first
         await _initializeAndroidBackgroundService();
       }
@@ -48,23 +48,30 @@ class SessionService {
     if (_isWorkManagerInitialized) return;
 
     try {
-      await Workmanager().initialize(callbackDispatcher);
+      await Workmanager().initialize(
+        callbackDispatcher,
+        isInDebugMode: true, // Set to false in production
+      );
+
       await Workmanager().registerPeriodicTask(
         'sessionCheck',
         sessionCheckTaskName,
         frequency: const Duration(minutes: 15),
+        initialDelay: const Duration(minutes: 1),
         constraints: Constraints(
           networkType: NetworkType.connected,
           requiresBatteryNotLow: true,
         ),
         existingWorkPolicy: ExistingWorkPolicy.replace,
-        backoffPolicy: BackoffPolicy.exponential,
+        backoffPolicy: BackoffPolicy.linear,
+        tag: 'session_check',
       );
+
       _isWorkManagerInitialized = true;
       debugPrint('Android background service initialized successfully');
     } catch (e) {
       debugPrint('Error initializing Android background service: $e');
-      throw e; // Propagate error to trigger fallback
+      rethrow; // Propagate error to trigger fallback
     }
   }
 
@@ -226,9 +233,10 @@ void callbackDispatcher() {
         case SessionService.sessionCheckTaskName:
           debugPrint('Executing background session check via Workmanager');
           await SessionService.checkSessionStatus();
-          break;
+          return true;
+        default:
+          return false;
       }
-      return true;
     } catch (e) {
       debugPrint('Background task error: $e');
       return false;

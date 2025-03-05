@@ -375,7 +375,7 @@ class DashboardState extends State<Dashboard>
         }
         _pageController.animateToPage(
           nextPage,
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 500),
           curve: Curves.easeIn,
         );
         setState(() {

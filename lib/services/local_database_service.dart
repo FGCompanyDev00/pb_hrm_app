@@ -10,17 +10,41 @@ class CalendarDatabaseService {
   Database? _database;
   String calendarTable = 'calendar_table';
   final int _currentVersion = 2; // Increase version for schema changes
+  bool _isInitializing = false;
 
   // Getter for our database
   Future<Database> get database async {
-    if (_database == null || !_database!.isOpen) {
-      _database = await initializeDatabase('calendar');
+    if (_database != null && _database!.isOpen) {
+      return _database!;
     }
+
+    if (_isInitializing) {
+      // Wait for initialization to complete
+      while (_isInitializing) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      if (_database != null && _database!.isOpen) {
+        return _database!;
+      }
+    }
+
+    _database = await initializeDatabase('calendar');
     return _database!;
   }
 
   // Function to initialize the database
   Future<Database> initializeDatabase(String nameDb) async {
+    if (_isInitializing) {
+      while (_isInitializing) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      if (_database != null && _database!.isOpen) {
+        return _database!;
+      }
+    }
+
+    _isInitializing = true;
+
     try {
       // Getting directory path for both Android and iOS
       Directory directory = await getApplicationDocumentsDirectory();
@@ -46,6 +70,12 @@ class CalendarDatabaseService {
         debugPrint("Deleted existing database for clean initialization");
       }
 
+      // Close existing database if it's open
+      if (_database != null && _database!.isOpen) {
+        await _database!.close();
+        _database = null;
+      }
+
       // Open/create database with versioning support
       Database db = await openDatabase(
         path,
@@ -57,11 +87,14 @@ class CalendarDatabaseService {
         },
       );
 
+      _database = db;
       debugPrint("Database Created/Opened Successfully");
       return db;
     } catch (e) {
       debugPrint("Error initializing database: $e");
       rethrow;
+    } finally {
+      _isInitializing = false;
     }
   }
 
@@ -186,8 +219,12 @@ class CalendarDatabaseService {
       // If database is closed, reset it so it can be reopened
       if (e.toString().contains('database_closed')) {
         _database = null;
+        // Retry the operation once
+        final db = await initializeDatabase('calendar');
+        if (db.isOpen) {
+          await insertEvents(events);
+        }
       }
-
       rethrow;
     }
   }

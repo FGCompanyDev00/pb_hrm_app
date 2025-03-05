@@ -75,8 +75,8 @@ class NotificationPermissionPageState
       // Android permission flow
       final status = await Permission.notification.status;
 
-      if (status.isGranted || status.isDenied || status.isPermanentlyDenied) {
-        // Proceed to next screen regardless of permission status
+      if (status.isGranted) {
+        // If permission is already granted, proceed to next screen
         if (mounted) {
           Navigator.pushReplacement(
             context,
@@ -85,14 +85,54 @@ class NotificationPermissionPageState
           );
         }
       } else {
-        // Request permission but don't block if denied
-        await Permission.notification.request();
+        // Request permission
+        final result = await Permission.notification.request();
+
         if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const LocationInformationPage()),
-          );
+          if (result.isDenied || result.isPermanentlyDenied) {
+            // Show dialog explaining why notifications are important
+            showDialog(
+              context: context,
+              builder: (BuildContext context) => AlertDialog(
+                title: Text(AppLocalizations.of(context)!.notification),
+                content: Text(AppLocalizations.of(context)!.weWantToSendYou),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Close dialog
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                const LocationInformationPage()),
+                      );
+                    },
+                    child: const Text('Skip'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      Navigator.pop(context); // Close dialog
+                      if (result.isPermanentlyDenied) {
+                        await openAppSettings();
+                      } else {
+                        _requestNotificationPermission();
+                      }
+                    },
+                    child: Text(result.isPermanentlyDenied
+                        ? 'Open Settings'
+                        : 'Try Again'),
+                  ),
+                ],
+              ),
+            );
+          } else {
+            // Permission granted, proceed to next screen
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const LocationInformationPage()),
+            );
+          }
         }
       }
     }

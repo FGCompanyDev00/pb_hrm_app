@@ -50,22 +50,29 @@ class OfflineProvider extends ChangeNotifier {
       return;
     }
 
-    // If already initialized, return
-    if (_isInitialized) {
-      debugPrint('Calendar already initialized');
+    // If already initialized and database is open, return
+    if (_isInitialized && _calendarDb != null && _calendarDb!.isOpen) {
+      debugPrint('Calendar already initialized and open');
       return;
     }
 
     _isInitializing = true;
 
     try {
-      await calendarDatabaseService.initializeDatabase('calendar');
+      // Close existing database if it's open
+      if (_calendarDb != null && _calendarDb!.isOpen) {
+        await _calendarDb!.close();
+      }
+
+      _calendarDb =
+          await calendarDatabaseService.initializeDatabase('calendar');
       _isInitialized = true;
       debugPrint('Calendar database initialized successfully');
     } catch (e) {
       debugPrint('Error initializing calendar database: $e');
       // Reset initialization flags to allow retry
       _isInitialized = false;
+      _calendarDb = null;
     } finally {
       _isInitializing = false;
     }
@@ -75,8 +82,8 @@ class OfflineProvider extends ChangeNotifier {
     if (events.isEmpty) return;
 
     try {
-      // Ensure database is initialized
-      if (!_isInitialized) {
+      // Ensure database is initialized and open
+      if (!_isInitialized || _calendarDb == null || !_calendarDb!.isOpen) {
         await initializeCalendar();
       }
 
@@ -99,15 +106,20 @@ class OfflineProvider extends ChangeNotifier {
       // Reset initialization flag if database is closed
       if (e.toString().contains('database_closed')) {
         _isInitialized = false;
+        _calendarDb = null;
         await initializeCalendar();
+        // Retry insertion once after reinitializing
+        if (events.isNotEmpty) {
+          await calendarDatabaseService.insertEvents(events);
+        }
       }
     }
   }
 
   Future<List<Events>> getCalendar() async {
     try {
-      // Ensure database is initialized
-      if (!_isInitialized) {
+      // Ensure database is initialized and open
+      if (!_isInitialized || _calendarDb == null || !_calendarDb!.isOpen) {
         await initializeCalendar();
       }
       return await calendarDatabaseService.getListEvents();
@@ -118,7 +130,10 @@ class OfflineProvider extends ChangeNotifier {
       // Reset initialization flag if database is closed
       if (e.toString().contains('database_closed')) {
         _isInitialized = false;
+        _calendarDb = null;
         await initializeCalendar();
+        // Retry fetch once after reinitializing
+        return await calendarDatabaseService.getListEvents();
       }
 
       return [];
@@ -373,11 +388,15 @@ class OfflineProvider extends ChangeNotifier {
   // Method to properly close all databases
   Future<void> _closeAllDatabases() async {
     try {
-      await calendarDatabaseService.closeDatabase();
+      if (_calendarDb != null && _calendarDb!.isOpen) {
+        await _calendarDb!.close();
+        _calendarDb = null;
+      }
       if (_historyDb != null && _historyDb!.isOpen) {
         await _historyDb!.close();
         _historyDb = null;
       }
+      _isInitialized = false;
       debugPrint('All databases closed properly');
     } catch (e) {
       debugPrint('Error closing databases: $e');
@@ -389,6 +408,8 @@ class OfflineProvider extends ChangeNotifier {
     await _closeAllDatabases();
     _isInitialized = false;
     _isInitializing = false;
+    _calendarDb = null;
+    _historyDb = null;
 
     // Reinitialize databases
     await initializeCalendar();

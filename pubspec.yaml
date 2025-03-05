@@ -12,6 +12,7 @@ dependencies:
     sdk: flutter
 
   dio: ^5.7.0
+  android_alarm_manager_plus: ^3.0.4
   awesome_dialog: ^3.2.1
   jwt_decoder: ^2.0.1
   device_info_plus: ^11.3.0
@@ -48,7 +49,6 @@ dependencies:
   fluttertoast: ^8.2.8
   file_picker: ^8.0.6
   geolocator: ^12.0.0
-  workmanager: ^0.5.2
   google_maps_flutter: ^2.7.1
   url_launcher: ^6.3.0
   flutter_secure_storage: ^9.2.2
@@ -80,6 +80,7 @@ dependencies:
   flutter_animate: ^4.5.2
   flutter_background_service: ^5.0.5
   flutter_background_service_ios: ^5.0.0
+  workmanager: ^0.5.2
 
 dev_dependencies:
   flutter_test:
