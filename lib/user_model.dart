@@ -305,7 +305,8 @@ class UserProvider extends ChangeNotifier {
   }
 
   // Log in the user, save token and notify listeners
-  Future<void> login(String token) async {
+  Future<void> login(String token,
+      {bool rememberMe = false, String? username, String? password}) async {
     _isLoggedIn = true;
     _token = token;
     _loginTime = DateTime.now();
@@ -328,6 +329,13 @@ class UserProvider extends ChangeNotifier {
     await box.put('login_time', _loginTime.toString());
     await box.put('is_logged_in', true);
 
+    // Store remember me state and credentials if enabled
+    if (rememberMe && username != null && password != null) {
+      await box.put('remember_me', true);
+      await box.put('username', username);
+      await box.put('password', password);
+    }
+
     notifyListeners();
   }
 
@@ -338,6 +346,12 @@ class UserProvider extends ChangeNotifier {
     _loginTime = null;
 
     try {
+      // Save remember me credentials before clearing
+      final loginBox = await Hive.openBox('loginBox');
+      final rememberedUsername = loginBox.get('username');
+      final rememberedPassword = loginBox.get('password');
+      final wasRememberMeEnabled = loginBox.get('remember_me') ?? false;
+
       // Clear SharedPreferences
       await prefs.setLoggedOff();
       await prefs.removeToken();
@@ -346,13 +360,21 @@ class UserProvider extends ChangeNotifier {
       // Clear secure storage
       await _secureStorage.deleteAll();
 
-      // Clear Hive storage
-      final box = await Hive.openBox('loginBox');
-      await box.clear();
-      await box.put('is_logged_in', false); // Explicitly set to false
-      await box.close();
+      // Clear Hive storage but preserve remember me if enabled
+      await loginBox.clear();
+      await loginBox.put('is_logged_in', false); // Explicitly set to false
 
-      // Clear any other Hive boxes that might contain user data
+      // Restore remember me credentials if they existed
+      if (wasRememberMeEnabled &&
+          rememberedUsername != null &&
+          rememberedPassword != null) {
+        await loginBox.put('username', rememberedUsername);
+        await loginBox.put('password', rememberedPassword);
+        await loginBox.put('remember_me', true);
+      }
+      await loginBox.close();
+
+      // Clear other Hive boxes that contain user data
       final attendanceBox = await Hive.openBox('attendanceBox');
       await attendanceBox.clear();
       await attendanceBox.close();
@@ -369,7 +391,8 @@ class UserProvider extends ChangeNotifier {
       await historyBox.clear();
       await historyBox.close();
 
-      debugPrint('Successfully cleared all storage locations during logout');
+      debugPrint(
+          'Successfully cleared all storage locations during logout while preserving remember me settings');
     } catch (e) {
       debugPrint('Error during logout cleanup: $e');
     }

@@ -91,7 +91,7 @@ class LoginPageState extends State<LoginPage>
       });
 
       final languageNotifier =
-      Provider.of<LanguageNotifier>(context, listen: false);
+          Provider.of<LanguageNotifier>(context, listen: false);
       languageNotifier.changeLanguage(defaultLanguage);
     } else {
       // If nothing saved, default to English
@@ -141,29 +141,25 @@ class LoginPageState extends State<LoginPage>
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseBody = jsonDecode(response.body);
           final String token = responseBody['token'];
-          final String employeeId = responseBody['id']; // Get the employee id
+          final String employeeId = responseBody['id'];
 
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(
-              'employee_id', employeeId); // Save employee id as current user id
+          await prefs.setString('employee_id', employeeId);
           sl<UserPreferences>().setToken(token);
           sl<UserPreferences>().setLoggedIn(true);
 
-          if (_rememberMe) {
-            await _saveCredentials(username, password, token);
-          } else {
-            await _clearCredentials();
+          if (mounted) {
+            Provider.of<UserProvider>(context, listen: false).login(
+              token,
+              rememberMe: _rememberMe,
+              username: username,
+              password: password,
+            );
           }
-
-          await _storage.write(key: 'username', value: username);
-          await _storage.write(key: 'password', value: password);
 
           if (_biometricEnabled) {
             await _storage.write(key: 'biometricEnabled', value: 'true');
           }
-
-          if (mounted)
-            Provider.of<UserProvider>(context, listen: false).login(token);
 
           bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
 
@@ -186,7 +182,6 @@ class LoginPageState extends State<LoginPage>
             }
           }
         } else if (response.statusCode == 401) {
-          // Unauthorized (Incorrect Password)
           _showCustomDialog(
             AppLocalizations.of(context)!.loginFailed,
             AppLocalizations.of(context)!.incorrectPassword,
@@ -206,17 +201,16 @@ class LoginPageState extends State<LoginPage>
           );
         }
       } catch (e) {
-        _showCustomDialog(
-          AppLocalizations.of(context)!.serverError,
-          AppLocalizations.of(context)!.serverErrorMessage,
-        );
+        debugPrint('Error during login: $e');
+        if (mounted) {
+          _showCustomDialog(
+            AppLocalizations.of(context)!.loginFailed,
+            AppLocalizations.of(context)!.serverErrorMessage,
+          );
+        }
       }
     } else {
-      // If offline, show offline option and allow offline login
-      _showOfflineOptionModal(
-        AppLocalizations.of(context)!.noInternet,
-        AppLocalizations.of(context)!.offlineMessage,
-      );
+      await _offlineLogin();
     }
   }
 
@@ -342,7 +336,12 @@ class LoginPageState extends State<LoginPage>
         storedPassword == _passwordController.text.trim() &&
         token != null) {
       if (mounted) {
-        Provider.of<UserProvider>(context, listen: false).login(token);
+        Provider.of<UserProvider>(context, listen: false).login(
+          token,
+          rememberMe: _rememberMe,
+          username: _usernameController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MainScreen()),
@@ -402,9 +401,9 @@ class LoginPageState extends State<LoginPage>
     final box = await Hive.openBox('loginBox');
     setState(() {
       _usernameController.text =
-      box.get('username', defaultValue: '') as String;
+          box.get('username', defaultValue: '') as String;
       _passwordController.text =
-      box.get('password', defaultValue: '') as String;
+          box.get('password', defaultValue: '') as String;
       _rememberMe = box.containsKey('username') && box.containsKey('password');
     });
   }
@@ -420,7 +419,7 @@ class LoginPageState extends State<LoginPage>
     final DateTime? pickedDate = await showDatePicker(
       context: context,
       initialDate:
-      Provider.of<DateProvider>(context, listen: false).selectedDate,
+          Provider.of<DateProvider>(context, listen: false).selectedDate,
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
@@ -438,7 +437,7 @@ class LoginPageState extends State<LoginPage>
       builder: (BuildContext context) {
         return AlertDialog(
           shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -558,7 +557,7 @@ class LoginPageState extends State<LoginPage>
                 context: context,
                 shape: const RoundedRectangleBorder(
                   borderRadius:
-                  BorderRadius.vertical(top: Radius.circular(30.0)),
+                      BorderRadius.vertical(top: Radius.circular(30.0)),
                 ),
                 builder: (BuildContext context) {
                   return Container(
@@ -580,7 +579,7 @@ class LoginPageState extends State<LoginPage>
                             IconButton(
                               icon: Icon(Icons.close,
                                   color:
-                                  isDarkMode ? Colors.white : Colors.black),
+                                      isDarkMode ? Colors.white : Colors.black),
                               onPressed: () {
                                 Navigator.pop(context);
                               },
@@ -679,7 +678,7 @@ class LoginPageState extends State<LoginPage>
     final bool isDarkMode = themeNotifier.isDarkMode;
     return Column(
       crossAxisAlignment:
-      CrossAxisAlignment.start, // Aligns children to the start (left)
+          CrossAxisAlignment.start, // Aligns children to the start (left)
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -757,15 +756,15 @@ class LoginPageState extends State<LoginPage>
         decoration: BoxDecoration(
           gradient: isDarkMode
               ? const LinearGradient(
-            colors: [Color(0xFF2C2C2C), Color(0xFF3A3A3A)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          )
+                  colors: [Color(0xFF2C2C2C), Color(0xFF3A3A3A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
               : const LinearGradient(
-            colors: [Color(0xFFFEE9C3), Color(0xFFFFF3D6)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+                  colors: [Color(0xFFFEE9C3), Color(0xFFFFF3D6)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
           borderRadius: BorderRadius.circular(screenWidth * 0.04),
           boxShadow: [
             BoxShadow(
@@ -818,7 +817,7 @@ class LoginPageState extends State<LoginPage>
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.username,
               labelStyle:
-              TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                  TextStyle(color: isDarkMode ? Colors.white : Colors.black),
               prefixIcon: const Icon(Icons.person_outline, color: Colors.black),
               filled: true,
               fillColor: isDarkMode ? Colors.grey : Colors.white,
@@ -839,7 +838,7 @@ class LoginPageState extends State<LoginPage>
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.password,
               labelStyle:
-              TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                  TextStyle(color: isDarkMode ? Colors.white : Colors.black),
               prefixIcon: const Icon(Icons.lock_outline, color: Colors.black),
               suffixIcon: IconButton(
                 icon: Icon(
@@ -905,11 +904,11 @@ class LoginPageState extends State<LoginPage>
             onTap: _biometricEnabled
                 ? () => _authenticate(useBiometric: true)
                 : () {
-              _showCustomDialog(
-                AppLocalizations.of(context)!.biometricDisabled,
-                AppLocalizations.of(context)!.enableBiometric,
-              );
-            },
+                    _showCustomDialog(
+                      AppLocalizations.of(context)!.biometricDisabled,
+                      AppLocalizations.of(context)!.enableBiometric,
+                    );
+                  },
             child: Container(
               width: screenWidth * 0.35,
               height: screenWidth * 0.125,

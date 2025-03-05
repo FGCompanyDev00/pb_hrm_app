@@ -13,8 +13,11 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 final mediaQuery = MediaQuery.of(navigatorKey.currentState!.context);
 final fullHeight = mediaQuery.size.height;
 final connectivityResult = sl<Connectivity>();
-OfflineProvider offlineProvider = Provider.of<OfflineProvider>(navigatorKey.currentState!.context, listen: false);
-final bool darkModeGlobal = Provider.of<ThemeNotifier>(navigatorKey.currentState!.context).isDarkMode;
+OfflineProvider offlineProvider = Provider.of<OfflineProvider>(
+    navigatorKey.currentState!.context,
+    listen: false);
+final bool darkModeGlobal =
+    Provider.of<ThemeNotifier>(navigatorKey.currentState!.context).isDarkMode;
 
 FToast fToast = FToast();
 List<Events> eventsForDay = [];
