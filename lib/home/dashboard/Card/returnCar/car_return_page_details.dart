@@ -43,7 +43,6 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
   }
 
   Future<void> fetchEventData() async {
-
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
@@ -99,7 +98,6 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
 
   /// Called when user finally confirms (in the Comment dialog).
   Future<void> confirmReturn() async {
-
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
@@ -124,7 +122,8 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
 
     var request = http.MultipartRequest(
       'PUT',
-      Uri.parse('$baseUrl/api/office-administration/car_permit/complete/${widget.uid}'),
+      Uri.parse(
+          '$baseUrl/api/office-administration/car_permit/complete/${widget.uid}'),
     );
 
     request.headers['Authorization'] = 'Bearer $token';
@@ -157,10 +156,12 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
 
     // After the response, show success or error
     if (response.statusCode == 200 && responseData != null) {
-      if (responseData['statusCode'] == 200 || responseData['statusCode'] == 201) {
+      if (responseData['statusCode'] == 200 ||
+          responseData['statusCode'] == 201) {
         // Success
         if (mounted) {
-          showResultModal(context, success: true, message: responseData['message'] ?? 'Success!');
+          showResultModal(context,
+              success: true, message: responseData['message'] ?? 'Success!');
         }
       } else {
         // API returned an error
@@ -178,7 +179,9 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
     } else {
       // HTTP error without specific API error message
       if (mounted) {
-        showResultModal(context, success: false, message: 'Failed to confirm return. Please try again.');
+        showResultModal(context,
+            success: false,
+            message: 'Failed to confirm return. Please try again.');
       }
     }
   }
@@ -230,7 +233,8 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                       hintStyle: TextStyle(
                         color: isDarkMode ? Colors.white54 : Colors.black54,
                       ),
-                      fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                      fillColor:
+                          isDarkMode ? Colors.grey[800] : Colors.grey[200],
                       filled: true,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -275,10 +279,10 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
 
   /// After confirmReturn, we show a final result (success or error)
   void showResultModal(
-      BuildContext context, {
-        required bool success,
-        required String message,
-      }) {
+    BuildContext context, {
+    required bool success,
+    required String message,
+  }) {
     final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
     final bool isDarkMode = themeNotifier.isDarkMode;
 
@@ -286,8 +290,8 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
       context: context,
       builder: (BuildContext dialogCtx) {
         return AlertDialog(
-          backgroundColor:
-          success ? (isDarkMode ? Colors.grey[800] : Colors.white)
+          backgroundColor: success
+              ? (isDarkMode ? Colors.grey[800] : Colors.white)
               : Colors.red[400], // example: red if error
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -338,7 +342,9 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: success
-                        ? (isDarkMode ? Colors.orangeAccent : const Color(0xFFE2AD30))
+                        ? (isDarkMode
+                            ? Colors.orangeAccent
+                            : const Color(0xFFE2AD30))
                         : Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -431,8 +437,8 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
               children: [
                 Text(
                   eventData?['created_date'] != null
-                      ? DateFormat('MMMM dd, yyyy')
-                      .format(DateTime.parse(eventData!['created_date']).toLocal())
+                      ? DateFormat('MMMM dd, yyyy').format(
+                          DateTime.parse(eventData!['created_date']).toLocal())
                       : '',
                   style: TextStyle(
                     fontSize: 15,
@@ -500,8 +506,7 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                   ),
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
                     decoration: BoxDecoration(
                       color: isDarkMode ? Colors.grey[700] : Colors.white,
                       borderRadius: BorderRadius.circular(10),
@@ -514,7 +519,7 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor:
-                            isDarkMode ? Colors.green : Colors.orange,
+                                isDarkMode ? Colors.green : Colors.orange,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -532,8 +537,7 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                           child: Text(
                             'Choose Files',
                             style: TextStyle(
-                              color:
-                              isDarkMode ? Colors.black : Colors.white,
+                              color: isDarkMode ? Colors.black : Colors.white,
                             ),
                           ),
                         ),
@@ -544,8 +548,7 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                                 ? 'No file chosen'
                                 : selectedFile!.name,
                             style: TextStyle(
-                              color:
-                              isDarkMode ? Colors.white : Colors.black,
+                              color: isDarkMode ? Colors.white : Colors.black,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -603,11 +606,11 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
 
   /// TextField builder
   Widget buildTextField(
-      String label,
-      TextEditingController controller, {
-        TextInputType keyboardType = TextInputType.text,
-        required bool isDarkMode,
-      }) {
+    String label,
+    TextEditingController controller, {
+    TextInputType keyboardType = TextInputType.text,
+    required bool isDarkMode,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -648,9 +651,8 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: isDarkMode
-                    ? Colors.orangeAccent
-                    : const Color(0xFFE2AD30),
+                color:
+                    isDarkMode ? Colors.orangeAccent : const Color(0xFFE2AD30),
               ),
             ),
           ),
@@ -661,11 +663,11 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
 
   /// Date+Time picker builder
   Widget buildDateField(
-      BuildContext context,
-      String label,
-      TextEditingController controller,
-      bool isDarkMode,
-      ) {
+    BuildContext context,
+    String label,
+    TextEditingController controller,
+    bool isDarkMode,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -696,8 +698,8 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
 
                 if (controller.text.isNotEmpty) {
                   try {
-                    initialDateTime =
-                        DateFormat('yyyy-MM-dd HH:mm:ss').parse(controller.text);
+                    initialDateTime = DateFormat('yyyy-MM-dd HH:mm:ss')
+                        .parse(controller.text);
                   } catch (_) {
                     initialDateTime = DateTime.now();
                   }
@@ -714,13 +716,13 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                     return Theme(
                       data: isDarkMode
                           ? ThemeData.dark().copyWith(
-                        colorScheme: ColorScheme.dark(
-                          primary: Colors.orangeAccent,
-                          onPrimary: Colors.black,
-                          surface: Colors.grey[800]!,
-                          onSurface: Colors.white,
-                        ),
-                      )
+                              colorScheme: ColorScheme.dark(
+                                primary: Colors.orangeAccent,
+                                onPrimary: Colors.black,
+                                surface: Colors.grey[800]!,
+                                onSurface: Colors.white,
+                              ),
+                            )
                           : ThemeData.light(),
                       child: child!,
                     );
@@ -730,7 +732,7 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
 
                 // 2) Time
                 final TimeOfDay initialTime =
-                TimeOfDay.fromDateTime(initialDateTime);
+                    TimeOfDay.fromDateTime(initialDateTime);
 
                 final TimeOfDay? pickedTime = await showTimePicker(
                   context: context,
@@ -739,13 +741,13 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                     return Theme(
                       data: isDarkMode
                           ? ThemeData.dark().copyWith(
-                        colorScheme: ColorScheme.dark(
-                          primary: Colors.orangeAccent,
-                          onPrimary: Colors.black,
-                          surface: Colors.grey[800]!,
-                          onSurface: Colors.white,
-                        ),
-                      )
+                              colorScheme: ColorScheme.dark(
+                                primary: Colors.orangeAccent,
+                                onPrimary: Colors.black,
+                                surface: Colors.grey[800]!,
+                                onSurface: Colors.white,
+                              ),
+                            )
                           : ThemeData.light(),
                       child: child!,
                     );
@@ -761,8 +763,8 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                   pickedTime.minute,
                 );
 
-                final String formatted = DateFormat('yyyy-MM-dd HH:mm:ss')
-                    .format(finalDateTime);
+                final String formatted =
+                    DateFormat('yyyy-MM-dd HH:mm:ss').format(finalDateTime);
 
                 setState(() {
                   controller.text = formatted;
@@ -786,9 +788,8 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: isDarkMode
-                    ? Colors.orangeAccent
-                    : const Color(0xFFE2AD30),
+                color:
+                    isDarkMode ? Colors.orangeAccent : const Color(0xFFE2AD30),
               ),
             ),
           ),
@@ -806,10 +807,10 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
       appBar: buildAppBar(context),
       body: isLoading
           ? Center(
-        child: CircularProgressIndicator(
-          color: isDarkMode ? Colors.orangeAccent : Colors.blue,
-        ),
-      )
+              child: CircularProgressIndicator(
+                color: isDarkMode ? Colors.orangeAccent : Colors.blue,
+              ),
+            )
           : buildBody(context),
       backgroundColor: isDarkMode ? Colors.black : Colors.white,
     );

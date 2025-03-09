@@ -7,6 +7,7 @@ import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class ReturnCarPage extends StatefulWidget {
   const ReturnCarPage({super.key});
@@ -15,12 +16,23 @@ class ReturnCarPage extends StatefulWidget {
   ReturnCarPageState createState() => ReturnCarPageState();
 }
 
-class ReturnCarPageState extends State<ReturnCarPage> {
+class ReturnCarPageState extends State<ReturnCarPage>
+    with SingleTickerProviderStateMixin {
   List<dynamic> events = [];
   List<dynamic> filteredEvents = [];
   bool isLoading = true;
   TextEditingController searchController = TextEditingController();
   String searchOption = 'requestor_name';
+  bool isSearchFocused = false;
+  List<String> recentSearches = [];
+  bool showFilterOptions = false;
+
+  // Animation controllers
+  late AnimationController _animationController;
+  late Animation<double> _searchBarAnimation;
+
+  // Focus node for search field
+  final FocusNode _searchFocusNode = FocusNode();
 
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
@@ -30,10 +42,64 @@ class ReturnCarPageState extends State<ReturnCarPage> {
     super.initState();
     fetchEvents();
     searchController.addListener(_filterEvents);
+    _loadRecentSearches();
+
+    // Initialize animation controller
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
+    _searchBarAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Add listener for focus changes
+    _searchFocusNode.addListener(() {
+      setState(() {
+        isSearchFocused = _searchFocusNode.hasFocus;
+        if (isSearchFocused) {
+          _animationController.forward();
+        } else {
+          _animationController.reverse();
+          showFilterOptions = false;
+        }
+      });
+    });
+  }
+
+  Future<void> _loadRecentSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      recentSearches = prefs.getStringList('recent_car_searches') ?? [];
+    });
+  }
+
+  Future<void> _saveRecentSearch(String query) async {
+    if (query.isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    List<String> searches = prefs.getStringList('recent_car_searches') ?? [];
+
+    // Remove if already exists and add to the beginning
+    searches.remove(query);
+    searches.insert(0, query);
+
+    // Keep only the last 5 searches
+    if (searches.length > 5) {
+      searches = searches.sublist(0, 5);
+    }
+
+    await prefs.setStringList('recent_car_searches', searches);
+    setState(() {
+      recentSearches = searches;
+    });
   }
 
   Future<void> fetchEvents() async {
-
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
@@ -95,9 +161,26 @@ class ReturnCarPageState extends State<ReturnCarPage> {
     }
   }
 
-  void _onSearchOptionChanged(String? newValue) {
+  void _onSearchOptionChanged(String newValue) {
     setState(() {
-      searchOption = newValue!;
+      searchOption = newValue;
+      _filterEvents();
+
+      // Animate the change
+      _animationController.reset();
+      _animationController.forward();
+    });
+  }
+
+  void _onSearchSubmitted(String query) {
+    _saveRecentSearch(query);
+    _filterEvents();
+    FocusScope.of(context).unfocus();
+  }
+
+  void _clearSearch() {
+    setState(() {
+      searchController.clear();
       filteredEvents = events;
     });
   }
@@ -121,6 +204,8 @@ class ReturnCarPageState extends State<ReturnCarPage> {
   @override
   void dispose() {
     searchController.dispose();
+    _searchFocusNode.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -128,6 +213,9 @@ class ReturnCarPageState extends State<ReturnCarPage> {
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
+    final Color primaryColor =
+        isDarkMode ? Colors.blueAccent.shade200 : Colors.blueAccent;
+
     return Scaffold(
       backgroundColor: Theme.of(context).brightness == Brightness.dark
           ? Colors.black // Background for dark mode
@@ -144,7 +232,9 @@ class ReturnCarPageState extends State<ReturnCarPage> {
             flexibleSpace: Container(
               decoration: BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+                  image: AssetImage(isDarkMode
+                      ? 'assets/darkbg.png'
+                      : 'assets/background.png'),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -184,74 +274,313 @@ class ReturnCarPageState extends State<ReturnCarPage> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                Container(
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.white, // Background color based on theme
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  child: Row(
+                // Modern Search Box with Animation
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  margin: EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: isSearchFocused ? 16.0 : 12.0),
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? Colors.grey.shade900
+                        : Colors.grey.shade100,
+                    borderRadius:
+                        BorderRadius.circular(isSearchFocused ? 20 : 30),
+                    boxShadow: isSearchFocused
+                        ? [
+                            BoxShadow(
+                              color: primaryColor.withOpacity(0.3),
+                              blurRadius: 10,
+                              spreadRadius: 1,
+                            )
+                          ]
+                        : null,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Expanded(
-                        child: TextField(
-                          controller: searchController,
-                          style: TextStyle(
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white // Text color in dark mode
-                                : Colors.black, // Text color in light mode
-                          ),
-                          decoration: InputDecoration(
-                            hintText: 'Search',
-                            hintStyle: TextStyle(
-                              color: Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.white70 // Lighter hint color in dark mode
-                                  : Colors.black54, // Lighter hint color in light mode
-                            ),
-                            prefixIcon: Icon(
+                      Row(
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            width: 50,
+                            height: 50,
+                            padding: const EdgeInsets.all(10),
+                            child: Icon(
                               Icons.search,
-                              color: Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.white70 // Icon color in dark mode
-                                  : Colors.black54, // Icon color in light mode
-                            ),
-                            suffixIcon: DropdownButton<String>(
-                              value: searchOption,
-                              icon: Icon(
-                                Icons.arrow_drop_down,
-                                color: Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.white // Dropdown icon in dark mode
-                                    : Colors.black, // Dropdown icon in light mode
+                              color: isSearchFocused
+                                  ? primaryColor
+                                  : (isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black54),
+                            )
+                                .animate(
+                                  onPlay: (controller) => controller.repeat(),
+                                )
+                                .shimmer(
+                                  duration: 2.seconds,
+                                  color: isSearchFocused
+                                      ? primaryColor
+                                      : Colors.transparent,
+                                ),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: searchController,
+                              focusNode: _searchFocusNode,
+                              style: TextStyle(
+                                color: isDarkMode ? Colors.white : Colors.black,
+                                fontSize: 16,
                               ),
-                              onChanged: _onSearchOptionChanged,
-                              items: const [
-                                DropdownMenuItem<String>(
-                                  value: 'requestor_name',
-                                  child: Text('Requestor Name'),
+                              decoration: InputDecoration(
+                                hintText: searchOption == 'requestor_name'
+                                    ? 'Search by Requestor Name...'
+                                    : 'Search by Car Plate...',
+                                hintStyle: TextStyle(
+                                  color: isDarkMode
+                                      ? Colors.white60
+                                      : Colors.black45,
+                                  fontSize: 14,
                                 ),
-                                DropdownMenuItem<String>(
-                                  value: 'license_plate',
-                                  child: Text('License Plate'),
-                                ),
-                              ],
-                              dropdownColor: Theme.of(context).brightness == Brightness.dark
-                                  ? Colors.black // Dropdown menu background in dark mode
-                                  : Colors.white, // Dropdown menu background in light mode
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(40),
+                                border: InputBorder.none,
+                                contentPadding:
+                                    const EdgeInsets.symmetric(vertical: 15),
+                              ),
+                              onSubmitted: _onSearchSubmitted,
                             ),
                           ),
-                        ),
+                          if (searchController.text.isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.clear),
+                              color:
+                                  isDarkMode ? Colors.white70 : Colors.black54,
+                              onPressed: _clearSearch,
+                            ).animate().fade().scale(),
+                          IconButton(
+                            icon: Icon(
+                              showFilterOptions
+                                  ? Icons.arrow_drop_up
+                                  : Icons.filter_list,
+                              color:
+                                  isDarkMode ? Colors.white70 : Colors.black54,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                showFilterOptions = !showFilterOptions;
+                              });
+                            },
+                          ).animate().fade(),
+                        ],
+                      ),
+
+                      // Filter Options
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        child: showFilterOptions
+                            ? Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.only(
+                                    left: 16, right: 16, bottom: 16, top: 8),
+                                child: Wrap(
+                                  spacing: 10,
+                                  children: [
+                                    FilterChip(
+                                      label: const Text('Requestor Name'),
+                                      selected:
+                                          searchOption == 'requestor_name',
+                                      checkmarkColor: Colors.white,
+                                      selectedColor: primaryColor,
+                                      backgroundColor: isDarkMode
+                                          ? Colors.grey.shade800
+                                          : Colors.grey.shade200,
+                                      labelStyle: TextStyle(
+                                        color: searchOption == 'requestor_name'
+                                            ? Colors.white
+                                            : (isDarkMode
+                                                ? Colors.white70
+                                                : Colors.black87),
+                                      ),
+                                      onSelected: (selected) {
+                                        if (selected) {
+                                          _onSearchOptionChanged(
+                                              'requestor_name');
+                                        }
+                                      },
+                                    ).animate().fade().scale(),
+                                    FilterChip(
+                                      label: const Text('Plate Number'),
+                                      selected: searchOption == 'license_plate',
+                                      checkmarkColor: Colors.white,
+                                      selectedColor: primaryColor,
+                                      backgroundColor: isDarkMode
+                                          ? Colors.grey.shade800
+                                          : Colors.grey.shade200,
+                                      labelStyle: TextStyle(
+                                        color: searchOption == 'license_plate'
+                                            ? Colors.white
+                                            : (isDarkMode
+                                                ? Colors.white70
+                                                : Colors.black87),
+                                      ),
+                                      onSelected: (selected) {
+                                        if (selected) {
+                                          _onSearchOptionChanged(
+                                              'license_plate');
+                                        }
+                                      },
+                                    ).animate().fade().scale(),
+                                  ],
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+
+                      // Recent Searches
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        child: isSearchFocused &&
+                                searchController.text.isEmpty &&
+                                recentSearches.isNotEmpty
+                            ? Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.only(
+                                    left: 16, right: 16, bottom: 16, top: 8),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Padding(
+                                      padding:
+                                          const EdgeInsets.only(bottom: 8.0),
+                                      child: Text(
+                                        'Carian Terkini',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: isDarkMode
+                                              ? Colors.white70
+                                              : Colors.black54,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    ...recentSearches.map((search) => ListTile(
+                                          dense: true,
+                                          contentPadding: EdgeInsets.zero,
+                                          leading: Icon(
+                                            Icons.history,
+                                            size: 18,
+                                            color: isDarkMode
+                                                ? Colors.white60
+                                                : Colors.black45,
+                                          ),
+                                          title: Text(
+                                            search,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: isDarkMode
+                                                  ? Colors.white
+                                                  : Colors.black87,
+                                            ),
+                                          ),
+                                          onTap: () {
+                                            setState(() {
+                                              searchController.text = search;
+                                              _filterEvents();
+                                              FocusScope.of(context).unfocus();
+                                            });
+                                          },
+                                        ).animate().fadeIn(
+                                            delay: 100.ms *
+                                                recentSearches
+                                                    .indexOf(search))),
+                                  ],
+                                ),
+                              )
+                            : const SizedBox.shrink(),
                       ),
                     ],
                   ),
                 ),
-                if (filteredEvents.isEmpty)
-                  const Expanded(
+
+                // Search Results Count
+                AnimatedOpacity(
+                  opacity: searchController.text.isNotEmpty ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: searchController.text.isNotEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0, vertical: 8.0),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Ditemui ${filteredEvents.length} kereta',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                              ),
+                              const Spacer(),
+                              if (filteredEvents.isNotEmpty)
+                                TextButton.icon(
+                                  icon: const Icon(Icons.sort, size: 16),
+                                  label: const Text('Terkini'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: primaryColor,
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  onPressed: () {
+                                    // Implement sorting functionality here
+                                  },
+                                ),
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+
+                // Results
+                if (filteredEvents.isEmpty && searchController.text.isNotEmpty)
+                  Expanded(
                     child: Center(
-                      child: Text(
-                        'No results found',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 70,
+                            color: isDarkMode
+                                ? Colors.white30
+                                : Colors.grey.shade300,
+                          ).animate().fade().scale(),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Tiada kereta ditemui',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: isDarkMode
+                                  ? Colors.white70
+                                  : Colors.grey.shade600,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Cuba carian yang lain',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDarkMode
+                                  ? Colors.white60
+                                  : Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   )
@@ -267,7 +596,8 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => ReturnCarPageDetails(uid: event['uid']),
+                                builder: (context) =>
+                                    ReturnCarPageDetails(uid: event['uid']),
                               ),
                             );
                           },
@@ -277,13 +607,19 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: Theme.of(context).brightness == Brightness.dark
-                                      ? Colors.blueGrey // Dark mode border color
-                                      : Colors.blueAccent, // Light mode border color
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors
+                                          .blueGrey // Dark mode border color
+                                      : Colors
+                                          .blueAccent, // Light mode border color
                                 ),
-                                color: Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.black45 // Dark mode background color
-                                    : Colors.white, // Light mode background color
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors
+                                        .black45 // Dark mode background color
+                                    : Colors
+                                        .white, // Light mode background color
                               ),
                               child: Padding(
                                 padding: const EdgeInsets.all(8.0),
@@ -312,16 +648,21 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                                     // Main content section
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             event['requestor_name'] ?? '',
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 15,
-                                              color: Theme.of(context).brightness == Brightness.dark
-                                                  ? Colors.white // Dark mode text color
-                                                  : Colors.black, // Light mode text color
+                                              color: Theme.of(context)
+                                                          .brightness ==
+                                                      Brightness.dark
+                                                  ? Colors
+                                                      .white // Dark mode text color
+                                                  : Colors
+                                                      .black, // Light mode text color
                                             ),
                                           ),
                                           const SizedBox(height: 4),
@@ -329,9 +670,13 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                                             'Date: ${event['date_out']} To ${event['date_in']}',
                                             style: TextStyle(
                                               fontSize: 12,
-                                              color: Theme.of(context).brightness == Brightness.dark
-                                                  ? Colors.white70 // Lighter text in dark mode
-                                                  : Colors.grey[600], // Grey text in light mode
+                                              color: Theme.of(context)
+                                                          .brightness ==
+                                                      Brightness.dark
+                                                  ? Colors
+                                                      .white70 // Lighter text in dark mode
+                                                  : Colors.grey[
+                                                      600], // Grey text in light mode
                                             ),
                                           ),
                                           const SizedBox(height: 4),
@@ -339,9 +684,13 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                                             'Res ID: ${event['id']}',
                                             style: TextStyle(
                                               fontSize: 12,
-                                              color: Theme.of(context).brightness == Brightness.dark
-                                                  ? Colors.white70 // Lighter text in dark mode
-                                                  : Colors.grey[600], // Grey text in light mode
+                                              color: Theme.of(context)
+                                                          .brightness ==
+                                                      Brightness.dark
+                                                  ? Colors
+                                                      .white70 // Lighter text in dark mode
+                                                  : Colors.grey[
+                                                      600], // Grey text in light mode
                                             ),
                                           ),
                                           const SizedBox(height: 4),
@@ -349,9 +698,13 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                                             'Tel: ${event['license_plate']}',
                                             style: TextStyle(
                                               fontSize: 12,
-                                              color: Theme.of(context).brightness == Brightness.dark
-                                                  ? Colors.white70 // Lighter text in dark mode
-                                                  : Colors.grey[600], // Grey text in light mode
+                                              color: Theme.of(context)
+                                                          .brightness ==
+                                                      Brightness.dark
+                                                  ? Colors
+                                                      .white70 // Lighter text in dark mode
+                                                  : Colors.grey[
+                                                      600], // Grey text in light mode
                                             ),
                                           ),
                                           const SizedBox(height: 6),
@@ -365,10 +718,15 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                                                 ),
                                               ),
                                               Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 3),
                                                 decoration: BoxDecoration(
-                                                  color: _getStatusColor(event['status'] ?? ''),
-                                                  borderRadius: BorderRadius.circular(8),
+                                                  color: _getStatusColor(
+                                                      event['status'] ?? ''),
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
                                                 ),
                                                 child: Text(
                                                   event['status'] ?? '',
@@ -410,6 +768,19 @@ class ReturnCarPageState extends State<ReturnCarPage> {
                                 ),
                               ),
                             ),
+                          ).animate(
+                            effects: [
+                              FadeEffect(
+                                  duration: 400.ms,
+                                  delay: 50.ms * index,
+                                  curve: Curves.easeOutQuad),
+                              SlideEffect(
+                                  begin: const Offset(0.1, 0),
+                                  end: const Offset(0, 0),
+                                  duration: 400.ms,
+                                  delay: 50.ms * index,
+                                  curve: Curves.easeOutQuad)
+                            ],
                           ),
                         );
                       },

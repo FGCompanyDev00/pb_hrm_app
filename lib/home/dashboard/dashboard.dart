@@ -21,6 +21,8 @@ import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -43,12 +45,14 @@ class DashboardState extends State<Dashboard>
   int _currentPage = 0;
   bool _isDisposed = false;
   bool _isPaused = false;
+  bool _isInitialized = false;
 
   // Memoized values
   late final PageController _pageController;
   Timer? _carouselTimer;
 
   // Cached data with lazy loading
+  late Future<void> _initializationFuture;
   late Future<UserProfile> futureUserProfile;
   late Future<List<String>> futureBanners;
 
@@ -61,9 +65,9 @@ class DashboardState extends State<Dashboard>
   bool _isLocationEnabled = false;
   StreamSubscription<Position>? _positionStreamSubscription;
 
-  // Hive boxes with lazy initialization
-  late final Box<String> userProfileBox;
-  late final Box<List<String>> bannersBox;
+  // Hive boxes with nullable initialization
+  Box<String>? _userProfileBox;
+  Box<List<String>>? _bannersBox;
 
   // Memoized action items - Move initialization to didChangeDependencies
   List<Map<String, dynamic>>? _actionItems;
@@ -71,6 +75,11 @@ class DashboardState extends State<Dashboard>
   // Cached screen dimensions
   late final double _screenWidth;
   late final double _screenHeight;
+
+  // Add new field for location update control
+  static const Duration _locationTimeout = Duration(seconds: 15);
+  static const Duration _locationUpdateInterval = Duration(minutes: 5);
+  DateTime? _lastLocationUpdate;
 
   @override
   bool get wantKeepAlive => true;
@@ -81,12 +90,8 @@ class DashboardState extends State<Dashboard>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Initialize futures immediately to avoid late initialization errors
-    futureUserProfile = fetchUserProfile();
-    futureBanners = fetchBanners();
+    _initializationFuture = _initialize();
     _initializePageController();
-    _initializeData();
-    _initializeLocation();
   }
 
   @override
@@ -146,7 +151,9 @@ class DashboardState extends State<Dashboard>
         _isPaused = false;
         if (!_isDisposed) {
           _startCarouselTimer();
-          _positionStreamSubscription?.resume();
+          if (_shouldTrackLocation()) {
+            _initializeLocation();
+          }
           _refreshDataSafely();
         }
         break;
@@ -216,21 +223,105 @@ class DashboardState extends State<Dashboard>
     });
   }
 
-  Future<void> _initializeData() async {
-    setState(() => _isLoading = true);
+  Future<void> _initialize() async {
     try {
+      setState(() => _isLoading = true);
+
+      // Initialize Hive boxes first
       await _initializeHiveBoxes();
-      // Refresh futures after Hive boxes are ready
-      setState(() {
-        futureUserProfile = fetchUserProfile();
-        futureBanners = fetchBanners();
-      });
+
+      // Initialize secure storage safely
+      await _initializeSecureStorage();
+
+      // Only initialize futures after Hive boxes are ready
+      futureUserProfile = fetchUserProfile();
+      futureBanners = fetchBanners();
+
+      if (!_isDisposed) {
+        setState(() {
+          _isInitialized = true;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      debugPrint('Error initializing data: $e');
-    } finally {
-      if (mounted) {
+      debugPrint('Initialization error: $e');
+      if (!_isDisposed) {
         setState(() => _isLoading = false);
       }
+      rethrow;
+    }
+  }
+
+  Future<void> _initializeSecureStorage() async {
+    try {
+      final storage = const FlutterSecureStorage(
+        iOptions: IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock,
+          synchronizable: true,
+        ),
+        aOptions: AndroidOptions(
+          encryptedSharedPreferences: true,
+        ),
+      );
+
+      // Initialize with default values if needed
+      final Map<String, String> initialValues = {
+        'biometricEnabled': 'false',
+        // Add other secure storage keys here
+      };
+
+      // Check existing values and only write if they don't exist
+      for (var entry in initialValues.entries) {
+        try {
+          final existingValue = await storage.read(key: entry.key);
+          if (existingValue == null) {
+            await storage.write(
+              key: entry.key,
+              value: entry.value,
+            );
+          }
+        } catch (e) {
+          debugPrint('Error handling secure storage key ${entry.key}: $e');
+          // Try to recover by deleting and rewriting if there's a keychain error
+          if (e.toString().contains('-25299')) {
+            try {
+              await storage.delete(key: entry.key);
+              await storage.write(
+                key: entry.key,
+                value: entry.value,
+              );
+            } catch (retryError) {
+              debugPrint(
+                  'Failed to recover secure storage key ${entry.key}: $retryError');
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error initializing secure storage: $e');
+      // Continue initialization even if secure storage fails
+    }
+  }
+
+  // Initialize Hive boxes
+  Future<void> _initializeHiveBoxes() async {
+    try {
+      // Open 'userProfileBox' if not already open
+      if (!Hive.isBoxOpen('userProfileBox')) {
+        _userProfileBox = await Hive.openBox<String>('userProfileBox');
+      } else {
+        _userProfileBox = Hive.box<String>('userProfileBox');
+      }
+
+      // Open 'bannersBox' if not already open
+      if (!Hive.isBoxOpen('bannersBox')) {
+        _bannersBox = await Hive.openBox<List<String>>('bannersBox');
+      } else {
+        _bannersBox = Hive.box<List<String>>('bannersBox');
+      }
+    } catch (e) {
+      debugPrint('Error initializing Hive boxes: $e');
+      rethrow;
     }
   }
 
@@ -239,39 +330,29 @@ class DashboardState extends State<Dashboard>
     if (_isDisposed) return UserProfile.fromJson({});
 
     try {
+      // First try to get from memory cache
       final cachedProfile = _getCachedData('userProfile');
       if (cachedProfile != null) {
+        // Return cached data immediately while checking for updates
+        _checkForProfileUpdates();
         return cachedProfile as UserProfile;
       }
 
-      final prefs = await SharedPreferences.getInstance();
-      final String? token = prefs.getString('token');
-
-      if (token == null) throw Exception('No token found');
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/display/me'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseJson = jsonDecode(response.body);
-        final List<dynamic> results = responseJson['results'];
-
-        if (results.isNotEmpty) {
-          final userProfile = UserProfile.fromJson(results[0]);
-          _updateCache('userProfile', userProfile);
-          await userProfileBox.put(
-              'userProfile', jsonEncode(userProfile.toJson()));
-          return userProfile;
-        }
+      // Then try to get from Hive
+      final cachedProfileJson = userProfileBox.get('userProfile');
+      if (cachedProfileJson != null) {
+        final profile = UserProfile.fromJson(jsonDecode(cachedProfileJson));
+        _updateCache('userProfile', profile);
+        // Return Hive data while checking for updates
+        _checkForProfileUpdates();
+        return profile;
       }
-      throw Exception('Failed to fetch profile');
+
+      // If no cache, fetch from API
+      return await _fetchProfileFromApi();
     } catch (e) {
       debugPrint('Error fetching profile: $e');
+      // Try to return cached data even if error
       final cachedProfileJson = userProfileBox.get('userProfile');
       if (cachedProfileJson != null) {
         return UserProfile.fromJson(jsonDecode(cachedProfileJson));
@@ -280,41 +361,126 @@ class DashboardState extends State<Dashboard>
     }
   }
 
+  Future<void> _checkForProfileUpdates() async {
+    try {
+      final newProfile = await _fetchProfileFromApi();
+      final oldProfile = _getCachedData('userProfile') as UserProfile?;
+
+      // Compare if data has changed
+      if (oldProfile == null ||
+          oldProfile.toJson().toString() != newProfile.toJson().toString()) {
+        if (!_isDisposed && mounted) {
+          setState(() {
+            _updateCache('userProfile', newProfile);
+            userProfileBox.put('userProfile', jsonEncode(newProfile.toJson()));
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking for profile updates: $e');
+    }
+  }
+
+  Future<UserProfile> _fetchProfileFromApi() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('token');
+
+    if (token == null) throw Exception('No token found');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/display/me'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseJson = jsonDecode(response.body);
+      final List<dynamic> results = responseJson['results'];
+
+      if (results.isNotEmpty) {
+        final userProfile = UserProfile.fromJson(results[0]);
+        _updateCache('userProfile', userProfile);
+        await userProfileBox.put(
+            'userProfile', jsonEncode(userProfile.toJson()));
+        return userProfile;
+      }
+    }
+    throw Exception('Failed to fetch profile');
+  }
+
   // Optimized banner fetching
   Future<List<String>> fetchBanners() async {
     if (_isDisposed) return [];
 
     try {
+      // First try memory cache
       final cachedBanners = _getCachedData('banners');
       if (cachedBanners != null) {
+        // Return cached data immediately while checking for updates
+        _checkForBannerUpdates();
         return List<String>.from(cachedBanners);
       }
 
-      final prefs = await SharedPreferences.getInstance();
-      final String? token = prefs.getString('token');
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/app/promotions/files'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final results = jsonDecode(response.body)['results'];
-        final banners =
-            results.map<String>((file) => file['files'] as String).toList();
-        _updateCache('banners', banners);
-        await bannersBox.put('banners', banners);
-        return banners;
+      // Then try Hive cache
+      final hiveBanners = bannersBox.get('banners');
+      if (hiveBanners != null) {
+        _updateCache('banners', hiveBanners);
+        // Return Hive data while checking for updates
+        _checkForBannerUpdates();
+        return hiveBanners;
       }
 
-      return bannersBox.get('banners') ?? [];
+      // If no cache, fetch from API
+      return await _fetchBannersFromApi();
     } catch (e) {
       debugPrint('Error fetching banners: $e');
       return bannersBox.get('banners') ?? [];
     }
+  }
+
+  Future<void> _checkForBannerUpdates() async {
+    try {
+      final newBanners = await _fetchBannersFromApi();
+      final oldBanners = _getCachedData('banners') as List<String>?;
+
+      // Compare if data has changed
+      if (oldBanners == null || !listEquals(oldBanners, newBanners)) {
+        if (!_isDisposed && mounted) {
+          setState(() {
+            _updateCache('banners', newBanners);
+            bannersBox.put('banners', newBanners);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking for banner updates: $e');
+    }
+  }
+
+  Future<List<String>> _fetchBannersFromApi() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? token = prefs.getString('token');
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/app/promotions/files'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    ).timeout(const Duration(seconds: 10));
+
+    if (response.statusCode == 200) {
+      final results = jsonDecode(response.body)['results'];
+      final banners =
+          results.map<String>((file) => file['files'] as String).toList();
+      _updateCache('banners', banners);
+      await bannersBox.put('banners', banners);
+      return banners;
+    }
+
+    throw Exception('Failed to fetch banners');
   }
 
   // Enhanced cache management
@@ -385,24 +551,33 @@ class DashboardState extends State<Dashboard>
     });
   }
 
-  // Initialize Hive boxes
-  Future<void> _initializeHiveBoxes() async {
-    // Open 'userProfileBox' if not already open
-    if (!Hive.isBoxOpen('userProfileBox')) {
-      await Hive.openBox<String>('userProfileBox');
+  // Getters for Hive boxes with null safety
+  Box<String> get userProfileBox {
+    if (_userProfileBox == null) {
+      throw StateError('userProfileBox has not been initialized');
     }
-    userProfileBox = Hive.box<String>('userProfileBox');
+    return _userProfileBox!;
+  }
 
-    // Open 'bannersBox' if not already open
-    if (!Hive.isBoxOpen('bannersBox')) {
-      await Hive.openBox<List<String>>('bannersBox');
+  Box<List<String>> get bannersBox {
+    if (_bannersBox == null) {
+      throw StateError('bannersBox has not been initialized');
     }
-    bannersBox = Hive.box<List<String>>('bannersBox');
+    return _bannersBox!;
   }
 
   // Add location initialization method
   Future<void> _initializeLocation() async {
+    if (_isDisposed) return;
+
     try {
+      // Check if we need to update location based on interval
+      if (_lastLocationUpdate != null &&
+          DateTime.now().difference(_lastLocationUpdate!) <
+              _locationUpdateInterval) {
+        return;
+      }
+
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         debugPrint('Location services are disabled');
@@ -428,28 +603,38 @@ class DashboardState extends State<Dashboard>
       // Get initial position with improved error handling
       try {
         _lastKnownPosition = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy
-              .reduced, // Gunakan ketepatan yang lebih rendah untuk prestasi yang lebih baik
-        ).timeout(
-          const Duration(seconds: 15), // Tambah masa timeout
-          onTimeout: () {
+          desiredAccuracy: LocationAccuracy.reduced,
+          timeLimit: _locationTimeout,
+        ).catchError((error) {
+          if (error is TimeoutException) {
             debugPrint(
-                'Getting initial position timed out, continuing without initial position');
-            // Tidak boleh return null, jadi kita biarkan exception berlaku
-            throw TimeoutException(
-                'Failed to get initial position, but will continue');
-          },
-        );
+                'Location timeout detected, this is expected behavior in some cases');
+            return null;
+          }
+          throw error;
+        });
+
+        if (_lastKnownPosition != null) {
+          _lastLocationUpdate = DateTime.now();
+        }
       } catch (e) {
         debugPrint('Error getting initial position: $e');
         // Continue without initial position
       }
 
-      // Start listening to position updates with more relaxed settings
-      _startLocationUpdates();
+      // Only start location updates if we need continuous tracking
+      if (_shouldTrackLocation()) {
+        _startLocationUpdates();
+      }
     } catch (e) {
       debugPrint('Error initializing location: $e');
     }
+  }
+
+  bool _shouldTrackLocation() {
+    // Add your conditions here for when location tracking is needed
+    // For example, only track location during work hours or specific features
+    return false; // Default to false to save battery
   }
 
   void _startLocationUpdates() {
@@ -457,21 +642,26 @@ class DashboardState extends State<Dashboard>
 
     _positionStreamSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy
-            .reduced, // Gunakan ketepatan yang lebih rendah untuk prestasi yang lebih baik
-        distanceFilter: 50, // Hanya kemas kini jika bergerak 50 meter
-        // Buang timeLimit untuk mengelakkan TimeoutException
+        accuracy: LocationAccuracy.reduced,
+        distanceFilter: 50,
+        timeLimit: _locationTimeout,
       ),
     ).listen(
       (Position position) {
-        if (mounted) {
-          // Periksa jika widget masih dipasang sebelum memanggil setState
-          setState(() => _lastKnownPosition = position);
+        if (mounted && !_isDisposed) {
+          setState(() {
+            _lastKnownPosition = position;
+            _lastLocationUpdate = DateTime.now();
+          });
         }
       },
       onError: (error) {
-        if (mounted) {
-          // Periksa jika widget masih dipasang sebelum mengendalikan ralat
+        if (error is TimeoutException) {
+          debugPrint(
+              'Location timeout detected, this is expected behavior in some cases');
+          return;
+        }
+        if (mounted && !_isDisposed) {
           debugPrint('Location stream error: $error');
           _handleLocationError(error);
         }
@@ -481,18 +671,19 @@ class DashboardState extends State<Dashboard>
   }
 
   void _handleLocationError(dynamic error) {
-    if (!mounted) return; // Kembali awal jika widget tidak dipasang
+    if (!mounted || _isDisposed) return;
 
     if (error is TimeoutException) {
-      // Tunggu lebih lama sebelum cuba semula untuk TimeoutException
-      _restartLocationUpdatesWithDelay(3); // Tunggu 3 saat
+      // Don't retry immediately on timeout
+      return;
     } else if (error.toString().contains('location service disabled')) {
-      // Jangan cuba semula jika perkhidmatan lokasi dimatikan
       debugPrint('Location services are disabled. Not restarting updates.');
+      setState(() => _isLocationEnabled = false);
     } else {
-      // Kendalikan ralat lain
       debugPrint('Location error: $error');
-      _restartLocationUpdatesWithDelay(1); // Tunggu 1 saat untuk ralat lain
+      if (_shouldTrackLocation()) {
+        _restartLocationUpdatesWithDelay(1);
+      }
     }
   }
 
@@ -518,57 +709,70 @@ class DashboardState extends State<Dashboard>
     super.build(context);
     if (_isDisposed) return const SizedBox.shrink();
 
-    final themeNotifier = Provider.of<ThemeNotifier>(context);
-    final bool isDarkMode = themeNotifier.isDarkMode;
+    return FutureBuilder<void>(
+      future: _initializationFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting ||
+            !_isInitialized) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
 
-    // Show loading if data is not initialized
-    if (_actionItems == null) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Text('Error initializing app: ${snapshot.error}'),
+            ),
+          );
+        }
 
-    return PopScope(
-      onPopInvokedWithResult: (e, result) => false,
-      child: Scaffold(
-        backgroundColor: isDarkMode ? Colors.black : Colors.white,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(140.0),
-          child: FutureBuilder<UserProfile>(
-            future: futureUserProfile,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return _buildAppBarPlaceholder();
-              } else if (snapshot.hasError) {
-                return _buildErrorAppBar(snapshot.error.toString());
-              } else if (snapshot.hasData) {
-                return _buildAppBar(snapshot.data!, isDarkMode);
-              } else {
-                return _buildErrorAppBar(
-                  AppLocalizations.of(context)!.noDataAvailable,
-                );
-              }
-            },
-          ),
-        ),
-        body: Stack(
-          children: [
-            if (isDarkMode) _buildDarkBackground(),
-            RefreshIndicator(
-              onRefresh: () async {
-                _refreshDataSafely();
-              },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: _buildMainContent(context, isDarkMode),
+        final themeNotifier = Provider.of<ThemeNotifier>(context);
+        final bool isDarkMode = themeNotifier.isDarkMode;
+
+        return PopScope(
+          onPopInvokedWithResult: (e, result) => false,
+          child: Scaffold(
+            backgroundColor: isDarkMode ? Colors.black : Colors.white,
+            appBar: PreferredSize(
+              preferredSize: const Size.fromHeight(140.0),
+              child: FutureBuilder<UserProfile>(
+                future: futureUserProfile,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return _buildAppBarPlaceholder();
+                  } else if (snapshot.hasError) {
+                    return _buildErrorAppBar(snapshot.error.toString());
+                  } else if (snapshot.hasData) {
+                    return _buildAppBar(snapshot.data!, isDarkMode);
+                  } else {
+                    return _buildErrorAppBar(
+                      AppLocalizations.of(context)!.noDataAvailable,
+                    );
+                  }
+                },
               ),
             ),
-            if (_isLoading) _buildLoadingIndicator(),
-          ],
-        ),
-      ),
+            body: Stack(
+              children: [
+                if (isDarkMode) _buildDarkBackground(),
+                RefreshIndicator(
+                  onRefresh: () async {
+                    _refreshDataSafely();
+                  },
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: _buildMainContent(context, isDarkMode),
+                  ),
+                ),
+                if (_isLoading) _buildLoadingIndicator(),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -705,51 +909,92 @@ class DashboardState extends State<Dashboard>
         future: futureBanners,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
+            // Show cached banners while loading if available
+            final cachedBanners = _getCachedData('banners') as List<String>?;
+            if (cachedBanners != null && cachedBanners.isNotEmpty) {
+              return _buildBannerPageView(cachedBanners, isDarkMode);
+            }
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
+            // Try to show cached banners on error
+            final cachedBanners = _getCachedData('banners') as List<String>?;
+            if (cachedBanners != null && cachedBanners.isNotEmpty) {
+              return _buildBannerPageView(cachedBanners, isDarkMode);
+            }
             return Center(
                 child: Text(AppLocalizations.of(context)!
                     .errorWithDetails(snapshot.error.toString())));
           } else if (snapshot.hasData &&
               snapshot.data != null &&
               snapshot.data!.isNotEmpty) {
-            return PageView.builder(
-              controller: _pageController,
-              itemCount: snapshot.data!.length,
-              onPageChanged: _handleBannerPageChange,
-              itemBuilder: (context, index) {
-                final bannerUrl = snapshot.data![index];
-
-                if (bannerUrl.isEmpty ||
-                    Uri.tryParse(bannerUrl)?.hasAbsolutePath != true) {
-                  return Center(
-                      child: Text(
-                          AppLocalizations.of(context)!.noBannersAvailable));
-                }
-
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 12.0),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    image: DecorationImage(
-                      image: CachedNetworkImageProvider(
-                          bannerUrl), // Use CachedNetworkImageProvider
-                      fit: BoxFit.cover,
-                      colorFilter: isDarkMode
-                          ? ColorFilter.mode(Colors.white.withOpacity(0.1),
-                              BlendMode.lighten) // Brighter in dark mode
-                          : null,
-                    ),
-                  ),
-                );
-              },
-            );
+            return _buildBannerPageView(snapshot.data!, isDarkMode);
           } else {
             return Center(
                 child: Text(AppLocalizations.of(context)!.noBannersAvailable));
           }
         },
       ),
+    );
+  }
+
+  Widget _buildBannerPageView(List<String> banners, bool isDarkMode) {
+    return PageView.builder(
+      controller: _pageController,
+      itemCount: banners.length,
+      onPageChanged: _handleBannerPageChange,
+      itemBuilder: (context, index) {
+        final bannerUrl = banners[index];
+
+        if (bannerUrl.isEmpty ||
+            Uri.tryParse(bannerUrl)?.hasAbsolutePath != true) {
+          return Center(
+              child: Text(AppLocalizations.of(context)!.noBannersAvailable));
+        }
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: CachedNetworkImage(
+              imageUrl: bannerUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              errorWidget: (context, url, error) => Container(
+                color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
+                child: const Icon(Icons.error),
+              ),
+              imageBuilder: (context, imageProvider) => Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: imageProvider,
+                    fit: BoxFit.cover,
+                    colorFilter: isDarkMode
+                        ? ColorFilter.mode(
+                            Colors.white.withOpacity(0.1),
+                            BlendMode.lighten,
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+              // Enhanced caching configuration
+              cacheManager: DefaultCacheManager(),
+              maxHeightDiskCache: 1080, // Optimize for most phone screens
+              memCacheHeight: 1080,
+              fadeOutDuration: const Duration(milliseconds: 300),
+              fadeInDuration: const Duration(milliseconds: 300),
+            ),
+          ),
+        );
+      },
     );
   }
 

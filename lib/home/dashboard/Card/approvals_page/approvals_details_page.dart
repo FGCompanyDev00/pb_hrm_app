@@ -475,8 +475,11 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     final requestorName = approvalData?['employee_name'] ?? approvalData?['requestor_name'] ?? 'No Name';
 
     String submittedOn = 'N/A';
+
     if (widget.type == 'meeting' && approvalData?['date_create'] != null && approvalData!['date_create'].toString().isNotEmpty) {
       submittedOn = formatDate(approvalData!['date_create']);
+    } else if ((widget.type == 'car' || widget.type == 'else') && approvalData?['updated_at'] != null && approvalData!['updated_at'].toString().isNotEmpty) {
+      submittedOn = formatDate(approvalData!['updated_at']);
     } else if (approvalData?['created_at'] != null && approvalData!['created_at'].toString().isNotEmpty) {
       submittedOn = formatDate(approvalData!['created_at']);
     }

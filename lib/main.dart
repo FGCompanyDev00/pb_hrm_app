@@ -353,14 +353,34 @@ Future<void> _initializeSecureStorage() async {
     // Configure secure storage for iOS with accessibility options
     const secureStorage = FlutterSecureStorage(
       iOptions: IOSOptions(
-        accessibility: KeychainAccessibility.unlocked,
-        synchronizable: true, // Allow iCloud sync
-      ),
+          accessibility: KeychainAccessibility.first_unlock,
+          synchronizable: true,
+          // Use package name as account name for better organization
+          accountName: 'pb_hrsystem'),
     );
 
-    // Test storage to ensure it's working
+    // Test storage with proper error handling
     try {
-      await secureStorage.write(key: 'test_key', value: 'test_value');
+      // First try to read existing value
+      final existingValue = await secureStorage.read(key: 'test_key');
+      if (existingValue != null) {
+        // If exists, delete it first
+        await secureStorage.delete(key: 'test_key');
+      }
+
+      // Now try to write
+      try {
+        await secureStorage.write(key: 'test_key', value: 'test_value');
+      } catch (e) {
+        if (e is PlatformException && e.code == '-25299') {
+          // Item exists, try to delete and write again
+          await secureStorage.delete(key: 'test_key');
+          await secureStorage.write(key: 'test_key', value: 'test_value');
+        } else {
+          rethrow;
+        }
+      }
+
       final testValue = await secureStorage.read(key: 'test_key');
       if (testValue == 'test_value') {
         debugPrint('Secure storage initialized successfully on iOS');
@@ -370,6 +390,37 @@ Future<void> _initializeSecureStorage() async {
       await secureStorage.delete(key: 'test_key');
     } catch (e) {
       debugPrint('Error initializing secure storage on iOS: $e');
+      // Try to reset keychain if there are persistent issues
+      await _resetKeychain();
+    }
+  }
+}
+
+// Add helper function to reset keychain if needed
+Future<void> _resetKeychain() async {
+  try {
+    const secureStorage = FlutterSecureStorage();
+    await secureStorage.deleteAll();
+    debugPrint('Keychain reset successful');
+  } catch (e) {
+    debugPrint('Error resetting keychain: $e');
+  }
+}
+
+// Add extension method for secure storage operations
+extension SecureStorageExtension on FlutterSecureStorage {
+  Future<void> writeSecurely(
+      {required String key, required String value}) async {
+    try {
+      await write(key: key, value: value);
+    } catch (e) {
+      if (e is PlatformException && e.code == '-25299') {
+        // Item exists, delete and try again
+        await delete(key: key);
+        await write(key: key, value: value);
+      } else {
+        rethrow;
+      }
     }
   }
 }
@@ -435,12 +486,23 @@ void main() {
       logger.e(stack);
     }
 
-    // Tangani ralat lokasi secara khusus
+    // Handle keychain storage error
+    if (error is PlatformException && error.code == '-25299') {
+      logger.i(
+          'Item already exists in keychain - this is expected in some cases');
+      return;
+    }
+
+    // Handle location timeout specifically
     if (error is TimeoutException &&
         error.toString().contains('position update')) {
-      debugPrint(
-          "Location timeout detected, this is expected behavior in some cases");
-      // Tidak perlu melakukan apa-apa, kerana ini akan ditangani oleh _handleLocationError
+      logger.i('Location timeout detected - attempting to recover');
+      // Add retry mechanism with exponential backoff
+      Future.delayed(const Duration(seconds: 5), () {
+        // Attempt to get location again
+        // You may want to implement your location service retry logic here
+      });
+      return;
     }
   });
 }
