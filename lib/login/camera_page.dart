@@ -30,13 +30,7 @@ class CameraPage extends StatelessWidget {
     }
   }
 
-  /// Skip camera permission and proceed to next screen
-  void _skipCameraPermission(BuildContext context) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ReadyPage()),
-    );
-  }
+  // Skip function removed as per Apple guidelines 5.1.1
 
   @override
   Widget build(BuildContext context) {
@@ -112,17 +106,6 @@ class CameraPage extends StatelessWidget {
                     AppLocalizations.of(context)!.next,
                     style: const TextStyle(fontSize: 18),
                   ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: () => _skipCameraPermission(context),
-                      child: Text(
-                        'Skip',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: isDarkMode ? Colors.white70 : Colors.black54,
-                        ),
-                      ),
                     ),
                   ],
                 ),

@@ -163,10 +163,15 @@ class DashboardState extends State<Dashboard>
   }
 
   // Safe refresh method
+  // Improved refresh method that forces updates from API
   void _refreshDataSafely() {
     if (!mounted || _isDisposed || _isPaused) return;
 
     try {
+      // Force update checks when user returns to app
+      _checkForProfileUpdates(forceUpdate: true);
+      _checkForBannerUpdates(forceUpdate: true);
+      
       setState(() {
         futureUserProfile = fetchUserProfile();
         futureBanners = fetchBanners();
@@ -325,51 +330,77 @@ class DashboardState extends State<Dashboard>
     }
   }
 
-  // Optimized data fetching
+  // Optimized data fetching with fast cache check and immediate API fallback
   Future<UserProfile> fetchUserProfile() async {
     if (_isDisposed) return UserProfile.fromJson({});
 
     try {
-      // First try to get from memory cache
+      // Quick memory cache check - fastest retrieval
       final cachedProfile = _getCachedData('userProfile');
       if (cachedProfile != null) {
-        // Return cached data immediately while checking for updates
-        _checkForProfileUpdates();
+        // Start async update check without waiting
+        _checkForProfileUpdates(forceUpdate: false);
         return cachedProfile as UserProfile;
       }
 
-      // Then try to get from Hive
+      // Quick Hive check - second fastest retrieval
       final cachedProfileJson = userProfileBox.get('userProfile');
       if (cachedProfileJson != null) {
-        final profile = UserProfile.fromJson(jsonDecode(cachedProfileJson));
-        _updateCache('userProfile', profile);
-        // Return Hive data while checking for updates
-        _checkForProfileUpdates();
-        return profile;
+        try {
+          final profile = UserProfile.fromJson(jsonDecode(cachedProfileJson));
+          _updateCache('userProfile', profile);
+          // Start async update check without waiting
+          _checkForProfileUpdates(forceUpdate: false);
+          return profile;
+        } catch (parseError) {
+          debugPrint('Error parsing cached profile: $parseError');
+          // Continue to API fetch if parse error
+        }
       }
 
-      // If no cache, fetch from API
+      // No cache or cache error - fetch from API immediately
       return await _fetchProfileFromApi();
     } catch (e) {
       debugPrint('Error fetching profile: $e');
       // Try to return cached data even if error
-      final cachedProfileJson = userProfileBox.get('userProfile');
-      if (cachedProfileJson != null) {
-        return UserProfile.fromJson(jsonDecode(cachedProfileJson));
+      try {
+        final cachedProfileJson = userProfileBox.get('userProfile');
+        if (cachedProfileJson != null) {
+          return UserProfile.fromJson(jsonDecode(cachedProfileJson));
+        }
+      } catch (cacheError) {
+        debugPrint('Error retrieving from cache: $cacheError');
       }
       rethrow;
     }
   }
 
-  Future<void> _checkForProfileUpdates() async {
+  Future<void> _checkForProfileUpdates({bool forceUpdate = false}) async {
     try {
+      // Skip update check if we recently checked (unless forced)
+      final now = DateTime.now();
+      final lastUpdate = _getCacheTimestamp('userProfile');
+      if (!forceUpdate && lastUpdate != null && 
+          now.difference(lastUpdate) < const Duration(minutes: 5)) {
+        return; // Skip frequent updates unless forced
+      }
+      
       final newProfile = await _fetchProfileFromApi();
       final oldProfile = _getCachedData('userProfile') as UserProfile?;
+
+      // Check specifically for profile image changes
+      final hasImageChanged = oldProfile != null && 
+          oldProfile.imgName != newProfile.imgName;
 
       // Compare if data has changed
       if (oldProfile == null ||
           oldProfile.toJson().toString() != newProfile.toJson().toString()) {
         if (!_isDisposed && mounted) {
+          // If profile image changed, clear the old image from cache
+          if (hasImageChanged && oldProfile?.imgName != null) {
+            _clearImageFromCache(oldProfile!.imgName);
+          }
+          
           setState(() {
             _updateCache('userProfile', newProfile);
             userProfileBox.put('userProfile', jsonEncode(newProfile.toJson()));
@@ -378,6 +409,18 @@ class DashboardState extends State<Dashboard>
       }
     } catch (e) {
       debugPrint('Error checking for profile updates: $e');
+    }
+  }
+
+  // Clear a specific image from the cache
+  Future<void> _clearImageFromCache(String imageUrl) async {
+    try {
+      if (imageUrl.isNotEmpty && Uri.tryParse(imageUrl)?.hasAbsolutePath == true) {
+        await DefaultCacheManager().removeFile(imageUrl);
+        debugPrint('Cleared old image from cache: $imageUrl');
+      }
+    } catch (e) {
+      debugPrint('Error clearing image from cache: $e');
     }
   }
 
@@ -410,44 +453,66 @@ class DashboardState extends State<Dashboard>
     throw Exception('Failed to fetch profile');
   }
 
-  // Optimized banner fetching
+  // Optimized banner fetching with fast cache check and immediate API fallback
   Future<List<String>> fetchBanners() async {
     if (_isDisposed) return [];
 
     try {
-      // First try memory cache
+      // Quick memory cache check - fastest retrieval
       final cachedBanners = _getCachedData('banners');
       if (cachedBanners != null) {
-        // Return cached data immediately while checking for updates
-        _checkForBannerUpdates();
+        // Start async update check without waiting
+        _checkForBannerUpdates(forceUpdate: false);
         return List<String>.from(cachedBanners);
       }
 
-      // Then try Hive cache
+      // Quick Hive check - second fastest retrieval
       final hiveBanners = bannersBox.get('banners');
-      if (hiveBanners != null) {
+      if (hiveBanners != null && hiveBanners.isNotEmpty) {
         _updateCache('banners', hiveBanners);
-        // Return Hive data while checking for updates
-        _checkForBannerUpdates();
+        // Start async update check without waiting
+        _checkForBannerUpdates(forceUpdate: false);
         return hiveBanners;
       }
 
-      // If no cache, fetch from API
+      // No cache or empty cache - fetch from API immediately
       return await _fetchBannersFromApi();
     } catch (e) {
       debugPrint('Error fetching banners: $e');
-      return bannersBox.get('banners') ?? [];
+      try {
+        return bannersBox.get('banners') ?? [];
+      } catch (cacheError) {
+        debugPrint('Error retrieving banners from cache: $cacheError');
+        return [];
+      }
     }
   }
 
-  Future<void> _checkForBannerUpdates() async {
+  Future<void> _checkForBannerUpdates({bool forceUpdate = false}) async {
     try {
+      // Skip update check if we recently checked (unless forced)
+      final now = DateTime.now();
+      final lastUpdate = _getCacheTimestamp('banners');
+      if (!forceUpdate && lastUpdate != null && 
+          now.difference(lastUpdate) < const Duration(minutes: 5)) {
+        return; // Skip frequent updates unless forced
+      }
+      
       final newBanners = await _fetchBannersFromApi();
       final oldBanners = _getCachedData('banners') as List<String>?;
 
       // Compare if data has changed
       if (oldBanners == null || !listEquals(oldBanners, newBanners)) {
         if (!_isDisposed && mounted) {
+          // Clear old banner images from cache if they're no longer used
+          if (oldBanners != null) {
+            final removedBanners = oldBanners.where(
+                (oldUrl) => !newBanners.contains(oldUrl)).toList();
+            for (final bannerUrl in removedBanners) {
+              _clearImageFromCache(bannerUrl);
+            }
+          }
+          
           setState(() {
             _updateCache('banners', newBanners);
             bannersBox.put('banners', newBanners);
@@ -483,18 +548,19 @@ class DashboardState extends State<Dashboard>
     throw Exception('Failed to fetch banners');
   }
 
-  // Enhanced cache management
+  // Enhanced cache management with timestamp tracking
   void _updateCache(String key, dynamic data) {
     if (_pageCache.length >= _maxCacheSize) {
       _cleanCache();
     }
 
+    final now = DateTime.now();
     _pageCache[key] = _CacheData(
       data: data,
-      timestamp: DateTime.now(),
+      timestamp: now,
       accessCount: 0,
     );
-    _lastCacheUpdate = DateTime.now();
+    _lastCacheUpdate = now;
   }
 
   void _cleanCache() {
@@ -513,6 +579,7 @@ class DashboardState extends State<Dashboard>
     }
   }
 
+  // Get cached data with improved timestamp tracking
   dynamic _getCachedData(String key) {
     final cachedItem = _pageCache[key];
     if (cachedItem == null) return null;
@@ -524,6 +591,12 @@ class DashboardState extends State<Dashboard>
 
     cachedItem.accessCount++;
     return cachedItem.data;
+  }
+
+  // Get the timestamp of when an item was cached
+  DateTime? _getCacheTimestamp(String key) {
+    final cachedItem = _pageCache[key];
+    return cachedItem?.timestamp;
   }
 
   // Start the carousel auto-swipe timer
@@ -566,7 +639,7 @@ class DashboardState extends State<Dashboard>
     return _bannersBox!;
   }
 
-  // Add location initialization method
+  // Add location initialization method with improved timeout handling
   Future<void> _initializeLocation() async {
     if (_isDisposed) return;
 
@@ -578,56 +651,87 @@ class DashboardState extends State<Dashboard>
         return;
       }
 
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        debugPrint('Location services are disabled');
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          debugPrint('Location permissions are denied');
+      // Wrap in a try-catch to prevent any location errors from crashing the app
+      try {
+        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (!serviceEnabled) {
+          debugPrint('Location services are disabled');
           return;
         }
-      }
 
-      if (permission == LocationPermission.deniedForever) {
-        debugPrint('Location permissions are permanently denied');
-        return;
-      }
-
-      setState(() => _isLocationEnabled = true);
-
-      // Get initial position with improved error handling
-      try {
-        _lastKnownPosition = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.reduced,
-          timeLimit: _locationTimeout,
-        ).catchError((error) {
-          if (error is TimeoutException) {
-            debugPrint(
-                'Location timeout detected, this is expected behavior in some cases');
-            return null;
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+          if (permission == LocationPermission.denied) {
+            debugPrint('Location permissions are denied');
+            return;
           }
-          throw error;
-        });
+        }
 
-        if (_lastKnownPosition != null) {
-          _lastLocationUpdate = DateTime.now();
+        if (permission == LocationPermission.deniedForever) {
+          debugPrint('Location permissions are permanently denied');
+          return;
+        }
+
+        setState(() => _isLocationEnabled = true);
+
+        // Get initial position with improved error handling and shorter timeout
+        try {
+          // Use a completer with a timeout to avoid hanging
+          final completer = Completer<Position?>();
+          
+          // Set up a timeout that completes with null after 10 seconds
+          Timer(const Duration(seconds: 10), () {
+            if (!completer.isCompleted) {
+              debugPrint('💡 Location timeout detected - completing with null');
+              completer.complete(null);
+            }
+          });
+          
+          // Start the actual location request
+          Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.reduced,
+            timeLimit: const Duration(seconds: 10),
+          ).then((position) {
+            if (!completer.isCompleted) {
+              completer.complete(position);
+            }
+          }).catchError((error) {
+            if (!completer.isCompleted) {
+              if (error is TimeoutException) {
+                debugPrint('Location timeout caught and handled gracefully');
+                completer.complete(null);
+              } else {
+                completer.completeError(error);
+              }
+            }
+          });
+          
+          // Wait for either the position or the timeout
+          _lastKnownPosition = await completer.future.catchError((error) {
+            debugPrint('Error getting position, handled gracefully: $error');
+            return null;
+          });
+
+          if (_lastKnownPosition != null) {
+            _lastLocationUpdate = DateTime.now();
+          }
+        } catch (e) {
+          debugPrint('Error getting initial position (handled): $e');
+          // Continue without initial position
+        }
+
+        // Only start location updates if we need continuous tracking
+        if (_shouldTrackLocation()) {
+          _startLocationUpdates();
         }
       } catch (e) {
-        debugPrint('Error getting initial position: $e');
-        // Continue without initial position
-      }
-
-      // Only start location updates if we need continuous tracking
-      if (_shouldTrackLocation()) {
-        _startLocationUpdates();
+        // Catch any location service errors
+        debugPrint('Location service error (handled): $e');
       }
     } catch (e) {
-      debugPrint('Error initializing location: $e');
+      // Final fallback to ensure app doesn't crash
+      debugPrint('Error initializing location (handled at root): $e');
     }
   }
 
@@ -638,66 +742,92 @@ class DashboardState extends State<Dashboard>
   }
 
   void _startLocationUpdates() {
+    // Cancel any existing subscription first
     _positionStreamSubscription?.cancel();
 
-    _positionStreamSubscription = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.reduced,
-        distanceFilter: 50,
-        timeLimit: _locationTimeout,
-      ),
-    ).listen(
-      (Position position) {
-        if (mounted && !_isDisposed) {
-          setState(() {
-            _lastKnownPosition = position;
-            _lastLocationUpdate = DateTime.now();
-          });
-        }
-      },
-      onError: (error) {
-        if (error is TimeoutException) {
-          debugPrint(
-              'Location timeout detected, this is expected behavior in some cases');
-          return;
-        }
-        if (mounted && !_isDisposed) {
-          debugPrint('Location stream error: $error');
-          _handleLocationError(error);
-        }
-      },
-      cancelOnError: false,
-    );
+    try {
+      // Create a new position stream with more resilient error handling
+      _positionStreamSubscription = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.reduced,
+          distanceFilter: 50,
+          timeLimit: Duration(seconds: 10), // Shorter timeout to prevent hanging
+        ),
+      ).listen(
+        (Position position) {
+          if (mounted && !_isDisposed) {
+            setState(() {
+              _lastKnownPosition = position;
+              _lastLocationUpdate = DateTime.now();
+            });
+          }
+        },
+        onError: (error) {
+          // Handle all errors gracefully without propagating
+          if (error is TimeoutException) {
+            debugPrint('💡 Location timeout detected - attempting to recover');
+            // Don't propagate timeout errors, just log them
+            return;
+          }
+          
+          if (mounted && !_isDisposed) {
+            // Log but don't crash on location errors
+            debugPrint('Location stream error (handled): $error');
+            _handleLocationError(error);
+          }
+        },
+        cancelOnError: false, // Never cancel on error to maintain the stream
+      );
+    } catch (e) {
+      // Catch any errors during stream setup
+      debugPrint('Error setting up location stream (handled): $e');
+    }
   }
 
   void _handleLocationError(dynamic error) {
     if (!mounted || _isDisposed) return;
 
-    if (error is TimeoutException) {
-      // Don't retry immediately on timeout
-      return;
-    } else if (error.toString().contains('location service disabled')) {
-      debugPrint('Location services are disabled. Not restarting updates.');
-      setState(() => _isLocationEnabled = false);
-    } else {
-      debugPrint('Location error: $error');
-      if (_shouldTrackLocation()) {
-        _restartLocationUpdatesWithDelay(1);
+    try {
+      if (error is TimeoutException) {
+        // For timeouts, wait longer before retrying to avoid rapid retries
+        debugPrint('Location timeout - waiting before retry');
+        if (_shouldTrackLocation()) {
+          _restartLocationUpdatesWithDelay(5); // Wait 5 seconds before retry
+        }
+        return;
+      } else if (error.toString().contains('location service disabled')) {
+        debugPrint('Location services are disabled. Not restarting updates.');
+        setState(() => _isLocationEnabled = false);
+      } else {
+        debugPrint('Location error (handled): $error');
+        if (_shouldTrackLocation()) {
+          _restartLocationUpdatesWithDelay(3); // Wait 3 seconds for other errors
+        }
       }
+    } catch (e) {
+      // Final safety net to prevent any crashes in the error handler itself
+      debugPrint('Error in location error handler (handled): $e');
     }
   }
 
   void _restartLocationUpdatesWithDelay(int seconds) {
-    if (!mounted) return; // Kembali awal jika widget tidak dipasang
+    if (!mounted) return; // Return early if widget is not mounted
 
     debugPrint('Restarting location updates in $seconds seconds');
+    // Cancel existing subscription
     _positionStreamSubscription?.cancel();
-    Future.delayed(Duration(seconds: seconds), () {
-      if (mounted) {
-        // Periksa keadaan mounted sebelum memulakan semula
-        _startLocationUpdates();
-      }
-    });
+    
+    // Use a try-catch to prevent any errors during the delayed restart
+    try {
+      Future.delayed(Duration(seconds: seconds), () {
+        // Verify the widget is still mounted before restarting
+        if (mounted && !_isDisposed) {
+          _startLocationUpdates();
+        }
+      });
+    } catch (e) {
+      debugPrint('Error scheduling location restart (handled): $e');
+    }
   }
 
   void _restartLocationUpdates() {
@@ -840,15 +970,38 @@ class DashboardState extends State<Dashboard>
                       children: [
                         CircleAvatar(
                           radius: 28,
-                          backgroundImage: userProfile.imgName !=
-                                  'default_avatar.jpg'
-                              ? NetworkImage(userProfile.imgName)
-                              : const AssetImage('assets/default_avatar.jpg')
-                                  as ImageProvider,
                           backgroundColor: Colors.white,
-                          onBackgroundImageError: (_, __) {
-                            const AssetImage('assets/default_avatar.png');
-                          },
+                          child: userProfile.imgName != 'default_avatar.jpg'
+                              ? ClipOval(
+                                  child: CachedNetworkImage(
+                                    imageUrl: userProfile.imgName,
+                                    fit: BoxFit.cover,
+                                    width: 56,
+                                    height: 56,
+                                    progressIndicatorBuilder: (context, url, progress) => Center(
+                                      child: CircularProgressIndicator(
+                                        value: progress.progress,
+                                        strokeWidth: 2.0,
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) => Image.asset(
+                                      'assets/default_avatar.jpg',
+                                      fit: BoxFit.cover,
+                                      width: 56,
+                                      height: 56,
+                                    ),
+                                    // Optimized caching for profile images
+                                    memCacheWidth: 112, // 2x for high DPI displays
+                                    memCacheHeight: 112,
+                                    useOldImageOnUrlChange: true,
+                                  ),
+                                )
+                              : Image.asset(
+                                  'assets/default_avatar.jpg',
+                                  fit: BoxFit.cover,
+                                  width: 56,
+                                  height: 56,
+                                ),
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -961,12 +1114,6 @@ class DashboardState extends State<Dashboard>
             child: CachedNetworkImage(
               imageUrl: bannerUrl,
               fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
-                child: const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              ),
               errorWidget: (context, url, error) => Container(
                 color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
                 child: const Icon(Icons.error),
@@ -985,12 +1132,23 @@ class DashboardState extends State<Dashboard>
                   ),
                 ),
               ),
-              // Enhanced caching configuration
+              // Enhanced caching configuration with optimized settings
               cacheManager: DefaultCacheManager(),
               maxHeightDiskCache: 1080, // Optimize for most phone screens
               memCacheHeight: 1080,
-              fadeOutDuration: const Duration(milliseconds: 300),
-              fadeInDuration: const Duration(milliseconds: 300),
+              fadeOutDuration: const Duration(milliseconds: 200), // Faster transitions
+              fadeInDuration: const Duration(milliseconds: 200),
+              // Improved caching behavior
+              useOldImageOnUrlChange: true, // Show old image while loading new one
+              placeholderFadeInDuration: const Duration(milliseconds: 100),
+              progressIndicatorBuilder: (context, url, progress) => Container(
+                color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
+                child: Center(
+                  child: CircularProgressIndicator(
+                    value: progress.progress,
+                  ),
+                ),
+              ),
             ),
           ),
         );

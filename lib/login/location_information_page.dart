@@ -30,14 +30,7 @@ class LocationInformationPage extends StatelessWidget {
     }
   }
 
-  void _skipLocationPermission(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const CameraPage(),
-      ),
-    );
-  }
+  // Skip function removed as per Apple guidelines 5.1.1
 
   @override
   Widget build(BuildContext context) {
@@ -104,17 +97,6 @@ class LocationInformationPage extends StatelessWidget {
                       ),
                       child: Text(AppLocalizations.of(context)!.next,
                           style: const TextStyle(fontSize: 18)),
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: () => _skipLocationPermission(context),
-                      child: Text(
-                        'Skip',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: isDarkMode ? Colors.white70 : Colors.black54,
-                        ),
-                      ),
                     ),
                   ],
                 ),

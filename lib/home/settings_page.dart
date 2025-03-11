@@ -27,8 +27,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:flutter/services.dart'; // Add this import for clipboard
+import 'package:flutter/services.dart'; // For clipboard operations
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -44,7 +43,7 @@ class SettingsPageState extends State<SettingsPage> {
   bool _isLoading = false;
   bool _debugModeEnabled = false;
   late Future<UserProfile> futureUserProfile;
-  String _appVersion = 'PSBV Next Demo v1.0.62(62)';
+  String _appVersion = 'PSVB Next Demo v1.0.62(62)';
   late Box<String> userProfileBox;
   late Box<List<String>> bannersBox;
   String? _fcmToken;
@@ -78,10 +77,17 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadAppVersion() async {
-    setState(() {
-      _appVersion = 'PSBV Next Demo v1.0.62(62)';
-      // _appVersion = 'PSBV Next v${packageInfo.version}';
-    });
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      setState(() {
+        _appVersion = 'PSBV Next v${packageInfo.version}';
+      });
+    } catch (e) {
+      debugPrint('Error loading package info: $e');
+      setState(() {
+        _appVersion = 'PSBV Next';
+      });
+    }
   }
 
   Future<void> _loadBiometricSetting() async {
@@ -97,8 +103,28 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveBiometricSetting(bool enabled) async {
-    await _storage.write(key: 'biometricEnabled', value: enabled.toString());
-    debugPrint('Saved biometric, Enabled as: $enabled'); // Debugging
+    try {
+      // First delete any existing entry to avoid the "item already exists" error
+      try {
+        await _storage.delete(key: 'biometricEnabled');
+      } catch (e) {
+        // Ignore delete errors - the key might not exist yet
+      }
+      
+      // Now write the new value
+      await _storage.write(key: 'biometricEnabled', value: enabled.toString());
+      debugPrint('Saved biometric, Enabled as: $enabled');
+    } catch (e) {
+      debugPrint('Error updating secure storage: $e');
+      // Fallback to shared preferences
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('biometricEnabled', enabled);
+        debugPrint('Saved biometric to SharedPreferences as fallback');
+      } catch (e) {
+        debugPrint('Error saving to fallback storage: $e');
+      }
+    }
   }
 
   Future<void> _showBiometricModal() async {
@@ -269,27 +295,28 @@ class SettingsPageState extends State<SettingsPage> {
   Future<void> _initializeDeviceTokens() async {
     try {
       // Get package info
+      if (!mounted) return;
+      
+      // Collect all state changes
+      String? firebaseToken;
+      String? apnsToken;
+      String deviceId = '';
+      
+      // Get package info
       final packageInfo = await PackageInfo.fromPlatform();
-      setState(() {
-        _bundleId = packageInfo.packageName;
-        _buildNumber = packageInfo.buildNumber;
-      });
-
+      final bundleId = packageInfo.packageName;
+      final buildNumber = packageInfo.buildNumber;
+      
       // Get Firebase token
-      final firebaseToken = await _firebaseMessaging.getToken();
-
+      firebaseToken = await _firebaseMessaging.getToken();
+      
       // Get device info
       final deviceInfo = DeviceInfoPlugin();
-      String deviceId = '';
 
       if (Platform.isIOS) {
         try {
           // Get APNS token for iOS
-          final apnsToken = await _firebaseMessaging.getAPNSToken();
-          setState(() {
-            _apnsToken = apnsToken;
-            _fcmToken = firebaseToken;
-          });
+          apnsToken = await _firebaseMessaging.getAPNSToken();
 
           // Get iOS device ID with enhanced null safety
           final iosInfo = await deviceInfo.iosInfo;
@@ -315,11 +342,11 @@ class SettingsPageState extends State<SettingsPage> {
           }
 
           // Store tokens only if they are not null
-          if (_apnsToken != null) {
-            await _storeDeviceToken('apns_token', _apnsToken!);
+          if (apnsToken != null) {
+            await _storeDeviceToken('apns_token', apnsToken);
           }
-          if (_fcmToken != null) {
-            await _storeDeviceToken('fcm_token', _fcmToken!);
+          if (firebaseToken != null) {
+            await _storeDeviceToken('fcm_token', firebaseToken);
           }
         } catch (e) {
           debugPrint('Error getting iOS device info: $e');
@@ -327,9 +354,7 @@ class SettingsPageState extends State<SettingsPage> {
           deviceId = 'ios_${DateTime.now().millisecondsSinceEpoch}_fallback';
         }
       } else if (Platform.isAndroid) {
-        setState(() {
-          _fcmToken = firebaseToken;
-        });
+        // Token already stored in firebaseToken variable
 
         try {
           // Get Android device ID with enhanced null safety
@@ -363,34 +388,35 @@ class SettingsPageState extends State<SettingsPage> {
               'android_${DateTime.now().millisecondsSinceEpoch}_fallback';
         }
 
-        // Save FCM token if not null
+        // Store FCM token if not null
         if (firebaseToken != null) {
-          await _storage.write(key: 'fcmToken', value: firebaseToken);
+          await _storeDeviceToken('fcm_token', firebaseToken);
         }
       }
 
-      // Save and set device ID
-      if (deviceId.isNotEmpty) {
-        setState(() {
-          _deviceId = deviceId;
-        });
-        await _storage.write(key: 'deviceId', value: deviceId);
-      } else {
+      // Save device ID
+      if (deviceId.isEmpty) {
         // Try to get from storage if current attempt failed
         final storedDeviceId = await _storage.read(key: 'deviceId');
         if (storedDeviceId != null && storedDeviceId.isNotEmpty) {
-          setState(() {
-            _deviceId = storedDeviceId;
-          });
+          deviceId = storedDeviceId;
         } else {
-          // Last resort - generate a unique identifier with timestamp and random component
-          final fallbackId =
-              'device_${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}';
-          setState(() {
-            _deviceId = fallbackId;
-          });
-          await _storage.write(key: 'deviceId', value: fallbackId);
+          // Last resort - generate a unique identifier
+          deviceId = 'device_${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}';
         }
+      }
+      
+      await _storage.write(key: 'deviceId', value: deviceId);
+      
+      // Update all state at once if widget is still mounted
+      if (mounted) {
+        setState(() {
+          _bundleId = bundleId;
+          _buildNumber = buildNumber;
+          _deviceId = deviceId;
+          _fcmToken = firebaseToken;
+          _apnsToken = apnsToken;
+        });
       }
 
       // Set up Firebase Messaging handlers
@@ -405,21 +431,23 @@ class SettingsPageState extends State<SettingsPage> {
       });
     } catch (e) {
       debugPrint('Error initializing device tokens: $e');
+      if (!mounted) return;
+      
       // Try to get from storage if current attempt failed
+      String finalDeviceId;
       final storedDeviceId = await _storage.read(key: 'deviceId');
       if (storedDeviceId != null && storedDeviceId.isNotEmpty) {
-        setState(() {
-          _deviceId = storedDeviceId;
-        });
+        finalDeviceId = storedDeviceId;
       } else {
         // Generate a unique fallback ID with additional entropy
-        final fallbackId =
-            'device_${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}_recovery';
-        setState(() {
-          _deviceId = fallbackId;
-        });
-        await _storage.write(key: 'deviceId', value: fallbackId);
+        finalDeviceId = 'device_${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}_recovery';
+        await _storage.write(key: 'deviceId', value: finalDeviceId);
       }
+      
+      // Single setState call
+      setState(() {
+        _deviceId = finalDeviceId;
+      });
     }
   }
 
@@ -1378,6 +1406,14 @@ class SettingsPageState extends State<SettingsPage> {
 
   Future<void> _storeDeviceToken(String key, String value) async {
     try {
+      // First try to delete the existing item to avoid the "item already exists" error
+      try {
+        await _storage.delete(key: key);
+      } catch (e) {
+        // Ignore delete errors - the key might not exist yet
+      }
+      
+      // Now write the new value
       await _storage.write(key: key, value: value);
       debugPrint('Successfully stored $key');
     } catch (e) {

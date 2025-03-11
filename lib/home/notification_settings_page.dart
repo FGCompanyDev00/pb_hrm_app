@@ -1,5 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -25,6 +26,9 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
   final LocalAuthentication auth = LocalAuthentication();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
+  
+  String _deviceId = '';
 
   List<Device> _devices = [];
   bool _isLoading = false;
@@ -35,8 +39,83 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
   void initState() {
     super.initState();
     _loadBiometricSetting();
-    _loadDevices();
-    _fetchDeviceToken();
+    _initializeDevices();
+  }
+
+  Future<void> _initializeDevices() async {
+    await _fetchDeviceToken(); // Get device token first
+    await _fetchDeviceId(); // Get device ID
+    await _loadDevices(); // Then load devices
+    
+    // Check if current device exists in the list
+    if (_deviceToken != null) {
+      bool deviceExists = _devices.any((device) => device.token == _deviceToken);
+      if (!deviceExists) {
+        // Auto show add device modal if current device not found
+        if (mounted) {
+          _showAddDeviceDialog();
+        }
+      }
+    }
+  }
+
+  /// Fetches the device ID using device_info_plus
+  Future<void> _fetchDeviceId() async {
+    try {
+      // First try to get from storage
+      String? storedDeviceId = await _storage.read(key: 'deviceId');
+      if (storedDeviceId != null && storedDeviceId.isNotEmpty) {
+        setState(() {
+          _deviceId = storedDeviceId;
+        });
+        return;
+      }
+
+      // If not in storage, generate new device ID
+      final platform = defaultTargetPlatform;
+      if (platform == TargetPlatform.iOS) {
+        final iosInfo = await _deviceInfo.iosInfo;
+        _deviceId = iosInfo.identifierForVendor ?? '';
+        
+        if (_deviceId.isEmpty) {
+          _deviceId = 'ios_${DateTime.now().millisecondsSinceEpoch}';
+        }
+      } else if (platform == TargetPlatform.android) {
+        final androidInfo = await _deviceInfo.androidInfo;
+        final Map<String, String> deviceInfoMap = {
+          'id': androidInfo.id,
+          'brand': androidInfo.brand,
+          'device': androidInfo.device,
+          'model': androidInfo.model,
+          'product': androidInfo.product,
+          'hardware': androidInfo.hardware,
+          'manufacturer': androidInfo.manufacturer,
+          'serialNumber': androidInfo.serialNumber ?? '',
+        };
+
+        // Filter out empty values and join with underscore
+        final List<String> deviceInfoParts =
+            deviceInfoMap.values.where((value) => value.isNotEmpty).toList();
+
+        if (deviceInfoParts.isNotEmpty) {
+          _deviceId = deviceInfoParts.join('_');
+        } else {
+          _deviceId = 'android_${DateTime.now().millisecondsSinceEpoch}';
+        }
+      }
+
+      // Save the device ID
+      if (_deviceId.isNotEmpty) {
+        await _storage.write(key: 'deviceId', value: _deviceId);
+      }
+
+      setState(() {}); // Update UI
+    } catch (e) {
+      debugPrint('Error getting device info: $e');
+      // Generate fallback ID if all else fails
+      _deviceId = 'device_${DateTime.now().millisecondsSinceEpoch}_fallback';
+      await _storage.write(key: 'deviceId', value: _deviceId);
+    }
   }
 
   /// Fetches the FCM token
@@ -175,8 +254,7 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
   /// Displays the dialog to add a new device.
   void _showAddDeviceDialog() {
     final formKey = GlobalKey<FormState>();
-    String deviceId = '';
-    String platform = const LocalPlatform().isAndroid ? 'android' : 'ios';  // Automatically choose platform
+    String platform = defaultTargetPlatform == TargetPlatform.android ? 'android' : 'ios';
 
     showDialog(
       context: context,
@@ -191,15 +269,8 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 children: [
                   TextFormField(
                     decoration: const InputDecoration(labelText: 'Device ID'),
-                    onChanged: (value) {
-                      deviceId = value.trim();
-                    },
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter Device ID';
-                      }
-                      return null;
-                    },
+                    initialValue: _deviceId,
+                    enabled: false, // Cannot be edited
                   ),
                   TextFormField(
                     decoration: const InputDecoration(labelText: 'Device Token'),
@@ -225,13 +296,11 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
             ),
             ElevatedButton(
               onPressed: () async {
-                if (formKey.currentState?.validate() ?? false) {
-                  if (_biometricEnabled) {
-                    await _addDevice(deviceId, _deviceToken ?? '', platform);
-                  } else {
-                    Navigator.of(context).pop();
-                    _showBiometricPrompt();
-                  }
+                if (_biometricEnabled) {
+                  await _addDevice(_deviceId, _deviceToken ?? '', platform);
+                } else {
+                  Navigator.of(context).pop();
+                  _showBiometricPrompt();
                 }
               },
               child: const Text('Add'),
@@ -248,23 +317,32 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Biometric Authentication Required'),
-          content: const Text('Please enable biometric authentication in Settings to add a new device.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-              child: const Text('Cancel'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.fingerprint, size: 24, color: Colors.blueAccent),
+              SizedBox(height: 12),
+              Text(
+                'Biometric Authentication',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          content: const Text(
+            'Enable biometric authentication in Settings to register a new device.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.redAccent,
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-                Navigator.pushNamed(context, '/settings'); // Navigate to Settings
-              },
-              child: const Text('Go to Settings'),
-            ),
-          ],
+          ),
         );
       },
     );
@@ -349,28 +427,45 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
                   itemCount: _devices.length,
                   itemBuilder: (context, index) {
                     final device = _devices[index];
+                    bool isCurrentDevice = device.token == _deviceToken;
                     return ListTile(
                       leading: Image.asset(
                         device.platform == 'android' ? 'assets/android_device.png' : 'assets/ios_device.png',
                         width: 30,
                         height: 40,
                       ),
-                      title: Text(device.deviceId),
+                      title: Row(
+                        children: [
+                          Text(device.deviceId),
+                          if (isCurrentDevice) ...[  
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Current',
+                              style: TextStyle(
+                                color: Colors.blue,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                       subtitle: Text('Last login: ${device.lastLoginFormatted}'),
                       trailing: device.isUpdating
                           ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
-                      )
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            )
                           : Switch(
-                        value: device.status,
-                        onChanged: (value) {
-                          _toggleNotification(device);
-                        },
-                      ),
+                              value: device.status,
+                              onChanged: device.status == false ? null : (value) {
+                                _toggleNotification(device);
+                              },
+                            ),
+                      onTap: isCurrentDevice ? () => _showAddDeviceDialog() : null,
                     );
                   },
                 ),
@@ -379,10 +474,7 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddDeviceDialog,
-        child: const Icon(Icons.add),
-      ),
+      // Removed floating action button as requested
     );
   }
 }

@@ -154,7 +154,7 @@ Future<void> _showNotification(RemoteMessage message) async {
 
   const platformChannelSpecifics = NotificationDetails(
     android: AndroidNotificationDetails(
-      'psbv_next_notification',
+      'psvb_next_notification',
       'PSBV Next',
       channelDescription: 'Notifications',
       importance: Importance.high,
@@ -547,8 +547,8 @@ Future<void> _initializeLocalNotifications() async {
     // Create notification channels for Android
     if (Platform.isAndroid) {
       const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'psbv_next_notification',
-        'PSBV Next',
+        'psvb_next_notification',
+        'PSVB Next',
         description: 'Notifications',
         importance: Importance.high,
       );
@@ -597,7 +597,7 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           navigatorKey: navigatorKey,
           builder: EasyLoading.init(),
-          title: 'PSBV Next Demo',
+          title: 'PSVB Next',
           theme: ThemeData(
             primarySwatch: Colors.green,
             visualDensity: VisualDensity.adaptivePlatformDensity,

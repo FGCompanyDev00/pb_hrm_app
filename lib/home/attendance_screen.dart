@@ -25,6 +25,7 @@ import 'monthly_attendance_record.dart';
 import '../hive_helper/model/attendance_record.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:pb_hrsystem/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -372,6 +373,20 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     if (currentPosition != null) {
       record.latitude = currentPosition.latitude.toString();
       record.longitude = currentPosition.longitude.toString();
+      
+      // Validate location is within allowed areas if not offsite
+      if (!_isOffsite.value && !await _isWithinAllowedArea(currentPosition)) {
+        await _showValidationModal(true, false, 'Location Verification Failed',
+            'You are not within an approved work location. Please check in from an authorized location or select "Offsite" if working remotely.');
+        return;
+      }
+    } else {
+      // No position available
+      if (!_isOffsite.value) {
+        await _showValidationModal(true, false, 'Location Required',
+            'Unable to verify your location. Please enable location services and try again, or select "Offsite" if working remotely.');
+        return;
+      }
     }
 
     bool success = await _sendCheckInOutRequest(record);
@@ -789,14 +804,311 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<Position?> _getCurrentPosition() async {
     try {
-      return await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+      // First check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          _showCustomDialog(
+            "Location Required",
+            "Please enable location services to check in/out.",
+            isSuccess: false,
+          );
+        }
+        return null;
+      }
+
+      // Check if we have permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            _showCustomDialog(
+              "Permission Denied",
+              "Location permission is required for attendance.",
+              isSuccess: false,
+            );
+          }
+          return null;
+        }
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          _showCustomDialog(
+            "Permission Denied",
+            "Location permission is permanently denied. Please enable it in settings.",
+            isSuccess: false,
+          );
+        }
+        return null;
+      }
+
+      // Get position with high accuracy
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 15),
+      );
+
+      // Check for fake location indicators
+      if (!await _isLocationReal(position)) {
+        if (mounted) {
+          _showCustomDialog(
+            "Security Alert",
+            "Fake location detected. Please disable any mock location apps and try again.",
+            isSuccess: false,
+          );
+        }
+        return null;
+      }
+
+      return position;
     } catch (e) {
       if (kDebugMode) {
         print('Error retrieving location: $e');
       }
+      if (mounted) {
+        _showCustomDialog(
+          "Location Error",
+          "Unable to get your location. Please try again.",
+          isSuccess: false,
+        );
+      }
       return null;
     }
+  }
+
+  /// Checks if the location is real or fake using multiple indicators
+  Future<bool> _isLocationReal(Position position) async {
+    try {
+      // 1. Check if mock location setting is enabled (Android only)
+      if (Platform.isAndroid) {
+        if (position.isMocked) {
+          debugPrint('Mock location detected via isMocked flag');
+          return false;
+        }
+      }
+
+      // 2. Check for unrealistic accuracy (too perfect)
+      if (position.accuracy < 1.0) {
+        debugPrint('Suspiciously perfect accuracy detected: ${position.accuracy}m');
+        return false;
+      }
+
+      // 3. Check for unrealistic speed changes
+      Position? lastPosition = await _getLastStoredPosition();
+      if (lastPosition != null) {
+        final distance = Geolocator.distanceBetween(
+          lastPosition.latitude,
+          lastPosition.longitude,
+          position.latitude,
+          position.longitude,
+        );
+        
+        final timeDiff = position.timestamp.difference(lastPosition.timestamp).inSeconds;
+        if (timeDiff > 0) {
+          // Calculate speed in meters per second
+          final speed = distance / timeDiff;
+          
+          // If speed is greater than 100 m/s (360 km/h), it's likely fake
+          // This catches teleportation between locations
+          if (speed > 100 && distance > 1000) {
+            debugPrint('Unrealistic movement detected: $speed m/s');
+            return false;
+          }
+        }
+      }
+
+      // 4. Check for location jumps (teleportation)
+      if (lastPosition != null) {
+        final distance = Geolocator.distanceBetween(
+          lastPosition.latitude,
+          lastPosition.longitude,
+          position.latitude,
+          position.longitude,
+        );
+        
+        final timeDiff = position.timestamp.difference(lastPosition.timestamp).inMilliseconds;
+        if (timeDiff < 1000 && distance > 500) { // 500m in less than 1 second
+          debugPrint('Teleportation detected: $distance meters in $timeDiff ms');
+          return false;
+        }
+      }
+
+      // 5. Store this position for future comparisons
+      await _storePosition(position);
+      
+      return true;
+    } catch (e) {
+      debugPrint('Error in fake location check: $e');
+      // Default to allowing the location if our checks fail
+      return true;
+    }
+  }
+
+  /// Stores the position for future comparison
+  Future<void> _storePosition(Position position) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_position', jsonEncode({
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'accuracy': position.accuracy,
+        'altitude': position.altitude,
+        'speed': position.speed,
+        'speedAccuracy': position.speedAccuracy,
+        'altitudeAccuracy': position.altitudeAccuracy,
+        'headingAccuracy': position.headingAccuracy,
+        'heading': position.heading,
+        'timestamp': position.timestamp.millisecondsSinceEpoch,
+      }));
+    } catch (e) {
+      debugPrint('Error storing position: $e');
+    }
+  }
+
+  /// Retrieves the last stored position
+  Future<Position?> _getLastStoredPosition() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final positionJson = prefs.getString('last_position');
+      if (positionJson == null) return null;
+      
+      final data = jsonDecode(positionJson) as Map<String, dynamic>;
+      return Position(
+        latitude: data['latitude'],
+        longitude: data['longitude'],
+        timestamp: DateTime.fromMillisecondsSinceEpoch(data['timestamp']),
+        accuracy: data['accuracy'],
+        altitude: data['altitude'],
+        heading: data['heading'],
+        speed: data['speed'],
+        speedAccuracy: data['speedAccuracy'],
+        altitudeAccuracy: 0.0,  // Required parameter in newer versions
+        headingAccuracy: 0.0,   // Required parameter in newer versions
+        floor: null,
+        isMocked: false,
+      );
+    } catch (e) {
+      debugPrint('Error retrieving stored position: $e');
+      return null;
+    }
+  }
+  
+  /// Checks if the user's location is within allowed work areas
+  Future<bool> _isWithinAllowedArea(Position position) async {
+    try {
+      // First try to get allowed locations from the server
+      final allowedLocations = await _fetchAllowedLocations();
+      
+      // If we have server-defined locations, use those
+      if (allowedLocations.isNotEmpty) {
+        return _checkAgainstServerLocations(position, allowedLocations);
+      }
+      
+      // Fallback to locally defined office locations if server didn't provide any
+      return _checkAgainstLocalLocations(position);
+    } catch (e) {
+      debugPrint('Error checking allowed areas: $e');
+      // Default to allowing the check-in if our verification fails
+      // This prevents blocking legitimate check-ins due to technical issues
+      return true;
+    }
+  }
+  
+  /// Fetches allowed check-in locations from the server
+  Future<List<Map<String, dynamic>>> _fetchAllowedLocations() async {
+    try {
+      final url = '${_getCurrentApiUrl()}/allowed-locations';
+      final token = userPreferences.getToken();
+      
+      if (token == null) {
+        return [];
+      }
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return List<Map<String, dynamic>>.from(data['data']);
+        }
+      }
+      
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching allowed locations: $e');
+      return [];
+    }
+  }
+  
+  /// Checks the position against server-provided allowed locations
+  bool _checkAgainstServerLocations(Position position, List<Map<String, dynamic>> allowedLocations) {
+    for (final location in allowedLocations) {
+      try {
+        final double latitude = double.parse(location['latitude'].toString());
+        final double longitude = double.parse(location['longitude'].toString());
+        final double radius = double.parse(location['radius'].toString()); // radius in meters
+        
+        final distance = Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          latitude,
+          longitude,
+        );
+        
+        if (distance <= radius) {
+          return true; // Within an allowed area
+        }
+      } catch (e) {
+        debugPrint('Error processing location $location: $e');
+      }
+    }
+    
+    return false; // Not within any allowed area
+  }
+  
+  /// Checks the position against locally defined office locations
+  /// This is a fallback when server locations aren't available
+  bool _checkAgainstLocalLocations(Position position) {
+    // Define office locations with their coordinates and radius
+    final officeLocations = [
+      // Phongsavanh Bank Headquarters in Laos
+      {
+        'name': 'Phongsavanh Bank HQ',
+        'latitude': 17.9757, // Vientiane, Laos coordinates
+        'longitude': 102.6331, // Vientiane, Laos coordinates
+        'radius': 200.0, // 200 meters radius
+      },
+      // Phongsavanh Bank Branch Office
+      {
+        'name': 'Phongsavanh Bank Branch',
+        'latitude': 17.9662, // Another Vientiane location
+        'longitude': 102.6127, // Another Vientiane location
+        'radius': 150.0, // 150 meters radius
+      },
+    ];
+    
+    for (final office in officeLocations) {
+      final distance = Geolocator.distanceBetween(
+        position.latitude,
+        position.longitude,
+        office['latitude'] as double,
+        office['longitude'] as double,
+      );
+      
+      if (distance <= (office['radius'] as double)) {
+        return true; // Within an allowed office area
+      }
+    }
+    
+    return false; // Not within any defined office
   }
 
   Widget _buildPageContent(BuildContext context) {

@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
   "appTitle": "PSVB Next",
-  "welcomeToPSBV": "Welcome to PSVB Next",
+  "welcomeTopsvb": "Welcome to PSVB Next",
   "welcomeSubtitle1": "You're not just another customer.",
   "welcomeSubtitle2": "We're not just another Bank...",
   "emptyCredentialsMessage": "Please enter your username and password.",
@@ -145,7 +145,7 @@
   "tryAgain": "Biometric authentication failed. Please try again.",
   "emptyFieldsMessage": "Empty Fields Message",
   "newNotification": "New Notification",
-  "notificationChannelDescription": "Notifications about assignments, project updates, and member changes in PSBV Next app.",
+  "notificationChannelDescription": "Notifications about assignments, project updates, and member changes in psvb Next app.",
   "pageIndicator1of3": "1 of 3",
   "pageIndicator2of3": "2 of 3",
   "pageIndicator3of3": "3 of 3",

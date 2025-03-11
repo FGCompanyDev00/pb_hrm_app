@@ -97,18 +97,7 @@ class NotificationPermissionPageState
                 title: Text(AppLocalizations.of(context)!.notification),
                 content: Text(AppLocalizations.of(context)!.weWantToSendYou),
                 actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context); // Close dialog
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                const LocationInformationPage()),
-                      );
-                    },
-                    child: const Text('Skip'),
-                  ),
+                  // Skip button removed as per Apple guidelines 5.1.1
                   TextButton(
                     onPressed: () async {
                       Navigator.pop(context); // Close dialog
@@ -138,12 +127,7 @@ class NotificationPermissionPageState
     }
   }
 
-  void _skipNotificationPermission() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const LocationInformationPage()),
-    );
-  }
+  // Skip function removed as per Apple guidelines 5.1.1
 
   @override
   Widget build(BuildContext context) {
@@ -210,17 +194,6 @@ class NotificationPermissionPageState
                       ),
                       child: Text(AppLocalizations.of(context)!.next,
                           style: const TextStyle(fontSize: 18)),
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: _skipNotificationPermission,
-                      child: Text(
-                        'Skip',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: isDarkMode ? Colors.white70 : Colors.black54,
-                        ),
-                      ),
                     ),
                   ],
                 ),

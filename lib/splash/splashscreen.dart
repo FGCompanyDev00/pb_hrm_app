@@ -245,7 +245,7 @@ class SplashScreenState extends State<SplashScreen>
 
                   // Animated Welcome Text
                   Text(
-                    "Welcome to PSVB",
+                    "Welcome to PSVB Next",
                     style: TextStyle(
                       fontSize: welcomeFontSize,
                       fontWeight: FontWeight.bold,
