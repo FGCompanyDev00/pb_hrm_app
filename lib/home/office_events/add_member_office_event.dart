@@ -254,7 +254,7 @@ class AddMemberPageState extends State<AddMemberPage> {
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
                             return CircleAvatar(
-                              backgroundImage: snapshot.data != null ? NetworkImage(snapshot.data!) : const AssetImage('assets/default_avatar.jpg') as ImageProvider,
+                              backgroundImage: snapshot.data != null ? NetworkImage(snapshot.data!) : const AssetImage('assets/avatar_placeholder.png') as ImageProvider,
                               radius: 25,
                             );
                           } else {

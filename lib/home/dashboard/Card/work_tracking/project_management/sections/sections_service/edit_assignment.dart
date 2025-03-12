@@ -395,7 +395,7 @@ class UpdateAssignmentPageState extends State<UpdateAssignmentPage> {
         Positioned(
           left: i * 24.0,
           child: CircleAvatar(
-            backgroundImage: selectedMembers[i]['image_url'] != null && selectedMembers[i]['image_url'].isNotEmpty ? NetworkImage(selectedMembers[i]['image_url']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+            backgroundImage: selectedMembers[i]['image_url'] != null && selectedMembers[i]['image_url'].isNotEmpty ? NetworkImage(selectedMembers[i]['image_url']) : const AssetImage('assets/avatar_placeholder.png') as ImageProvider,
             radius: 18,
             backgroundColor: Colors.white,
             child: Container(

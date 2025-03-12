@@ -218,7 +218,7 @@ class SelectProcessingMembersPageState extends State<SelectProcessingMembersPage
         Padding(
           padding: const EdgeInsets.only(right: 4.0),
           child: CircleAvatar(
-            backgroundImage: _selectedMembers[i]['image_url'] != null && _selectedMembers[i]['image_url'].isNotEmpty ? NetworkImage(_selectedMembers[i]['image_url']) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+            backgroundImage: _selectedMembers[i]['image_url'] != null && _selectedMembers[i]['image_url'].isNotEmpty ? NetworkImage(_selectedMembers[i]['image_url']) : const AssetImage('assets/avatar_placeholder.png') as ImageProvider,
             radius: 20,
             backgroundColor: Colors.grey[200],
           ),
@@ -369,7 +369,7 @@ class SelectProcessingMembersPageState extends State<SelectProcessingMembersPage
 
                             return ListTile(
                               leading: CircleAvatar(
-                                backgroundImage: imageUrl != null && imageUrl.isNotEmpty ? NetworkImage(imageUrl) : const AssetImage('assets/default_avatar.png') as ImageProvider,
+                                backgroundImage: imageUrl != null && imageUrl.isNotEmpty ? NetworkImage(imageUrl) : const AssetImage('assets/avatar_placeholder.png') as ImageProvider,
                                 radius: 25,
                                 backgroundColor: Colors.grey[200],
                               ),

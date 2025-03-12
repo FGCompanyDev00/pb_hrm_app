@@ -612,7 +612,7 @@ class UserProfile {
       gender: json['gender'] ?? 'N/A',
       createAt: json['create_at'] ?? 'N/A',
       updateAt: json['update_at'] ?? 'N/A',
-      imgName: json['img_name'] ?? 'default_avatar.jpg',
+      imgName: json['img_name'] ?? 'avatar_placeholder.png',
     );
   }
 }

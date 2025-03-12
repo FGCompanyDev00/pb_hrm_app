@@ -436,15 +436,28 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
                       ),
                       title: Row(
                         children: [
-                          Text(device.deviceId),
+                          Expanded(
+                            child: Text(
+                              device.deviceId,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          ),
                           if (isCurrentDevice) ...[  
                             const SizedBox(width: 8),
-                            const Text(
-                              'Current',
-                              style: TextStyle(
-                                color: Colors.blue,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'Current',
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
@@ -461,9 +474,11 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
                             )
                           : Switch(
                               value: device.status,
-                              onChanged: device.status == false ? null : (value) {
-                                _toggleNotification(device);
-                              },
+                              onChanged: null, // Disabled interaction
+                              activeColor: Colors.green,
+                              activeTrackColor: Colors.green.withOpacity(0.5),
+                              inactiveThumbColor: Colors.grey,
+                              inactiveTrackColor: Colors.grey.withOpacity(0.5),
                             ),
                       onTap: isCurrentDevice ? () => _showAddDeviceDialog() : null,
                     );

@@ -736,8 +736,7 @@ class DashboardState extends State<Dashboard>
   }
 
   bool _shouldTrackLocation() {
-    // Add your conditions here for when location tracking is needed
-    // For example, only track location during work hours or specific features
+    
     return false; // Default to false to save battery
   }
 
@@ -971,7 +970,7 @@ class DashboardState extends State<Dashboard>
                         CircleAvatar(
                           radius: 28,
                           backgroundColor: Colors.white,
-                          child: userProfile.imgName != 'default_avatar.jpg'
+                          child: userProfile.imgName != 'avatar_placeholder.png'
                               ? ClipOval(
                                   child: CachedNetworkImage(
                                     imageUrl: userProfile.imgName,
@@ -985,7 +984,7 @@ class DashboardState extends State<Dashboard>
                                       ),
                                     ),
                                     errorWidget: (context, url, error) => Image.asset(
-                                      'assets/default_avatar.jpg',
+                                      'assets/avatar_placeholder.png',
                                       fit: BoxFit.cover,
                                       width: 56,
                                       height: 56,
@@ -997,7 +996,7 @@ class DashboardState extends State<Dashboard>
                                   ),
                                 )
                               : Image.asset(
-                                  'assets/default_avatar.jpg',
+                                  'assets/avatar_placeholder.png',
                                   fit: BoxFit.cover,
                                   width: 56,
                                   height: 56,

@@ -51,7 +51,7 @@ class UserProfileRecord extends HiveObject {
       employeeId: json['employee_id'] ?? 'N/A',
       name: json['employee_name'] ?? 'N/A',
       surname: json['employee_surname'] ?? 'N/A',
-      images: json['images'] ?? 'default_avatar.jpg',
+      images: json['images'] ?? 'avatar_placeholder.png',
       employeeTel: json['employee_tel'] ?? 'N/A',
       employeeEmail: json['employee_email'] ?? 'N/A',
       gender: json['gender'] ?? 'N/A',

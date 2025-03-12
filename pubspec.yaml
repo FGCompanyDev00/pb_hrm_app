@@ -156,5 +156,6 @@ flutter:
     - assets/attendance.png
     - assets/chat_icon.png
     - assets/room.png
+    - assets/debug.png
     - .env.demo
     - .env.production

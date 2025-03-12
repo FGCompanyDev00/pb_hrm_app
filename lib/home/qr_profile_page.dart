@@ -620,11 +620,11 @@ END:VCARD
                                                   data['images'].isNotEmpty
                                               ? NetworkImage(data['images'])
                                               : const AssetImage(
-                                                      'assets/default_avatar.png')
+                                                      'assets/avatar_placeholder.png')
                                                   as ImageProvider,
                                           onBackgroundImageError: (_, __) {
                                             const AssetImage(
-                                                'assets/default_avatar.png');
+                                                'assets/avatar_placeholder.png');
                                           }),
                                     ),
                                   ),
@@ -920,11 +920,11 @@ END:VCARD
                                                   data['images'].isNotEmpty
                                               ? NetworkImage(data['images'])
                                               : const AssetImage(
-                                                      'assets/default_avatar.png')
+                                                      'assets/avatar_placeholder.png')
                                                   as ImageProvider,
                                           onBackgroundImageError: (_, __) {
                                             const AssetImage(
-                                                'assets/default_avatar.png');
+                                                'assets/avatar_placeholder.png');
                                           }),
                                     ),
                                   ),
@@ -1314,7 +1314,7 @@ class UserProfile {
       employeeId: json['employee_id'] ?? 'N/A',
       name: json['employee_name'] ?? 'N/A',
       surname: json['employee_surname'] ?? 'N/A',
-      images: json['images'] ?? 'default_avatar.jpg',
+      images: json['images'] ?? 'avatar_placeholder.png',
       employee_tel: json['employee_tel'] ?? 'N/A',
       employee_email: json['employee_email'] ?? 'N/A',
       gender: json['gender'] ?? 'N/A',
