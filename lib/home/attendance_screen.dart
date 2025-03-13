@@ -879,12 +879,52 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   /// Checks if the location is real or fake using multiple indicators
+  Future<void> _logFakeLocationAttempt(Position fakePosition, Position? realPosition) async {
+    try {
+      String? token = userPreferences.getToken();
+      if (token == null) return;
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/attendance/checkin-checkout/logs'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'device_id': _deviceId,
+          'latitude': fakePosition.latitude.toString(),
+          'longitude': fakePosition.longitude.toString(),
+          'latitude_fake': realPosition?.latitude.toString() ?? fakePosition.latitude.toString(),
+          'longitude_fake': realPosition?.longitude.toString() ?? fakePosition.longitude.toString(),
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        debugPrint('Failed to log fake location attempt: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error logging fake location attempt: $e');
+    }
+  }
+
   Future<bool> _isLocationReal(Position position) async {
     try {
+      Position? realPosition;
+
       // 1. Check if mock location setting is enabled (Android only)
       if (Platform.isAndroid) {
         if (position.isMocked) {
           debugPrint('Mock location detected via isMocked flag');
+          // Try to get real location for logging
+          try {
+            realPosition = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high,
+              forceAndroidLocationManager: true // This might help bypass mock locations
+            );
+          } catch (e) {
+            debugPrint('Could not get real location: $e');
+          }
+          await _logFakeLocationAttempt(position, realPosition);
           return false;
         }
       }
@@ -892,6 +932,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       // 2. Check for unrealistic accuracy (too perfect)
       if (position.accuracy < 1.0) {
         debugPrint('Suspiciously perfect accuracy detected: ${position.accuracy}m');
+        await _logFakeLocationAttempt(position, null);
         return false;
       }
 
@@ -914,6 +955,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           // This catches teleportation between locations
           if (speed > 100 && distance > 1000) {
             debugPrint('Unrealistic movement detected: $speed m/s');
+            await _logFakeLocationAttempt(position, null);
             return false;
           }
         }
@@ -931,6 +973,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         final timeDiff = position.timestamp.difference(lastPosition.timestamp).inMilliseconds;
         if (timeDiff < 1000 && distance > 500) { // 500m in less than 1 second
           debugPrint('Teleportation detected: $distance meters in $timeDiff ms');
+          await _logFakeLocationAttempt(position, null);
           return false;
         }
       }
