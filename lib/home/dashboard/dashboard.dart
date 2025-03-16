@@ -154,7 +154,15 @@ class DashboardState extends State<Dashboard>
           if (_shouldTrackLocation()) {
             _initializeLocation();
           }
+          // Force a refresh of data when app is resumed
           _refreshDataSafely();
+          
+          // Schedule another refresh after a short delay to ensure images are loaded
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (!_isDisposed && mounted) {
+              _fetchBannersFromApiAndUpdate(forceUpdate: true);
+            }
+          });
         }
         break;
       default:
@@ -170,7 +178,14 @@ class DashboardState extends State<Dashboard>
     try {
       // Force update checks when user returns to app
       _checkForProfileUpdates(forceUpdate: true);
-      _checkForBannerUpdates(forceUpdate: true);
+      
+      // Clear the image cache to ensure fresh images
+      DefaultCacheManager().emptyCache();
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+      
+      // Fetch new data from API
+      _fetchBannersFromApiAndUpdate(forceUpdate: true);
       
       setState(() {
         futureUserProfile = fetchUserProfile();
@@ -416,8 +431,18 @@ class DashboardState extends State<Dashboard>
   Future<void> _clearImageFromCache(String imageUrl) async {
     try {
       if (imageUrl.isNotEmpty && Uri.tryParse(imageUrl)?.hasAbsolutePath == true) {
+        // Clear both the disk cache and the memory cache
         await DefaultCacheManager().removeFile(imageUrl);
-        debugPrint('Cleared old image from cache: $imageUrl');
+        
+        // Also clear from Flutter's image cache
+        final provider = NetworkImage(imageUrl);
+        PaintingBinding.instance.imageCache.evict(provider);
+        
+        // Clear from CachedNetworkImage's cache
+        final cachedProvider = CachedNetworkImageProvider(imageUrl);
+        PaintingBinding.instance.imageCache.evict(cachedProvider);
+        
+        debugPrint('Cleared old image from all caches: $imageUrl');
       }
     } catch (e) {
       debugPrint('Error clearing image from cache: $e');
@@ -458,11 +483,13 @@ class DashboardState extends State<Dashboard>
     if (_isDisposed) return [];
 
     try {
-      // Quick memory cache check - fastest retrieval
+      // Always start an API fetch in the background to ensure fresh data
+      // This ensures we always have the latest data when reopening the app
+      _fetchBannersFromApiAndUpdate(forceUpdate: true);
+      
+      // Quick memory cache check - fastest retrieval for immediate display
       final cachedBanners = _getCachedData('banners');
       if (cachedBanners != null) {
-        // Start async update check without waiting
-        _checkForBannerUpdates(forceUpdate: false);
         return List<String>.from(cachedBanners);
       }
 
@@ -470,12 +497,10 @@ class DashboardState extends State<Dashboard>
       final hiveBanners = bannersBox.get('banners');
       if (hiveBanners != null && hiveBanners.isNotEmpty) {
         _updateCache('banners', hiveBanners);
-        // Start async update check without waiting
-        _checkForBannerUpdates(forceUpdate: false);
         return hiveBanners;
       }
 
-      // No cache or empty cache - fetch from API immediately
+      // No cache or empty cache - wait for API fetch to complete
       return await _fetchBannersFromApi();
     } catch (e) {
       debugPrint('Error fetching banners: $e');
@@ -488,13 +513,14 @@ class DashboardState extends State<Dashboard>
     }
   }
 
-  Future<void> _checkForBannerUpdates({bool forceUpdate = false}) async {
+  // New method to fetch banners from API and update state
+  Future<void> _fetchBannersFromApiAndUpdate({bool forceUpdate = false}) async {
     try {
       // Skip update check if we recently checked (unless forced)
       final now = DateTime.now();
       final lastUpdate = _getCacheTimestamp('banners');
       if (!forceUpdate && lastUpdate != null && 
-          now.difference(lastUpdate) < const Duration(minutes: 5)) {
+          now.difference(lastUpdate) < const Duration(minutes: 2)) { // Reduced time to 2 minutes
         return; // Skip frequent updates unless forced
       }
       
@@ -511,17 +537,47 @@ class DashboardState extends State<Dashboard>
             for (final bannerUrl in removedBanners) {
               _clearImageFromCache(bannerUrl);
             }
+            
+            // Prefetch new images that weren't in the old list
+            final newImages = newBanners.where(
+                (newUrl) => !oldBanners.contains(newUrl)).toList();
+            for (final bannerUrl in newImages) {
+              _prefetchImage(bannerUrl);
+            }
+          } else {
+            // Prefetch all images if we had no old banners
+            for (final bannerUrl in newBanners) {
+              _prefetchImage(bannerUrl);
+            }
           }
           
           setState(() {
             _updateCache('banners', newBanners);
             bannersBox.put('banners', newBanners);
+            // Update the future to trigger UI refresh with new data
+            futureBanners = Future.value(newBanners);
           });
         }
       }
     } catch (e) {
       debugPrint('Error checking for banner updates: $e');
     }
+  }
+  
+  // Helper method to prefetch images
+  void _prefetchImage(String imageUrl) {
+    if (imageUrl.isEmpty || Uri.tryParse(imageUrl)?.hasAbsolutePath != true) return;
+    
+    try {
+      final provider = CachedNetworkImageProvider(imageUrl);
+      precacheImage(provider, context);
+    } catch (e) {
+      debugPrint('Error prefetching image: $e');
+    }
+  }
+  
+  Future<void> _checkForBannerUpdates({bool forceUpdate = false}) async {
+    return _fetchBannersFromApiAndUpdate(forceUpdate: forceUpdate);
   }
 
   Future<List<String>> _fetchBannersFromApi() async {
@@ -599,7 +655,7 @@ class DashboardState extends State<Dashboard>
     return cachedItem?.timestamp;
   }
 
-  // Start the carousel auto-swipe timer
+  // Start the carousel auto-swipe timer with improved animation
   void _startCarouselTimer() {
     _carouselTimer = Timer.periodic(const Duration(seconds: 5), (Timer timer) {
       if (_pageController.hasClients) {
@@ -607,16 +663,27 @@ class DashboardState extends State<Dashboard>
         // Calculate the total number of pages
         double maxScrollExtent = _pageController.position.maxScrollExtent;
         double viewportDimension = _pageController.position.viewportDimension;
-        int totalPages = (maxScrollExtent / viewportDimension).ceil();
+        int totalPages = (maxScrollExtent / viewportDimension).ceil() + 1;
 
         if (nextPage >= totalPages) {
           nextPage = 0;
         }
+        
+        // Prefetch the next image before animation starts
+        if (nextPage < totalPages) {
+          final banners = _getCachedData('banners') as List<String>?;
+          if (banners != null && banners.isNotEmpty && nextPage < banners.length) {
+            _prefetchImage(banners[nextPage]);
+          }
+        }
+        
+        // Improved animation curve for smoother transitions
         _pageController.animateToPage(
           nextPage,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeIn,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOutCubic,
         );
+        
         setState(() {
           _currentPage = nextPage;
         });
@@ -1053,36 +1120,78 @@ class DashboardState extends State<Dashboard>
     );
   }
 
-  // Banner Carousel
+  // Banner Carousel with improved loading and animation
   Widget _buildBannerCarousel(bool isDarkMode) {
-    return SizedBox(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
       height: 175.0,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: FutureBuilder<List<String>>(
         future: futureBanners,
         builder: (context, snapshot) {
+          // Always try to show cached banners first for immediate display
+          final cachedBanners = _getCachedData('banners') as List<String>?;
+          
+          if (cachedBanners != null && cachedBanners.isNotEmpty) {
+            // If we have cached data, show it immediately while fetching new data in background
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              // Start a background refresh if we're waiting for new data
+              Future.microtask(() => _fetchBannersFromApiAndUpdate(forceUpdate: true));
+            }
+            return _buildBannerPageView(cachedBanners, isDarkMode);
+          }
+          
+          // Handle other states when no cached data is available
           if (snapshot.connectionState == ConnectionState.waiting) {
-            // Show cached banners while loading if available
-            final cachedBanners = _getCachedData('banners') as List<String>?;
-            if (cachedBanners != null && cachedBanners.isNotEmpty) {
-              return _buildBannerPageView(cachedBanners, isDarkMode);
-            }
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            // Try to show cached banners on error
-            final cachedBanners = _getCachedData('banners') as List<String>?;
-            if (cachedBanners != null && cachedBanners.isNotEmpty) {
-              return _buildBannerPageView(cachedBanners, isDarkMode);
-            }
             return Center(
-                child: Text(AppLocalizations.of(context)!
-                    .errorWithDetails(snapshot.error.toString())));
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isDarkMode ? Colors.blueAccent : Colors.orangeAccent,
+                ),
+              ),
+            );
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    color: isDarkMode ? Colors.redAccent : Colors.red,
+                    size: 40,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString()),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            );
           } else if (snapshot.hasData &&
               snapshot.data != null &&
               snapshot.data!.isNotEmpty) {
+            // If we have new data from API, update cache and show it
+            if (!listEquals(snapshot.data!, cachedBanners ?? [])) {
+              _updateCache('banners', snapshot.data!);
+              bannersBox.put('banners', snapshot.data!);
+            }
             return _buildBannerPageView(snapshot.data!, isDarkMode);
           } else {
             return Center(
-                child: Text(AppLocalizations.of(context)!.noBannersAvailable));
+              child: Text(
+                AppLocalizations.of(context)!.noBannersAvailable,
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                  fontSize: 16,
+                ),
+              ),
+            );
           }
         },
       ),
@@ -1103,48 +1212,95 @@ class DashboardState extends State<Dashboard>
               child: Text(AppLocalizations.of(context)!.noBannersAvailable));
         }
 
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 12.0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: CachedNetworkImage(
-              imageUrl: bannerUrl,
-              fit: BoxFit.cover,
-              errorWidget: (context, url, error) => Container(
-                color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
-                child: const Icon(Icons.error),
-              ),
-              imageBuilder: (context, imageProvider) => Container(
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: imageProvider,
-                    fit: BoxFit.cover,
-                    colorFilter: isDarkMode
-                        ? ColorFilter.mode(
-                            Colors.white.withOpacity(0.1),
-                            BlendMode.lighten,
-                          )
-                        : null,
+        // Prefetch next image for smoother swiping
+        if (index < banners.length - 1) {
+          _prefetchImage(banners[index + 1]);
+        }
+
+        return Hero(
+          tag: 'banner_$index',
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutQuint,
+            margin: const EdgeInsets.symmetric(horizontal: 12.0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: isDarkMode ? Colors.black54 : Colors.black12,
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: CachedNetworkImage(
+                key: ValueKey('banner_image_$bannerUrl'),
+                imageUrl: bannerUrl,
+                fit: BoxFit.cover,
+                errorWidget: (context, url, error) => Container(
+                  color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error, size: 40, color: Colors.red),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Image failed to load',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              // Enhanced caching configuration with optimized settings
-              cacheManager: DefaultCacheManager(),
-              maxHeightDiskCache: 1080, // Optimize for most phone screens
-              memCacheHeight: 1080,
-              fadeOutDuration: const Duration(milliseconds: 200), // Faster transitions
-              fadeInDuration: const Duration(milliseconds: 200),
-              // Improved caching behavior
-              useOldImageOnUrlChange: true, // Show old image while loading new one
-              placeholderFadeInDuration: const Duration(milliseconds: 100),
-              progressIndicatorBuilder: (context, url, progress) => Container(
-                color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
-                child: Center(
-                  child: CircularProgressIndicator(
-                    value: progress.progress,
+                imageBuilder: (context, imageProvider) => Container(
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: imageProvider,
+                      fit: BoxFit.cover,
+                      colorFilter: isDarkMode
+                          ? ColorFilter.mode(
+                              Colors.white.withOpacity(0.1),
+                              BlendMode.lighten,
+                            )
+                          : null,
+                    ),
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.2),
+                        ],
+                        stops: const [0.7, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+                // Enhanced caching configuration with optimized settings
+                cacheManager: DefaultCacheManager(),
+                maxHeightDiskCache: 1080, // Optimize for most phone screens
+                memCacheHeight: 1080,
+                fadeOutDuration: const Duration(milliseconds: 150), // Faster transitions
+                fadeInDuration: const Duration(milliseconds: 250),
+                // Improved caching behavior
+                useOldImageOnUrlChange: false, // Don't use old image, always fetch fresh
+                placeholderFadeInDuration: const Duration(milliseconds: 200),
+                progressIndicatorBuilder: (context, url, progress) => Container(
+                  color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      value: progress.progress,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        isDarkMode ? Colors.blueAccent : Colors.orangeAccent,
+                      ),
+                      strokeWidth: 3,
+                    ),
                   ),
                 ),
               ),
@@ -1442,6 +1598,19 @@ class DashboardState extends State<Dashboard>
     setState(() {
       _currentPage = index;
     });
+    
+    // Prefetch the next image when user manually changes page
+    final banners = _getCachedData('banners') as List<String>?;
+    if (banners != null && banners.isNotEmpty) {
+      // Prefetch next image
+      if (index < banners.length - 1) {
+        _prefetchImage(banners[index + 1]);
+      }
+      // Also prefetch previous image for backward swiping
+      if (index > 0) {
+        _prefetchImage(banners[index - 1]);
+      }
+    }
   }
 }
 
