@@ -2,7 +2,7 @@ name: pb_hrsystem
 description: "A new Flutter project."
 publish_to: 'none'
 
-version: 1.0.62+62
+version: 1.1.4+4
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -82,6 +82,7 @@ dependencies:
   flutter_background_service_ios: ^5.0.0
   workmanager: ^0.5.2
   flutter_cache_manager: ^3.3.1
+  html: ^0.15.4
 
 dev_dependencies:
   flutter_test:

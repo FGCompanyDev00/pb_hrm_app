@@ -5,6 +5,7 @@ import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:pb_hrsystem/widgets/update_dialog.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -143,6 +144,24 @@ class SplashScreenState extends State<SplashScreen>
         );
       }
     });
+  }
+
+  void _navigateToNextScreen() async {
+    // ... existing navigation logic ...
+
+    // Check for updates when navigating from splash screen
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (mounted) {
+      _checkForUpdates();
+    }
+  }
+
+  // Add the update checking method
+  Future<void> _checkForUpdates() async {
+    if (mounted) {
+      await UpdateDialogService.showUpdateDialog(context);
+    }
   }
 
   // Memoize font size calculation

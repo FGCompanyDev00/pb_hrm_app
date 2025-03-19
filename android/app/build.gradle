@@ -51,8 +51,8 @@ android {
         applicationId = "com.phongsavanh.pb_hrsystem"
         minSdk = 24
         targetSdk = 34
-        versionCode = 62
-        versionName = "1.0.62"
+        versionCode = 4
+        versionName = "1.1.4"
         multiDexEnabled true
     }
 

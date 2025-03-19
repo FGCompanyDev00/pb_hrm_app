@@ -64,7 +64,12 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   final ValueNotifier<bool> _isLoading = ValueNotifier<bool>(true);
   final ValueNotifier<bool> _isOffsite = ValueNotifier<bool>(false);
   final ValueNotifier<List<Map<String, String>>> _weeklyRecords =
-  ValueNotifier<List<Map<String, String>>>([]);
+      ValueNotifier<List<Map<String, String>>>([]);
+
+  // Add detailed loading state
+  final ValueNotifier<String> _loadingMessage =
+      ValueNotifier<String>('Initializing...');
+  final ValueNotifier<bool> _isInteractive = ValueNotifier<bool>(false);
 
   // Optimize location tracking
   Position? _lastKnownPosition;
@@ -93,21 +98,30 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     _isOffsite.value = false;
 
+    // Make screen interactive immediately
+    _isInteractive.value = true;
+
     // Initialize in parallel
     _initializeServices();
   }
 
   Future<void> _initializeServices() async {
-    await Future.wait([
-      _fetchWeeklyRecords(),
-      _retrieveSavedState(),
-      _retrieveDeviceId(),
-      _fetchLimitTime(),
-    ]);
+    // Perform the most critical state restoration first
+    await _retrieveSavedState();
 
+    // Update loading message
+    _loadingMessage.value = 'Retrieving device info...';
+    await _retrieveDeviceId();
+
+    _loadingMessage.value = 'Setting up location services...';
     _startLocationMonitoring();
     _startTimerForLiveTime();
-    _determineAndShowLocationModal();
+
+    _loadingMessage.value = 'Loading time limits...';
+    await _fetchLimitTime();
+
+    // Fetch records in background
+    _fetchWeeklyRecordsInBackground();
 
     // Optimize connectivity listener
     connectivityResult.onConnectivityChanged.listen(_handleConnectivityChange);
@@ -115,8 +129,39 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     // Refresh timer with optimal interval
     _refreshTimer = Timer.periodic(const Duration(hours: 1), (timer) {
       if (!mounted) return;
-      _fetchWeeklyRecords();
+      _fetchWeeklyRecordsInBackground();
     });
+
+    // Hide loading indicator after essential services are initialized
+    if (mounted) {
+      _isLoading.value = false;
+    }
+  }
+
+  // New method to fetch weekly records in background
+  Future<void> _fetchWeeklyRecordsInBackground() async {
+    if (!mounted) return;
+
+    try {
+      final String? token = userPreferences.getToken();
+      if (token == null) throw Exception('No token found');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/attendance/checkin-checkout/offices/weekly/me'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        _updateWeeklyRecords(data);
+        _lastCacheUpdate = DateTime.now();
+      }
+    } catch (e) {
+      debugPrint('Error fetching weekly records in background: $e');
+    }
   }
 
   void _handleConnectivityChange(List<ConnectivityResult> source) {
@@ -180,7 +225,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       return;
     }
 
-    _isLoading.value = true;
+    // Only show loading indicator if we don't have cached data
+    bool showLoading = _weeklyRecords.value.isEmpty;
+
+    if (showLoading && mounted) {
+      _isLoading.value = true;
+      _loadingMessage.value = 'Fetching attendance records...';
+    }
 
     try {
       final String? token = userPreferences.getToken();
@@ -202,7 +253,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     } catch (e) {
       debugPrint('Error fetching weekly records: $e');
     } finally {
-      if (mounted) {
+      if (mounted && showLoading) {
         _isLoading.value = false;
       }
     }
@@ -214,14 +265,14 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     final monthlyData = data['TotalWorkDurationForMonth'];
     final weeklyRecords = (data['weekly'] as List)
         .map((item) => {
-          'date': item['check_in_date'].toString(),
-          'checkIn': item['check_in_time'].toString(),
-          'checkOut': item['check_out_time'].toString(),
-          'workingHours': item['workDuration'].toString(),
-          'checkInStatus': item['check_in_status']?.toString() ?? 'unknown',
-          'checkOutStatus':
-          item['check_out_status']?.toString() ?? 'unknown',
-        })
+              'date': item['check_in_date'].toString(),
+              'checkIn': item['check_in_time'].toString(),
+              'checkOut': item['check_out_time'].toString(),
+              'workingHours': item['workDuration'].toString(),
+              'checkInStatus': item['check_in_status']?.toString() ?? 'unknown',
+              'checkOutStatus':
+                  item['check_out_status']?.toString() ?? 'unknown',
+            })
         .toList();
 
     _weeklyRecords.value = weeklyRecords;
@@ -246,6 +297,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     _isLoading.dispose();
     _isOffsite.dispose();
     _weeklyRecords.dispose();
+    _loadingMessage.dispose();
+    _isInteractive.dispose();
     super.dispose();
   }
 
@@ -286,20 +339,11 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Future<void> _determineAndShowLocationModal() async {
-    setState(() {
-      _isLoading.value = true; // Show loading indicator
-    });
-
+    // Don't show loading indicator here
     Position? currentPosition = await _getCurrentPosition();
     if (currentPosition != null) {
       // _determineSectionFromPosition(currentPosition);
     }
-
-    setState(() {
-      _isLoading.value = false;
-    });
-
-    // _showLocationModal(_isOffsite ? 'Offsite' : 'Office');
   }
 
   String _getCurrentApiUrl() {
@@ -426,7 +470,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     try {
       const AndroidNotificationDetails androidDetails =
-      AndroidNotificationDetails(
+          AndroidNotificationDetails(
         'attendance_channel_id',
         'Attendance Notifications',
         channelDescription: 'Notifications for check-in/check-out',
@@ -522,7 +566,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     try {
       const AndroidNotificationDetails androidDetails =
-      AndroidNotificationDetails(
+          AndroidNotificationDetails(
         'attendance_channel_id',
         'Attendance Notifications',
         channelDescription: 'Notifications for check-in/check-out',
@@ -572,7 +616,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         Color backgroundColor = isSuccess ? Colors.green : Colors.red;
         Color iconColor = isSuccess ? Colors.greenAccent : Colors.redAccent;
         IconData iconData =
-        isSuccess ? Icons.check_circle_outline : Icons.cancel_outlined;
+            isSuccess ? Icons.check_circle_outline : Icons.cancel_outlined;
 
         return Dialog(
           shape: RoundedRectangleBorder(
@@ -593,7 +637,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                   decoration: BoxDecoration(
                     color: backgroundColor,
                     borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
+                        const BorderRadius.vertical(top: Radius.circular(20)),
                   ),
                   child: Center(
                     child: Text(
@@ -687,7 +731,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         if (mounted) {
           _showValidationModal(record.type == 'checkIn', false,
               "Location Error", errorMessage // ✅ Show API message in modal
-          );
+              );
         }
         return false; // ❌ Prevent state updates
       } else {
@@ -730,7 +774,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     bool canCheckBiometrics = await auth.canCheckBiometrics;
     bool isDeviceSupported = await auth.isDeviceSupported();
     String? biometricEnabledStored =
-    await _storage.read(key: 'biometricEnabled');
+        await _storage.read(key: 'biometricEnabled');
 
     // Update the biometricEnabled state based on current settings
     bool biometricEnabled = (biometricEnabledStored == 'true') &&
@@ -879,7 +923,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   /// Checks if the location is real or fake using multiple indicators
-  Future<void> _logFakeLocationAttempt(Position fakePosition, Position? realPosition) async {
+  Future<void> _logFakeLocationAttempt(
+      Position fakePosition, Position? realPosition) async {
     try {
       String? token = userPreferences.getToken();
       if (token == null) return;
@@ -894,13 +939,16 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           'device_id': _deviceId,
           'latitude': fakePosition.latitude.toString(),
           'longitude': fakePosition.longitude.toString(),
-          'latitude_fake': realPosition?.latitude.toString() ?? fakePosition.latitude.toString(),
-          'longitude_fake': realPosition?.longitude.toString() ?? fakePosition.longitude.toString(),
+          'latitude_fake': realPosition?.latitude.toString() ??
+              fakePosition.latitude.toString(),
+          'longitude_fake': realPosition?.longitude.toString() ??
+              fakePosition.longitude.toString(),
         }),
       );
 
       if (response.statusCode != 200) {
-        debugPrint('Failed to log fake location attempt: ${response.statusCode}');
+        debugPrint(
+            'Failed to log fake location attempt: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Error logging fake location attempt: $e');
@@ -919,8 +967,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           try {
             realPosition = await Geolocator.getCurrentPosition(
                 desiredAccuracy: LocationAccuracy.high,
-                forceAndroidLocationManager: true // This might help bypass mock locations
-            );
+                forceAndroidLocationManager:
+                    true // This might help bypass mock locations
+                );
           } catch (e) {
             debugPrint('Could not get real location: $e');
           }
@@ -931,7 +980,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
       // 2. Check for unrealistic accuracy (too perfect)
       if (position.accuracy < 1.0) {
-        debugPrint('Suspiciously perfect accuracy detected: ${position.accuracy}m');
+        debugPrint(
+            'Suspiciously perfect accuracy detected: ${position.accuracy}m');
         await _logFakeLocationAttempt(position, null);
         return false;
       }
@@ -946,7 +996,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           position.longitude,
         );
 
-        final timeDiff = position.timestamp.difference(lastPosition.timestamp).inSeconds;
+        final timeDiff =
+            position.timestamp.difference(lastPosition.timestamp).inSeconds;
         if (timeDiff > 0) {
           // Calculate speed in meters per second
           final speed = distance / timeDiff;
@@ -970,9 +1021,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           position.longitude,
         );
 
-        final timeDiff = position.timestamp.difference(lastPosition.timestamp).inMilliseconds;
-        if (timeDiff < 1000 && distance > 500) { // 500m in less than 1 second
-          debugPrint('Teleportation detected: $distance meters in $timeDiff ms');
+        final timeDiff = position.timestamp
+            .difference(lastPosition.timestamp)
+            .inMilliseconds;
+        if (timeDiff < 1000 && distance > 500) {
+          // 500m in less than 1 second
+          debugPrint(
+              'Teleportation detected: $distance meters in $timeDiff ms');
           await _logFakeLocationAttempt(position, null);
           return false;
         }
@@ -993,18 +1048,20 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   Future<void> _storePosition(Position position) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('last_position', jsonEncode({
-        'latitude': position.latitude,
-        'longitude': position.longitude,
-        'accuracy': position.accuracy,
-        'altitude': position.altitude,
-        'speed': position.speed,
-        'speedAccuracy': position.speedAccuracy,
-        'altitudeAccuracy': position.altitudeAccuracy,
-        'headingAccuracy': position.headingAccuracy,
-        'heading': position.heading,
-        'timestamp': position.timestamp.millisecondsSinceEpoch,
-      }));
+      await prefs.setString(
+          'last_position',
+          jsonEncode({
+            'latitude': position.latitude,
+            'longitude': position.longitude,
+            'accuracy': position.accuracy,
+            'altitude': position.altitude,
+            'speed': position.speed,
+            'speedAccuracy': position.speedAccuracy,
+            'altitudeAccuracy': position.altitudeAccuracy,
+            'headingAccuracy': position.headingAccuracy,
+            'heading': position.heading,
+            'timestamp': position.timestamp.millisecondsSinceEpoch,
+          }));
     } catch (e) {
       debugPrint('Error storing position: $e');
     }
@@ -1027,8 +1084,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         heading: data['heading'],
         speed: data['speed'],
         speedAccuracy: data['speedAccuracy'],
-        altitudeAccuracy: 0.0,  // Required parameter in newer versions
-        headingAccuracy: 0.0,   // Required parameter in newer versions
+        altitudeAccuracy: 0.0, // Required parameter in newer versions
+        headingAccuracy: 0.0, // Required parameter in newer versions
         floor: null,
         isMocked: false,
       );
@@ -1092,12 +1149,14 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   /// Checks the position against server-provided allowed locations
-  bool _checkAgainstServerLocations(Position position, List<Map<String, dynamic>> allowedLocations) {
+  bool _checkAgainstServerLocations(
+      Position position, List<Map<String, dynamic>> allowedLocations) {
     for (final location in allowedLocations) {
       try {
         final double latitude = double.parse(location['latitude'].toString());
         final double longitude = double.parse(location['longitude'].toString());
-        final double radius = double.parse(location['radius'].toString()); // radius in meters
+        final double radius =
+            double.parse(location['radius'].toString()); // radius in meters
 
         final distance = Geolocator.distanceBetween(
           position.latitude,
@@ -1193,14 +1252,14 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
                   backgroundColor: Theme.of(context).brightness ==
-                      Brightness.dark
+                          Brightness.dark
                       ? const Color(
-                      0xFFDBB342) // Dark mode background color (#DBB342)
+                          0xFFDBB342) // Dark mode background color (#DBB342)
                       : Colors.green, // Light mode background color (green)
                   elevation: 4,
                 ),
@@ -1260,7 +1319,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                               'assets/attendance.png',
                               width: 40,
                               color:
-                              isDarkMode ? const Color(0xFFDBB342) : null,
+                                  isDarkMode ? const Color(0xFFDBB342) : null,
                             ),
                             const SizedBox(width: 12),
                             Text(
@@ -1284,11 +1343,11 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                                   : Icons.error_outline,
                               color: isSuccess
                                   ? (isDarkMode
-                                  ? Colors.greenAccent
-                                  : Colors.green)
+                                      ? Colors.greenAccent
+                                      : Colors.green)
                                   : (isDarkMode
-                                  ? Colors.redAccent
-                                  : Colors.red),
+                                      ? Colors.redAccent
+                                      : Colors.red),
                               size: constraints.maxWidth < 400 ? 40 : 50,
                             ),
                             const SizedBox(width: 12),
@@ -1324,7 +1383,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                               backgroundColor: const Color(
                                   0xFFDBB342), // Gold color for button
                               padding:
-                              const EdgeInsets.symmetric(vertical: 12.0),
+                                  const EdgeInsets.symmetric(vertical: 12.0),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14.0),
                               ),
@@ -1485,9 +1544,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       onTap: () async {
         DateTime now = DateTime.now();
         DateTime checkInTimeAllowed =
-        DateTime(now.year, now.month, now.day, 0, 0);
+            DateTime(now.year, now.month, now.day, 0, 0);
         DateTime checkInDisabledTime =
-        DateTime(now.year, now.month, now.day, 22, 0);
+            DateTime(now.year, now.month, now.day, 22, 0);
 
         if (!_isCheckInActive.value) {
           if (now.isBefore(checkInTimeAllowed) ||
@@ -1608,7 +1667,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                       Icons.login,
                       Colors.green,
                       isDarkMode:
-                      Theme.of(context).brightness == Brightness.dark,
+                          Theme.of(context).brightness == Brightness.dark,
                     ),
                     _buildSummaryItem(
                       AppLocalizations.of(context)!.checkOut,
@@ -1616,7 +1675,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                       Icons.logout,
                       Colors.red,
                       isDarkMode:
-                      Theme.of(context).brightness == Brightness.dark,
+                          Theme.of(context).brightness == Brightness.dark,
                     ),
                     _buildSummaryItem(
                       AppLocalizations.of(context)!.workingHours,
@@ -1624,7 +1683,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                       Icons.timer,
                       Colors.blue,
                       isDarkMode:
-                      Theme.of(context).brightness == Brightness.dark,
+                          Theme.of(context).brightness == Brightness.dark,
                     ),
                   ],
                 ),
@@ -1666,9 +1725,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                             fontSize: fontSize,
                             fontWeight: FontWeight.bold,
                             color:
-                            Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white
-                                : Colors.black,
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black,
                           ),
                         ),
                         // const SizedBox(height: 2),
@@ -1712,7 +1771,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
             fontSize: 14,
             fontWeight: FontWeight.bold,
             color:
-            isDarkMode ? Colors.white : Colors.black, // Adjust time color
+                isDarkMode ? Colors.white : Colors.black, // Adjust time color
           ),
         ),
 
@@ -1954,11 +2013,32 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   }
 
   Widget _buildLoadingIndicator() {
-    return Container(
-      color: Colors.black.withOpacity(0.3),
-      child: const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+    return IgnorePointer(
+      ignoring: _isInteractive.value,
+      child: Container(
+        color: Colors.black.withOpacity(_isInteractive.value ? 0.2 : 0.5),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  _loadingMessage.value,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

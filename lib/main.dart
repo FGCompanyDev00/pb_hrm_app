@@ -49,6 +49,7 @@ import 'package:hive/hive.dart';
 import 'package:pb_hrsystem/hive_helper/model/event_record.dart';
 import 'package:pb_hrsystem/hive_helper/model/calendar_events_record.dart';
 import 'package:pb_hrsystem/hive_helper/model/calendar_events_list_record.dart';
+import 'package:pb_hrsystem/widgets/update_dialog.dart';
 
 /// ------------------------------------------------------------
 /// 1) Global instance of FlutterLocalNotificationsPlugin
@@ -701,7 +702,7 @@ class MainScreen extends StatefulWidget {
   MainScreenState createState() => MainScreenState();
 }
 
-class MainScreenState extends State<MainScreen> {
+class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _selectedIndex = 1;
   final List<GlobalKey<NavigatorState>> _navigatorKeys =
       List.generate(4, (index) => GlobalKey<NavigatorState>());
@@ -720,6 +721,8 @@ class MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    // Add observer for app lifecycle events
+    WidgetsBinding.instance.addObserver(this);
     BackButtonInterceptor.add(_routeInterceptor);
     offlineProvider.initialize();
 
@@ -747,6 +750,30 @@ class MainScreenState extends State<MainScreen> {
 
     _initializeConnectivity();
     _startSessionCheck();
+
+    // Check for updates when app starts
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        _checkForUpdates();
+      }
+    });
+  }
+
+  // Add method to check for available updates
+  Future<void> _checkForUpdates() async {
+    if (mounted) {
+      await UpdateDialogService.showUpdateDialog(context);
+    }
+  }
+
+  // Add lifecycle event handler to check for updates when app is resumed
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Check for updates when app is resumed from background
+      _checkForUpdates();
+    }
   }
 
   // Start periodic session check
@@ -808,6 +835,8 @@ class MainScreenState extends State<MainScreen> {
   @override
   void dispose() {
     _isDisposed = true;
+    // Remove the observer
+    WidgetsBinding.instance.removeObserver(this);
     _connectivitySubscription.cancel();
     _sessionCheckTimer?.cancel();
     BackButtonInterceptor.remove(_routeInterceptor);
