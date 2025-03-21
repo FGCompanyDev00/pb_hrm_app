@@ -274,7 +274,7 @@ class DashboardState extends State<Dashboard>
 
   Future<void> _initializeSecureStorage() async {
     try {
-      final storage = const FlutterSecureStorage(
+      const storage = FlutterSecureStorage(
         iOptions: IOSOptions(
           accessibility: KeychainAccessibility.first_unlock,
           synchronizable: true,

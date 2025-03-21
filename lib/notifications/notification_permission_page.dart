@@ -80,13 +80,13 @@ class _NotificationPermissionPageState
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Permission Denied'),
-        content: Text(
+        title: const Text('Permission Denied'),
+        content: const Text(
             'Notification permission denied. Please enable notifications in settings.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('OK'),
+            child: const Text('OK'),
           ),
         ],
       ),
@@ -97,9 +97,9 @@ class _NotificationPermissionPageState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Notification Permission'),
+        title: const Text('Notification Permission'),
       ),
-      body: Center(
+      body: const Center(
         child: CircularProgressIndicator(),
       ),
     );

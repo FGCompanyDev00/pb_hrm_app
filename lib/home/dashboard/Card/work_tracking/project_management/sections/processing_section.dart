@@ -7,7 +7,6 @@ import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/view_processing.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
-import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -28,7 +27,6 @@ class ProcessingSection extends StatefulWidget {
 }
 
 class _ProcessingSectionState extends State<ProcessingSection> {
-  final WorkTrackingService _workTrackingService = WorkTrackingService();
 
   List<Map<String, dynamic>> _meetings = [];
   String _selectedStatus = 'All Status';

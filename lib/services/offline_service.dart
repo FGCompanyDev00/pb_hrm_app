@@ -17,6 +17,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../hive_helper/model/attendance_record.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:flutter/foundation.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:sqflite/sqflite.dart';
+import 'dart:io'; 
 
 class OfflineProvider extends ChangeNotifier {
   late Box<AttendanceRecord> _attendanceBox;
@@ -64,12 +70,44 @@ class OfflineProvider extends ChangeNotifier {
         await _calendarDb!.close();
       }
 
-      _calendarDb =
-          await calendarDatabaseService.initializeDatabase('calendar');
-      _isInitialized = true;
-      debugPrint('Calendar database initialized successfully');
+      // Try to initialize with error handling
+      try {
+        _calendarDb =
+            await calendarDatabaseService.initializeDatabase('calendar');
+        _isInitialized = true;
+        debugPrint('Calendar database initialized successfully');
+      } catch (dbError) {
+        // Log specific error info
+        debugPrint('Error during calendar database initialization: $dbError');
+
+        // Try to delete and recreate database in case of corruption
+        try {
+          // Get path to database file
+          Directory directory = await getApplicationDocumentsDirectory();
+          String dirPath = directory.path.endsWith(Platform.pathSeparator)
+              ? directory.path
+              : '${directory.path}${Platform.pathSeparator}';
+          String path = '${dirPath}calendar.db';
+
+          // Delete database if it exists
+          if (await databaseExists(path)) {
+            debugPrint('Attempting to delete corrupted database at: $path');
+            await deleteDatabase(path);
+            debugPrint('Database deleted, attempting to recreate');
+          }
+
+          // Try initialization again
+          _calendarDb =
+              await calendarDatabaseService.initializeDatabase('calendar');
+          _isInitialized = true;
+          debugPrint('Calendar database successfully recreated');
+        } catch (e) {
+          debugPrint('Failed to recreate database after corruption: $e');
+          throw e; // Rethrow for outer handler
+        }
+      }
     } catch (e) {
-      debugPrint('Error initializing calendar database: $e');
+      debugPrint('Fatal error initializing calendar database: $e');
       // Reset initialization flags to allow retry
       _isInitialized = false;
       _calendarDb = null;
@@ -142,12 +180,65 @@ class OfflineProvider extends ChangeNotifier {
 
   //History offline with improved performance
   Future<void> initializeHistory() async {
+    // Prevent multiple concurrent initializations
+    if (_isInitializing) {
+      debugPrint('History initialization already in progress, waiting...');
+      // Wait for the current initialization to complete
+      while (_isInitializing) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      return;
+    }
+
+    _isInitializing = true;
+
     try {
-      _historyDb = await historyDatabaseService.initializeDatabase('history');
-      debugPrint('History database initialized successfully');
+      // Close existing database if it's open
+      if (_historyDb != null && _historyDb!.isOpen) {
+        await _historyDb!.close();
+        _historyDb = null;
+      }
+
+      // Try to initialize with error handling
+      try {
+        _historyDb = await historyDatabaseService.initializeDatabase('history');
+        debugPrint('History database initialized successfully');
+      } catch (dbError) {
+        // Log specific error info
+        debugPrint('Error during history database initialization: $dbError');
+
+        // Try to delete and recreate database in case of corruption
+        try {
+          // Get path to database file
+          Directory directory = await getApplicationDocumentsDirectory();
+          String dirPath = directory.path.endsWith(Platform.pathSeparator)
+              ? directory.path
+              : '${directory.path}${Platform.pathSeparator}';
+          String path = '${dirPath}history.db';
+
+          // Delete database if it exists
+          if (await databaseExists(path)) {
+            debugPrint(
+                'Attempting to delete corrupted history database at: $path');
+            await deleteDatabase(path);
+            debugPrint('History database deleted, attempting to recreate');
+          }
+
+          // Try initialization again
+          _historyDb =
+              await historyDatabaseService.initializeDatabase('history');
+          debugPrint('History database successfully recreated');
+        } catch (e) {
+          debugPrint(
+              'Failed to recreate history database after corruption: $e');
+          throw e; // Rethrow for outer handler
+        }
+      }
     } catch (e) {
-      debugPrint('Error initializing history database: $e');
-      // Implement proper error handling
+      debugPrint('Fatal error initializing history database: $e');
+      _historyDb = null;
+    } finally {
+      _isInitializing = false;
     }
   }
 

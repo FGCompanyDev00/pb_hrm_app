@@ -48,7 +48,11 @@ class CalendarDatabaseService {
     try {
       // Getting directory path for both Android and iOS
       Directory directory = await getApplicationDocumentsDirectory();
-      String path = '${directory.path}$nameDb.db';
+      // Ensure the path ends with a directory separator
+      String dirPath = directory.path.endsWith(Platform.pathSeparator)
+          ? directory.path
+          : '${directory.path}${Platform.pathSeparator}';
+      String path = '$dirPath$nameDb.db';
 
       // Check if database exists and is valid
       bool shouldRecreate = false;
@@ -88,7 +92,7 @@ class CalendarDatabaseService {
       );
 
       _database = db;
-      debugPrint("Database Created/Opened Successfully");
+      debugPrint("Database Created/Opened Successfully at path: $path");
       return db;
     } catch (e) {
       debugPrint("Error initializing database: $e");
@@ -318,17 +322,22 @@ class HistoryDatabaseService {
   Future<Database> initializeDatabase(String nameDb) async {
     // Getting directory path for both Android and iOS
     Directory directory = await getApplicationDocumentsDirectory();
-    String path = '${directory.path}$nameDb.db';
+    // Ensure the path ends with a directory separator
+    String dirPath = directory.path.endsWith(Platform.pathSeparator)
+        ? directory.path
+        : '${directory.path}${Platform.pathSeparator}';
+    String path = '$dirPath$nameDb.db';
+
     Database getDatabase;
     // Open or create database at a given path.
-    final existDatabase = await databaseExists(nameDb);
+    final existDatabase = await databaseExists(path);
     if (existDatabase) {
       getDatabase = await openDatabase(path, version: 1, onOpen: _getTable);
     } else {
       getDatabase =
           await openDatabase(path, version: 1, onCreate: _createTable);
     }
-    debugPrint("Database Created");
+    debugPrint("History Database Created at path: $path");
     return getDatabase;
   }
 
@@ -336,17 +345,22 @@ class HistoryDatabaseService {
   Future<Database> initializeDatabasePending(String nameDb) async {
     // Getting directory path for both Android and iOS
     Directory directory = await getApplicationDocumentsDirectory();
-    String path = '${directory.path}$nameDb.db';
+    // Ensure the path ends with a directory separator
+    String dirPath = directory.path.endsWith(Platform.pathSeparator)
+        ? directory.path
+        : '${directory.path}${Platform.pathSeparator}';
+    String path = '$dirPath$nameDb.db';
+
     Database getDatabase;
     // Open or create database at a given path.
-    final existDatabase = await databaseExists(nameDb);
+    final existDatabase = await databaseExists(path);
     if (existDatabase) {
       getDatabase = await openDatabase(path, version: 1, onOpen: _getTable);
     } else {
       getDatabase =
           await openDatabase(path, version: 1, onCreate: _createTable);
     }
-    debugPrint("Database Created");
+    debugPrint("History Pending Database Created at path: $path");
     return getDatabase;
   }
 

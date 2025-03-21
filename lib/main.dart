@@ -259,7 +259,9 @@ Future<void> _initializeServices() async {
       // Don't rethrow - allow app to continue even if calendar fails
 
       // If database was closed unexpectedly, try to reset connections
-      if (e.toString().contains('database_closed')) {
+      if (e.toString().contains('database_closed') ||
+          e.toString().contains('open_failed') ||
+          e.toString().contains('create database queue')) {
         debugPrint("Attempting to reset calendar database connection...");
         await sl<OfflineProvider>().resetDatabases();
       }
@@ -274,7 +276,9 @@ Future<void> _initializeServices() async {
       // Don't rethrow - allow app to continue even if history database fails
 
       // If database was closed unexpectedly, try to reset connections
-      if (e.toString().contains('database_closed')) {
+      if (e.toString().contains('database_closed') ||
+          e.toString().contains('open_failed') ||
+          e.toString().contains('create database queue')) {
         debugPrint("Attempting to reset history database connection...");
         await sl<OfflineProvider>().resetDatabases();
       }
