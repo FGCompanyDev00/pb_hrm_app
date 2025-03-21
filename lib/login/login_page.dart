@@ -21,6 +21,7 @@ import 'package:flutter/services.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:pb_hrsystem/core/widgets/connectivity_indicator.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -125,92 +126,104 @@ class LoginPageState extends State<LoginPage>
       return;
     }
 
-    if (isOnline) {
-      try {
-        final response = await http.post(
-          Uri.parse('$baseUrl/api/login'),
-          headers: <String, String>{
-            'Content-Type': 'application/json; charset=UTF-8',
-          },
-          body: jsonEncode(<String, String>{
-            'username': username,
-            'password': password,
-          }),
-        );
+    if (!isOnline) {
+      // Show no internet connection dialog and prevent login
+      if (mounted) {
+        _showCustomDialog(AppLocalizations.of(context)!.noInternetTitle,
+            AppLocalizations.of(context)!.noInternetMessage);
+      }
+      return;
+    }
 
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseBody = jsonDecode(response.body);
-          final String token = responseBody['token'];
-          final String employeeId = responseBody['id'];
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/login'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(<String, String>{
+          'username': username,
+          'password': password,
+        }),
+      );
 
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('employee_id', employeeId);
-          sl<UserPreferences>().setToken(token);
-          sl<UserPreferences>().setLoggedIn(true);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseBody = jsonDecode(response.body);
+        final String token = responseBody['token'];
+        final String employeeId = responseBody['id'];
 
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('employee_id', employeeId);
+        sl<UserPreferences>().setToken(token);
+        sl<UserPreferences>().setLoggedIn(true);
+
+        if (mounted) {
+          Provider.of<UserProvider>(context, listen: false).login(
+            token,
+            rememberMe: _rememberMe,
+            username: username,
+            password: password,
+          );
+        }
+
+        if (_biometricEnabled) {
+          await _storage.write(key: 'biometricEnabled', value: 'true');
+        }
+
+        // Store credentials for offline login
+        await _saveCredentials(username, password, token);
+
+        bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
+
+        if (isFirstLogin) {
           if (mounted) {
-            Provider.of<UserProvider>(context, listen: false).login(
-              token,
-              rememberMe: _rememberMe,
-              username: username,
-              password: password,
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const NotificationPermissionPage()),
             );
           }
 
-          if (_biometricEnabled) {
-            await _storage.write(key: 'biometricEnabled', value: 'true');
-          }
-
-          bool isFirstLogin = prefs.getBool('isFirstLogin') ?? true;
-
-          if (isFirstLogin) {
-            if (mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const NotificationPermissionPage()),
-              );
-            }
-
-            await prefs.setBool('isFirstLogin', false);
-          } else {
-            if (mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const MainScreen()),
-              );
-            }
-          }
-        } else if (response.statusCode == 401) {
-          _showCustomDialog(
-            AppLocalizations.of(context)!.loginFailed,
-            AppLocalizations.of(context)!.incorrectPassword,
-          );
-        } else if (response.statusCode == 500 ||
-            response.statusCode == 502 ||
-            response.statusCode == 403) {
-          // API Error
-          _showCustomDialog(
-            AppLocalizations.of(context)!.apiError,
-            AppLocalizations.of(context)!.apiErrorMessage,
-          );
+          await prefs.setBool('isFirstLogin', false);
         } else {
-          _showCustomDialog(
-            AppLocalizations.of(context)!.loginFailed,
-            AppLocalizations.of(context)!.unknownError,
-          );
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const MainScreen()),
+            );
+          }
         }
-      } catch (e) {
-        debugPrint('Error during login: $e');
-        if (mounted) {
-          _showCustomDialog(
-            AppLocalizations.of(context)!.loginFailed,
-            AppLocalizations.of(context)!.serverErrorMessage,
-          );
-        }
+      } else if (response.statusCode == 401) {
+        _showCustomDialog(
+          AppLocalizations.of(context)!.loginFailed,
+          AppLocalizations.of(context)!.incorrectPassword,
+        );
+      } else if (response.statusCode == 502) {
+        // Specific handling for Bad Gateway error
+        _showCustomDialog(
+          AppLocalizations.of(context)!.apiError,
+          AppLocalizations.of(context)!.apiErrorMessage,
+        );
+      } else if (response.statusCode == 500 || response.statusCode == 403) {
+        // Other API Error
+        _showCustomDialog(
+          AppLocalizations.of(context)!.serverError,
+          AppLocalizations.of(context)!.serverErrorMessage,
+        );
+      } else {
+        _showCustomDialog(
+          AppLocalizations.of(context)!.loginFailed,
+          AppLocalizations.of(context)!.unknownError,
+        );
       }
-    } else {
-      await _offlineLogin();
+    } catch (e) {
+      debugPrint('Error during login: $e');
+      if (mounted) {
+        _showCustomDialog(
+          AppLocalizations.of(context)!.loginFailed,
+          AppLocalizations.of(context)!.serverErrorMessage,
+        );
+      }
     }
   }
 
@@ -493,53 +506,60 @@ class LoginPageState extends State<LoginPage>
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage(
-                isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
-                ),
-                child: IntrinsicHeight(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth * 0.05,
-                      vertical: screenHeight * 0.02,
+      body: Stack(
+        children: [
+          Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage(
+                    isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+                fit: BoxFit.cover,
+              ),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(height: screenHeight * 0.045),
-                        _buildLanguageDropdown(
-                            languageNotifier, isDarkMode, screenWidth),
-                        SizedBox(height: screenHeight * 0.005),
-                        _buildLogoAndText(screenWidth, screenHeight),
-                        SizedBox(height: screenHeight * 0.06),
-                        _buildTextFields(screenWidth),
-                        SizedBox(height: screenHeight * 0.02),
-                        _buildRememberMeCheckbox(screenWidth),
-                        SizedBox(height: screenHeight * 0.02),
-                        _buildLoginAndBiometricButton(screenWidth),
-                        SizedBox(height: screenHeight * 0.01),
-                        const Spacer(),
-                      ],
+                    child: IntrinsicHeight(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: screenWidth * 0.05,
+                          vertical: screenHeight * 0.02,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(height: screenHeight * 0.045),
+                            _buildLanguageDropdown(
+                                languageNotifier, isDarkMode, screenWidth),
+                            SizedBox(height: screenHeight * 0.005),
+                            _buildLogoAndText(screenWidth, screenHeight),
+                            SizedBox(height: screenHeight * 0.06),
+                            _buildTextFields(screenWidth),
+                            SizedBox(height: screenHeight * 0.02),
+                            _buildRememberMeCheckbox(screenWidth),
+                            SizedBox(height: screenHeight * 0.02),
+                            _buildLoginAndBiometricButton(screenWidth),
+                            SizedBox(height: screenHeight * 0.01),
+                            const Spacer(),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            );
-          },
-        ),
+                );
+              },
+            ),
+          ),
+
+          // Add connectivity indicator
+          const ConnectivityIndicator(),
+        ],
       ),
     );
   }

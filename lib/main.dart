@@ -22,6 +22,7 @@ import 'package:logger/logger.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
+import 'package:pb_hrsystem/core/widgets/connectivity_indicator.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/hive_helper/model/add_assignment_record.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
@@ -713,8 +714,12 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   late final StreamSubscription<List<ConnectivityResult>>
       _connectivitySubscription;
-  bool _enableConnection = false;
   bool _isDisposed = false;
+  bool _isShowingConnectivityMessage = false;
+
+  // Add overlay entry for connectivity status
+  OverlayEntry? _overlayEntry;
+  Timer? _overlayTimer;
 
   // Memoize screens to prevent unnecessary rebuilds
   late final List<Widget> _screens;
@@ -752,6 +757,7 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       ),
     ];
 
+    // Initialize connectivity immediately
     _initializeConnectivity();
     _startSessionCheck();
 
@@ -763,20 +769,21 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     });
   }
 
-  // Add method to check for available updates
-  Future<void> _checkForUpdates() async {
-    if (mounted) {
-      await UpdateDialogService.showUpdateDialog(context);
-    }
-  }
-
-  // Add lifecycle event handler to check for updates when app is resumed
+  // Add lifecycle event handler to check for updates and connectivity when app is resumed
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
-      // Check for updates when app is resumed from background
+      // Check connectivity when app is resumed
+      _checkAndShowConnectivity();
       _checkForUpdates();
+    }
+  }
+
+  // Add method to check for available updates
+  Future<void> _checkForUpdates() async {
+    if (mounted) {
+      await UpdateDialogService.showUpdateDialog(context);
     }
   }
 
@@ -806,30 +813,135 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _initializeConnectivity() async {
-    // Delay enabling connection check using a more efficient approach
-    Future.delayed(const Duration(seconds: 20)).then((_) {
-      if (!_isDisposed) {
-        setState(() => _enableConnection = true);
+  // New method to check current connectivity
+  Future<void> _checkAndShowConnectivity() async {
+    if (!mounted || _isDisposed) return;
+
+    try {
+      final results = await connectivityResult.checkConnectivity();
+      final hasInternet = results.contains(ConnectivityResult.wifi) ||
+          results.contains(ConnectivityResult.mobile);
+
+      if (mounted) {
+        _showConnectivityOverlay(hasInternet, results);
+      }
+    } catch (e) {
+      debugPrint('Error checking connectivity: $e');
+    }
+  }
+
+  void _showConnectivityOverlay(
+      bool hasInternet, List<ConnectivityResult> source) {
+    // Remove existing overlay if any
+    _overlayEntry?.remove();
+    _overlayTimer?.cancel();
+
+    if (!mounted || _isDisposed) return;
+
+    final overlay = Overlay.of(context);
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 300), // Faster animation
+            tween: Tween<double>(begin: -100, end: 0),
+            curve: Curves.easeOutCubic, // Smoother curve
+            builder: (context, value, child) => Transform.translate(
+              offset: Offset(0, value),
+              child: child,
+            ),
+            child: Container(
+              margin: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 8,
+                  left: 16,
+                  right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: hasInternet
+                    ? Colors.green.withOpacity(0.95)
+                    : Colors.red.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: (hasInternet ? Colors.green : Colors.red)
+                        .withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: Icon(
+                      hasInternet
+                          ? (source.contains(ConnectivityResult.wifi)
+                              ? Icons.wifi_rounded
+                              : Icons.signal_cellular_alt_rounded)
+                          : Icons.signal_wifi_off_rounded,
+                      color: Colors.white,
+                      size: 24,
+                      key: ValueKey(hasInternet ? 'connected' : 'disconnected'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    hasInternet
+                        ? (source.contains(ConnectivityResult.wifi)
+                            ? 'WiFi Connected'
+                            : 'Mobile Data Connected')
+                        : 'No Internet Connection',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(_overlayEntry!);
+
+    // Auto dismiss after 4 seconds
+    _overlayTimer = Timer(const Duration(seconds: 4), () {
+      if (_overlayEntry != null) {
+        _overlayEntry!.remove();
+        _overlayEntry = null;
       }
     });
+  }
 
+  Future<void> _initializeConnectivity() async {
+    // Check connectivity immediately when app starts
+    await _checkAndShowConnectivity();
+
+    // Listen to connectivity changes with shorter delay
     _connectivitySubscription =
         connectivityResult.onConnectivityChanged.listen((source) async {
-      if (!_enableConnection || _isDisposed) return;
+      if (_isDisposed) return;
 
       final bool hasInternet = source.contains(ConnectivityResult.wifi) ||
           source.contains(ConnectivityResult.mobile);
 
       if (mounted) {
+        _showConnectivityOverlay(hasInternet, source);
+
         if (!hasInternet) {
-          showToast('No internet', Colors.red, Icons.mobiledata_off_rounded);
           await offlineProvider.autoOffline(true);
         } else {
-          showToast(
-              source.contains(ConnectivityResult.wifi) ? 'WiFi' : 'Internet',
-              Colors.green,
-              Icons.wifi);
           await offlineProvider.autoOffline(false);
         }
       }
@@ -839,6 +951,8 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     _isDisposed = true;
+    _overlayEntry?.remove();
+    _overlayTimer?.cancel();
     // Remove the observer
     WidgetsBinding.instance.removeObserver(this);
     _connectivitySubscription.cancel();
@@ -902,9 +1016,17 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         }
       },
       child: Scaffold(
-        body: IndexedStack(
-          index: _selectedIndex,
-          children: _screens,
+        body: Stack(
+          children: [
+            // Main content
+            IndexedStack(
+              index: _selectedIndex,
+              children: _screens,
+            ),
+
+            // Connectivity indicator
+            const ConnectivityIndicator(),
+          ],
         ),
         bottomNavigationBar: CustomBottomNavBar(
           currentIndex: _selectedIndex,

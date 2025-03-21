@@ -156,7 +156,7 @@ class DashboardState extends State<Dashboard>
           }
           // Force a refresh of data when app is resumed
           _refreshDataSafely();
-          
+
           // Schedule another refresh after a short delay to ensure images are loaded
           Future.delayed(const Duration(milliseconds: 500), () {
             if (!_isDisposed && mounted) {
@@ -178,15 +178,15 @@ class DashboardState extends State<Dashboard>
     try {
       // Force update checks when user returns to app
       _checkForProfileUpdates(forceUpdate: true);
-      
+
       // Clear the image cache to ensure fresh images
       DefaultCacheManager().emptyCache();
       PaintingBinding.instance.imageCache.clear();
       PaintingBinding.instance.imageCache.clearLiveImages();
-      
+
       // Fetch new data from API
       _fetchBannersFromApiAndUpdate(forceUpdate: true);
-      
+
       setState(() {
         futureUserProfile = fetchUserProfile();
         futureBanners = fetchBanners();
@@ -395,17 +395,18 @@ class DashboardState extends State<Dashboard>
       // Skip update check if we recently checked (unless forced)
       final now = DateTime.now();
       final lastUpdate = _getCacheTimestamp('userProfile');
-      if (!forceUpdate && lastUpdate != null && 
+      if (!forceUpdate &&
+          lastUpdate != null &&
           now.difference(lastUpdate) < const Duration(minutes: 5)) {
         return; // Skip frequent updates unless forced
       }
-      
+
       final newProfile = await _fetchProfileFromApi();
       final oldProfile = _getCachedData('userProfile') as UserProfile?;
 
       // Check specifically for profile image changes
-      final hasImageChanged = oldProfile != null && 
-          oldProfile.imgName != newProfile.imgName;
+      final hasImageChanged =
+          oldProfile != null && oldProfile.imgName != newProfile.imgName;
 
       // Compare if data has changed
       if (oldProfile == null ||
@@ -415,7 +416,7 @@ class DashboardState extends State<Dashboard>
           if (hasImageChanged && oldProfile?.imgName != null) {
             _clearImageFromCache(oldProfile!.imgName);
           }
-          
+
           setState(() {
             _updateCache('userProfile', newProfile);
             userProfileBox.put('userProfile', jsonEncode(newProfile.toJson()));
@@ -430,18 +431,19 @@ class DashboardState extends State<Dashboard>
   // Clear a specific image from the cache
   Future<void> _clearImageFromCache(String imageUrl) async {
     try {
-      if (imageUrl.isNotEmpty && Uri.tryParse(imageUrl)?.hasAbsolutePath == true) {
+      if (imageUrl.isNotEmpty &&
+          Uri.tryParse(imageUrl)?.hasAbsolutePath == true) {
         // Clear both the disk cache and the memory cache
         await DefaultCacheManager().removeFile(imageUrl);
-        
+
         // Also clear from Flutter's image cache
         final provider = NetworkImage(imageUrl);
         PaintingBinding.instance.imageCache.evict(provider);
-        
+
         // Clear from CachedNetworkImage's cache
         final cachedProvider = CachedNetworkImageProvider(imageUrl);
         PaintingBinding.instance.imageCache.evict(cachedProvider);
-        
+
         debugPrint('Cleared old image from all caches: $imageUrl');
       }
     } catch (e) {
@@ -486,7 +488,7 @@ class DashboardState extends State<Dashboard>
       // Always start an API fetch in the background to ensure fresh data
       // This ensures we always have the latest data when reopening the app
       _fetchBannersFromApiAndUpdate(forceUpdate: true);
-      
+
       // Quick memory cache check - fastest retrieval for immediate display
       final cachedBanners = _getCachedData('banners');
       if (cachedBanners != null) {
@@ -519,11 +521,13 @@ class DashboardState extends State<Dashboard>
       // Skip update check if we recently checked (unless forced)
       final now = DateTime.now();
       final lastUpdate = _getCacheTimestamp('banners');
-      if (!forceUpdate && lastUpdate != null && 
-          now.difference(lastUpdate) < const Duration(minutes: 2)) { // Reduced time to 2 minutes
+      if (!forceUpdate &&
+          lastUpdate != null &&
+          now.difference(lastUpdate) < const Duration(minutes: 2)) {
+        // Reduced time to 2 minutes
         return; // Skip frequent updates unless forced
       }
-      
+
       final newBanners = await _fetchBannersFromApi();
       final oldBanners = _getCachedData('banners') as List<String>?;
 
@@ -532,15 +536,17 @@ class DashboardState extends State<Dashboard>
         if (!_isDisposed && mounted) {
           // Clear old banner images from cache if they're no longer used
           if (oldBanners != null) {
-            final removedBanners = oldBanners.where(
-                (oldUrl) => !newBanners.contains(oldUrl)).toList();
+            final removedBanners = oldBanners
+                .where((oldUrl) => !newBanners.contains(oldUrl))
+                .toList();
             for (final bannerUrl in removedBanners) {
               _clearImageFromCache(bannerUrl);
             }
-            
+
             // Prefetch new images that weren't in the old list
-            final newImages = newBanners.where(
-                (newUrl) => !oldBanners.contains(newUrl)).toList();
+            final newImages = newBanners
+                .where((newUrl) => !oldBanners.contains(newUrl))
+                .toList();
             for (final bannerUrl in newImages) {
               _prefetchImage(bannerUrl);
             }
@@ -550,7 +556,7 @@ class DashboardState extends State<Dashboard>
               _prefetchImage(bannerUrl);
             }
           }
-          
+
           setState(() {
             _updateCache('banners', newBanners);
             bannersBox.put('banners', newBanners);
@@ -563,11 +569,12 @@ class DashboardState extends State<Dashboard>
       debugPrint('Error checking for banner updates: $e');
     }
   }
-  
+
   // Helper method to prefetch images
   void _prefetchImage(String imageUrl) {
-    if (imageUrl.isEmpty || Uri.tryParse(imageUrl)?.hasAbsolutePath != true) return;
-    
+    if (imageUrl.isEmpty || Uri.tryParse(imageUrl)?.hasAbsolutePath != true)
+      return;
+
     try {
       final provider = CachedNetworkImageProvider(imageUrl);
       precacheImage(provider, context);
@@ -575,7 +582,7 @@ class DashboardState extends State<Dashboard>
       debugPrint('Error prefetching image: $e');
     }
   }
-  
+
   Future<void> _checkForBannerUpdates({bool forceUpdate = false}) async {
     return _fetchBannersFromApiAndUpdate(forceUpdate: forceUpdate);
   }
@@ -668,22 +675,24 @@ class DashboardState extends State<Dashboard>
         if (nextPage >= totalPages) {
           nextPage = 0;
         }
-        
+
         // Prefetch the next image before animation starts
         if (nextPage < totalPages) {
           final banners = _getCachedData('banners') as List<String>?;
-          if (banners != null && banners.isNotEmpty && nextPage < banners.length) {
+          if (banners != null &&
+              banners.isNotEmpty &&
+              nextPage < banners.length) {
             _prefetchImage(banners[nextPage]);
           }
         }
-        
+
         // Improved animation curve for smoother transitions
         _pageController.animateToPage(
           nextPage,
           duration: const Duration(milliseconds: 600),
           curve: Curves.easeOutCubic,
         );
-        
+
         setState(() {
           _currentPage = nextPage;
         });
@@ -746,7 +755,7 @@ class DashboardState extends State<Dashboard>
         try {
           // Use a completer with a timeout to avoid hanging
           final completer = Completer<Position?>();
-          
+
           // Set up a timeout that completes with null after 10 seconds
           Timer(const Duration(seconds: 10), () {
             if (!completer.isCompleted) {
@@ -754,7 +763,7 @@ class DashboardState extends State<Dashboard>
               completer.complete(null);
             }
           });
-          
+
           // Start the actual location request
           Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.reduced,
@@ -773,7 +782,7 @@ class DashboardState extends State<Dashboard>
               }
             }
           });
-          
+
           // Wait for either the position or the timeout
           _lastKnownPosition = await completer.future.catchError((error) {
             debugPrint('Error getting position, handled gracefully: $error');
@@ -803,7 +812,6 @@ class DashboardState extends State<Dashboard>
   }
 
   bool _shouldTrackLocation() {
-    
     return false; // Default to false to save battery
   }
 
@@ -817,7 +825,8 @@ class DashboardState extends State<Dashboard>
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.reduced,
           distanceFilter: 50,
-          timeLimit: Duration(seconds: 10), // Shorter timeout to prevent hanging
+          timeLimit:
+              Duration(seconds: 10), // Shorter timeout to prevent hanging
         ),
       ).listen(
         (Position position) {
@@ -835,7 +844,7 @@ class DashboardState extends State<Dashboard>
             // Don't propagate timeout errors, just log them
             return;
           }
-          
+
           if (mounted && !_isDisposed) {
             // Log but don't crash on location errors
             debugPrint('Location stream error (handled): $error');
@@ -867,7 +876,8 @@ class DashboardState extends State<Dashboard>
       } else {
         debugPrint('Location error (handled): $error');
         if (_shouldTrackLocation()) {
-          _restartLocationUpdatesWithDelay(3); // Wait 3 seconds for other errors
+          _restartLocationUpdatesWithDelay(
+              3); // Wait 3 seconds for other errors
         }
       }
     } catch (e) {
@@ -882,7 +892,7 @@ class DashboardState extends State<Dashboard>
     debugPrint('Restarting location updates in $seconds seconds');
     // Cancel existing subscription
     _positionStreamSubscription?.cancel();
-    
+
     // Use a try-catch to prevent any errors during the delayed restart
     try {
       Future.delayed(Duration(seconds: seconds), () {
@@ -1044,20 +1054,23 @@ class DashboardState extends State<Dashboard>
                                     fit: BoxFit.cover,
                                     width: 56,
                                     height: 56,
-                                    progressIndicatorBuilder: (context, url, progress) => Center(
+                                    progressIndicatorBuilder:
+                                        (context, url, progress) => Center(
                                       child: CircularProgressIndicator(
                                         value: progress.progress,
                                         strokeWidth: 2.0,
                                       ),
                                     ),
-                                    errorWidget: (context, url, error) => Image.asset(
+                                    errorWidget: (context, url, error) =>
+                                        Image.asset(
                                       'assets/avatar_placeholder.png',
                                       fit: BoxFit.cover,
                                       width: 56,
                                       height: 56,
                                     ),
                                     // Optimized caching for profile images
-                                    memCacheWidth: 112, // 2x for high DPI displays
+                                    memCacheWidth:
+                                        112, // 2x for high DPI displays
                                     memCacheHeight: 112,
                                     useOldImageOnUrlChange: true,
                                   ),
@@ -1133,16 +1146,17 @@ class DashboardState extends State<Dashboard>
         builder: (context, snapshot) {
           // Always try to show cached banners first for immediate display
           final cachedBanners = _getCachedData('banners') as List<String>?;
-          
+
           if (cachedBanners != null && cachedBanners.isNotEmpty) {
             // If we have cached data, show it immediately while fetching new data in background
             if (snapshot.connectionState == ConnectionState.waiting) {
               // Start a background refresh if we're waiting for new data
-              Future.microtask(() => _fetchBannersFromApiAndUpdate(forceUpdate: true));
+              Future.microtask(
+                  () => _fetchBannersFromApiAndUpdate(forceUpdate: true));
             }
             return _buildBannerPageView(cachedBanners, isDarkMode);
           }
-          
+
           // Handle other states when no cached data is available
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(
@@ -1164,7 +1178,8 @@ class DashboardState extends State<Dashboard>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    AppLocalizations.of(context)!.errorWithDetails(snapshot.error.toString()),
+                    AppLocalizations.of(context)!
+                        .errorWithDetails(snapshot.error.toString()),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: isDarkMode ? Colors.white70 : Colors.black54,
@@ -1286,10 +1301,12 @@ class DashboardState extends State<Dashboard>
                 cacheManager: DefaultCacheManager(),
                 maxHeightDiskCache: 1080, // Optimize for most phone screens
                 memCacheHeight: 1080,
-                fadeOutDuration: const Duration(milliseconds: 150), // Faster transitions
+                fadeOutDuration:
+                    const Duration(milliseconds: 150), // Faster transitions
                 fadeInDuration: const Duration(milliseconds: 250),
                 // Improved caching behavior
-                useOldImageOnUrlChange: false, // Don't use old image, always fetch fresh
+                useOldImageOnUrlChange:
+                    false, // Don't use old image, always fetch fresh
                 placeholderFadeInDuration: const Duration(milliseconds: 200),
                 progressIndicatorBuilder: (context, url, progress) => Container(
                   color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
@@ -1598,7 +1615,7 @@ class DashboardState extends State<Dashboard>
     setState(() {
       _currentPage = index;
     });
-    
+
     // Prefetch the next image when user manually changes page
     final banners = _getCachedData('banners') as List<String>?;
     if (banners != null && banners.isNotEmpty) {

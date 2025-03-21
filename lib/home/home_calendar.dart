@@ -194,7 +194,7 @@ class HomeCalendarState extends State<HomeCalendar>
         _fetchMeetingMembers(),
       ]);
     } catch (e) {
-      showSnackBar('Network Error');
+
     } finally {
       setState(() {
         _isLoading = false;
@@ -217,7 +217,7 @@ class HomeCalendarState extends State<HomeCalendar>
         _fetchMeetingMembers(),
       ]);
     } catch (e) {
-      showSnackBar('Network Error');
+
     } finally {}
   }
 

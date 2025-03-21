@@ -28,7 +28,7 @@ Future<http.Response?> getRequest(String endpoint) async {
       return null;
     }
   } catch (e) {
-    showSnackBar('Network Error: $e');
+
     return null;
   }
 }
