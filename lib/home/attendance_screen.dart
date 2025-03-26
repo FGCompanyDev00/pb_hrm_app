@@ -98,29 +98,30 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     _isOffsite.value = false;
 
-    // Make screen interactive immediately
+    // Make screen interactive immediately and hide loading after minimal initialization
+    _isLoading.value = false;
     _isInteractive.value = true;
 
-    // Initialize in parallel
+    // Initialize in background
     _initializeServices();
   }
 
   Future<void> _initializeServices() async {
-    // Perform the most critical state restoration first
+    // Perform immediate state restoration first to show UI
     await _retrieveSavedState();
 
-    // Update loading message
-    _loadingMessage.value = 'Retrieving device info...';
-    await _retrieveDeviceId();
+    // Initialize other services in parallel
+    await Future.wait([
+      _retrieveDeviceId(),
+      _fetchLimitTime(),
+    ]);
 
-    _loadingMessage.value = 'Setting up location services...';
+    // Start location monitoring in background
     _startLocationMonitoring();
     _startTimerForLiveTime();
 
-    _loadingMessage.value = 'Loading time limits...';
-    await _fetchLimitTime();
-
-    // Fetch records in background
+    // Fetch records in background without blocking UI
+    _loadingMessage.value = 'Loading records...';
     _fetchWeeklyRecordsInBackground();
 
     // Optimize connectivity listener
@@ -131,20 +132,16 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       if (!mounted) return;
       _fetchWeeklyRecordsInBackground();
     });
-
-    // Hide loading indicator after essential services are initialized
-    if (mounted) {
-      _isLoading.value = false;
-    }
   }
 
-  // New method to fetch weekly records in background
+  // New method to fetch weekly records in background - optimized version
   Future<void> _fetchWeeklyRecordsInBackground() async {
     if (!mounted) return;
 
+    // Don't show loading indicator for background refresh
     try {
       final String? token = userPreferences.getToken();
-      if (token == null) throw Exception('No token found');
+      if (token == null) return;
 
       final response = await http.get(
         Uri.parse('$baseUrl/api/attendance/checkin-checkout/offices/weekly/me'),
@@ -152,9 +149,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-      );
+      ).timeout(const Duration(seconds: 10));
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 && mounted) {
         final data = jsonDecode(response.body);
         _updateWeeklyRecords(data);
         _lastCacheUpdate = DateTime.now();
@@ -363,9 +360,22 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   Future<void> _retrieveSavedState() async {
     String? savedCheckInTime = userPreferences.getCheckInTime();
     String? savedCheckOutTime = userPreferences.getCheckOutTime();
-    String? lastAction = userPreferences
-        .getLastAction(); // New: Track last action (checkIn/checkOut)
+    String? lastAction = userPreferences.getLastAction();
     Duration? savedWorkingHours = userPreferences.getWorkingHours();
+
+    if (lastAction == null &&
+        savedCheckInTime != null &&
+        savedCheckOutTime == null) {
+      // If we have a checkInTime but no checkOutTime and no lastAction, default to checkIn
+      lastAction = "checkIn";
+      await userPreferences.storeLastAction("checkIn");
+    } else if (lastAction == null &&
+        savedCheckInTime != null &&
+        savedCheckOutTime != null) {
+      // If we have both times but no lastAction, default to checkOut
+      lastAction = "checkOut";
+      await userPreferences.storeLastAction("checkOut");
+    }
 
     setState(() {
       _checkInTime.value = savedCheckInTime ?? '--:--:--';
@@ -376,12 +386,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       _checkOutDateTime = savedCheckOutTime != null
           ? DateFormat('HH:mm:ss').parse(savedCheckOutTime)
           : null;
-      _isCheckInActive.value = lastAction ==
-          "checkIn"; // Determines if next action should be check-out
+
+      // Use lastAction to determine if next action should be check-out
+      _isCheckInActive.value = lastAction == "checkIn";
       _workingHours = savedWorkingHours ?? Duration.zero;
     });
 
-    if (_isCheckInActive.value) {
+    if (_isCheckInActive.value && _checkInDateTime != null) {
       _startTimerForWorkingHours();
     }
   }
@@ -417,6 +428,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     if (currentPosition != null) {
       record.latitude = currentPosition.latitude.toString();
       record.longitude = currentPosition.longitude.toString();
+
+      // Check for fake location quickly
+      if (!_isOffsite.value && await _isFakeLocationDetected(currentPosition)) {
+        await _showValidationModal(true, false, 'Security Alert',
+            'Fake location detected. Please disable any mock location apps and try again.');
+        return;
+      }
 
       // Validate location is within allowed areas if not offsite
       if (!_isOffsite.value && !await _isWithinAllowedArea(currentPosition)) {
@@ -523,6 +541,13 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     if (currentPosition != null) {
       record.latitude = currentPosition.latitude.toString();
       record.longitude = currentPosition.longitude.toString();
+
+      // Quick check for fake location if not offsite
+      if (!_isOffsite.value && await _isFakeLocationDetected(currentPosition)) {
+        await _showValidationModal(false, false, 'Security Alert',
+            'Fake location detected. Please disable any mock location apps and try again.');
+        return;
+      }
     }
 
     bool success = await _sendCheckInOutRequest(record);
@@ -848,74 +873,33 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<Position?> _getCurrentPosition() async {
     try {
-      // First check if location services are enabled
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (mounted) {
-          _showCustomDialog(
-            "Location Required",
-            "Please enable location services to check in/out.",
-            isSuccess: false,
-          );
-        }
-        return null;
-      }
-
-      // Check if we have permission
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted) {
-            _showCustomDialog(
-              "Permission Denied",
-              "Location permission is required for attendance.",
-              isSuccess: false,
-            );
-          }
-          return null;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted) {
-          _showCustomDialog(
-            "Permission Denied",
-            "Location permission is permanently denied. Please enable it in settings.",
-            isSuccess: false,
-          );
-        }
-        return null;
-      }
-
-      // Get position with high accuracy
+      // Set a reasonable timeout to prevent UI blocking
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 15),
-      );
-
-      // Check for fake location indicators
-      if (!await _isLocationReal(position)) {
-        if (mounted) {
-          _showCustomDialog(
-            "Security Alert",
-            "Fake location detected. Please disable any mock location apps and try again.",
-            isSuccess: false,
-          );
-        }
-        return null;
-      }
+        timeLimit: const Duration(seconds: 5),
+      ).timeout(const Duration(seconds: 8));
 
       return position;
     } catch (e) {
-      if (kDebugMode) {
-        print('Error retrieving location: $e');
+      debugPrint('Error getting current position: $e');
+
+      // Try to use last known position as fallback if available
+      if (_lastKnownPosition != null) {
+        return _lastKnownPosition;
       }
+
+      // For offsite mode, we can return a null position
+      if (_isOffsite.value) {
+        return null;
+      }
+
+      // Show a user-friendly error message
       if (mounted) {
-        _showCustomDialog(
-          "Location Error",
-          "Unable to get your location. Please try again.",
-          isSuccess: false,
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Location services not available. Please try again."),
+            duration: const Duration(seconds: 3),
+          ),
         );
       }
       return null;
@@ -955,143 +939,34 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     }
   }
 
-  Future<bool> _isLocationReal(Position position) async {
+  Future<bool> _isFakeLocationDetected(Position position) async {
     try {
-      Position? realPosition;
-
-      // 1. Check if mock location setting is enabled (Android only)
-      if (Platform.isAndroid) {
-        if (position.isMocked) {
-          debugPrint('Mock location detected via isMocked flag');
-          // Try to get real location for logging
-          try {
-            realPosition = await Geolocator.getCurrentPosition(
-                desiredAccuracy: LocationAccuracy.high,
-                forceAndroidLocationManager:
-                    true // This might help bypass mock locations
-                );
-          } catch (e) {
-            debugPrint('Could not get real location: $e');
-          }
-          await _logFakeLocationAttempt(position, realPosition);
-          return false;
-        }
+      // Use a more lightweight check for fake locations
+      // 1. Check for mock flag directly (most reliable and fastest check)
+      if (position.isMocked) {
+        debugPrint('Mock location flag detected');
+        return true;
       }
 
-      // 2. Check for unrealistic accuracy (too perfect)
+      // 2. Only do more intensive checks if previous check passed
+      // For Android 12+ or iOS, system already handles this well
+      if (Platform.isIOS) {
+        return false; // iOS has built-in protections
+      }
+
+      // Do less intensive checks for Android
+      // Check for unusually perfect accuracy
       if (position.accuracy < 1.0) {
         debugPrint(
             'Suspiciously perfect accuracy detected: ${position.accuracy}m');
-        await _logFakeLocationAttempt(position, null);
-        return false;
+        return true;
       }
 
-      // 3. Check for unrealistic speed changes
-      Position? lastPosition = await _getLastStoredPosition();
-      if (lastPosition != null) {
-        final distance = Geolocator.distanceBetween(
-          lastPosition.latitude,
-          lastPosition.longitude,
-          position.latitude,
-          position.longitude,
-        );
-
-        final timeDiff =
-            position.timestamp.difference(lastPosition.timestamp).inSeconds;
-        if (timeDiff > 0) {
-          // Calculate speed in meters per second
-          final speed = distance / timeDiff;
-
-          // If speed is greater than 100 m/s (360 km/h), it's likely fake
-          // This catches teleportation between locations
-          if (speed > 100 && distance > 1000) {
-            debugPrint('Unrealistic movement detected: $speed m/s');
-            await _logFakeLocationAttempt(position, null);
-            return false;
-          }
-        }
-      }
-
-      // 4. Check for location jumps (teleportation)
-      if (lastPosition != null) {
-        final distance = Geolocator.distanceBetween(
-          lastPosition.latitude,
-          lastPosition.longitude,
-          position.latitude,
-          position.longitude,
-        );
-
-        final timeDiff = position.timestamp
-            .difference(lastPosition.timestamp)
-            .inMilliseconds;
-        if (timeDiff < 1000 && distance > 500) {
-          // 500m in less than 1 second
-          debugPrint(
-              'Teleportation detected: $distance meters in $timeDiff ms');
-          await _logFakeLocationAttempt(position, null);
-          return false;
-        }
-      }
-
-      // 5. Store this position for future comparisons
-      await _storePosition(position);
-
-      return true;
+      return false; // All checks passed
     } catch (e) {
       debugPrint('Error in fake location check: $e');
-      // Default to allowing the location if our checks fail
-      return true;
-    }
-  }
-
-  /// Stores the position for future comparison
-  Future<void> _storePosition(Position position) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-          'last_position',
-          jsonEncode({
-            'latitude': position.latitude,
-            'longitude': position.longitude,
-            'accuracy': position.accuracy,
-            'altitude': position.altitude,
-            'speed': position.speed,
-            'speedAccuracy': position.speedAccuracy,
-            'altitudeAccuracy': position.altitudeAccuracy,
-            'headingAccuracy': position.headingAccuracy,
-            'heading': position.heading,
-            'timestamp': position.timestamp.millisecondsSinceEpoch,
-          }));
-    } catch (e) {
-      debugPrint('Error storing position: $e');
-    }
-  }
-
-  /// Retrieves the last stored position
-  Future<Position?> _getLastStoredPosition() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final positionJson = prefs.getString('last_position');
-      if (positionJson == null) return null;
-
-      final data = jsonDecode(positionJson) as Map<String, dynamic>;
-      return Position(
-        latitude: data['latitude'],
-        longitude: data['longitude'],
-        timestamp: DateTime.fromMillisecondsSinceEpoch(data['timestamp']),
-        accuracy: data['accuracy'],
-        altitude: data['altitude'],
-        heading: data['heading'],
-        speed: data['speed'],
-        speedAccuracy: data['speedAccuracy'],
-        altitudeAccuracy: 0.0, // Required parameter in newer versions
-        headingAccuracy: 0.0, // Required parameter in newer versions
-        floor: null,
-        isMocked: false,
-      );
-    } catch (e) {
-      debugPrint('Error retrieving stored position: $e');
-      return null;
+      // Default to allowing the location if checks fail
+      return false;
     }
   }
 

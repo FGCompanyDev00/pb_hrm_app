@@ -91,8 +91,19 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadBiometricSetting() async {
-    bool isEnabled =
-        (await _storage.read(key: 'biometricEnabled') ?? 'false') == 'true';
+    bool isEnabled = false;
+
+    // Try to read from FlutterSecureStorage first
+    try {
+      String? value = await _storage.read(key: 'biometricEnabled');
+      isEnabled = value == 'true';
+    } catch (e) {
+      debugPrint('Error reading from secure storage: $e');
+      // Fallback to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      isEnabled = prefs.getBool('biometricEnabled') ?? false;
+    }
+
     setState(() {
       _biometricEnabled = isEnabled;
     });
@@ -103,27 +114,25 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveBiometricSetting(bool enabled) async {
+    // Save to both FlutterSecureStorage and SharedPreferences for redundancy
     try {
       // First delete any existing entry to avoid the "item already exists" error
-      try {
-        await _storage.delete(key: 'biometricEnabled');
-      } catch (e) {
-        // Ignore delete errors - the key might not exist yet
-      }
-      
+      await _storage.delete(key: 'biometricEnabled');
+
       // Now write the new value
       await _storage.write(key: 'biometricEnabled', value: enabled.toString());
-      debugPrint('Saved biometric, Enabled as: $enabled');
+      debugPrint('Saved biometric to SecureStorage, Enabled as: $enabled');
     } catch (e) {
       debugPrint('Error updating secure storage: $e');
-      // Fallback to shared preferences
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('biometricEnabled', enabled);
-        debugPrint('Saved biometric to SharedPreferences as fallback');
-      } catch (e) {
-        debugPrint('Error saving to fallback storage: $e');
-      }
+    }
+
+    // Always save to SharedPreferences as a reliable fallback
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('biometricEnabled', enabled);
+      debugPrint('Saved biometric to SharedPreferences as fallback');
+    } catch (e) {
+      debugPrint('Error saving to fallback storage: $e');
     }
   }
 
@@ -296,20 +305,20 @@ class SettingsPageState extends State<SettingsPage> {
     try {
       // Get package info
       if (!mounted) return;
-      
+
       // Collect all state changes
       String? firebaseToken;
       String? apnsToken;
       String deviceId = '';
-      
+
       // Get package info
       final packageInfo = await PackageInfo.fromPlatform();
       final bundleId = packageInfo.packageName;
       final buildNumber = packageInfo.buildNumber;
-      
+
       // Get Firebase token
       firebaseToken = await _firebaseMessaging.getToken();
-      
+
       // Get device info
       final deviceInfo = DeviceInfoPlugin();
 
@@ -402,12 +411,13 @@ class SettingsPageState extends State<SettingsPage> {
           deviceId = storedDeviceId;
         } else {
           // Last resort - generate a unique identifier
-          deviceId = 'device_${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}';
+          deviceId =
+              'device_${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}';
         }
       }
-      
+
       await _storage.write(key: 'deviceId', value: deviceId);
-      
+
       // Update all state at once if widget is still mounted
       if (mounted) {
         setState(() {
@@ -432,7 +442,7 @@ class SettingsPageState extends State<SettingsPage> {
     } catch (e) {
       debugPrint('Error initializing device tokens: $e');
       if (!mounted) return;
-      
+
       // Try to get from storage if current attempt failed
       String finalDeviceId;
       final storedDeviceId = await _storage.read(key: 'deviceId');
@@ -440,10 +450,11 @@ class SettingsPageState extends State<SettingsPage> {
         finalDeviceId = storedDeviceId;
       } else {
         // Generate a unique fallback ID with additional entropy
-        finalDeviceId = 'device_${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}_recovery';
+        finalDeviceId =
+            'device_${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}_recovery';
         await _storage.write(key: 'deviceId', value: finalDeviceId);
       }
-      
+
       // Single setState call
       setState(() {
         _deviceId = finalDeviceId;
@@ -1412,7 +1423,7 @@ class SettingsPageState extends State<SettingsPage> {
       } catch (e) {
         // Ignore delete errors - the key might not exist yet
       }
-      
+
       // Now write the new value
       await _storage.write(key: key, value: value);
       debugPrint('Successfully stored $key');
