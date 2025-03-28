@@ -727,6 +727,9 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   // Timer for session check
   Timer? _sessionCheckTimer;
 
+  // Flag to prevent showing multiple account warning more than once per session
+  bool _hasCheckedMultipleAccounts = false;
+
   @override
   void initState() {
     super.initState();
@@ -760,6 +763,13 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     // Initialize connectivity immediately
     _initializeConnectivity();
     _startSessionCheck();
+
+    // Check for multiple accounts
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        _checkForMultipleAccounts();
+      }
+    });
 
     // Check for updates when app starts
     Future.delayed(const Duration(seconds: 2), () {
@@ -900,9 +910,7 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                         : 'No Internet Connection',
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.3,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -913,14 +921,16 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       ),
     );
 
+    // If overlay is null at this point, exit
+    if (overlay == null) return;
+
+    // Insert overlay
     overlay.insert(_overlayEntry!);
 
-    // Auto dismiss after 4 seconds
-    _overlayTimer = Timer(const Duration(seconds: 4), () {
-      if (_overlayEntry != null) {
-        _overlayEntry!.remove();
-        _overlayEntry = null;
-      }
+    // Auto-dismiss the overlay after 3 seconds
+    _overlayTimer = Timer(const Duration(seconds: 3), () {
+      _overlayEntry?.remove();
+      _overlayEntry = null;
     });
   }
 
@@ -1033,6 +1043,153 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           onTap: _onItemTapped,
         ),
       ),
+    );
+  }
+
+  /// Check for multiple user accounts stored in the app
+  Future<void> _checkForMultipleAccounts() async {
+    // Skip if we've already checked in this session
+    if (_hasCheckedMultipleAccounts) return;
+    _hasCheckedMultipleAccounts = true;
+
+    try {
+      // First check Hive for multiple accounts
+      final Box loginBox = await Hive.openBox('loginBox');
+      final bool isLoggedIn = loginBox.get('is_logged_in') ?? false;
+
+      if (!isLoggedIn) return; // Skip if not logged in
+
+      // Get all available tokens from SharedPreferences
+      final UserPreferences prefs = sl<UserPreferences>();
+      final List<String> activeUserIds = await prefs.getActiveUserIds();
+
+      // Let's define "multiple accounts" as having more than one active user ID
+      if (activeUserIds.length > 1) {
+        if (mounted) {
+          // Show warning dialog
+          _showMultipleAccountsWarningDialog(activeUserIds);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error checking for multiple accounts: $e');
+    }
+  }
+
+  /// Shows a warning dialog about multiple user accounts
+  void _showMultipleAccountsWarningDialog(List<String> accounts) {
+    if (!mounted) return;
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          backgroundColor: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+          title: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.orange,
+                size: 48,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Multiple Accounts Detected',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'There should not be multiple active user accounts in this app. Please clear app storage and log in again to continue using the app safely.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDarkMode ? Colors.white70 : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? Colors.red.shade900.withOpacity(0.3)
+                      : Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color:
+                        isDarkMode ? Colors.red.shade800 : Colors.red.shade200,
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'To clear storage:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '1. Go to Settings > Apps\n2. Find this app\n3. Clear Storage/Data\n4. Reopen the app and login',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor:
+                    isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+              ),
+              child: const Text('I\'ll Fix Later'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    isDarkMode ? Colors.orange : const Color(0xFFFF9800),
+                foregroundColor: Colors.white,
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () {
+                // Logout and go to login screen
+                Provider.of<UserProvider>(context, listen: false).logout();
+                Navigator.of(context)
+                    .pushNamedAndRemoveUntil('/login', (route) => false);
+              },
+              child: const Text('Logout Now'),
+            ),
+          ],
+        );
+      },
     );
   }
 }

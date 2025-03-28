@@ -214,4 +214,78 @@ class UserPreferences {
   }
 
   Future<void> onStartBackground(String msg) => prefs.setString('Hello', msg);
+
+  /// Get list of active user IDs from preferences
+  /// Used to detect multiple accounts
+  Future<List<String>> getActiveUserIds() async {
+    List<String> userIds = [];
+
+    // Get list of all keys
+    final Set<String> keys = prefs.getKeys();
+
+    // Try to extract user IDs from stored tokens
+    // First check if there's a current token
+    final currentToken = getToken();
+    if (currentToken != null && currentToken.isNotEmpty) {
+      try {
+        // Extract user ID from token if possible
+        // Typically tokens contain user info in the payload
+        final String userId = _extractUserIdFromToken(currentToken);
+        if (userId.isNotEmpty) {
+          userIds.add(userId);
+        }
+      } catch (e) {
+        debugPrint('Error extracting user ID from token: $e');
+      }
+    }
+
+    // Check other token-related keys that might indicate multiple users
+    for (String key in keys) {
+      if (key.contains('user_id_') || key.contains('account_')) {
+        final String? value = prefs.getString(key);
+        if (value != null && value.isNotEmpty && !userIds.contains(value)) {
+          userIds.add(value);
+        }
+      }
+    }
+
+    // If we have secure storage (iOS), check there too
+    if (Platform.isIOS) {
+      try {
+        Map<String, String> allSecureValues = await _secureStorage.readAll();
+        for (String key in allSecureValues.keys) {
+          if (key.contains('user_id_') || key.contains('account_')) {
+            final String? value = allSecureValues[key];
+            if (value != null && value.isNotEmpty && !userIds.contains(value)) {
+              userIds.add(value);
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Error reading secure storage: $e');
+      }
+    }
+
+    return userIds;
+  }
+
+  /// Extract user ID from JWT token
+  /// This is a simple implementation and might need to be adjusted
+  /// based on your actual token structure
+  String _extractUserIdFromToken(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length >= 2) {
+        // For JWT tokens, the middle part contains the payload
+        // We'd need to decode the base64 and parse the JSON
+        // This is a simplified version that just uses the token itself
+        // as a unique identifier
+        return token.hashCode.toString();
+      }
+      return '';
+    } catch (e) {
+      debugPrint('Error parsing token: $e');
+      return '';
+    }
+  }
 }

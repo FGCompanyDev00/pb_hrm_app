@@ -4,11 +4,13 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:platform/platform.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 
 import '../services/http_service.dart';
 import '../settings/theme_notifier.dart';
@@ -27,7 +29,11 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
-  
+
+  // Add a global key for loading dialog
+  final GlobalKey<State> _loadingDialogKey = GlobalKey<State>();
+  Timer? _loadingDialogTimer;
+
   String _deviceId = '';
 
   List<Device> _devices = [];
@@ -42,21 +48,16 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
     _initializeDevices();
   }
 
+  @override
+  void dispose() {
+    _loadingDialogTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _initializeDevices() async {
     await _fetchDeviceToken(); // Get device token first
     await _fetchDeviceId(); // Get device ID
     await _loadDevices(); // Then load devices
-    
-    // Check if current device exists in the list
-    if (_deviceToken != null) {
-      bool deviceExists = _devices.any((device) => device.token == _deviceToken);
-      if (!deviceExists) {
-        // Auto show add device modal if current device not found
-        if (mounted) {
-          _showAddDeviceDialog();
-        }
-      }
-    }
   }
 
   /// Fetches the device ID using device_info_plus
@@ -76,7 +77,7 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
       if (platform == TargetPlatform.iOS) {
         final iosInfo = await _deviceInfo.iosInfo;
         _deviceId = iosInfo.identifierForVendor ?? '';
-        
+
         if (_deviceId.isEmpty) {
           _deviceId = 'ios_${DateTime.now().millisecondsSinceEpoch}';
         }
@@ -180,12 +181,91 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
       device.isUpdating = true;
     });
     try {
-      bool updated = await _apiService.updateDeviceStatus(device, !device.status);
+      bool updated =
+          await _apiService.updateDeviceStatus(device, !device.status);
       if (updated) {
         setState(() {
           device.status = !device.status;
         });
-        _showSnackBar('Notification setting updated successfully');
+
+        // Show a more visually appealing snackbar with animation
+        final bool isEnabled = device.status;
+        final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(8),
+            padding: EdgeInsets.zero,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            content: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: isEnabled
+                    ? (isDarkMode
+                        ? Colors.green.shade800
+                        : Colors.green.shade700)
+                    : (isDarkMode
+                        ? const Color(0xFF424242)
+                        : Colors.blueGrey.shade700),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeInOut,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isEnabled
+                          ? (isDarkMode
+                              ? Colors.green.shade200
+                              : Colors.green.shade100)
+                          : (isDarkMode
+                              ? Colors.grey.shade300
+                              : Colors.blueGrey.shade100),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isEnabled
+                          ? Icons.notifications_active
+                          : Icons.notifications_off,
+                      color: isEnabled
+                          ? (isDarkMode
+                              ? Colors.green.shade800
+                              : Colors.green.shade700)
+                          : (isDarkMode
+                              ? const Color(0xFF424242)
+                              : Colors.blueGrey.shade700),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      isEnabled
+                          ? 'Notifications enabled successfully'
+                          : 'Notifications disabled successfully',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
       } else {
         _showSnackBar('Failed to update notification setting');
       }
@@ -199,24 +279,24 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
   }
 
   /// Adds a new device by interacting with the API.
-  Future<void> _addDevice(String deviceId, String deviceToken, String platform) async {
+  Future<void> _addDevice(
+      String deviceId, String deviceToken, String platform) async {
     setState(() {
       _isLoading = true;
     });
     try {
       bool added = await _apiService.addDevice(deviceId, deviceToken, platform);
       if (added) {
-        // Show success validation modal
-        _showValidationModal('Device added successfully', true);
         // Reload devices after successful addition
-        _loadDevices();
+        await _loadDevices();
+
+        // Show success animation
+        _showSuccessAnimation('Device registered successfully');
       } else {
-        // Show failure validation modal
-        _showValidationModal('Failed to add device', false);
+        _showErrorAnimation('Failed to register device');
       }
     } catch (e) {
-      // Handle error and show failure validation modal
-      _showValidationModal('Error adding device: $e', false);
+      _showErrorAnimation('Error registering device: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -224,86 +304,554 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
     }
   }
 
-  /// Displays the API message in a dialog after adding the device
-  void _showValidationModal(String message, bool isSuccess) {
+  /// Shows a success animation dialog
+  void _showSuccessAnimation(String message) {
+    // Store navigator context locally
+    final BuildContext currentContext = context;
+
+    showDialog(
+      context: currentContext,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        // Close dialog after animation completes using dialog's context
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          // Check if dialog context is still mounted before popping
+          if (dialogContext.mounted) {
+            Navigator.of(dialogContext).pop();
+          }
+        });
+
+        final bool isDarkMode =
+            Theme.of(dialogContext).brightness == Brightness.dark;
+
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.elasticOut,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: value,
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: isDarkMode
+                              ? Colors.green.shade600
+                              : const Color(0xFF4CAF50),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Shows an error animation dialog
+  void _showErrorAnimation(String message) {
+    // Store navigator context locally
+    final BuildContext currentContext = context;
+
+    showDialog(
+      context: currentContext,
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        final bool isDarkMode =
+            Theme.of(dialogContext).brightness == Brightness.dark;
+
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.elasticOut,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: value,
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: isDarkMode ? Colors.red.shade700 : Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () {
+                    // Use dialog's context to pop
+                    Navigator.of(dialogContext).pop();
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor:
+                        isDarkMode ? Colors.orange : Colors.orange.shade800,
+                  ),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Shows loading dialog with animation using a global key for better control
+  void _showLoadingDialog(String message) {
+    // Cancel any existing timer
+    _loadingDialogTimer?.cancel();
+
+    // Dismiss any existing dialog first
+    _dismissLoadingDialog();
+
+    // Create a timer to automatically dismiss the dialog after 15 seconds
+    _loadingDialogTimer = Timer(const Duration(seconds: 15), () {
+      _dismissLoadingDialog();
+      if (mounted) {
+        _showSnackBar('Operation timed out');
+      }
+    });
+
+    if (!mounted) return;
+
     showDialog(
       context: context,
-      barrierDismissible: false, // Prevent closing the dialog manually
-      builder: (context) {
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        final bool isDarkMode =
+            Theme.of(dialogContext).brightness == Brightness.dark;
+
         return AlertDialog(
-          title: Text(isSuccess ? 'Success' : 'Error'),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the validation modal
-              },
-              child: const Text('OK'),
-            ),
-          ],
+          key: _loadingDialogKey,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          backgroundColor: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isDarkMode
+                      ? Colors.orange
+                      : Theme.of(dialogContext).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                message,
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+            ],
+          ),
         );
       },
     ).then((_) {
-      // Auto-refresh devices after dialog is closed if success
-      if (isSuccess) {
-        _loadDevices(); // Refresh device list
-      }
+      // Cancel the timeout timer when dialog is closed
+      _loadingDialogTimer?.cancel();
+      _loadingDialogTimer = null;
     });
   }
 
-  /// Displays the dialog to add a new device.
-  void _showAddDeviceDialog() {
-    final formKey = GlobalKey<FormState>();
-    String platform = defaultTargetPlatform == TargetPlatform.android ? 'android' : 'ios';
+  /// Safely dismiss loading dialog from anywhere
+  void _dismissLoadingDialog() {
+    _loadingDialogTimer?.cancel();
+    _loadingDialogTimer = null;
+
+    if (mounted) {
+      Navigator.of(context, rootNavigator: true).popUntil((route) {
+        return route.isFirst || route.settings.name == 'main_route';
+      });
+    }
+  }
+
+  /// Authenticate with biometrics
+  Future<bool> _authenticateWithBiometrics(String reason) async {
+    // If biometrics is not enabled, dismiss dialog and return false immediately
+    if (!_biometricEnabled) {
+      _dismissLoadingDialog();
+      _showSnackBar('Biometric authentication is not enabled');
+      return false;
+    }
+
+    try {
+      final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
+      final bool canAuthenticate =
+          canAuthenticateWithBiometrics || await auth.isDeviceSupported();
+
+      if (!canAuthenticate) {
+        _dismissLoadingDialog();
+        _showSnackBar('Biometric authentication not available on this device');
+        return false;
+      }
+
+      // Close the loading dialog before showing biometric prompt
+      _dismissLoadingDialog();
+
+      // Let's wrap the authentication in a try-catch to ensure we can handle errors properly
+      try {
+        final bool didAuthenticate = await auth.authenticate(
+          localizedReason: reason,
+          options: const AuthenticationOptions(
+            stickyAuth: true,
+            biometricOnly: true,
+          ),
+        );
+
+        if (!didAuthenticate) {
+          _showSnackBar('Authentication failed');
+        }
+
+        return didAuthenticate;
+      } catch (authError) {
+        debugPrint('Biometric authentication error: $authError');
+        _showSnackBar(
+            'Authentication error: ${authError.toString().split('\n').first}');
+        return false;
+      }
+    } catch (e) {
+      _dismissLoadingDialog();
+      _showSnackBar(
+          'Error with biometric authentication: ${e.toString().split('\n').first}');
+      return false;
+    }
+  }
+
+  /// Shows a confirmation dialog for registering the current device
+  void _showRegisterDevicePrompt() {
+    String platform =
+        defaultTargetPlatform == TargetPlatform.android ? 'android' : 'ios';
 
     showDialog(
       context: context,
-      builder: (context) {
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        final bool isDarkMode =
+            Theme.of(dialogContext).brightness == Brightness.dark;
+        final Color primaryColor = isDarkMode ? Colors.orange : Colors.blue;
+
         return AlertDialog(
-          title: const Text('Add Device'),
-          content: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    decoration: const InputDecoration(labelText: 'Device ID'),
-                    initialValue: _deviceId,
-                    enabled: false, // Cannot be edited
-                  ),
-                  TextFormField(
-                    decoration: const InputDecoration(labelText: 'Device Token'),
-                    initialValue: _deviceToken, // Auto-fill the token
-                    enabled: false, // Prevent editing
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    decoration: const InputDecoration(labelText: 'Platform'),
-                    initialValue: platform, // Automatically set platform
-                    enabled: false, // Prevent editing
-                  ),
-                ],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          backgroundColor: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+          title: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.elasticOut,
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: Icon(Icons.devices, size: 48, color: primaryColor),
+                  );
+                },
               ),
+              const SizedBox(height: 12),
+              Text(
+                'Register Device',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          content: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Do you want to register this device for notifications?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: isDarkMode ? Colors.white70 : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? Colors.grey.shade800.withOpacity(0.3)
+                        : Colors.grey.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Image.asset(
+                            platform == 'android'
+                                ? 'assets/android_device.png'
+                                : 'assets/ios_device.png',
+                            width: 24,
+                            height: 24,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Platform: ${platform.toUpperCase()}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              color: isDarkMode ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Device ID: ${_deviceId.substring(0, min(_deviceId.length, 15))}...',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(dialogContext).pop();
               },
+              style: TextButton.styleFrom(
+                foregroundColor:
+                    isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+              ),
+              child: const Text('No'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    isDarkMode ? Colors.orange : const Color(0xFFFF9800),
+                foregroundColor: Colors.white,
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+
+                // Show loading indicator
+                _showLoadingDialog('Registering device...');
+
+                try {
+                  // Check if biometric is enabled
+                  if (_biometricEnabled) {
+                    bool authenticated = await _authenticateWithBiometrics(
+                        "Authenticate to register device");
+
+                    if (authenticated) {
+                      await _addDevice(_deviceId, _deviceToken ?? '', platform);
+                    }
+                  } else {
+                    // If biometric is not enabled, dismiss loading dialog
+                    _dismissLoadingDialog();
+
+                    // Then show the biometric prompt
+                    _showBiometricPrompt();
+                  }
+                } catch (e) {
+                  // Ensure dialog is dismissed in case of errors
+                  _dismissLoadingDialog();
+                  _showSnackBar('Error: $e');
+                }
+              },
+              child: const Text('Yes'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Handles the toggle notification with confirmation dialog and biometric
+  Future<void> _handleToggleNotification(Device device) async {
+    final String action = device.status ? "disable" : "enable";
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        final bool isDarkMode =
+            Theme.of(dialogContext).brightness == Brightness.dark;
+        final Color buttonColor = device.status
+            ? (isDarkMode ? Colors.redAccent : Colors.red)
+            : (isDarkMode ? Colors.green.shade600 : Colors.green);
+
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          backgroundColor: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+          title: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.bounceOut,
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: Icon(
+                      device.status
+                          ? Icons.notifications_off
+                          : Icons.notifications_active,
+                      size: 48,
+                      color: buttonColor,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+              Text(
+                device.status
+                    ? 'Disable Notifications'
+                    : 'Enable Notifications',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          content: Text(
+            'Do you want to $action notifications for this device?',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              color: isDarkMode ? Colors.white70 : Colors.black87,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor:
+                    isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+              ),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: buttonColor,
+                foregroundColor: Colors.white,
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
               onPressed: () async {
-                if (_biometricEnabled) {
-                  await _addDevice(_deviceId, _deviceToken ?? '', platform);
-                } else {
-                  Navigator.of(context).pop();
-                  _showBiometricPrompt();
+                Navigator.of(dialogContext).pop();
+
+                // Show loading indicator
+                _showLoadingDialog('Processing request...');
+
+                try {
+                  // Check if biometric is enabled
+                  if (_biometricEnabled) {
+                    // Authentication needs to happen with the loading dialog already shown
+                    bool authenticated = await _authenticateWithBiometrics(
+                        "Authenticate to $action notifications");
+
+                    if (authenticated) {
+                      // If authenticated, toggle notification
+                      await _toggleNotification(device);
+                    }
+                  } else {
+                    // If biometric not enabled, dismiss loading dialog
+                    _dismissLoadingDialog();
+
+                    // Then show biometric prompt
+                    _showBiometricPrompt();
+                  }
+                } catch (e) {
+                  // Ensure dialog is dismissed in case of errors
+                  _dismissLoadingDialog();
+                  _showSnackBar('Error: $e');
                 }
               },
-              child: const Text('Add'),
+              child: Text(device.status ? 'Disable' : 'Enable'),
             ),
           ],
         );
@@ -313,51 +861,147 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
   /// Prompts the user to enable biometric authentication in Settings.
   void _showBiometricPrompt() {
+    // Store navigator context locally
+    final BuildContext currentContext = context;
+
     showDialog(
-      context: context,
-      builder: (context) {
+      context: currentContext,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        final bool isDarkMode =
+            Theme.of(dialogContext).brightness == Brightness.dark;
+        final Color primaryColor = isDarkMode ? Colors.orange : Colors.blue;
+
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Column(
+          backgroundColor: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+          title: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.fingerprint, size: 24, color: Colors.blueAccent),
-              SizedBox(height: 12),
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 800),
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child:
+                        Icon(Icons.fingerprint, size: 48, color: primaryColor),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
               Text(
-                'Biometric Authentication',
+                'Biometric Authentication Required',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
+                  color: isDarkMode ? Colors.white : Colors.black87,
                 ),
                 textAlign: TextAlign.center,
               ),
             ],
           ),
-          content: const Text(
-            'Enable biometric authentication in Settings to register a new device.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.redAccent,
-            ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? Colors.orange.withOpacity(0.2)
+                      : Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDarkMode
+                        ? Colors.orange.shade700
+                        : Colors.orange.shade300,
+                    width: 1,
+                  ),
+                ),
+                child: Text(
+                  'For security reasons, you must enable biometric authentication to manage device notifications.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      isDarkMode ? Colors.orange : const Color(0xFFFF9800),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(45),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () async {
+                  Navigator.of(dialogContext).pop();
+                  // Enable biometrics
+                  await _enableBiometrics(true);
+                  // Show confirmation
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          'Biometric authentication enabled. Please try your operation again.'),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.settings),
+                label: const Text('Enable Biometrics'),
+              ),
+            ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+              style: TextButton.styleFrom(
+                foregroundColor:
+                    isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+              ),
+              child: const Text('Cancel'),
+            ),
+          ],
         );
       },
     );
   }
 
-  /// Handles biometric authentication (if needed in the future).
+  /// Handles biometric authentication setup.
   Future<void> _enableBiometrics(bool enable) async {
-    // Since biometric settings are managed in settings_page.dart,
-    // this function can be left empty or used for future enhancements.
+    try {
+      await _storage.write(key: 'biometricEnabled', value: enable.toString());
+      setState(() {
+        _biometricEnabled = enable;
+      });
+
+      if (enable) {
+        _showSnackBar('Biometric authentication enabled successfully');
+      }
+    } catch (e) {
+      _showSnackBar('Error enabling biometric authentication: $e');
+    }
   }
 
   /// Displays a SnackBar with the provided message.
   void _showSnackBar(String message) {
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isDarkMode ? Colors.grey.shade800 : null,
+      ),
     );
   }
 
@@ -395,7 +1039,8 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
       flexibleSpace: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+            image: AssetImage(
+                isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
           borderRadius: const BorderRadius.only(
@@ -409,6 +1054,8 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       extendBodyBehindAppBar: false,
       appBar: _buildAppBar(),
@@ -421,75 +1068,96 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _devices.isEmpty
-                    ? const Center(child: Text('No devices found.'))
-                    : ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: _devices.length,
-                  itemBuilder: (context, index) {
-                    final device = _devices[index];
-                    bool isCurrentDevice = device.token == _deviceToken;
-                    return ListTile(
-                      leading: Image.asset(
-                        device.platform == 'android' ? 'assets/android_device.png' : 'assets/ios_device.png',
-                        width: 30,
-                        height: 40,
-                      ),
-                      title: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              device.deviceId,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          ),
-                          if (isCurrentDevice) ...[  
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Text(
-                                'Current',
-                                style: TextStyle(
-                                  color: Colors.blue,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                        ? const Center(child: Text('No devices found.'))
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16.0),
+                            itemCount: _devices.length,
+                            itemBuilder: (context, index) {
+                              final device = _devices[index];
+                              bool isCurrentDevice =
+                                  device.token == _deviceToken;
+                              return ListTile(
+                                leading: Image.asset(
+                                  device.platform == 'android'
+                                      ? 'assets/android_device.png'
+                                      : 'assets/ios_device.png',
+                                  width: 30,
+                                  height: 40,
                                 ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      subtitle: Text('Last login: ${device.lastLoginFormatted}'),
-                      trailing: device.isUpdating
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : Switch(
-                              value: device.status,
-                              onChanged: null, // Disabled interaction
-                              activeColor: Colors.green,
-                              activeTrackColor: Colors.green.withOpacity(0.5),
-                              inactiveThumbColor: Colors.grey,
-                              inactiveTrackColor: Colors.grey.withOpacity(0.5),
-                            ),
-                      onTap: isCurrentDevice ? () => _showAddDeviceDialog() : null,
-                    );
-                  },
-                ),
+                                title: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        device.deviceId,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    ),
+                                    if (isCurrentDevice) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withOpacity(0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                        child: const Text(
+                                          'Current',
+                                          style: TextStyle(
+                                            color: Colors.blue,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                                subtitle: Text(
+                                    'Last login: ${device.lastLoginFormatted}'),
+                                trailing: device.isUpdating
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Switch(
+                                        value: device.status,
+                                        onChanged: (_) =>
+                                            _handleToggleNotification(device),
+                                        activeColor: isDarkMode
+                                            ? Colors.green.shade600
+                                            : Colors.green,
+                                        activeTrackColor: isDarkMode
+                                            ? Colors.green.shade800
+                                                .withOpacity(0.5)
+                                            : Colors.green.withOpacity(0.5),
+                                        inactiveThumbColor: isDarkMode
+                                            ? Colors.grey.shade400
+                                            : Colors.grey,
+                                        inactiveTrackColor: isDarkMode
+                                            ? Colors.grey.shade700
+                                                .withOpacity(0.5)
+                                            : Colors.grey.withOpacity(0.5),
+                                      ),
+                                onTap: null,
+                              );
+                            },
+                          ),
               ),
             ),
           ],
         ),
       ),
-      // Removed floating action button as requested
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showRegisterDevicePrompt(),
+        backgroundColor: isDarkMode ? Colors.orange : const Color(0xFFFF9800),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
     );
   }
 }
@@ -515,7 +1183,9 @@ class Device {
   factory Device.fromJson(Map<String, dynamic> json) {
     String platform = json['platform'] ?? 'android';
     if (platform.isEmpty) {
-      platform = json['device_id'].toString().toLowerCase().contains('iphone') ? 'ios' : 'android';
+      platform = json['device_id'].toString().toLowerCase().contains('iphone')
+          ? 'ios'
+          : 'android';
     }
     return Device(
       deviceId: json['device_id'],
@@ -553,7 +1223,8 @@ class ApiService {
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       if (data['statusCode'] == 200 && data['results'] != null) {
-        List<Device> devices = (data['results'] as List).map((e) => Device.fromJson(e)).toList();
+        List<Device> devices =
+            (data['results'] as List).map((e) => Device.fromJson(e)).toList();
         return devices;
       } else {
         throw Exception(data['message'] ?? 'Failed to load devices');
@@ -591,7 +1262,8 @@ class ApiService {
     }
   }
 
-  Future<bool> addDevice(String deviceId, String deviceToken, String platform) async {
+  Future<bool> addDevice(
+      String deviceId, String deviceToken, String platform) async {
     final token = await _getToken();
     if (token == null) {
       throw Exception('Authentication token not found.');
