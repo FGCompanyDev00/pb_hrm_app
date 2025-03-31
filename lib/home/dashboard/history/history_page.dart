@@ -146,6 +146,117 @@ class HistoryPageState extends State<HistoryPage>
         throw Exception('User not authenticated');
       }
 
+      // Try to load cached data first for immediate display
+      final bool hasCachedData = await _loadCachedData();
+
+      // Always fetch fresh data from API in the background
+      try {
+        await _fetchDataFromApi(
+            prefs, token, pendingApiUrl, historyApiUrl, leaveTypesUrl);
+      } catch (apiError) {
+        debugPrint('Error fetching data from API: $apiError');
+
+        // Only show error if we don't have cached data
+        if (!hasCachedData && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error fetching data: $apiError')),
+          );
+
+          // If no cache and API failed, show error state
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _showContent = true;
+            });
+          }
+        }
+      }
+    } catch (e, stackTrace) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _showContent = true;
+        });
+        debugPrint('Error fetching data: $e');
+        debugPrint(stackTrace.toString());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching data: $e')),
+        );
+      }
+    }
+  }
+
+  // New method to load cached data from SharedPreferences
+  Future<bool> _loadCachedData() async {
+    bool hasCachedData = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Load cached leave types
+      final cachedLeaveTypes = prefs.getString('cached_leave_types');
+      if (cachedLeaveTypes != null) {
+        final Map<String, dynamic> leaveTypesData =
+            jsonDecode(cachedLeaveTypes);
+        _leaveTypes = Map<int, String>.from(leaveTypesData
+            .map((key, value) => MapEntry(int.parse(key), value.toString())));
+        hasCachedData = true;
+      }
+
+      // Load cached pending items
+      final cachedPendingItems = prefs.getString('cached_pending_items');
+      if (cachedPendingItems != null) {
+        final List<dynamic> decodedItems = jsonDecode(cachedPendingItems);
+        _pendingItems = decodedItems.map<Map<String, dynamic>>((item) {
+          // Convert string dates back to DateTime
+          final Map<String, dynamic> typedItem =
+              Map<String, dynamic>.from(item);
+          if (typedItem['updated_at'] != null) {
+            typedItem['updated_at'] = DateTime.parse(typedItem['updated_at']);
+          }
+          return typedItem;
+        }).toList();
+        hasCachedData = true;
+      }
+
+      // Load cached history items
+      final cachedHistoryItems = prefs.getString('cached_history_items');
+      if (cachedHistoryItems != null) {
+        final List<dynamic> decodedItems = jsonDecode(cachedHistoryItems);
+        _historyItems = decodedItems.map<Map<String, dynamic>>((item) {
+          // Convert string dates back to DateTime
+          final Map<String, dynamic> typedItem =
+              Map<String, dynamic>.from(item);
+          if (typedItem['updated_at'] != null) {
+            typedItem['updated_at'] = DateTime.parse(typedItem['updated_at']);
+          }
+          return typedItem;
+        }).toList();
+        hasCachedData = true;
+      }
+
+      // If we have cached data, update UI immediately
+      if (hasCachedData) {
+        setState(() {
+          _isLoading = false;
+          _showContent = true;
+        });
+        // Start fade in animation after data is loaded
+        await Future.delayed(const Duration(milliseconds: 300));
+        _fadeController.forward();
+      }
+
+      return hasCachedData;
+    } catch (e) {
+      debugPrint('Error loading cached data: $e');
+      // Continue to API fetch if cache loading fails
+      return false;
+    }
+  }
+
+  // New method to fetch data from API and update cache
+  Future<void> _fetchDataFromApi(SharedPreferences prefs, String token,
+      String pendingApiUrl, String historyApiUrl, String leaveTypesUrl) async {
+    try {
       // Fetch Leave Types
       final leaveTypesResponse = await http.get(
         Uri.parse(leaveTypesUrl),
@@ -155,20 +266,27 @@ class HistoryPageState extends State<HistoryPage>
         },
       );
 
+      // Initialize temporary collections
+      final Map<int, String> tempLeaveTypes = {};
+      final List<Map<String, dynamic>> tempPendingItems = [];
+      final List<Map<String, dynamic>> tempHistoryItems = [];
+
       if (leaveTypesResponse.statusCode == 200) {
         final leaveTypesBody = jsonDecode(leaveTypesResponse.body);
         if (leaveTypesBody['statusCode'] == 200) {
           final List<dynamic> leaveTypesData = leaveTypesBody['results'];
-          _leaveTypes = {
-            for (var lt in leaveTypesData) lt['leave_type_id']: lt['name']
-          };
-        } else {
-          throw Exception(
-              leaveTypesBody['message'] ?? 'Failed to load leave types');
+          tempLeaveTypes.addAll(
+              {for (var lt in leaveTypesData) lt['leave_type_id']: lt['name']});
+
+          // Convert to serializable format with string keys
+          final Map<String, String> serializableLeaveTypes = tempLeaveTypes.map(
+            (key, value) => MapEntry(key.toString(), value),
+          );
+
+          // Cache leave types
+          await prefs.setString(
+              'cached_leave_types', jsonEncode(serializableLeaveTypes));
         }
-      } else {
-        throw Exception(
-            'Failed to load leave types: ${leaveTypesResponse.statusCode}');
       }
 
       // Fetch Pending Items
@@ -189,10 +307,6 @@ class HistoryPageState extends State<HistoryPage>
         },
       );
 
-      // Initialize temporary lists
-      final List<Map<String, dynamic>> tempPendingItems = [];
-      final List<Map<String, dynamic>> tempHistoryItems = [];
-
       // Process Pending Response
       if (pendingResponse.statusCode == 200) {
         final responseBody = jsonDecode(pendingResponse.body);
@@ -206,13 +320,7 @@ class HistoryPageState extends State<HistoryPage>
 
           tempPendingItems.addAll(filteredPendingData
               .map((item) => _formatItem(item as Map<String, dynamic>)));
-        } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load pending data');
         }
-      } else {
-        throw Exception(
-            'Failed to load pending data: ${pendingResponse.statusCode}');
       }
 
       // Process History Response
@@ -228,14 +336,11 @@ class HistoryPageState extends State<HistoryPage>
 
           tempHistoryItems.addAll(filteredHistoryData
               .map((item) => _formatItem(item as Map<String, dynamic>)));
-        } else {
-          throw Exception(responseBody['message'] ??
-              AppLocalizations.of(context)!.failedToLoadHistoryData);
         }
-      } else {
-        throw Exception(
-            'Failed to load history data: ${historyResponse.statusCode}');
       }
+
+      // Only continue if we have data and the widget is still mounted
+      if (!mounted) return;
 
       // Sort the temporary lists by 'updated_at' in descending order
       tempPendingItems.sort((a, b) {
@@ -254,50 +359,92 @@ class HistoryPageState extends State<HistoryPage>
         return bDate.compareTo(aDate); // Descending order
       });
 
-      // Update State
-      setState(() {
-        _pendingItems = tempPendingItems;
-        _historyItems = tempHistoryItems;
-        _isLoading = false;
-      });
+      // Cache the new data
+      final List<dynamic> serializablePendingItems =
+          tempPendingItems.map((item) {
+        final Map<String, dynamic> serializable =
+            Map<String, dynamic>.from(item);
+        // Convert DateTime to string for serialization
+        if (serializable['updated_at'] != null) {
+          serializable['updated_at'] =
+              serializable['updated_at'].toIso8601String();
+        }
+        return serializable;
+      }).toList();
 
-      // Start fade in animation after data is loaded
-      await Future.delayed(const Duration(milliseconds: 300));
-      setState(() => _showContent = true);
-      _fadeController.forward();
+      final List<dynamic> serializableHistoryItems =
+          tempHistoryItems.map((item) {
+        final Map<String, dynamic> serializable =
+            Map<String, dynamic>.from(item);
+        // Convert DateTime to string for serialization
+        if (serializable['updated_at'] != null) {
+          serializable['updated_at'] =
+              serializable['updated_at'].toIso8601String();
+        }
+        return serializable;
+      }).toList();
 
-      debugPrint(
-          'Pending items loaded and sorted: ${_pendingItems.length} items.');
-      debugPrint(
-          'History items loaded and sorted: ${_historyItems.length} items.');
-    } catch (e, stackTrace) {
-      setState(() {
-        _isLoading = false;
-        _showContent = true;
-      });
-      debugPrint('Error fetching data: $e');
-      debugPrint(stackTrace.toString());
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching data: $e')),
-      );
+      await prefs.setString(
+          'cached_pending_items', jsonEncode(serializablePendingItems));
+      await prefs.setString(
+          'cached_history_items', jsonEncode(serializableHistoryItems));
+
+      // Update State with new data
+      if (mounted) {
+        setState(() {
+          if (tempLeaveTypes.isNotEmpty) _leaveTypes = tempLeaveTypes;
+          _pendingItems = tempPendingItems;
+          _historyItems = tempHistoryItems;
+          _isLoading = false;
+          _showContent = true;
+        });
+
+        // Ensure animation runs if it hasn't already
+        if (!_fadeController.isCompleted) {
+          _fadeController.forward();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching data from API: $e');
+      // If we're still loading (no cached data was available), show error state
+      if (_isLoading && mounted) {
+        setState(() {
+          _isLoading = false;
+          _showContent = true;
+        });
+      }
     }
   }
 
   /// Formats each item based on its type
   Map<String, dynamic> _formatItem(Map<String, dynamic> item) {
     String type = item['types']?.toLowerCase() ?? 'unknown';
+    String status = _getItemStatus(type, item);
+
+    // Store status color and type color as hex strings instead of MaterialColor objects
+    Color statusColorObj = _getStatusColor(status);
+    Color typeColorObj = _getTypeColor(type);
+
+    // Convert colors to hex strings for JSON serialization
+    String statusColorHex =
+        '#${statusColorObj.value.toRadixString(16).padLeft(8, '0')}';
+    String typeColorHex =
+        '#${typeColorObj.value.toRadixString(16).padLeft(8, '0')}';
 
     Map<String, dynamic> formattedItem = {
       'type': type,
-      'status': _getItemStatus(type, item),
-      'statusColor': _getStatusColor(_getItemStatus(type, item)),
-      'icon': _getIconForType(type),
-      'iconColor': _getTypeColor(type),
+      'status': status,
+      'statusColor': statusColorHex, // Store as hex string
+      'statusColorValue': statusColorObj.value, // Store as integer value
+      'iconColor': typeColorHex, // Store as hex string
+      'iconColorValue': typeColorObj.value, // Store as integer value
       'updated_at': DateTime.tryParse(item['updated_at'] ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0),
       'img_name': item['img_name'] ??
           'https://via.placeholder.com/150', // Placeholder image
       'img_path': item['img_path'] ?? '',
+      'icon':
+          _getIconForType(type).codePoint, // Store icon as code point integer
     };
 
     switch (type) {
@@ -685,7 +832,7 @@ class HistoryPageState extends State<HistoryPage>
                       duration: const Duration(milliseconds: 500),
                       curve: Curves.easeInOut,
                       child: RefreshIndicator(
-                        onRefresh: _fetchHistoryData,
+                        onRefresh: _onRefresh,
                         child: _isPendingSelected
                             ? _pendingItems.isEmpty
                                 ? _buildEmptyState(
@@ -1008,8 +1155,44 @@ class HistoryPageState extends State<HistoryPage>
     final bool isDarkMode = themeNotifier.isDarkMode;
     final String type = item['type'] ?? 'unknown';
 
-    Color typeColor = _getTypeColor(type);
-    Color statusColor = _getStatusColor(item['status']);
+    // Get colors - either from direct value or by calculating them
+    Color typeColor;
+    Color statusColor;
+    IconData typeIcon;
+
+    // If we have serialized color values (from cache), use them
+    if (item['iconColorValue'] != null) {
+      typeColor = Color(item['iconColorValue']);
+    } else if (item['iconColor'] != null &&
+        item['iconColor'] is String &&
+        item['iconColor'].startsWith('#')) {
+      // Parse from hex string if available
+      final hexString = item['iconColor'].substring(1);
+      typeColor = Color(int.parse(hexString, radix: 16));
+    } else {
+      // Fall back to calculating
+      typeColor = _getTypeColor(type);
+    }
+
+    if (item['statusColorValue'] != null) {
+      statusColor = Color(item['statusColorValue']);
+    } else if (item['statusColor'] != null &&
+        item['statusColor'] is String &&
+        item['statusColor'].startsWith('#')) {
+      // Parse from hex string if available
+      final hexString = item['statusColor'].substring(1);
+      statusColor = Color(int.parse(hexString, radix: 16));
+    } else {
+      // Fall back to calculating
+      statusColor = _getStatusColor(item['status'] ?? 'waiting');
+    }
+
+    // Get icon - either from code point or by calculating
+    if (item['icon'] != null && item['icon'] is int) {
+      typeIcon = IconData(item['icon'], fontFamily: 'MaterialIcons');
+    } else {
+      typeIcon = _getIconForType(type);
+    }
 
     String formatDate(String dateStr) {
       try {
@@ -1060,8 +1243,18 @@ class HistoryPageState extends State<HistoryPage>
               // Icon
               SizedBox(
                 width: screenSize.width * 0.1,
-                child: _getIconWidgetForType(
-                    type, screenSize.width * 0.08, typeColor),
+                child: type.toLowerCase() == 'minutes of meeting'
+                    ? Image.asset(
+                        'assets/room.png',
+                        width: screenSize.width * 0.08,
+                        height: screenSize.width * 0.08,
+                        color: typeColor,
+                      )
+                    : Icon(
+                        typeIcon,
+                        color: typeColor,
+                        size: screenSize.width * 0.08,
+                      ),
               ),
               SizedBox(width: screenSize.width * 0.02),
               // Information Column
@@ -1243,5 +1436,53 @@ class HistoryPageState extends State<HistoryPage>
         );
       },
     );
+  }
+
+  Future<void> _onRefresh() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User not authenticated')),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final String pendingApiUrl = '$baseUrl/api/app/users/history/pending';
+    final String historyApiUrl = '$baseUrl/api/app/users/history';
+    final String leaveTypesUrl = '$baseUrl/api/leave-types';
+
+    try {
+      // Directly fetch from API, bypassing cache
+      await _fetchDataFromApi(
+          prefs, token, pendingApiUrl, historyApiUrl, leaveTypesUrl);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data refreshed successfully')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error refreshing data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error refreshing data: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _showContent = true;
+        });
+      }
+    }
   }
 }

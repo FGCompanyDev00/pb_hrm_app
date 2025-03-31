@@ -61,7 +61,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   final ValueNotifier<String> _checkInTime = ValueNotifier<String>('--:--:--');
   final ValueNotifier<String> _checkOutTime = ValueNotifier<String>('--:--:--');
   final ValueNotifier<String> _limitTime = ValueNotifier<String>('--:--:--');
-  final ValueNotifier<bool> _isLoading = ValueNotifier<bool>(true);
+  final ValueNotifier<bool> _isLoading = ValueNotifier<bool>(false);
   final ValueNotifier<bool> _isOffsite = ValueNotifier<bool>(false);
   final ValueNotifier<List<Map<String, String>>> _weeklyRecords =
       ValueNotifier<List<Map<String, String>>>([]);
@@ -69,7 +69,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   // Add detailed loading state
   final ValueNotifier<String> _loadingMessage =
       ValueNotifier<String>('Initializing...');
-  final ValueNotifier<bool> _isInteractive = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isInteractive = ValueNotifier<bool>(true);
 
   // Optimize location tracking
   Position? _lastKnownPosition;
@@ -98,11 +98,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     _isOffsite.value = false;
 
-    // Make screen interactive immediately and hide loading after minimal initialization
-    _isLoading.value = false;
-    _isInteractive.value = true;
-
-    // Initialize in background
+    // Initialize in background without blocking UI
     _initializeServices();
   }
 
@@ -121,7 +117,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     _startTimerForLiveTime();
 
     // Fetch records in background without blocking UI
-    _loadingMessage.value = 'Loading records...';
     _fetchWeeklyRecordsInBackground();
 
     // Optimize connectivity listener
@@ -138,7 +133,6 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   Future<void> _fetchWeeklyRecordsInBackground() async {
     if (!mounted) return;
 
-    // Don't show loading indicator for background refresh
     try {
       final String? token = userPreferences.getToken();
       if (token == null) return;
@@ -223,7 +217,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     }
 
     // Only show loading indicator if we don't have cached data
-    bool showLoading = _weeklyRecords.value.isEmpty;
+    bool showLoading = false;
 
     if (showLoading && mounted) {
       _isLoading.value = true;
@@ -1870,7 +1864,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           body: Stack(
             children: [
               _buildPageContent(context),
-              if (_isLoading.value) _buildLoadingIndicator(),
+              if (false)
+                _buildLoadingIndicator(), // Never show loading indicator
             ],
           ),
         ),

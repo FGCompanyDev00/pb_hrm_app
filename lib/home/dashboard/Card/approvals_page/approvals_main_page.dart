@@ -145,14 +145,31 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
     });
 
     try {
-      await _fetchLeaveTypes();
-      await Future.wait([
-        _fetchPendingItems(),
-        _fetchHistoryItems(),
-      ]);
-      debugPrint('Initial data fetched successfully.');
-      if (mounted) {
-        _fadeController.forward(); // Start fade animation after data is loaded
+      // First try to load from cache for immediate display
+      final bool hasCachedData = await _loadFromCache();
+
+      // Always fetch fresh data, but don't block UI if we have cached data
+      try {
+        await _fetchLeaveTypes();
+        await Future.wait([
+          _fetchPendingItems(),
+          _fetchHistoryItems(),
+        ]);
+        debugPrint('Initial data fetched successfully.');
+        if (mounted) {
+          _fadeController
+              .forward(); // Start fade animation after data is loaded
+        }
+      } catch (apiError, stackTrace) {
+        debugPrint('Error fetching from API: $apiError');
+        debugPrint(stackTrace.toString());
+
+        // Only show error if we don't have cached data
+        if (!hasCachedData && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error fetching data: $apiError')),
+          );
+        }
       }
     } catch (e, stackTrace) {
       debugPrint('Error during initial data fetch: $e');
@@ -163,9 +180,65 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  /// Loads data from cache for immediate display
+  Future<bool> _loadFromCache() async {
+    bool hasCachedData = false;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Load leave types from cache
+      final cachedLeaveTypes = prefs.getString('approvals_leave_types');
+      if (cachedLeaveTypes != null) {
+        final Map<String, dynamic> leaveTypesData =
+            jsonDecode(cachedLeaveTypes);
+
+        // Convert string keys back to integers
+        setState(() {
+          _leaveTypesMap = Map<int, String>.from(leaveTypesData
+              .map((key, value) => MapEntry(int.parse(key), value.toString())));
+        });
+        hasCachedData = true;
+      }
+
+      // Load pending items from cache
+      final cachedPendingItems = prefs.getString('approvals_pending_items');
+      if (cachedPendingItems != null) {
+        final List<dynamic> items = jsonDecode(cachedPendingItems);
+        setState(() {
+          _pendingItems = List<Map<String, dynamic>>.from(
+              items.map((item) => Map<String, dynamic>.from(item)));
+          _isLoading = false;
+        });
+        _fadeController.forward();
+        hasCachedData = true;
+      }
+
+      // Load history items from cache
+      final cachedHistoryItems = prefs.getString('approvals_history_items');
+      if (cachedHistoryItems != null) {
+        final List<dynamic> items = jsonDecode(cachedHistoryItems);
+        setState(() {
+          _historyItems = List<Map<String, dynamic>>.from(
+              items.map((item) => Map<String, dynamic>.from(item)));
+          _isLoading = false;
+        });
+        _fadeController.forward();
+        hasCachedData = true;
+      }
+
+      return hasCachedData;
+    } catch (e) {
+      debugPrint('Error loading from cache: $e');
+      // Continue with API fetching if cache loading fails
+      return false;
     }
   }
 
@@ -197,13 +270,23 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
         if (responseBody['statusCode'] == 200 &&
             responseBody['results'] != null) {
           final List<dynamic> leaveTypesData = responseBody['results'];
+          final Map<int, String> newLeaveTypesMap = {
+            for (var lt in leaveTypesData) lt['leave_type_id']: lt['name']
+          };
+
+          // Convert integer keys to strings for JSON serialization
+          final Map<String, String> serializableMap = newLeaveTypesMap.map(
+            (key, value) => MapEntry(key.toString(), value),
+          );
+
+          // Cache the leave types data
+          await prefs.setString(
+              'approvals_leave_types', jsonEncode(serializableMap));
+
           setState(() {
-            _leaveTypesMap = {
-              for (var item in leaveTypesData)
-                item['leave_type_id'] as int: item['name'].toString()
-            };
+            _leaveTypesMap = newLeaveTypesMap;
           });
-          debugPrint('Leave types loaded: $_leaveTypesMap');
+          debugPrint('Leave types loaded: ${_leaveTypesMap.length} types.');
         } else {
           throw Exception(
               responseBody['message'] ?? 'Failed to load leave types');
@@ -270,6 +353,10 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
                 DateTime.fromMillisecondsSinceEpoch(0);
             return bDate.compareTo(aDate); // Descending order
           });
+
+          // Cache the pending items
+          await prefs.setString(
+              'approvals_pending_items', jsonEncode(filteredData));
 
           setState(() {
             _pendingItems = filteredData;
@@ -342,6 +429,10 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
                 DateTime.fromMillisecondsSinceEpoch(0);
             return bDate.compareTo(aDate); // Descending order
           });
+
+          // Cache the history items
+          await prefs.setString(
+              'approvals_history_items', jsonEncode(filteredData));
 
           setState(() {
             _historyItems = filteredData;

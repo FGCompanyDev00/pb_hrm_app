@@ -53,15 +53,49 @@ class DetailsPageState extends State<DetailsPage> {
   Future<void> _fetchLeaveTypes() async {
     final String leaveTypesUrl = '$baseUrl/api/leave-types';
     try {
-      final String? tokenValue = await _getToken();
+      final prefs = await SharedPreferences.getInstance();
+      final tokenValue = prefs.getString('token');
+
+      // Try to load from cache first
+      final cachedLeaveTypes = prefs.getString('details_leave_types');
+      if (cachedLeaveTypes != null) {
+        final Map<String, dynamic> leaveTypesData =
+            jsonDecode(cachedLeaveTypes);
+        setState(() {
+          _leaveTypes = Map<int, String>.from(leaveTypesData
+              .map((key, value) => MapEntry(int.parse(key), value.toString())));
+        });
+
+        // Fetch new data in background
+        _fetchAndCacheLeaveTypes(prefs, tokenValue, leaveTypesUrl);
+        return;
+      }
+
+      // No cache available, fetch directly
+      await _fetchAndCacheLeaveTypes(prefs, tokenValue, leaveTypesUrl);
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error fetching leave types: $e';
+      });
+      if (kDebugMode) {
+        debugPrint('Error fetching leave types: $e');
+      }
+    }
+  }
+
+  /// Fetch leave types from API and cache them
+  Future<void> _fetchAndCacheLeaveTypes(
+      SharedPreferences prefs, String? tokenValue, String leaveTypesUrl) async {
+    try {
       if (tokenValue == null) {
-        _showErrorDialog('Authentication Error',
-            'Token not found. Please log in again.');
+        _showErrorDialog(
+            'Authentication Error', 'Token not found. Please log in again.');
         setState(() {
           _errorMessage = 'Token not found. Please log in again.';
         });
         return;
       }
+
       final response = await http.get(
         Uri.parse(leaveTypesUrl),
         headers: {
@@ -79,25 +113,33 @@ class DetailsPageState extends State<DetailsPage> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         if (data['statusCode'] == 200 && data['results'] is List) {
+          final Map<int, String> newLeaveTypes = {
+            for (var lt in data['results']) lt['leave_type_id']: lt['name']
+          };
+
+          // Convert integer keys to strings for JSON serialization
+          final Map<String, String> serializableMap = newLeaveTypes.map(
+            (key, value) => MapEntry(key.toString(), value),
+          );
+
+          // Cache the serializable map
+          await prefs.setString(
+              'details_leave_types', jsonEncode(serializableMap));
+
           setState(() {
-            _leaveTypes = {
-              for (var lt in data['results']) lt['leave_type_id']: lt['name']
-            };
+            _leaveTypes = newLeaveTypes;
           });
         } else {
           throw Exception('Failed to fetch leave types');
         }
       } else {
-        throw Exception(
-            'Failed to fetch leave types: ${response.statusCode}');
+        throw Exception('Failed to fetch leave types: ${response.statusCode}');
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Error fetching leave types: $e';
-      });
       if (kDebugMode) {
-        debugPrint('Error fetching leave types: $e');
+        debugPrint('Error in _fetchAndCacheLeaveTypes: $e');
       }
+      throw e;
     }
   }
 
@@ -114,14 +156,16 @@ class DetailsPageState extends State<DetailsPage> {
     final String status = widget.status;
 
     // Ensure the first letter is capitalized and the rest are lowercase
-    String formattedStatus = '${status[0].toUpperCase()}${status.substring(1).toLowerCase()}';
+    String formattedStatus =
+        '${status[0].toUpperCase()}${status.substring(1).toLowerCase()}';
 
     final String apiUrl = '$baseUrl/api/app/users/history/pending/$id';
 
     try {
       final String? tokenValue = await _getToken();
       if (tokenValue == null) {
-        _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+        _showErrorDialog(
+            'Authentication Error', 'Token not found. Please log in again.');
         setState(() {
           isLoading = false;
           _errorMessage = 'Token not found. Please log in again.';
@@ -150,12 +194,15 @@ class DetailsPageState extends State<DetailsPage> {
       debugPrint('Received response with status code: ${response.statusCode}');
       debugPrint('Response body: ${response.body}');
 
-      if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 202) {
+      if (response.statusCode == 200 ||
+          response.statusCode == 201 ||
+          response.statusCode == 202) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
 
         if (responseData.containsKey('statusCode') &&
-            (responseData['statusCode'] == 200 || responseData['statusCode'] == 201 || responseData['statusCode'] == 202)) {
-
+            (responseData['statusCode'] == 200 ||
+                responseData['statusCode'] == 201 ||
+                responseData['statusCode'] == 202)) {
           // Ensure results key exists
           if (!responseData.containsKey('results')) {
             _showErrorDialog('Error', 'Invalid API response structure.');
@@ -186,8 +233,10 @@ class DetailsPageState extends State<DetailsPage> {
             final Map<String, dynamic> singleData = responseData['results'];
 
             // 🔥 Fix: Convert "details" field to an empty list if it's a string
-            if (singleData.containsKey('details') && singleData['details'] is String) {
-              singleData['details'] = []; // ✅ Convert to empty list to avoid errors
+            if (singleData.containsKey('details') &&
+                singleData['details'] is String) {
+              singleData['details'] =
+                  []; // ✅ Convert to empty list to avoid errors
             }
 
             setState(() {
@@ -213,7 +262,8 @@ class DetailsPageState extends State<DetailsPage> {
         }
       } else {
         // Handle HTTP errors
-        _showErrorDialog('Error', 'Failed to fetch details: ${response.statusCode}');
+        _showErrorDialog(
+            'Error', 'Failed to fetch details: ${response.statusCode}');
         setState(() {
           isLoading = false;
           _errorMessage = 'Failed to fetch details: ${response.statusCode}';
@@ -225,7 +275,8 @@ class DetailsPageState extends State<DetailsPage> {
         isLoading = false;
         _errorMessage = 'An unexpected error occurred while fetching details.';
       });
-      _showErrorDialog('Error', 'An unexpected error occurred while fetching details.');
+      _showErrorDialog(
+          'Error', 'An unexpected error occurred while fetching details.');
     }
   }
 
@@ -241,7 +292,8 @@ class DetailsPageState extends State<DetailsPage> {
   }
 
   /// Format date string
-  String formatDate(String? dateStr, {String? timeStr, bool includeTime = false, bool timeOnly = false}) {
+  String formatDate(String? dateStr,
+      {String? timeStr, bool includeTime = false, bool timeOnly = false}) {
     try {
       if (dateStr == null || dateStr.isEmpty) {
         return 'N/A';
@@ -315,8 +367,10 @@ class DetailsPageState extends State<DetailsPage> {
 
   /// Build Requestor Section
   Widget _buildRequestorSection() {
-    String requestorName =
-        (data?['requestor_name'] ?? data?['employee_name'] ?? data?['created_by']) ?? 'No Name';
+    String requestorName = (data?['requestor_name'] ??
+            data?['employee_name'] ??
+            data?['created_by']) ??
+        'No Name';
 
     final submittedOn = formatDate(
       data?['created_date'] ?? data?['date_create'] ?? data?['created_at'],
@@ -371,8 +425,7 @@ class DetailsPageState extends State<DetailsPage> {
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
                       fontStyle: FontStyle.italic,
-                      color:
-                      isDarkMode ? Colors.white70 : Colors.black54,
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
                     ),
                   ),
                 ],
@@ -430,14 +483,14 @@ class DetailsPageState extends State<DetailsPage> {
           'icon': Icons.calendar_today,
           'title': 'Date',
           'value':
-          '${formatDate(data?["from_date_time"])} - ${formatDate(data?["to_date_time"])}',
+              '${formatDate(data?["from_date_time"])} - ${formatDate(data?["to_date_time"])}',
           'color': Colors.green
         },
         {
           'icon': Icons.access_time,
           'title': 'Time',
           'value':
-          '${formatDate(data?["from_date_time"], timeOnly: true)} - ${formatDate(data?["to_date_time"], timeOnly: true)}',
+              '${formatDate(data?["from_date_time"], timeOnly: true)} - ${formatDate(data?["to_date_time"], timeOnly: true)}',
           'color': Colors.orange
         },
         {
@@ -477,8 +530,8 @@ class DetailsPageState extends State<DetailsPage> {
           'icon': Icons.calendar_today,
           'title': 'Date & Time',
           'value':
-          '${formatDate(data?["date_in"], timeStr: data?["time_in"], includeTime: true)} - '
-              '${formatDate(data?["date_out"], timeStr: data?["time_out"], includeTime: true)}',
+              '${formatDate(data?["date_in"], timeStr: data?["time_in"], includeTime: true)} - '
+                  '${formatDate(data?["date_out"], timeStr: data?["time_out"], includeTime: true)}',
           'color': Colors.orange
         },
         {
@@ -492,7 +545,9 @@ class DetailsPageState extends State<DetailsPage> {
                 ),
                 TextSpan(
                   text: data?['status'] ?? 'No status',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: _getStatusColor(data?['status'] ?? 'no status')),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: _getStatusColor(data?['status'] ?? 'no status')),
                 ),
               ],
             ),
@@ -514,14 +569,13 @@ class DetailsPageState extends State<DetailsPage> {
           'icon': Icons.calendar_today,
           'title': 'Date',
           'value':
-          '${formatDate(data?["take_leave_from"])} - ${formatDate(data?["take_leave_to"])}',
+              '${formatDate(data?["take_leave_from"])} - ${formatDate(data?["take_leave_to"])}',
           'color': Colors.green
         },
         {
           'icon': Icons.label,
           'title': 'Type of leave',
-          'value':
-          '$leaveTypeName (${data?["days"]?.toString() ?? "N/A"})',
+          'value': '$leaveTypeName (${data?["days"]?.toString() ?? "N/A"})',
           'color': Colors.orange
         },
         {
@@ -541,7 +595,10 @@ class DetailsPageState extends State<DetailsPage> {
                 ),
                 TextSpan(
                   text: data?['is_approve'] ?? 'No status',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: _getStatusColor(data?['is_approve'] ?? 'no status')),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color:
+                          _getStatusColor(data?['is_approve'] ?? 'no status')),
                 ),
               ],
             ),
@@ -549,9 +606,7 @@ class DetailsPageState extends State<DetailsPage> {
           'color': _getStatusColor(data?['is_approve'] ?? 'no status')
         }
       ]);
-    }
-
-    else if (type == 'minutes of meeting') {
+    } else if (type == 'minutes of meeting') {
       details.addAll([
         {
           'icon': Icons.bookmark,
@@ -563,14 +618,14 @@ class DetailsPageState extends State<DetailsPage> {
           'icon': Icons.calendar_today,
           'title': 'Date',
           'value':
-          '${formatDate(data?["fromdate"])} - ${formatDate(data?["todate"])}',
+              '${formatDate(data?["fromdate"])} - ${formatDate(data?["todate"])}',
           'color': Colors.green
         },
         {
           'icon': Icons.access_time,
           'title': 'Time',
           'value':
-          '${formatDate(data?["fromdate"], includeTime: true)} - ${formatDate(data?["todate"], includeTime: true)}',
+              '${formatDate(data?["fromdate"], includeTime: true)} - ${formatDate(data?["todate"], includeTime: true)}',
           'color': Colors.orange
         },
         {
@@ -680,7 +735,8 @@ class DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String title, dynamic content, Color color, bool isDarkMode) {
+  Widget _buildInfoRow(IconData icon, String title, dynamic content,
+      Color color, bool isDarkMode) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -694,12 +750,12 @@ class DetailsPageState extends State<DetailsPage> {
           child: content is Widget
               ? content
               : Text(
-            '$title: $content',
-            style: TextStyle(
-              fontSize: 15,
-              color: isDarkMode ? Colors.white : Colors.black,
-            ),
-          ),
+                  '$title: $content',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
         ),
       ],
     );
@@ -735,9 +791,9 @@ class DetailsPageState extends State<DetailsPage> {
   Widget _buildWorkflowSection() {
     // Build a little arrow icon in between avatars
     Widget buildArrow() => const Padding(
-      padding: EdgeInsets.only(top: 15.0),
-      child: Icon(Icons.arrow_forward, color: Colors.grey, size: 20),
-    );
+          padding: EdgeInsets.only(top: 15.0),
+          child: Icon(Icons.arrow_forward, color: Colors.grey, size: 20),
+        );
 
     final bool isLeaveType = widget.types.toLowerCase() == 'leave';
     final List<dynamic> detailsList = data?['details'] ?? [];
@@ -745,12 +801,14 @@ class DetailsPageState extends State<DetailsPage> {
     // ----------------------------------------------------------------
     //  1) REQUESTOR (FIRST AVATAR)
     // ----------------------------------------------------------------
-    final String requestorImg = (data?['img_name'] as String?)?.isNotEmpty == true
-        ? data!['img_name'] as String
-        : 'assets/avatar_placeholder.png';
+    final String requestorImg =
+        (data?['img_name'] as String?)?.isNotEmpty == true
+            ? data!['img_name'] as String
+            : 'assets/avatar_placeholder.png';
 
     // The border color for the requestor is based on data?['status']
-    final Color requestorBorderColor = _getStatusColor(data?['status'] ?? data?['is_approve'] ?? '');
+    final Color requestorBorderColor =
+        _getStatusColor(data?['status'] ?? data?['is_approve'] ?? '');
 
     // ----------------------------------------------------------------
     //  2) SECOND AVATAR (from details[0] if it exists)
@@ -762,8 +820,8 @@ class DetailsPageState extends State<DetailsPage> {
       secondImg = (detail['img_name'] as String?)?.isNotEmpty == true
           ? detail['img_name']
           : 'assets/avatar_placeholder.png';
-      secondBorderColor = _getStatusColor(detail['decide'] ?? detail['detail'] ?? '');
-
+      secondBorderColor =
+          _getStatusColor(detail['decide'] ?? detail['detail'] ?? '');
     }
 
     // ----------------------------------------------------------------
@@ -827,7 +885,11 @@ class DetailsPageState extends State<DetailsPage> {
     final lowerStatus = widget.status.toLowerCase();
 
     // Hide for "minutes of meeting" type
-    if (type == 'minutes of meeting' || lowerStatus == 'approved' || lowerStatus == 'disapproved' || lowerStatus == 'cancel' || lowerStatus == 'completed') {
+    if (type == 'minutes of meeting' ||
+        lowerStatus == 'approved' ||
+        lowerStatus == 'disapproved' ||
+        lowerStatus == 'cancel' ||
+        lowerStatus == 'completed') {
       return const SizedBox.shrink();
     }
 
@@ -1046,7 +1108,8 @@ class DetailsPageState extends State<DetailsPage> {
           break;
 
         case 'minutes of meeting':
-          _showErrorDialog('Error', 'Delete for minutes of meeting not implemented.');
+          _showErrorDialog(
+              'Error', 'Delete for minutes of meeting not implemented.');
           break;
 
         default:
@@ -1114,55 +1177,56 @@ class DetailsPageState extends State<DetailsPage> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-          ? Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            _errorMessage!,
-            style: TextStyle(
-              fontSize: 16,
-              color: isDarkMode ? Colors.redAccent : Colors.red,
-            ),
-          ),
-        ),
-      )
-          : RefreshIndicator(
-        onRefresh: _handleRefresh,
-        child: data == null
-            ? Center(
-          child: Text(
-            'No Data Available',
-            style: TextStyle(
-              fontSize: 16,
-              color: isDarkMode ? Colors.grey[400] : Colors.red,
-            ),
-          ),
-        )
-            : SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding, vertical: 12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 8),
-                  _buildRequestorSection(),
-                  const SizedBox(height: 8),
-                  _buildBlueSection(),
-                  const SizedBox(height: 18),
-                  _buildDetailsSection(),
-                  const SizedBox(height: 14),
-                  _buildWorkflowSection(),
-                  SizedBox(height: screenHeight * 0.02),
-                  _buildActionButtons(context),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: isDarkMode ? Colors.redAccent : Colors.red,
+                      ),
+                    ),
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _handleRefresh,
+                  child: data == null
+                      ? Center(
+                          child: Text(
+                            'No Data Available',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: isDarkMode ? Colors.grey[400] : Colors.red,
+                            ),
+                          ),
+                        )
+                      : SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Center(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: horizontalPadding,
+                                  vertical: 12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  const SizedBox(height: 8),
+                                  _buildRequestorSection(),
+                                  const SizedBox(height: 8),
+                                  _buildBlueSection(),
+                                  const SizedBox(height: 18),
+                                  _buildDetailsSection(),
+                                  const SizedBox(height: 14),
+                                  _buildWorkflowSection(),
+                                  SizedBox(height: screenHeight * 0.02),
+                                  _buildActionButtons(context),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                ),
     );
   }
 }

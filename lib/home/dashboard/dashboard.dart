@@ -392,13 +392,10 @@ class DashboardState extends State<Dashboard>
 
   Future<void> _checkForProfileUpdates({bool forceUpdate = false}) async {
     try {
-      // Skip update check if we recently checked (unless forced)
-      final now = DateTime.now();
-      final lastUpdate = _getCacheTimestamp('userProfile');
-      if (!forceUpdate &&
-          lastUpdate != null &&
-          now.difference(lastUpdate) < const Duration(minutes: 5)) {
-        return; // Skip frequent updates unless forced
+      // Skip update check if we have a profile (unless forced)
+      final cachedProfile = _getCachedData('userProfile') as UserProfile?;
+      if (!forceUpdate && cachedProfile != null) {
+        return; // Use cached profile, no need to refresh
       }
 
       final newProfile = await _fetchProfileFromApi();
@@ -485,9 +482,7 @@ class DashboardState extends State<Dashboard>
     if (_isDisposed) return [];
 
     try {
-      // Always start an API fetch in the background to ensure fresh data
-      // This ensures we always have the latest data when reopening the app
-      _fetchBannersFromApiAndUpdate(forceUpdate: true);
+      // First check our cache before making any network requests
 
       // Quick memory cache check - fastest retrieval for immediate display
       final cachedBanners = _getCachedData('banners');
@@ -502,7 +497,7 @@ class DashboardState extends State<Dashboard>
         return hiveBanners;
       }
 
-      // No cache or empty cache - wait for API fetch to complete
+      // No cache or empty cache - only then fetch from API
       return await _fetchBannersFromApi();
     } catch (e) {
       debugPrint('Error fetching banners: $e');
@@ -518,14 +513,10 @@ class DashboardState extends State<Dashboard>
   // New method to fetch banners from API and update state
   Future<void> _fetchBannersFromApiAndUpdate({bool forceUpdate = false}) async {
     try {
-      // Skip update check if we recently checked (unless forced)
-      final now = DateTime.now();
-      final lastUpdate = _getCacheTimestamp('banners');
-      if (!forceUpdate &&
-          lastUpdate != null &&
-          now.difference(lastUpdate) < const Duration(minutes: 2)) {
-        // Reduced time to 2 minutes
-        return; // Skip frequent updates unless forced
+      // Skip update check if we already have banners (unless forced)
+      final cachedBanners = _getCachedData('banners') as List<String>?;
+      if (!forceUpdate && cachedBanners != null && cachedBanners.isNotEmpty) {
+        return; // Use cached banners, no need to refresh
       }
 
       final newBanners = await _fetchBannersFromApi();
@@ -676,13 +667,25 @@ class DashboardState extends State<Dashboard>
           nextPage = 0;
         }
 
-        // Prefetch the next image before animation starts
+        // We'll use existing cached images without refreshing from API
+        // Just prefetch the next image if it's already in the cache
         if (nextPage < totalPages) {
           final banners = _getCachedData('banners') as List<String>?;
           if (banners != null &&
               banners.isNotEmpty &&
               nextPage < banners.length) {
-            _prefetchImage(banners[nextPage]);
+            // Only use already cached images, don't fetch from network
+            final imageUrl = banners[nextPage];
+            if (imageUrl.isNotEmpty) {
+              try {
+                final provider = CachedNetworkImageProvider(imageUrl);
+                // This will use the cached version if available
+                precacheImage(provider, context);
+              } catch (e) {
+                // Just log and continue, don't refresh from network
+                debugPrint('Error using cached image: $e');
+              }
+            }
           }
         }
 
@@ -1148,16 +1151,10 @@ class DashboardState extends State<Dashboard>
           final cachedBanners = _getCachedData('banners') as List<String>?;
 
           if (cachedBanners != null && cachedBanners.isNotEmpty) {
-            // If we have cached data, show it immediately while fetching new data in background
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              // Start a background refresh if we're waiting for new data
-              Future.microtask(
-                  () => _fetchBannersFromApiAndUpdate(forceUpdate: true));
-            }
+            // If we have cached data, show it immediately without refreshing in background
             return _buildBannerPageView(cachedBanners, isDarkMode);
           }
 
-          // Handle other states when no cached data is available
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(
               child: CircularProgressIndicator(
@@ -1167,6 +1164,7 @@ class DashboardState extends State<Dashboard>
               ),
             );
           } else if (snapshot.hasError) {
+            // Show error state with placeholder
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1188,16 +1186,8 @@ class DashboardState extends State<Dashboard>
                 ],
               ),
             );
-          } else if (snapshot.hasData &&
-              snapshot.data != null &&
-              snapshot.data!.isNotEmpty) {
-            // If we have new data from API, update cache and show it
-            if (!listEquals(snapshot.data!, cachedBanners ?? [])) {
-              _updateCache('banners', snapshot.data!);
-              bannersBox.put('banners', snapshot.data!);
-            }
-            return _buildBannerPageView(snapshot.data!, isDarkMode);
-          } else {
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            // Show empty state with placeholder
             return Center(
               child: Text(
                 AppLocalizations.of(context)!.noBannersAvailable,
@@ -1207,6 +1197,9 @@ class DashboardState extends State<Dashboard>
                 ),
               ),
             );
+          } else {
+            // Show the actual banners
+            return _buildBannerPageView(snapshot.data!, isDarkMode);
           }
         },
       ),

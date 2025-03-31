@@ -85,6 +85,41 @@ class NotificationPageState extends State<NotificationPage> {
         throw Exception('User not authenticated');
       }
 
+      // Try to load from cache first
+      final cachedLeaveTypes = prefs.getString('notification_leave_types');
+      if (cachedLeaveTypes != null) {
+        final Map<String, dynamic> leaveTypesData =
+            jsonDecode(cachedLeaveTypes);
+        setState(() {
+          _leaveTypesMap = Map<int, String>.from(leaveTypesData
+              .map((key, value) => MapEntry(int.parse(key), value.toString())));
+        });
+
+        // Fetch in background to update cache
+        _fetchAndCacheLeaveTypes(prefs, token, leaveTypesApiUrl);
+        return;
+      }
+
+      // No cache, fetch directly
+      await _fetchAndCacheLeaveTypes(prefs, token, leaveTypesApiUrl);
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Error fetching leave types: $e');
+      }
+      if (kDebugMode) {
+        debugPrint(stackTrace.toString());
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching leave types: $e')),
+      );
+      rethrow; // So that _fetchInitialData catches and handles
+    }
+  }
+
+  /// Fetches leave types from API and caches them
+  Future<void> _fetchAndCacheLeaveTypes(
+      SharedPreferences prefs, String token, String leaveTypesApiUrl) async {
+    try {
       final leaveTypesResponse = await http.get(
         Uri.parse(leaveTypesApiUrl),
         headers: {
@@ -103,12 +138,24 @@ class NotificationPageState extends State<NotificationPage> {
         if (responseBody['statusCode'] == 200 &&
             responseBody['results'] != null) {
           final List<dynamic> leaveTypesData = responseBody['results'];
+          final Map<int, String> newLeaveTypesMap = {
+            for (var item in leaveTypesData)
+              item['leave_type_id'] as int: item['name'].toString()
+          };
+
+          // Convert integer keys to strings for JSON serialization
+          final Map<String, String> serializableMap = newLeaveTypesMap.map(
+            (key, value) => MapEntry(key.toString(), value),
+          );
+
+          // Cache the serializable map
+          await prefs.setString(
+              'notification_leave_types', jsonEncode(serializableMap));
+
           setState(() {
-            _leaveTypesMap = {
-              for (var item in leaveTypesData)
-                item['leave_type_id'] as int: item['name'].toString()
-            };
+            _leaveTypesMap = newLeaveTypesMap;
           });
+
           if (kDebugMode) {
             debugPrint('Leave types loaded: $_leaveTypesMap');
           }
@@ -120,17 +167,11 @@ class NotificationPageState extends State<NotificationPage> {
         throw Exception(
             'Failed to load leave types: ${leaveTypesResponse.statusCode}');
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (kDebugMode) {
-        debugPrint('Error fetching leave types: $e');
+        debugPrint('Error in _fetchAndCacheLeaveTypes: $e');
       }
-      if (kDebugMode) {
-        debugPrint(stackTrace.toString());
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching leave types: $e')),
-      );
-      rethrow; // So that _fetchInitialData catches and handles
+      throw e; // Rethrow to be handled by caller
     }
   }
 

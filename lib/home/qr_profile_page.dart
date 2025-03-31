@@ -211,35 +211,54 @@ class ProfileScreenState extends State<ProfileScreen>
       final prefs = await SharedPreferences.getInstance();
       final String? token = prefs.getString('token');
 
+      // Try to get cached profile data first
+      final String? cachedProfileData = prefs.getString('qr_profile_data');
+      if (cachedProfileData != null) {
+        final cachedData = jsonDecode(cachedProfileData);
+        // Return cached data immediately and fetch fresh data in background
+        _fetchAndCacheProfileData(token);
+        return cachedData;
+      }
+
       if (token == null || token.isEmpty) {
         throw Exception(AppLocalizations.of(context)!.noTokenFound);
       }
 
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/profile/'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final responseBody = jsonDecode(response.body);
-        if (responseBody.containsKey('results') &&
-            responseBody['results'] is Map<String, dynamic>) {
-          return responseBody['results'];
-        } else {
-          throw Exception(
-              AppLocalizations.of(context)!.invalidResponseStructure);
-        }
-      } else {
-        debugPrint(
-            'Failed to load profile data - Status Code: ${response.statusCode}');
-        debugPrint('Response Body: ${response.body}');
-        throw Exception(AppLocalizations.of(context)!.failedToLoadProfileData);
-      }
+      return _fetchAndCacheProfileData(token);
     } catch (e) {
       debugPrint('Error in _fetchProfileData: $e');
+      throw Exception(AppLocalizations.of(context)!.failedToLoadProfileData);
+    }
+  }
+
+  // New method to fetch and cache profile data
+  Future<Map<String, dynamic>> _fetchAndCacheProfileData(String? token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/profile/'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      if (responseBody.containsKey('results') &&
+          responseBody['results'] is Map<String, dynamic>) {
+        final profileData = responseBody['results'];
+
+        // Cache the profile data
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('qr_profile_data', jsonEncode(profileData));
+
+        return profileData;
+      } else {
+        throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
+      }
+    } else {
+      debugPrint(
+          'Failed to load profile data - Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
       throw Exception(AppLocalizations.of(context)!.failedToLoadProfileData);
     }
   }
@@ -257,48 +276,64 @@ class ProfileScreenState extends State<ProfileScreen>
         final prefs = await SharedPreferences.getInstance();
         final String? token = prefs.getString('token');
 
+        // Try to get cached display data first
+        final String? cachedDisplayData = prefs.getString('qr_display_data');
+        if (cachedDisplayData != null) {
+          final cachedData = jsonDecode(cachedDisplayData);
+          // Return cached data immediately and fetch fresh data in background
+          _fetchAndCacheDisplayData(token);
+          return cachedData;
+        }
+
         if (token == null || token.isEmpty) {
           throw Exception(AppLocalizations.of(context)!.noTokenFound);
         }
 
-        final response = await http.get(
-          Uri.parse('$baseUrl/api/display/me'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-        );
-
-        if (response.statusCode == 200) {
-          final responseBody = jsonDecode(response.body);
-          if (responseBody.containsKey('results') &&
-              responseBody['results'] is List<dynamic> &&
-              responseBody['results'].isNotEmpty) {
-            final record =
-                UserProfileRecord.fromJson(responseBody['results'][0]);
-
-            if (offlineProvider.isExistedProfile()) {
-              await offlineProvider.updateProfile(record);
-            } else {
-              await offlineProvider.addProfile(record);
-            }
-
-            return responseBody['results'][0];
-          } else {
-            throw Exception(
-                AppLocalizations.of(context)!.invalidResponseStructure);
-          }
-        } else {
-          debugPrint(
-              'Failed to load display data - Status Code: ${response.statusCode}');
-          debugPrint('Response Body: ${response.body}');
-          throw Exception(
-              AppLocalizations.of(context)!.failedToLoadDisplayData);
-        }
+        return _fetchAndCacheDisplayData(token);
       } catch (e) {
         debugPrint('Error in _fetchDisplayData: $e');
         throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
       }
+    }
+  }
+
+  // New method to fetch and cache display data
+  Future<Map<String, dynamic>> _fetchAndCacheDisplayData(String? token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/display/me'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final responseBody = jsonDecode(response.body);
+      if (responseBody.containsKey('results') &&
+          responseBody['results'] is List<dynamic> &&
+          responseBody['results'].isNotEmpty) {
+        final displayData = responseBody['results'][0];
+        final record = UserProfileRecord.fromJson(displayData);
+
+        if (offlineProvider.isExistedProfile()) {
+          await offlineProvider.updateProfile(record);
+        } else {
+          await offlineProvider.addProfile(record);
+        }
+
+        // Cache the display data
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('qr_display_data', jsonEncode(displayData));
+
+        return displayData;
+      } else {
+        throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
+      }
+    } else {
+      debugPrint(
+          'Failed to load display data - Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
+      throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
     }
   }
 

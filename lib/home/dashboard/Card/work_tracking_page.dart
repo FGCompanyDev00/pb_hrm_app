@@ -166,7 +166,12 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     return PopScope(
-      onPopInvokedWithResult: (e, result) => Navigator.maybePop(context),
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          Navigator.of(context).pop();
+        }
+        return;
+      },
       child: Scaffold(
         backgroundColor: isDarkMode ? Colors.black : Colors.white,
         body: RefreshIndicator(
@@ -218,7 +223,7 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
                 color: isDarkMode ? Colors.white : Colors.black,
                 size: 20,
               ),
-              onPressed: () => Navigator.maybePop(context),
+              onPressed: () => Navigator.of(context).pop(),
               tooltip: 'Back',
             ),
             // Title

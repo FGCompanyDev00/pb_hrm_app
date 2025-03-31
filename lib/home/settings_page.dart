@@ -638,18 +638,19 @@ class SettingsPageState extends State<SettingsPage> {
                     //   },
                     // ),
                     // Add Debug Mode Toggle before the debug section
-                    _buildSettingsTile(
-                      context,
-                      title: 'Debug Mode',
-                      trailing: Switch(
-                        value: _debugModeEnabled,
-                        onChanged: (bool value) => _saveDebugMode(value),
-                        activeColor: const Color(0xFFDBB342),
-                        inactiveTrackColor: themeNotifier.isDarkMode
-                            ? Colors.grey[700]
-                            : Colors.grey[300],
+                    if (kDebugMode)
+                      _buildSettingsTile(
+                        context,
+                        title: 'Debug Mode',
+                        trailing: Switch(
+                          value: _debugModeEnabled,
+                          onChanged: (bool value) => _saveDebugMode(value),
+                          activeColor: const Color(0xFFDBB342),
+                          inactiveTrackColor: themeNotifier.isDarkMode
+                              ? Colors.grey[700]
+                              : Colors.grey[300],
+                        ),
                       ),
-                    ),
                     // Debug Mode Section (Only visible when debug mode is enabled)
                     if (_debugModeEnabled) ...[
                       const SizedBox(height: 20),
