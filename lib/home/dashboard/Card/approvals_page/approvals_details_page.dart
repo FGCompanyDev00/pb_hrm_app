@@ -27,7 +27,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
   /// A separate controller for the reason typed in the bottom sheet
   final TextEditingController _rejectReasonController = TextEditingController();
-  final TextEditingController _approveReasonController = TextEditingController();
+  final TextEditingController _approveReasonController =
+      TextEditingController();
 
   bool isLoading = true;
   bool isFinalized = false;
@@ -42,7 +43,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   String? _selectedMergeVehicleUid;
 
   // Base URL for images
-  final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
+  final String _imageBaseUrl =
+      'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
@@ -59,7 +61,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     try {
       final String? token = await _getToken();
       if (token == null) {
-        _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+        _showErrorDialog(
+            'Authentication Error', 'Token not found. Please log in again.');
         return;
       }
 
@@ -69,7 +72,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       } else if (widget.type == 'car') {
         apiUrl = '$baseUrl/api/office-administration/car_permit/${widget.id}';
       } else if (widget.type == 'meeting') {
-        apiUrl = '$baseUrl/api/office-administration/book_meeting_room/${widget.id}';
+        apiUrl =
+            '$baseUrl/api/office-administration/book_meeting_room/${widget.id}';
       } else {
         throw Exception('Unknown type: ${widget.type}');
       }
@@ -86,12 +90,17 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if ((data['statusCode'] == 200 || data['statusCode'] == 201) && data['results'] != null) {
+        if ((data['statusCode'] == 200 || data['statusCode'] == 201) &&
+            data['results'] != null) {
           setState(() {
-            approvalData = widget.type == 'leave' ? Map<String, dynamic>.from(data['results'][0]) : Map<String, dynamic>.from(data['results']);
+            approvalData = widget.type == 'leave'
+                ? Map<String, dynamic>.from(data['results'][0])
+                : Map<String, dynamic>.from(data['results']);
 
             if (widget.type == 'leave') {
-              final employeeId = approvalData?['employee_id'] ?? approvalData?['requestor_id'] ?? '';
+              final employeeId = approvalData?['employee_id'] ??
+                  approvalData?['requestor_id'] ??
+                  '';
               if (employeeId.isNotEmpty) {
                 // Fetch the profile image using the employee_id
                 _fetchProfileImage(employeeId).then((imageUrl) {
@@ -121,14 +130,16 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           });
           debugPrint('Approval details loaded successfully.');
         } else {
-          throw Exception(data['message'] ?? 'Failed to load approval details.');
+          throw Exception(
+              data['message'] ?? 'Failed to load approval details.');
         }
       } else if (response.statusCode == 403) {
         throw Exception('Access forbidden: ${response.statusCode}');
       } else if (response.statusCode == 404) {
         throw Exception('Approval details not found: ${response.statusCode}');
       } else {
-        throw Exception('Failed to load approval details: ${response.statusCode}');
+        throw Exception(
+            'Failed to load approval details: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching approval details: $e');
@@ -187,7 +198,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         // Success
-        _showSuccessDialog('Success', 'Car permits have been merged successfully.');
+        _showSuccessDialog(
+            'Success', 'Car permits have been merged successfully.');
         // Optionally, refresh the approval details
         _fetchApprovalDetails();
       } else {
@@ -238,15 +250,13 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         final data = jsonDecode(response.body);
         if (data['statusCode'] == 200 && data['results'] != null) {
           setState(() {
-            _waitingList =
-            List<Map<String, dynamic>>.from(data['results']);
+            _waitingList = List<Map<String, dynamic>>.from(data['results']);
           });
         } else {
           throw Exception(data['message'] ?? 'Failed to load waiting list.');
         }
       } else {
-        throw Exception(
-            'Failed to load waiting list: ${response.statusCode}');
+        throw Exception('Failed to load waiting list: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching waiting list: $e');
@@ -262,7 +272,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   Future<void> _fetchMyVehicles() async {
     final String? token = await _getToken();
     if (token == null) {
-      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog(
+          'Authentication Error', 'Token not found. Please log in again.');
       return;
     }
 
@@ -343,7 +354,12 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
   /// Utility to check if status is "Waiting"/"Pending"/"Processing"/etc.
   bool isPendingStatus(String status) {
-    return status.toLowerCase() == 'waiting' || status.toLowerCase() == 'pending' || status.toLowerCase() == 'processing' || status.toLowerCase() == 'branch waiting' || status.toLowerCase() == 'branch processing' || status.toLowerCase() == 'waiting for approval';
+    return status.toLowerCase() == 'waiting' ||
+        status.toLowerCase() == 'pending' ||
+        status.toLowerCase() == 'processing' ||
+        status.toLowerCase() == 'branch waiting' ||
+        status.toLowerCase() == 'branch processing' ||
+        status.toLowerCase() == 'waiting for approval';
   }
 
   /// Format date string for display
@@ -395,7 +411,10 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final status = (approvalData?['status']?.toString() ?? approvalData?['is_approve']?.toString() ?? 'Pending').trim();
+    final status = (approvalData?['status']?.toString() ??
+            approvalData?['is_approve']?.toString() ??
+            'Pending')
+        .trim();
 
     return Scaffold(
       appBar: _buildAppBar(context),
@@ -422,7 +441,9 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                       const SizedBox(height: 22),
                       _buildActionButtons(context),
                     ],
-                    if (!isPendingStatus(status) && status.toLowerCase() == 'reject') _buildDenyReasonSection(),
+                    if (!isPendingStatus(status) &&
+                        status.toLowerCase() == 'reject')
+                      _buildDenyReasonSection(),
                   ],
                 ],
               ),
@@ -472,19 +493,27 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   }
 
   Widget _buildRequestorSection(bool isDarkMode) {
-    final requestorName = approvalData?['employee_name'] ?? approvalData?['requestor_name'] ?? 'No Name';
+    final requestorName = approvalData?['employee_name'] ??
+        approvalData?['requestor_name'] ??
+        'No Name';
 
     String submittedOn = 'N/A';
 
-    if (widget.type == 'meeting' && approvalData?['date_create'] != null && approvalData!['date_create'].toString().isNotEmpty) {
+    if (widget.type == 'meeting' &&
+        approvalData?['date_create'] != null &&
+        approvalData!['date_create'].toString().isNotEmpty) {
       submittedOn = formatDate(approvalData!['date_create']);
-    } else if ((widget.type == 'car' || widget.type == 'else') && approvalData?['updated_at'] != null && approvalData!['updated_at'].toString().isNotEmpty) {
+    } else if ((widget.type == 'car' || widget.type == 'else') &&
+        approvalData?['updated_at'] != null &&
+        approvalData!['updated_at'].toString().isNotEmpty) {
       submittedOn = formatDate(approvalData!['updated_at']);
-    } else if (approvalData?['created_at'] != null && approvalData!['created_at'].toString().isNotEmpty) {
+    } else if (approvalData?['created_at'] != null &&
+        approvalData!['created_at'].toString().isNotEmpty) {
       submittedOn = formatDate(approvalData!['created_at']);
     }
 
-    final profileImage = requestorImage ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+    final profileImage = requestorImage ??
+        'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -581,14 +610,11 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
     if (widget.type == 'leave') {
       return _buildLeaveDetails();
-    }
-    else if (widget.type == 'car') {
+    } else if (widget.type == 'car') {
       return _buildCarDetails();
-    }
-    else if (widget.type == 'meeting') {
+    } else if (widget.type == 'meeting') {
       return _buildMeetingDetails();
-    }
-    else {
+    } else {
       return Center(
         child: Text(
           'Unknown Request Type',
@@ -664,8 +690,12 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   Widget _buildCarDetails() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     // Show them only if status is NOT "Approved", "Rejected", or "Deleted".
-    final currentStatus = approvalData?['status']?.toString().toLowerCase() ?? '';
-    final canShowButtons = (currentStatus != 'approved' && currentStatus != 'disapproved' && currentStatus != 'deleted' && currentStatus != 'completed');
+    final currentStatus =
+        approvalData?['status']?.toString().toLowerCase() ?? '';
+    final canShowButtons = (currentStatus != 'approved' &&
+        currentStatus != 'disapproved' &&
+        currentStatus != 'deleted' &&
+        currentStatus != 'completed');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -745,12 +775,13 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                   context: context,
                   isScrollControlled: true,
                   shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(24)),
                   ),
                   builder: (ctx) {
                     return FractionallySizedBox(
                       heightFactor: 0.8,
-                      child: ChatCommentApprovalSection(id:widget.id),
+                      child: ChatCommentApprovalSection(id: widget.id),
                     );
                   },
                 );
@@ -795,7 +826,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           elevation: 4,
           shadowColor: Colors.black.withOpacity(0.2),
@@ -833,7 +865,10 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       ),
       builder: (ctx) {
         final mediaQuery = MediaQuery.of(ctx);
-        return Padding(
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: mediaQuery.size.height * 0.8,
+          ),
           padding: EdgeInsets.only(
             left: 20,
             right: 20,
@@ -846,132 +881,143 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
               bool isFormValid = _selectedWaitingUid != null &&
                   _selectedMergeVehicleUid != null;
 
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Title
-                  const Text(
-                    'Merge Car Permits',
-                    style:
-                    TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // First Dropdown - Waiting List
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Select Waiting Permit *',
+              return SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Title
+                    const Text(
+                      'Merge Car Permits',
                       style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  _isFetchingWaitingList
-                      ? const Center(child: CircularProgressIndicator())
-                      : DropdownButtonFormField<String>(
-                    value: _selectedWaitingUid,
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor:
-                      Theme.of(context).brightness == Brightness.dark
-                          ? Colors.grey[700]
-                          : Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    hint: const Text('Select Waiting Permit'),
-                    items: _waitingList.map<DropdownMenuItem<String>>((item) {
-                      String displayText =
-                          '${item['requestor_name']} (${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(item['created_date']))} - ...)';
-                      return DropdownMenuItem<String>(
-                        value: item['uid'] as String,
-                        child: Text(displayText),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedWaitingUid = value;
-                        isFormValid = _selectedWaitingUid != null &&
-                            _selectedMergeVehicleUid != null;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                  // Second Dropdown - Company Vehicle
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Select Company Vehicle *',
-                      style:
-                      TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _isFetchingVehicles
-                      ? const Center(child: CircularProgressIndicator())
-                      : DropdownButtonFormField<String>(
-                    value: _selectedMergeVehicleUid,
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor:
-                      Theme.of(context).brightness == Brightness.dark
-                          ? Colors.grey[700]
-                          : Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    hint: const Text('Select Company Vehicle'),
-                    items: _fetchedVehicles.map<DropdownMenuItem<String>>((vehicle) {
-                      String displayText =
-                          '${vehicle['branch_name']} (${vehicle['brand_name']} - ${vehicle['model_name']} - ${vehicle['province_name']})';
-                      return DropdownMenuItem<String>(
-                        value: vehicle['uid'] as String,
-                        child: Text(displayText),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedMergeVehicleUid = value;
-                        isFormValid = _selectedWaitingUid != null &&
-                            _selectedMergeVehicleUid != null;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 30),
-
-                  // Save & Approve Button (Center)
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: isFormValid
-                          ? () {
-                        Navigator.of(ctx).pop();
-                        _showConfirmMergeDialog(context);
-                      }
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isFormValid
-                            ? const Color(0xFFDBB342)
-                            : Colors.grey, // Disabled state
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 60, vertical: 14),
-                      ),
-                      child: const Text(
-                        'Save & Approve',
+                    // First Dropdown - Waiting List
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Select Waiting Permit *',
                         style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
+                            fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _isFetchingWaitingList
+                        ? const Center(child: CircularProgressIndicator())
+                        : DropdownButtonFormField<String>(
+                            isExpanded: true,
+                            menuMaxHeight: 300,
+                            value: _selectedWaitingUid,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.grey[700]
+                                  : Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            hint: const Text('Select Waiting Permit'),
+                            items: _waitingList
+                                .map<DropdownMenuItem<String>>((item) {
+                              String displayText =
+                                  '${item['requestor_name']} (${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(item['created_date']))} - ...)';
+                              return DropdownMenuItem<String>(
+                                value: item['uid'] as String,
+                                child: Text(displayText,
+                                    overflow: TextOverflow.ellipsis),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedWaitingUid = value;
+                                isFormValid = _selectedWaitingUid != null &&
+                                    _selectedMergeVehicleUid != null;
+                              });
+                            },
+                          ),
+                    const SizedBox(height: 20),
+
+                    // Second Dropdown - Company Vehicle
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Select Company Vehicle *',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _isFetchingVehicles
+                        ? const Center(child: CircularProgressIndicator())
+                        : DropdownButtonFormField<String>(
+                            isExpanded: true,
+                            menuMaxHeight: 300,
+                            value: _selectedMergeVehicleUid,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.grey[700]
+                                  : Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            hint: const Text('Select Company Vehicle'),
+                            items: _fetchedVehicles
+                                .map<DropdownMenuItem<String>>((vehicle) {
+                              String displayText =
+                                  '${vehicle['branch_name']} (${vehicle['brand_name']} - ${vehicle['model_name']} - ${vehicle['province_name']})';
+                              return DropdownMenuItem<String>(
+                                value: vehicle['uid'] as String,
+                                child: Text(displayText,
+                                    overflow: TextOverflow.ellipsis),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedMergeVehicleUid = value;
+                                isFormValid = _selectedWaitingUid != null &&
+                                    _selectedMergeVehicleUid != null;
+                              });
+                            },
+                          ),
+                    const SizedBox(height: 30),
+
+                    // Save & Approve Button (Center)
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: isFormValid
+                            ? () {
+                                Navigator.of(ctx).pop();
+                                _showConfirmMergeDialog(context);
+                              }
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isFormValid
+                              ? const Color(0xFFDBB342)
+                              : Colors.grey, // Disabled state
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 60, vertical: 14),
+                        ),
+                        child: const Text(
+                          'Save & Approve',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    SizedBox(height: MediaQuery.of(context).viewInsets.bottom)
+                  ],
+                ),
               );
             },
           ),
@@ -1114,79 +1160,81 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
               return _isFetchingVehicles
                   ? const Center(child: CircularProgressIndicator())
                   : Column(
-                children: [
-                  // Title
-                  const Text(
-                    'Select Company Vehicle',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Vehicle List
-                  _fetchedVehicles.isNotEmpty
-                      ? Expanded(
-                    child: ListView.builder(
-                      itemCount: _fetchedVehicles.length,
-                      itemBuilder: (context, index) {
-                        final vehicle = _fetchedVehicles[index];
-                        final displayText =
-                            '${vehicle['branch_name']} (${vehicle['brand_name']} - ${vehicle['model_name']} - ${vehicle['province_name']})';
-                        return RadioListTile<String>(
-                          title: Text(displayText),
-                          value: vehicle['uid'],
-                          groupValue: _selectedVehicleUid,
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedVehicleUid = value;
-                            });
-                          },
-                        );
-                      },
-                    ),
-                  )
-                      : const Text('No vehicles available.'),
-
-                  const SizedBox(height: 20),
-
-                  // Approve Button
-                  Center(
-                    child: ElevatedButton.icon(
-                      onPressed: _selectedVehicleUid == null ? null : () {
-                        Navigator.of(ctx).pop();
-                        _showConfirmApproveDialog(context);
-                        _fetchMyVehicles();  // Refetch after approval
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFDBB342),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
+                      children: [
+                        // Title
+                        const Text(
+                          'Select Company Vehicle',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 44, vertical: 12),
-                      ),
-                      icon: const CircleAvatar(
-                        radius: 12,
-                        backgroundColor: Colors.white,
-                        child: Icon(
-                          Icons.check,
-                          color: Color(0xFFDBB342),
-                          size: 18,
+                        const SizedBox(height: 10),
+
+                        // Vehicle List
+                        _fetchedVehicles.isNotEmpty
+                            ? Expanded(
+                                child: ListView.builder(
+                                  itemCount: _fetchedVehicles.length,
+                                  itemBuilder: (context, index) {
+                                    final vehicle = _fetchedVehicles[index];
+                                    final displayText =
+                                        '${vehicle['branch_name']} (${vehicle['brand_name']} - ${vehicle['model_name']} - ${vehicle['province_name']})';
+                                    return RadioListTile<String>(
+                                      title: Text(displayText),
+                                      value: vehicle['uid'],
+                                      groupValue: _selectedVehicleUid,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _selectedVehicleUid = value;
+                                        });
+                                      },
+                                    );
+                                  },
+                                ),
+                              )
+                            : const Text('No vehicles available.'),
+
+                        const SizedBox(height: 20),
+
+                        // Approve Button
+                        Center(
+                          child: ElevatedButton.icon(
+                            onPressed: _selectedVehicleUid == null
+                                ? null
+                                : () {
+                                    Navigator.of(ctx).pop();
+                                    _showConfirmApproveDialog(context);
+                                    _fetchMyVehicles(); // Refetch after approval
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFDBB342),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 44, vertical: 12),
+                            ),
+                            icon: const CircleAvatar(
+                              radius: 12,
+                              backgroundColor: Colors.white,
+                              child: Icon(
+                                Icons.check,
+                                color: Color(0xFFDBB342),
+                                size: 18,
+                              ),
+                            ),
+                            label: const Text(
+                              'Approve',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                      label: const Text(
-                        'Approve',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
+                      ],
+                    );
             },
           ),
         );
@@ -1308,11 +1356,13 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   Future<void> _handleApproveCar(BuildContext context) async {
     final String? token = await _getToken();
     if (token == null) {
-      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog(
+          'Authentication Error', 'Token not found. Please log in again.');
       return;
     }
 
-    final String endpoint = '$baseUrl/api/office-administration/car_permit/approved/${widget.id}';
+    final String endpoint =
+        '$baseUrl/api/office-administration/car_permit/approved/${widget.id}';
 
     setState(() {
       isFinalized = true;
@@ -1322,10 +1372,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       "vehicle_id": {
         "vehicle_uid": _selectedVehicleUid ?? "",
       },
-      "branch_vehicle": {
-        "vehicle_uid": "",
-        "permit_id": ""
-      }
+      "branch_vehicle": {"vehicle_uid": "", "permit_id": ""}
     };
 
     try {
@@ -1350,13 +1397,15 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         });
       } else {
         final responseBody = jsonDecode(response.body);
-        final errorMessage = responseBody['message'] ?? 'Failed to approve the car booking.';
+        final errorMessage =
+            responseBody['message'] ?? 'Failed to approve the car booking.';
         _showErrorDialog('Error', errorMessage);
       }
     } catch (e, stackTrace) {
       debugPrint('Error approving car: $e');
       debugPrint(stackTrace.toString());
-      _showErrorDialog('Error', 'An unexpected error occurred while approving.');
+      _showErrorDialog(
+          'Error', 'An unexpected error occurred while approving.');
     } finally {
       setState(() {
         isFinalized = false;
@@ -1387,7 +1436,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               // Icon + Title
-              const Icon(Icons.question_answer, size: 52, color: Color(0xFFDBB342)),
+              const Icon(Icons.question_answer,
+                  size: 52, color: Color(0xFFDBB342)),
               const SizedBox(height: 6),
               const Text(
                 'Reason',
@@ -1455,7 +1505,6 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-
                     // Warning Icon (Centered)
                     const Icon(
                       Icons.warning_amber_rounded,
@@ -1553,11 +1602,13 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   Future<void> _handleCarReject(BuildContext context) async {
     final String? token = await _getToken();
     if (token == null) {
-      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog(
+          'Authentication Error', 'Token not found. Please log in again.');
       return;
     }
 
-    final endpoint = '$baseUrl/api/office-administration/car_permit/disapproved/${widget.id}';
+    final endpoint =
+        '$baseUrl/api/office-administration/car_permit/disapproved/${widget.id}';
     final reason = _rejectReasonController.text.trim();
 
     setState(() {
@@ -1585,13 +1636,15 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         _showSuccessDialog('Rejected', 'Car booking has been rejected.');
       } else {
         final responseBody = jsonDecode(response.body);
-        final errorMessage = responseBody['message'] ?? 'Failed to reject the car booking.';
+        final errorMessage =
+            responseBody['message'] ?? 'Failed to reject the car booking.';
         _showErrorDialog('Error', errorMessage);
       }
     } catch (e, stackTrace) {
       debugPrint('Error rejecting car: $e');
       debugPrint(stackTrace.toString());
-      _showErrorDialog('Error', 'An unexpected error occurred while rejecting.');
+      _showErrorDialog(
+          'Error', 'An unexpected error occurred while rejecting.');
     } finally {
       setState(() {
         isFinalized = false;
@@ -1722,7 +1775,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
   /// DENY REASON: SHOWN ONLY FOR LEAVE/MEETING
   Widget _buildDenyReasonSection() {
-    final denyReason = approvalData?['deny_reason']?.toString() ?? 'No reason provided.';
+    final denyReason =
+        approvalData?['deny_reason']?.toString() ?? 'No reason provided.';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1786,7 +1840,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       icon: Icon(icon, color: textColor, size: 20),
       label: Text(
         label,
-        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: textColor),
+        style: TextStyle(
+            fontSize: 18, fontWeight: FontWeight.w600, color: textColor),
       ),
     );
   }
@@ -1810,7 +1865,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String? token = await _getToken();
     if (token == null) {
-      _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+      _showErrorDialog(
+          'Authentication Error', 'Token not found. Please log in again.');
       setState(() {
         isFinalized = false;
       });
@@ -1829,9 +1885,11 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       primaryEndpoint = '$baseUrl/api/leave_reject/${widget.id}';
     } else if (widget.type == 'meeting') {
       if (action == 'approve') {
-        primaryEndpoint = '$baseUrl/api/office-administration/book_meeting_room/approve/${widget.id}';
+        primaryEndpoint =
+            '$baseUrl/api/office-administration/book_meeting_room/approve/${widget.id}';
       } else if (action == 'reject') {
-        primaryEndpoint = '$baseUrl/api/office-administration/book_meeting_room/disapprove/${widget.id}';
+        primaryEndpoint =
+            '$baseUrl/api/office-administration/book_meeting_room/disapprove/${widget.id}';
       }
     } else if (widget.type == 'car') {
       method = 'POST';

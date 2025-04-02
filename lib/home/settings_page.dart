@@ -93,12 +93,23 @@ class SettingsPageState extends State<SettingsPage> {
   Future<void> _loadBiometricSetting() async {
     bool isEnabled = false;
 
-    // Try to read from FlutterSecureStorage first
     try {
+      // First try to read from FlutterSecureStorage
       String? value = await _storage.read(key: 'biometricEnabled');
-      isEnabled = value == 'true';
+      if (value != null) {
+        isEnabled = value == 'true';
+      } else {
+        // If not found in secure storage, try SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        isEnabled = prefs.getBool('biometricEnabled') ?? false;
+
+        // If found in SharedPreferences, sync it back to secure storage
+        if (isEnabled) {
+          await _storage.write(key: 'biometricEnabled', value: 'true');
+        }
+      }
     } catch (e) {
-      debugPrint('Error reading from secure storage: $e');
+      debugPrint('Error reading biometric setting: $e');
       // Fallback to SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       isEnabled = prefs.getBool('biometricEnabled') ?? false;
@@ -114,25 +125,24 @@ class SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveBiometricSetting(bool enabled) async {
-    // Save to both FlutterSecureStorage and SharedPreferences for redundancy
     try {
-      // First delete any existing entry to avoid the "item already exists" error
-      await _storage.delete(key: 'biometricEnabled');
-
-      // Now write the new value
+      // Save to FlutterSecureStorage first
       await _storage.write(key: 'biometricEnabled', value: enabled.toString());
-      debugPrint('Saved biometric to SecureStorage, Enabled as: $enabled');
-    } catch (e) {
-      debugPrint('Error updating secure storage: $e');
-    }
 
-    // Always save to SharedPreferences as a reliable fallback
-    try {
+      // Then save to SharedPreferences as backup
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('biometricEnabled', enabled);
-      debugPrint('Saved biometric to SharedPreferences as fallback');
+
+      debugPrint('Biometric setting saved successfully: $enabled');
     } catch (e) {
-      debugPrint('Error saving to fallback storage: $e');
+      debugPrint('Error saving biometric setting: $e');
+      // If secure storage fails, at least try SharedPreferences
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('biometricEnabled', enabled);
+      } catch (e) {
+        debugPrint('Error saving to fallback storage: $e');
+      }
     }
   }
 

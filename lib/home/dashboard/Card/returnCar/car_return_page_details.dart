@@ -446,15 +446,15 @@ class ReturnCarPageDetailsState extends State<ReturnCarPageDetails> {
                     color: isDarkMode ? Colors.white70 : Colors.black54,
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(
-                    Icons.add_circle,
-                    color: Colors.green,
-                  ),
-                  onPressed: () {
-                    // TBD: any action you want
-                  },
-                ),
+                // IconButton(
+                //   icon: const Icon(
+                //     Icons.add_circle,
+                //     color: Colors.green,
+                //   ),
+                //   onPressed: () {
+                //     // TBD: any action you want
+                //   },
+                // ),
               ],
             ),
             const SizedBox(height: 2),

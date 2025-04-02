@@ -41,7 +41,8 @@ class AddProjectPageState extends State<AddProjectPage> {
     super.dispose();
   }
 
-  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
+  Future<void> _selectDate(
+      BuildContext context, TextEditingController controller) async {
     try {
       final DateTime? picked = await showDatePicker(
         context: context,
@@ -77,11 +78,13 @@ class AddProjectPageState extends State<AddProjectPage> {
           if (mounted) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => AddPeoplePage(projectId: projectId)),
+              MaterialPageRoute(
+                  builder: (context) => AddPeoplePage(projectId: projectId)),
             );
           }
         } else {
-          _showErrorDialog('Project created but failed to retrieve project ID.');
+          _showErrorDialog(
+              'Project created but failed to retrieve project ID.');
         }
       } catch (e) {
         _showErrorDialog('Failed to create project. Error: $e');
@@ -98,7 +101,9 @@ class AddProjectPageState extends State<AddProjectPage> {
         title: const Text('Error'),
         content: Text(message),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK')),
         ],
       ),
     );
@@ -114,7 +119,8 @@ class AddProjectPageState extends State<AddProjectPage> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+              image: AssetImage(
+                  isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
               fit: BoxFit.cover,
             ),
             borderRadius: const BorderRadius.only(
@@ -127,7 +133,9 @@ class AddProjectPageState extends State<AddProjectPage> {
         title: Text(
           'Create New Project',
           style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
             fontSize: 22,
             fontWeight: FontWeight.w500,
           ),
@@ -135,7 +143,9 @@ class AddProjectPageState extends State<AddProjectPage> {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
             size: 20,
           ),
           onPressed: () => Navigator.pop(context),
@@ -152,19 +162,26 @@ class AddProjectPageState extends State<AddProjectPage> {
                 alignment: Alignment.centerRight,
                 child: Container(
                   width: MediaQuery.of(context).size.width * 0.45,
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                   child: ElevatedButton.icon(
                     onPressed: _isLoading ? null : _createProjectAndProceed,
-                    icon: _isLoading ? const CircularProgressIndicator(color: Colors.black) : const Icon(Icons.arrow_forward, color: Colors.black),
+                    icon: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.black)
+                        : const Icon(Icons.arrow_forward, color: Colors.black),
                     label: const Text(
                       'Next',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black),
                     ),
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.white,
                       backgroundColor: const Color(0xFFDBB342),
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
                     ),
                   ),
                 ),
@@ -174,126 +191,170 @@ class AddProjectPageState extends State<AddProjectPage> {
                   padding: const EdgeInsets.all(10),
                   child: Form(
                     key: _formKey,
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(
-                        'Name of Project',
-                        style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white : Colors.black),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _projectNameController,
-                        isDarkMode: isDarkMode,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter the project name';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Text(
-                              'Status',
-                              style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white : Colors.black),
-                            ),
+                          Text(
+                            'Name of Project',
+                            style: TextStyle(
+                                fontSize: 14,
+                                color:
+                                    isDarkMode ? Colors.white : Colors.black),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              'Branch',
-                              style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white : Colors.black),
-                            ),
+                          const SizedBox(height: 8),
+                          _buildTextField(
+                            controller: _projectNameController,
+                            isDarkMode: isDarkMode,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter the project name';
+                              }
+                              return null;
+                            },
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Flexible(
-                            child: _buildDropdownField(
-                              value: _selectedStatus,
-                              options: ['Processing', 'Pending', 'Finished'],
-                              isDarkMode: isDarkMode,
-                              onChanged: (value) => setState(() => _selectedStatus = value!),
-                              assetIconPath: 'assets/task.png',
-                            ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Status',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  'Branch',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Flexible(
-                            child: _buildDropdownField(
-                              value: _selectedBranch,
-                              options: ['HQ Office', 'Samsen Thai B', 'HQ Office Premier Room'],
-                              isDarkMode: isDarkMode,
-                              onChanged: (value) => setState(() => _selectedBranch = value!),
-                              assetIconPath: 'assets/task.png',
-                            ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: _buildDropdownField(
+                                  value: _selectedStatus,
+                                  options: [
+                                    'Processing',
+                                    'Pending',
+                                    'Finished'
+                                  ],
+                                  isDarkMode: isDarkMode,
+                                  onChanged: (value) =>
+                                      setState(() => _selectedStatus = value!),
+                                  assetIconPath: 'assets/task.png',
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Flexible(
+                                child: _buildDropdownField(
+                                  value: _selectedBranch,
+                                  options: [
+                                    'HQ Office',
+                                    'Samsen Thai B',
+                                    'HQ Office Premier Room'
+                                  ],
+                                  isDarkMode: isDarkMode,
+                                  onChanged: (value) =>
+                                      setState(() => _selectedBranch = value!),
+                                  assetIconPath: 'assets/task.png',
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Department',
-                        style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white : Colors.black),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildDropdownField(
-                        value: _selectedDepartment,
-                        options: ['Digital Banking Dept', 'IT Department', 'Teller'],
-                        isDarkMode: isDarkMode,
-                        onChanged: (value) => setState(() => _selectedDepartment = value!),
-                        assetIconPath: 'assets/task.png',
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Dead-line',
-                              style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white : Colors.black),
-                            ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Department',
+                            style: TextStyle(
+                                fontSize: 14,
+                                color:
+                                    isDarkMode ? Colors.white : Colors.black),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              'Dead-line 2',
-                              style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white : Colors.black),
-                            ),
+                          const SizedBox(height: 8),
+                          _buildDropdownField(
+                            value: _selectedDepartment,
+                            options: [
+                              'Digital Banking Dept',
+                              'IT Department',
+                              'Teller'
+                            ],
+                            isDarkMode: isDarkMode,
+                            onChanged: (value) =>
+                                setState(() => _selectedDepartment = value!),
+                            assetIconPath: 'assets/task.png',
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildDateField(
-                              controller: _deadline1Controller,
-                              isDarkMode: isDarkMode,
-                              onTap: () => _selectDate(context, _deadline1Controller),
-                              hintText: 'dd/mm/yyyy',
-                            ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Dead-line',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  'Dead-line 2',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildDateField(
-                              controller: _deadline2Controller,
-                              isDarkMode: isDarkMode,
-                              onTap: () => _selectDate(context, _deadline2Controller),
-                              hintText: 'dd/mm/yyyy',
-                            ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildDateField(
+                                  controller: _deadline1Controller,
+                                  isDarkMode: isDarkMode,
+                                  onTap: () => _selectDate(
+                                      context, _deadline1Controller),
+                                  hintText: 'dd/mm/yyyy',
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildDateField(
+                                  controller: _deadline2Controller,
+                                  isDarkMode: isDarkMode,
+                                  onTap: () => _selectDate(
+                                      context, _deadline2Controller),
+                                  hintText: 'dd/mm/yyyy',
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Percent *',
-                        style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white : Colors.black),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildSlider(isDarkMode),
-                      const SizedBox(height: 40),
-                    ]),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Percent *',
+                            style: TextStyle(
+                                fontSize: 14,
+                                color:
+                                    isDarkMode ? Colors.white : Colors.black),
+                          ),
+                          const SizedBox(height: 8),
+                          _buildSlider(isDarkMode),
+                          const SizedBox(height: 40),
+                        ]),
                   ),
                 ),
               ),
@@ -320,7 +381,8 @@ class AddProjectPageState extends State<AddProjectPage> {
       decoration: InputDecoration(
         filled: true,
         fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
       ),
       validator: validator,
@@ -342,28 +404,40 @@ class AddProjectPageState extends State<AddProjectPage> {
     }).toList();
 
     return DropdownButtonFormField<String>(
-      value: numberedOptions.firstWhere((element) => element.contains(value)), // Ensure selected value maps correctly
+      value: numberedOptions.firstWhere((element) =>
+          element.contains(value)), // Ensure selected value maps correctly
       onChanged: (newValue) {
-        final selectedText = newValue!.substring(newValue.indexOf(' ') + 1); // Extract text without number
+        final selectedText = newValue!.substring(
+            newValue.indexOf(' ') + 1); // Extract text without number
         onChanged(selectedText);
       },
       icon: Padding(
-        padding: const EdgeInsets.only(right: 8.0),
-        child: Image.asset(assetIconPath, width: 20, height: 20, color: isDarkMode ? Colors.white : Colors.black),
+        padding: const EdgeInsets.only(right: 4.0),
+        child: Image.asset(assetIconPath,
+            width: 16,
+            height: 16,
+            color: isDarkMode ? Colors.white : Colors.black),
       ),
+      isExpanded: true,
       decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12), // Lower height
+        contentPadding: const EdgeInsets.symmetric(
+            vertical: 10, horizontal: 8), // Reduced padding
         filled: true,
         fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
       ),
       dropdownColor: isDarkMode ? Colors.grey[800] : Colors.white,
+      menuMaxHeight: 300,
       items: numberedOptions.map((option) {
         return DropdownMenuItem<String>(
           value: option,
           child: Text(
             option,
-            style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black,
+              fontSize: 13, // Slightly smaller font size
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         );
       }).toList(),
@@ -384,15 +458,19 @@ class AddProjectPageState extends State<AddProjectPage> {
           style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: TextStyle(color: isDarkMode ? Colors.white54 : Colors.grey, fontSize: 14),
+            hintStyle: TextStyle(
+                color: isDarkMode ? Colors.white54 : Colors.grey, fontSize: 14),
             suffixIcon: const Padding(
               padding: EdgeInsets.only(right: 6.0),
-              child: Icon(Icons.calendar_month, size: 24, color: Colors.black54),
+              child:
+                  Icon(Icons.calendar_month, size: 24, color: Colors.black54),
             ),
             filled: true,
             fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
-            contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12), // Lower height
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16.0)),
+            contentPadding: const EdgeInsets.symmetric(
+                vertical: 10, horizontal: 12), // Lower height
+            border:
+                OutlineInputBorder(borderRadius: BorderRadius.circular(16.0)),
           ),
         ),
       ),
@@ -400,28 +478,45 @@ class AddProjectPageState extends State<AddProjectPage> {
   }
 
   Widget _buildSlider(bool isDarkMode) {
+    // Define colors based on theme
+    const primaryColor = Color(0xFFDBB342); // Gold color
+    final secondaryColor = isDarkMode ? Colors.grey[700]! : Colors.grey[300]!;
+    final trackColor = isDarkMode ? Colors.grey[850]! : Colors.grey[200]!;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+
     return Center(
       child: SizedBox(
         width: MediaQuery.of(context).size.width * 0.9,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(
-              width: MediaQuery.of(context).size.width * 0.9,
+              width: double.infinity,
               child: SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   trackHeight: 10,
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 18),
-                  activeTrackColor: Colors.black54,
-                  inactiveTrackColor: Colors.lightBlue[100],
-                  thumbColor: Colors.amber,
-                  valueIndicatorColor: Colors.amber,
-                  valueIndicatorTextStyle: const TextStyle(color: Colors.black),
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 14,
+                    pressedElevation: 8.0,
+                  ),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
+                  activeTrackColor: primaryColor,
+                  inactiveTrackColor: trackColor,
+                  thumbColor: primaryColor,
+                  overlayColor: primaryColor.withOpacity(0.3),
+                  valueIndicatorColor: primaryColor,
+                  valueIndicatorTextStyle: TextStyle(
+                    color: isDarkMode ? Colors.black : Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  activeTickMarkColor: Colors.transparent,
+                  inactiveTickMarkColor: Colors.transparent,
                 ),
                 child: Slider(
                   value: _progress,
-                  onChanged: (value) => setState(() => _progress = value),
+                  onChanged: (value) {
+                    setState(() => _progress = value);
+                  },
                   min: 0,
                   max: 1,
                   divisions: 100,
@@ -429,48 +524,43 @@ class AddProjectPageState extends State<AddProjectPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 7),
-            // Progress bar
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return SizedBox(
-                  height: 25,
-                  width: constraints.maxWidth,
-                  child: Stack(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.lightBlue[200],
-                          borderRadius: BorderRadius.circular(20),
+            const SizedBox(height: 15),
+            SizedBox(
+              width: double.infinity,
+              child: Container(
+                height: 30,
+                decoration: BoxDecoration(
+                  color: trackColor,
+                  borderRadius: BorderRadius.circular(17),
+                ),
+                child: Stack(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      width: MediaQuery.of(context).size.width * 0.9 * _progress,
+                      decoration: BoxDecoration(
+                        color: primaryColor,
+                        borderRadius: BorderRadius.circular(17),
+                      ),
+                    ),
+                    Center(
+                      child: Text(
+                        '${(_progress * 100).toStringAsFixed(0)}%',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
                         ),
                       ),
-                      FractionallySizedBox(
-                        widthFactor: _progress,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.amber,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                        ),
-                      ),
-                      Center(
-                        child: Text(
-                          '${(_progress * 100).toStringAsFixed(0)}%',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
       ),
     );
+
   }
 }
