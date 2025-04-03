@@ -14,6 +14,7 @@ import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
 
 class WorkTrackingPage extends StatefulWidget {
   final String? highlightedProjectId;
@@ -60,6 +61,24 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
     );
 
     _fetchProjects();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Check if we need to refresh data from route arguments
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic> && args['refresh'] == true) {
+      debugPrint(
+          'Refresh parameter detected in route arguments. Refreshing projects...');
+      // Small delay to ensure the page is fully loaded before refreshing
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          _fetchProjects();
+        }
+      });
+    }
   }
 
   @override
@@ -168,7 +187,12 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          Navigator.of(context).pop();
+          // If a result is provided and it's a number, it's the index for the bottom navigation
+          if (result != null && result is int) {
+            Navigator.of(context).pop(result);
+          } else {
+            Navigator.of(context).pop();
+          }
         }
         return;
       },
@@ -191,6 +215,15 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
               ),
             ],
           ),
+        ),
+        bottomNavigationBar: CustomBottomNavBar(
+          currentIndex: 2, // Work Tracking is usually in Apps section
+          onTap: (index) {
+            if (index != 2) {
+              // Navigate back to main screen with the selected index
+              Navigator.of(context).pop(index);
+            }
+          },
         ),
       ),
     );
@@ -743,7 +776,14 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
                 baseUrl: _workTrackingService.baseUrl,
               ),
             ),
-          );
+          ).then((result) {
+            // Check if the result contains a refresh flag
+            if (result is Map<String, dynamic> && result['refresh'] == true) {
+              debugPrint(
+                  'Received refresh signal from ProjectManagementPage. Refreshing projects...');
+              _fetchProjects();
+            }
+          });
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),

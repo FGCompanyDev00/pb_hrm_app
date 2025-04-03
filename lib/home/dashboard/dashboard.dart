@@ -117,7 +117,7 @@ class DashboardState extends State<Dashboard>
       {
         'icon': 'assets/status-up.png',
         'label': AppLocalizations.of(context)!.workTracking,
-        'onTap': () => navigateToPage(const WorkTrackingPage()),
+        'onTap': () => navigatorKey.currentState?.pushNamed('/workTrackingPage'),
       },
       {
         'icon': 'assets/car_return.png',

@@ -8,6 +8,7 @@ import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_people_page.dart';
 
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
@@ -25,16 +26,20 @@ class ProjectManagementPage extends StatefulWidget {
   ProjectManagementPageState createState() => ProjectManagementPageState();
 }
 
-class ProjectManagementPageState extends State<ProjectManagementPage> with TickerProviderStateMixin, RouteAware {
+class ProjectManagementPageState extends State<ProjectManagementPage>
+    with TickerProviderStateMixin, RouteAware {
   late TabController _tabController;
   String _currentUserId = '';
   bool _isRefreshing = false;
   Timer? _timer;
+  late String projectId;
 
   @override
   void initState() {
     super.initState();
-    debugPrint('[_ProjectManagementPageState] Received projectId: ${widget.projectId}');
+    debugPrint(
+        '[_ProjectManagementPageState] Received projectId: ${widget.projectId}');
+    projectId = widget.projectId;
     _loadUserData().then((_) {
       _refreshData();
     });
@@ -80,6 +85,24 @@ class ProjectManagementPageState extends State<ProjectManagementPage> with Ticke
     });
   }
 
+  void _navigateToAddMembersPage() {
+    debugPrint('Navigating to Add Members page with projectId: $projectId');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddPeoplePage(projectId: projectId),
+      ),
+    ).then((result) {
+      // Handle the result returned from AddPeoplePage
+      if (result is Map<String, dynamic> && result['refresh'] == true) {
+        debugPrint(
+            'Refresh flag received from AddPeoplePage. Refreshing project members...');
+        // Refresh the page data
+        _refreshData();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
@@ -101,7 +124,9 @@ class ProjectManagementPageState extends State<ProjectManagementPage> with Ticke
             child: Container(
               decoration: BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+                  image: AssetImage(isDarkMode
+                      ? 'assets/darkbg.png'
+                      : 'assets/background.png'),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -115,7 +140,7 @@ class ProjectManagementPageState extends State<ProjectManagementPage> with Ticke
                 color: isDarkMode ? Colors.white : Colors.black,
               ),
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.pop(context, {'refresh': true});
               },
             ),
           ),
@@ -168,15 +193,15 @@ class ProjectManagementPageState extends State<ProjectManagementPage> with Ticke
                 controller: _tabController,
                 children: [
                   ProcessingSection(
-                    projectId: widget.projectId,
+                    projectId: projectId,
                     baseUrl: widget.baseUrl,
                   ),
                   AssignmentSection(
-                    projectId: widget.projectId,
+                    projectId: projectId,
                     baseUrl: widget.baseUrl,
                   ),
                   ChatSection(
-                    projectId: widget.projectId,
+                    projectId: projectId,
                     baseUrl: widget.baseUrl,
                     currentUserId: _currentUserId,
                   ),

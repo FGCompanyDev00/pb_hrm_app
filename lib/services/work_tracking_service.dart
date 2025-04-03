@@ -33,19 +33,20 @@ class WorkTrackingService {
     if (response.statusCode == 200) {
       var body = json.decode(response.body);
       if (body['result'] != null && body['result'] is List) {
-        return (body['result'] as List).map((item) =>
-        {
-          'project_id': item['project_id'],
-          'p_name': item['p_name'],
-          's_name': item['s_name'],
-          'precent': item['precent'],
-          'dl': item['dl'],
-          'extend': item['extend'],
-          'create_project_by': item['create_project_by'],
-          'd_name': item['d_name'],
-          'b_name': item['b_name'],
-          'created_project_at': item['created_project_at'],
-        }).toList();
+        return (body['result'] as List)
+            .map((item) => {
+                  'project_id': item['project_id'],
+                  'p_name': item['p_name'],
+                  's_name': item['s_name'],
+                  'precent': item['precent'],
+                  'dl': item['dl'],
+                  'extend': item['extend'],
+                  'create_project_by': item['create_project_by'],
+                  'd_name': item['d_name'],
+                  'b_name': item['b_name'],
+                  'created_project_at': item['created_project_at'],
+                })
+            .toList();
       } else {
         throw Exception('Unexpected response format');
       }
@@ -85,7 +86,8 @@ class WorkTrackingService {
       if (response.statusCode == 200) {
         var body = json.decode(response.body);
         if (body['result'] != null && body['result'] is List) {
-          List<Map<String, dynamic>> projects = List<Map<String, dynamic>>.from(body['result']);
+          List<Map<String, dynamic>> projects =
+              List<Map<String, dynamic>>.from(body['result']);
           if (kDebugMode) {
             debugPrint('Fetched ${projects.length} all projects.');
           }
@@ -157,7 +159,8 @@ class WorkTrackingService {
   }
 
   /// Update a project by its ID.
-  Future<http.Response> updateProject(String projectId, Map<String, dynamic> projectData) async {
+  Future<http.Response> updateProject(
+      String projectId, Map<String, dynamic> projectData) async {
     final headers = await _getHeaders();
     final url = '$baseUrl/api/work-tracking/proj/update/$projectId';
     if (kDebugMode) {
@@ -236,9 +239,11 @@ class WorkTrackingService {
   }
 
   /// Fetch project members by project ID.
-  Future<List<Map<String, dynamic>>> fetchMembersByProjectId(String projectId) async {
+  Future<List<Map<String, dynamic>>> fetchMembersByProjectId(
+      String projectId) async {
     final headers = await _getHeaders();
-    final url = '$baseUrl/api/work-tracking/proj/find-Member-By-ProjectId/$projectId';
+    final url =
+        '$baseUrl/api/work-tracking/proj/find-Member-By-ProjectId/$projectId';
     if (kDebugMode) {
       debugPrint('Fetching Members for Project ID: $projectId from: $url');
     }
@@ -257,16 +262,20 @@ class WorkTrackingService {
       if (response.statusCode == 200) {
         var body = json.decode(response.body);
         if (body['results'] != null && body['results'] is List) {
-          List<Map<String, dynamic>> members = List<Map<String, dynamic>>.from(body['results']);
+          List<Map<String, dynamic>> members =
+              List<Map<String, dynamic>>.from(body['results']);
           if (kDebugMode) {
-            debugPrint('Fetched ${members.length} members for Project ID: $projectId');
+            debugPrint(
+                'Fetched ${members.length} members for Project ID: $projectId');
           }
           return members;
         } else {
-          throw Exception('Unexpected response format for fetchMembersByProjectId.');
+          throw Exception(
+              'Unexpected response format for fetchMembersByProjectId.');
         }
       } else {
-        throw Exception('Failed to fetch project members: ${response.reasonPhrase}');
+        throw Exception(
+            'Failed to fetch project members: ${response.reasonPhrase}');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -294,9 +303,11 @@ class WorkTrackingService {
     });
 
     // Add files to the request
-    if (processingData['file_name'] != null && processingData['file_name'] is List<File>) {
+    if (processingData['file_name'] != null &&
+        processingData['file_name'] is List<File>) {
       for (var file in processingData['file_name']) {
-        request.files.add(await http.MultipartFile.fromPath('file_name', file.path));
+        request.files
+            .add(await http.MultipartFile.fromPath('file_name', file.path));
       }
     }
 
@@ -354,14 +365,14 @@ class WorkTrackingService {
         debugPrint('Message sent successfully.');
       }
     } else {
-      throw Exception('Failed to send chat message: ${response
-          .reasonPhrase}. Details: ${response.body}');
+      throw Exception(
+          'Failed to send chat message: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
 
 // Add a person to a project
-  Future<void> addPeopleToProject(String projectId,
-      List<Map<String, String>> employees) async {
+  Future<void> addPeopleToProject(
+      String projectId, List<Map<String, String>> employees) async {
     final headers = await _getHeaders();
     final response = await http.post(
       Uri.parse('$baseUrl/api/work-tracking/project-member/insert'),
@@ -373,11 +384,10 @@ class WorkTrackingService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to add people to project: ${response
-          .reasonPhrase}. Details: ${response.body}');
+      throw Exception(
+          'Failed to add people to project: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
-
 
   // Fetch assignments by project ID
   Future<List<Map<String, dynamic>>> fetchAssignments(String projectId) async {
@@ -402,10 +412,10 @@ class WorkTrackingService {
 
   /// Add a new assignment to a project with file uploads
   Future<String?> addAssignment(
-      String baseUrl,
-      Map<String, dynamic> assignmentData,
-      List<File> files,
-      ) async {
+    String baseUrl,
+    Map<String, dynamic> assignmentData,
+    List<File> files,
+  ) async {
     try {
       var uri = Uri.parse('$baseUrl/api/work-tracking/ass/insert');
       var request = http.MultipartRequest('POST', uri);
@@ -430,7 +440,7 @@ class WorkTrackingService {
             filename: file.path.split('/').last,
           ),
         );
-            }
+      }
 
       // Send the request
       var streamedResponse = await request.send();
@@ -454,8 +464,8 @@ class WorkTrackingService {
   }
 
   // Update an assignment
-  Future<void> updateAssignment(String asId,
-      Map<String, dynamic> taskData) async {
+  Future<void> updateAssignment(
+      String asId, Map<String, dynamic> taskData) async {
     final headers = await _getHeaders();
     final response = await http.put(
       Uri.parse('$baseUrl/api/work-tracking/ass/update/$asId'),
@@ -469,11 +479,11 @@ class WorkTrackingService {
       }
     } else {
       if (kDebugMode) {
-        debugPrint('Failed to update assignment: ${response.statusCode} ${response
-            .reasonPhrase}. Details: ${response.body}');
+        debugPrint(
+            'Failed to update assignment: ${response.statusCode} ${response.reasonPhrase}. Details: ${response.body}');
       }
-      throw Exception('Failed to update assignment: ${response
-          .reasonPhrase}. Details: ${response.body}');
+      throw Exception(
+          'Failed to update assignment: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
 
@@ -495,19 +505,20 @@ class WorkTrackingService {
       }
       throw Exception('Assignment not found.');
     } else {
-      throw Exception('Failed to delete assignment: ${response
-          .reasonPhrase}. Details: ${response.body}');
+      throw Exception(
+          'Failed to delete assignment: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
 
   /// Upload files to an existing assignment
   Future<bool> addFilesToAssignment(
-      String baseUrl,
-      String assignmentId,
-      List<File> files,
-      ) async {
+    String baseUrl,
+    String assignmentId,
+    List<File> files,
+  ) async {
     try {
-      var uri = Uri.parse('$baseUrl/api/work-tracking/ass/add-files/$assignmentId');
+      var uri =
+          Uri.parse('$baseUrl/api/work-tracking/ass/add-files/$assignmentId');
       var request = http.MultipartRequest('PUT', uri);
 
       // Add headers
@@ -523,7 +534,7 @@ class WorkTrackingService {
             filename: file.path.split('/').last,
           ),
         );
-            }
+      }
 
       // Send the request
       var streamedResponse = await request.send();
@@ -560,8 +571,8 @@ class WorkTrackingService {
         debugPrint('File deleted successfully.');
       }
     } else {
-      throw Exception('Failed to delete file from assignment: ${response
-          .reasonPhrase}. Details: ${response.body}');
+      throw Exception(
+          'Failed to delete file from assignment: ${response.reasonPhrase}. Details: ${response.body}');
     }
   }
 
@@ -590,10 +601,12 @@ class WorkTrackingService {
       final body = json.decode(response.body);
       if (body['results'] != null && body['results'] is List) {
         // Convert the results to a List of Map<String, dynamic>
-        List<Map<String, dynamic>> allEmployees = List<Map<String, dynamic>>.from(body['results']);
+        List<Map<String, dynamic>> allEmployees =
+            List<Map<String, dynamic>>.from(body['results']);
 
         // Step 5: Filter out the current user from the list
-        List<Map<String, dynamic>> filteredEmployees = allEmployees.where((employee) {
+        List<Map<String, dynamic>> filteredEmployees =
+            allEmployees.where((employee) {
           return employee['employee_id'] != currentUserEmployeeId;
         }).toList();
 
@@ -640,14 +653,15 @@ class WorkTrackingService {
     if (response.statusCode == 200) {
       var body = json.decode(response.body);
       if (body['results'] != null && body['results'] is List) {
-        return (body['results'] as List).map((item) =>
-        {
-          'id': item['member_id'],
-          'name': item['name'],
-          'surname': item['surname'],
-          'email': item['email'],
-          'isSelected': false,
-        }).toList();
+        return (body['results'] as List)
+            .map((item) => {
+                  'id': item['member_id'],
+                  'name': item['name'],
+                  'surname': item['surname'],
+                  'email': item['email'],
+                  'isSelected': false,
+                })
+            .toList();
       } else {
         throw Exception('Unexpected response format');
       }
@@ -658,7 +672,8 @@ class WorkTrackingService {
   }
 
   // Add members to an assignment
-  Future<void> addMembersToAssignment(String asId, List<Map<String, dynamic>> members) async {
+  Future<void> addMembersToAssignment(
+      String asId, List<Map<String, dynamic>> members) async {
     try {
       // Get the authorization headers (you might need to implement _getHeaders)
       final headers = await _getHeaders();
@@ -666,7 +681,9 @@ class WorkTrackingService {
       // Prepare the member data to be sent to the server
       final memberData = {
         "as_id": asId,
-        "members": members.map((member) => {"employee_id": member['employee_id']}).toList(),
+        "members": members
+            .map((member) => {"employee_id": member['employee_id']})
+            .toList(),
       };
 
       // Make the API call to add members to the assignment
@@ -689,7 +706,8 @@ class WorkTrackingService {
     }
   }
 
-  Future<void> addMembersToProject(String projectId, List<Map<String, dynamic>> members) async {
+  Future<void> addMembersToProject(
+      String projectId, List<Map<String, dynamic>> members) async {
     final headers = await _getHeaders();
 
     final memberData = {
@@ -716,13 +734,16 @@ class WorkTrackingService {
       }
 
       // Handle 201 (Created), 200 (OK), and 202 (Accepted) as success
-      if (response.statusCode == 201 || response.statusCode == 200 || response.statusCode == 202) {
+      if (response.statusCode == 201 ||
+          response.statusCode == 200 ||
+          response.statusCode == 202) {
         if (kDebugMode) {
           debugPrint('Members successfully added to the project.');
         }
       } else {
         // If status code is not 2xx, log error details and throw an exception
-        String errorMessage = 'Failed to add members to the project: Status Code ${response.statusCode}, ${response.reasonPhrase}';
+        String errorMessage =
+            'Failed to add members to the project: Status Code ${response.statusCode}, ${response.reasonPhrase}';
         if (kDebugMode) {
           debugPrint('Error Response: ${response.body}');
         }
@@ -736,5 +757,4 @@ class WorkTrackingService {
       throw Exception('An error occurred: $error');
     }
   }
-
 }

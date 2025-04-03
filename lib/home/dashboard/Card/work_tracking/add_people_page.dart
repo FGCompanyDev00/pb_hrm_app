@@ -34,7 +34,8 @@ class AddPeoplePageState extends State<AddPeoplePage> {
   @override
   void initState() {
     super.initState();
-    debugPrint('AddPeoplePage initialized with project ID: ${widget.projectId}');
+    debugPrint(
+        'AddPeoplePage initialized with project ID: ${widget.projectId}');
     _fetchEmployees();
     _fetchGroups(); // Fetch groups on initialization
   }
@@ -47,7 +48,8 @@ class AddPeoplePageState extends State<AddPeoplePage> {
     debugPrint('Fetching employees from WorkTrackingService...');
     try {
       final employees = await WorkTrackingService().getAllEmployees();
-      debugPrint('Employees fetched successfully. Total employees: ${employees.length}');
+      debugPrint(
+          'Employees fetched successfully. Total employees: ${employees.length}');
       // Ensure that each employee has 'isAdmin' and 'isSelected' properly set
       setState(() {
         _employees = employees.map((employee) {
@@ -81,13 +83,15 @@ class AddPeoplePageState extends State<AddPeoplePage> {
       String? token = prefs.getString('token');
       if (token == null) {
         debugPrint('No token found in SharedPreferences.');
-        _showDialog('Error', 'Authentication token not found. Please log in again.');
+        _showDialog(
+            'Error', 'Authentication token not found. Please log in again.');
         return;
       }
       debugPrint('Retrieved Bearer Token for groups: $token');
 
       final response = await http.get(
-        Uri.parse('${workTrackingService.baseUrl}/api/work-tracking/group/usergroups'),
+        Uri.parse(
+            '${workTrackingService.baseUrl}/api/work-tracking/group/usergroups'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -103,18 +107,22 @@ class AddPeoplePageState extends State<AddPeoplePage> {
           setState(() {
             _groups = List<Map<String, dynamic>>.from(data['results']);
           });
-          debugPrint('Groups fetched successfully. Total groups: ${_groups.length}');
+          debugPrint(
+              'Groups fetched successfully. Total groups: ${_groups.length}');
         } else {
-          debugPrint('Failed to fetch groups. Response message: ${data['message']}');
+          debugPrint(
+              'Failed to fetch groups. Response message: ${data['message']}');
           _showDialog('Error', 'Failed to fetch groups. Please try again.');
         }
       } else {
-        debugPrint('Failed to fetch groups. Status Code: ${response.statusCode}');
+        debugPrint(
+            'Failed to fetch groups. Status Code: ${response.statusCode}');
         _showDialog('Error', 'Failed to fetch groups. Please try again.');
       }
     } catch (e) {
       debugPrint('Exception occurred while fetching groups: $e');
-      _showDialog('Error', 'An error occurred while fetching groups. Please try again.');
+      _showDialog('Error',
+          'An error occurred while fetching groups. Please try again.');
     } finally {
       setState(() {
         _isLoading = false;
@@ -127,7 +135,8 @@ class AddPeoplePageState extends State<AddPeoplePage> {
     setState(() {
       _isLoading = true;
     });
-    debugPrint('Selected Members: ${_selectedPeople.map((e) => e['name']).toList()}');
+    debugPrint(
+        'Selected Members: ${_selectedPeople.map((e) => e['name']).toList()}');
 
     try {
       // Retrieve the token from SharedPreferences
@@ -135,15 +144,18 @@ class AddPeoplePageState extends State<AddPeoplePage> {
       String? token = prefs.getString('token');
       if (token == null) {
         debugPrint('No token found in SharedPreferences.');
-        _showDialog('Error', 'Authentication token not found. Please log in again.');
+        _showDialog(
+            'Error', 'Authentication token not found. Please log in again.');
         return;
       }
       debugPrint('Retrieved Bearer Token: $token');
 
       // Prepare the request body
-      List<Map<String, dynamic>> employeesMember = _selectedPeople.map((person) {
+      List<Map<String, dynamic>> employeesMember =
+          _selectedPeople.map((person) {
         String memberStatus = person['isAdmin'] ? '1' : '0';
-        debugPrint('Employee ID: ${person['employee_id']}, Member Status: $memberStatus');
+        debugPrint(
+            'Employee ID: ${person['employee_id']}, Member Status: $memberStatus');
         return {
           'employee_id': person['employee_id'],
           'member_status': memberStatus,
@@ -159,7 +171,8 @@ class AddPeoplePageState extends State<AddPeoplePage> {
 
       // Make the POST request
       final response = await http.post(
-        Uri.parse('${workTrackingService.baseUrl}/api/work-tracking/project-member/insert'),
+        Uri.parse(
+            '${workTrackingService.baseUrl}/api/work-tracking/project-member/insert'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -177,16 +190,20 @@ class AddPeoplePageState extends State<AddPeoplePage> {
         // final responseData = jsonDecode(response.body);
 
         // Show success dialog
-        _showDialog('Success', 'All selected members have been successfully added to the project.', isSuccess: true);
+        _showDialog('Success',
+            'All selected members have been successfully added to the project.',
+            isSuccess: true);
       } else {
-        debugPrint('Failed to add members. Status Code: ${response.statusCode}');
+        debugPrint(
+            'Failed to add members. Status Code: ${response.statusCode}');
         _showDialog('Error', 'Failed to add members. Please try again.');
       }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Exception occurred while adding members: $e');
       }
-      _showDialog('Error', 'An error occurred while adding members. Please try again.');
+      _showDialog(
+          'Error', 'An error occurred while adding members. Please try again.');
     } finally {
       setState(() {
         _isLoading = false;
@@ -199,6 +216,7 @@ class AddPeoplePageState extends State<AddPeoplePage> {
     debugPrint('$title Dialog: $message');
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: Text(title),
         content: Text(message),
@@ -206,7 +224,17 @@ class AddPeoplePageState extends State<AddPeoplePage> {
           TextButton(
             onPressed: () {
               debugPrint('Dialog "$title" dismissed.');
-              Navigator.of(context).pop();
+              Navigator.of(context).pop(); // Dismiss dialog
+
+              if (isSuccess) {
+                // Navigasi langsung ke WorkTrackingPage dan pastikan refresh
+                debugPrint('Navigating to WorkTrackingPage with refresh flag');
+                Navigator.of(context).pop();
+
+                // Segarkan halaman WorkTrackingPage
+                Navigator.pushReplacementNamed(context, '/workTrackingPage',
+                    arguments: {'refresh': true});
+              }
             },
             child: const Text('OK'),
           ),
@@ -242,7 +270,8 @@ class AddPeoplePageState extends State<AddPeoplePage> {
     }
     setState(() {
       employee['isAdmin'] = !(employee['isAdmin'] ?? false);
-      debugPrint('${employee['isAdmin'] ? 'Granted' : 'Revoked'} admin rights for: ${employee['name']}');
+      debugPrint(
+          '${employee['isAdmin'] ? 'Granted' : 'Revoked'} admin rights for: ${employee['name']}');
     });
   }
 
@@ -258,7 +287,11 @@ class AddPeoplePageState extends State<AddPeoplePage> {
       debugPrint('No search query. Displaying all employees.');
       return _employees;
     }
-    final filtered = _employees.where((employee) => (employee['name']?.toLowerCase().contains(_searchQuery) ?? false) || (employee['email']?.toLowerCase().contains(_searchQuery) ?? false)).toList();
+    final filtered = _employees
+        .where((employee) =>
+            (employee['name']?.toLowerCase().contains(_searchQuery) ?? false) ||
+            (employee['email']?.toLowerCase().contains(_searchQuery) ?? false))
+        .toList();
     debugPrint('Filtered employees count: ${filtered.length}');
     return filtered;
   }
@@ -272,7 +305,8 @@ class AddPeoplePageState extends State<AddPeoplePage> {
     debugPrint('Group selected: $groupId');
 
     // Find the selected group
-    final selectedGroup = _groups.firstWhere((group) => group['groupId'] == groupId, orElse: () => {});
+    final selectedGroup = _groups
+        .firstWhere((group) => group['groupId'] == groupId, orElse: () => {});
 
     if (selectedGroup.isNotEmpty && selectedGroup['employees'] != null) {
       final List<dynamic> employeesInGroup = selectedGroup['employees'];
@@ -281,17 +315,20 @@ class AddPeoplePageState extends State<AddPeoplePage> {
       setState(() {
         for (var emp in employeesInGroup) {
           // Find the employee in _employees list
-          final index = _employees.indexWhere((e) => e['employee_id'] == emp['employee_id']);
+          final index = _employees
+              .indexWhere((e) => e['employee_id'] == emp['employee_id']);
           if (index != -1) {
             final employee = _employees[index];
             if (!(employee['isSelected'] ?? false)) {
               employee['isSelected'] = true;
               _selectedPeople.add(employee);
-              debugPrint('Automatically selected member from group: ${employee['name']}');
+              debugPrint(
+                  'Automatically selected member from group: ${employee['name']}');
             }
           } else {
             // If the employee is not in the main employees list, you might want to handle it accordingly
-            debugPrint('Employee ${emp['employee_name']} not found in the main employees list.');
+            debugPrint(
+                'Employee ${emp['employee_name']} not found in the main employees list.');
           }
         }
       });
@@ -311,7 +348,8 @@ class AddPeoplePageState extends State<AddPeoplePage> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+              image: AssetImage(
+                  isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
               fit: BoxFit.cover,
             ),
             borderRadius: const BorderRadius.only(
@@ -345,10 +383,12 @@ class AddPeoplePageState extends State<AddPeoplePage> {
         backgroundColor: Colors.transparent,
         actions: [
           IconButton(
-            icon: Icon(Icons.check, color: isDarkMode ? Colors.white : Colors.black),
+            icon: Icon(Icons.check,
+                color: isDarkMode ? Colors.white : Colors.black),
             onPressed: _isLoading
                 ? () {
-                    debugPrint('Add Members button pressed but currently loading. Action is disabled.');
+                    debugPrint(
+                        'Add Members button pressed but currently loading. Action is disabled.');
                   }
                 : _addMembersToProject,
             tooltip: 'Add Selected Members',
@@ -370,14 +410,28 @@ class AddPeoplePageState extends State<AddPeoplePage> {
                       itemBuilder: (context, index) {
                         if (index < _selectedPeople.length) {
                           return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
                             child: Stack(
                               children: [
                                 CircleAvatar(
                                   radius: 26,
                                   backgroundColor: Colors.grey[300],
-                                  backgroundImage: _selectedPeople[index]['img_name'] != null && _selectedPeople[index]['img_name'].isNotEmpty ? NetworkImage(_selectedPeople[index]['img_name']) : null,
-                                  child: _selectedPeople[index]['img_name'] == null || _selectedPeople[index]['img_name'].isEmpty ? const Icon(Icons.person, size: 30, color: Colors.white) : null,
+                                  backgroundImage: _selectedPeople[index]
+                                                  ['img_name'] !=
+                                              null &&
+                                          _selectedPeople[index]['img_name']
+                                              .isNotEmpty
+                                      ? NetworkImage(
+                                          _selectedPeople[index]['img_name'])
+                                      : null,
+                                  child: _selectedPeople[index]['img_name'] ==
+                                              null ||
+                                          _selectedPeople[index]['img_name']
+                                              .isEmpty
+                                      ? const Icon(Icons.person,
+                                          size: 30, color: Colors.white)
+                                      : null,
                                 ),
                                 if (_selectedPeople[index]['isAdmin'] == true)
                                   const Positioned(
@@ -396,7 +450,8 @@ class AddPeoplePageState extends State<AddPeoplePage> {
                           return Transform.translate(
                             offset: const Offset(0, 0),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4.0),
                               child: CircleAvatar(
                                 radius: 26,
                                 backgroundColor: Colors.grey[300],
@@ -448,7 +503,8 @@ class AddPeoplePageState extends State<AddPeoplePage> {
                             ),
                             filled: true,
                             fillColor: Colors.grey[200],
-                            contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
+                            contentPadding: const EdgeInsets.symmetric(
+                                vertical: 12, horizontal: 18),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(18),
                               borderSide: BorderSide.none,
@@ -458,7 +514,8 @@ class AddPeoplePageState extends State<AddPeoplePage> {
                           items: _groups.map((group) {
                             return DropdownMenuItem<String>(
                               value: group['groupId'],
-                              child: Text(group['group_name'] ?? 'Unnamed Group'),
+                              child:
+                                  Text(group['group_name'] ?? 'Unnamed Group'),
                             );
                           }).toList(),
                           onChanged: _onGroupSelected,
@@ -480,7 +537,9 @@ class AddPeoplePageState extends State<AddPeoplePage> {
                     child: filteredEmployees.isEmpty
                         ? Center(
                             child: Text(
-                              _searchQuery.isEmpty ? 'No employees found.' : 'No employees match your search.',
+                              _searchQuery.isEmpty
+                                  ? 'No employees found.'
+                                  : 'No employees match your search.',
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey[600],
@@ -491,7 +550,8 @@ class AddPeoplePageState extends State<AddPeoplePage> {
                             itemCount: filteredEmployees.length,
                             itemBuilder: (context, index) {
                               final employee = filteredEmployees[index];
-                              final isSelected = employee['isSelected'] ?? false;
+                              final isSelected =
+                                  employee['isSelected'] ?? false;
                               final isAdmin = employee['isAdmin'] ?? false;
 
                               return ListTile(
@@ -507,8 +567,17 @@ class AddPeoplePageState extends State<AddPeoplePage> {
                                     CircleAvatar(
                                       radius: 24,
                                       backgroundColor: Colors.grey[300],
-                                      backgroundImage: employee['img_name'] != null && employee['img_name'].isNotEmpty ? CachedNetworkImageProvider(employee['img_name']) : null,
-                                      child: employee['img_name'] == null || employee['img_name'].isEmpty ? const Icon(Icons.person, size: 24, color: Colors.white) : null,
+                                      backgroundImage: employee['img_name'] !=
+                                                  null &&
+                                              employee['img_name'].isNotEmpty
+                                          ? CachedNetworkImageProvider(
+                                              employee['img_name'])
+                                          : null,
+                                      child: employee['img_name'] == null ||
+                                              employee['img_name'].isEmpty
+                                          ? const Icon(Icons.person,
+                                              size: 24, color: Colors.white)
+                                          : null,
                                     ),
                                   ],
                                 ),
@@ -525,7 +594,8 @@ class AddPeoplePageState extends State<AddPeoplePage> {
                                     color: isAdmin ? Colors.amber : Colors.grey,
                                   ),
                                   onPressed: () => _toggleAdmin(employee),
-                                  tooltip: isAdmin ? 'Revoke Admin' : 'Grant Admin',
+                                  tooltip:
+                                      isAdmin ? 'Revoke Admin' : 'Grant Admin',
                                 ),
                                 onTap: () => _toggleSelection(employee),
                               );

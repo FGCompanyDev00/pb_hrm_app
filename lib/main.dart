@@ -25,6 +25,7 @@ import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/connectivity_indicator.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/hive_helper/model/add_assignment_record.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/models/qr_profile_page.dart';
@@ -643,6 +644,7 @@ class MyApp extends StatelessWidget {
           home: const SplashScreen(),
           routes: {
             '/login': (context) => const LoginPage(),
+            '/workTrackingPage': (context) => const WorkTrackingPage(),
           },
         );
       },

@@ -414,15 +414,6 @@ class EditPeoplePageState extends State<EditPeoplePage> {
                     ),
                     onPressed: () {
                       Navigator.of(context).pop();
-                      // Return to previous screen with updated data
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => WorkTrackingPage(
-                            highlightedProjectId: widget.projectId,
-                          ),
-                        ),
-                      );
                     },
                     child: const Text(
                       'OK',
