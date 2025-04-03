@@ -110,7 +110,6 @@ class HomeCalendarState extends State<HomeCalendar>
   void dispose() {
     _eventCountsCache.clear();
     _processedEventsCache.clear();
-    events.dispose();
     _animationController.dispose();
     _doubleTapTimer?.cancel();
     super.dispose();
@@ -194,7 +193,6 @@ class HomeCalendarState extends State<HomeCalendar>
         _fetchMeetingMembers(),
       ]);
     } catch (e) {
-
     } finally {
       setState(() {
         _isLoading = false;
@@ -217,7 +215,6 @@ class HomeCalendarState extends State<HomeCalendar>
         _fetchMeetingMembers(),
       ]);
     } catch (e) {
-
     } finally {}
   }
 

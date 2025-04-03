@@ -293,7 +293,6 @@ class EditProjectPageState extends State<EditProjectPage> {
                     ),
                     onPressed: () {
                       Navigator.of(context).pop();
-                      Navigator.of(context).pop(); // Return to previous screen
                     },
                     child: const Text(
                       'OK',

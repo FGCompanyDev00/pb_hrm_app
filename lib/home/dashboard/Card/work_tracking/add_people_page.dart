@@ -207,17 +207,6 @@ class AddPeoplePageState extends State<AddPeoplePage> {
             onPressed: () {
               debugPrint('Dialog "$title" dismissed.');
               Navigator.of(context).pop();
-              if (isSuccess) {
-                debugPrint('Navigating to WorkTrackingPage with highlighted project ID: ${widget.projectId}');
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => WorkTrackingPage(
-                      highlightedProjectId: widget.projectId,
-                    ),
-                  ),
-                );
-              }
             },
             child: const Text('OK'),
           ),
@@ -445,7 +434,7 @@ class AddPeoplePageState extends State<AddPeoplePage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 13),
                   // Group Dropdown
                   Row(
                     children: [
@@ -455,13 +444,13 @@ class AddPeoplePageState extends State<AddPeoplePage> {
                             hintText: 'Select Group',
                             hintStyle: const TextStyle(
                               fontSize: 15,
-                              height: 2.6,
+                              height: 2.5,
                             ),
                             filled: true,
                             fillColor: Colors.grey[200],
-                            contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 18),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(18),
                               borderSide: BorderSide.none,
                             ),
                           ),
@@ -475,7 +464,7 @@ class AddPeoplePageState extends State<AddPeoplePage> {
                           onChanged: _onGroupSelected,
                           isExpanded: true,
                           icon: Transform.translate(
-                            offset: const Offset(0, 5),
+                            offset: const Offset(0, -1),
                             child: Image.asset(
                               'assets/task.png',
                               height: 24,
