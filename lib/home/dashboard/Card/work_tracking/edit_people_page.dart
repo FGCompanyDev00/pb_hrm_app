@@ -37,42 +37,127 @@ class EditPeoplePageState extends State<EditPeoplePage> {
   @override
   void initState() {
     super.initState();
-    debugPrint('EditPeoplePage initialized with project ID: ${widget.projectId}');
-    _fetchEmployees();
-    _fetchGroups(); // Fetch groups on initialization
-    _fetchExistingProjectMembers(); // Fetch existing project members
+    debugPrint(
+        'EditPeoplePage initialized with project ID: ${widget.projectId}');
+    _initializeData();
   }
 
-  // Existing method to fetch all employees
-  Future<void> _fetchEmployees() async {
+  Future<void> _initializeData() async {
     setState(() {
       _isLoading = true;
     });
+
+    try {
+      // First fetch employees
+      await _fetchEmployees();
+      // Then fetch existing members
+      await _fetchExistingProjectMembers();
+      // Finally fetch groups
+      await _fetchGroups();
+    } catch (e) {
+      debugPrint('Error during initialization: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Update _fetchEmployees to return Future
+  Future<void> _fetchEmployees() async {
     debugPrint('Fetching employees from WorkTrackingService...');
     try {
       final employees = await WorkTrackingService().getAllEmployees();
-      debugPrint('Employees fetched successfully. Total employees: ${employees.length}');
-      // Ensure that each employee has 'isAdmin' and 'isSelected' properly set
+      debugPrint(
+          'Employees fetched successfully. Total employees: ${employees.length}');
+
       setState(() {
         _employees = employees.map((employee) {
           return {
             ...employee,
-            'isAdmin': employee['isAdmin'] ?? false,
+            'isAdmin': false,
             'isSelected': false,
-            'isExisting': false, // Flag to indicate if the member is existing
-            'member_id': employee['member_id'] ?? '', // To store member_id if existing
+            'isExisting': false,
+            'member_id': '',
+            'img_name': employee['img_name'] ?? '',
           };
         }).toList();
       });
       debugPrint('Employees processed and ready for display.');
     } catch (e) {
       debugPrint('Error fetching employees: $e');
-      _showDialog('Error', 'Failed to fetch employees. Please try again.');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-      debugPrint('Employee fetching process completed.');
+      throw e;
+    }
+  }
+
+  // Update _fetchExistingProjectMembers to properly update state
+  Future<void> _fetchExistingProjectMembers() async {
+    debugPrint('Fetching existing project members...');
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('token');
+      if (token == null) {
+        throw Exception('Authentication token not found');
+      }
+
+      final response = await http.get(
+        Uri.parse(
+            '${workTrackingService.baseUrl}/api/work-tracking/proj/find-Member-By-ProjectId/${widget.projectId}'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      debugPrint(
+          'Existing Members API Response Status Code: ${response.statusCode}');
+      debugPrint('Existing Members API Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['statusCode'] == 200) {
+          final members = data['Members'];
+          if (members == null) {
+            debugPrint('No existing members found for this project.');
+            return;
+          }
+
+          List<dynamic> existingMembers = members;
+          debugPrint(
+              'Existing members fetched successfully. Total existing members: ${existingMembers.length}');
+
+          // Clear selected people first
+          _selectedPeople.clear();
+
+          for (var existing in existingMembers) {
+            String employeeId = existing['employee_id'];
+            String memberId = existing['member_id'];
+            bool isAdmin = existing['member_status'] == '1';
+
+            // Find and update employee in the list
+            int index = _employees
+                .indexWhere((emp) => emp['employee_id'] == employeeId);
+            if (index != -1) {
+              setState(() {
+                _employees[index]['isSelected'] = true;
+                _employees[index]['isAdmin'] = isAdmin;
+                _employees[index]['isExisting'] = true;
+                _employees[index]['member_id'] = memberId;
+
+                // Add to selected people
+                _selectedPeople.add(_employees[index]);
+              });
+              debugPrint(
+                  'Updated existing member: ${_employees[index]['name']}, Admin: $isAdmin');
+            }
+          }
+        }
+      } else {
+        throw Exception('Failed to fetch existing members');
+      }
+    } catch (e) {
+      debugPrint('Error fetching existing members: $e');
+      throw e;
     }
   }
 
@@ -87,13 +172,15 @@ class EditPeoplePageState extends State<EditPeoplePage> {
       String? token = prefs.getString('token');
       if (token == null) {
         debugPrint('No token found in SharedPreferences.');
-        _showDialog('Error', 'Authentication token not found. Please log in again.');
+        _showDialog(
+            'Error', 'Authentication token not found. Please log in again.');
         return;
       }
       debugPrint('Retrieved Bearer Token for groups: $token');
 
       final response = await http.get(
-        Uri.parse('${workTrackingService.baseUrl}/api/work-tracking/group/usergroups'),
+        Uri.parse(
+            '${workTrackingService.baseUrl}/api/work-tracking/group/usergroups'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -109,95 +196,27 @@ class EditPeoplePageState extends State<EditPeoplePage> {
           setState(() {
             _groups = List<Map<String, dynamic>>.from(data['results']);
           });
-          debugPrint('Groups fetched successfully. Total groups: ${_groups.length}');
+          debugPrint(
+              'Groups fetched successfully. Total groups: ${_groups.length}');
         } else {
-          debugPrint('Failed to fetch groups. Response message: ${data['message']}');
+          debugPrint(
+              'Failed to fetch groups. Response message: ${data['message']}');
           _showDialog('Error', 'Failed to fetch groups. Please try again.');
         }
       } else {
-        debugPrint('Failed to fetch groups. Status Code: ${response.statusCode}');
+        debugPrint(
+            'Failed to fetch groups. Status Code: ${response.statusCode}');
         _showDialog('Error', 'Failed to fetch groups. Please try again.');
       }
     } catch (e) {
       debugPrint('Exception occurred while fetching groups: $e');
-      _showDialog('Error', 'An error occurred while fetching groups. Please try again.');
+      _showDialog('Error',
+          'An error occurred while fetching groups. Please try again.');
     } finally {
       setState(() {
         _isLoading = false;
       });
       debugPrint('Group fetching process completed.');
-    }
-  }
-
-  // New method to fetch existing project members
-  // New method to fetch existing project members
-  Future<void> _fetchExistingProjectMembers() async {
-    setState(() {
-      _isLoading = true;
-    });
-    debugPrint('Fetching existing project members...');
-    try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString('token');
-      if (token == null) {
-        debugPrint('No token found in SharedPreferences.');
-        _showDialog('Error', 'Authentication token not found. Please log in again.');
-        return;
-      }
-
-      final response = await http.get(
-        Uri.parse('${workTrackingService.baseUrl}/api/work-tracking/proj/find-Member-By-ProjectId/${widget.projectId}'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      debugPrint('Existing Members API Response Status Code: ${response.statusCode}');
-      debugPrint('Existing Members API Response Body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['statusCode'] == 200 && data['Members'] != null) {
-          List<dynamic> existingMembers = data['Members'];
-          debugPrint('Existing members fetched successfully. Total existing members: ${existingMembers.length}');
-
-          setState(() {
-            for (var existing in existingMembers) {
-              String employeeId = existing['employee_id'];
-              String memberId = existing['member_id']; // Assuming 'member_id' is returned
-              bool isAdmin = existing['member_status'] == '1';
-
-              // Find the employee in the _employees list
-              int index = _employees.indexWhere((emp) => emp['employee_id'] == employeeId);
-              if (index != -1) {
-                _employees[index]['isSelected'] = true;
-                _employees[index]['isAdmin'] = isAdmin;
-                _employees[index]['isExisting'] = true;
-                _employees[index]['member_id'] = memberId;
-                _selectedPeople.add(_employees[index]);
-              } else {
-                // If employee not found in the main list, you might want to handle it
-                debugPrint('Employee with ID $employeeId not found in the employees list.');
-              }
-            }
-          });
-        } else {
-          debugPrint('Failed to fetch existing members. Response message: ${data['message']}');
-          _showDialog('Error', 'Failed to fetch existing members. Please try again.');
-        }
-      } else {
-        debugPrint('Failed to fetch existing members. Status Code: ${response.statusCode}');
-        _showDialog('Error', 'Failed to fetch existing members. Please try again.');
-      }
-    } catch (e) {
-      debugPrint('Exception occurred while fetching existing members: $e');
-      _showDialog('Error', 'An error occurred while fetching existing members. Please try again.');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-      debugPrint('Existing members fetching process completed.');
     }
   }
 
@@ -218,54 +237,52 @@ class EditPeoplePageState extends State<EditPeoplePage> {
       String? token = prefs.getString('token');
       if (token == null) {
         debugPrint('No token found in SharedPreferences.');
-        _showDialog('Error', 'Authentication token not found. Please log in again.');
+        _showDialog(
+            'Error', 'Authentication token not found. Please log in again.');
         return;
       }
-      debugPrint('Retrieved Bearer Token: $token');
 
-      // Handle deletions
+      // Handle deletions first
       for (String memberId in _membersToDelete) {
+        debugPrint('Deleting member with ID: $memberId');
         final deleteResponse = await http.put(
-          Uri.parse('${workTrackingService.baseUrl}/api/work-tracking/project-member/delete/$memberId'),
+          Uri.parse(
+              '${workTrackingService.baseUrl}/api/work-tracking/project-member/delete/$memberId'),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',
           },
         );
 
-        debugPrint('Delete Member API Response Status Code: ${deleteResponse.statusCode}');
+        debugPrint(
+            'Delete Member API Response Status Code: ${deleteResponse.statusCode}');
         debugPrint('Delete Member API Response Body: ${deleteResponse.body}');
 
-        if (deleteResponse.statusCode != 200 && deleteResponse.statusCode != 204) {
+        // Accept 200, 201, 202, 204 as success status codes
+        if (deleteResponse.statusCode < 200 ||
+            deleteResponse.statusCode > 204) {
           debugPrint('Failed to delete member with ID: $memberId');
-          _showDialog('Error', 'Failed to delete some members. Please try again.');
+          _showDialog(
+              'Error', 'Failed to delete some members. Please try again.');
           return;
         } else {
-          debugPrint('Member with ID $memberId deleted successfully.');
+          debugPrint('Successfully deleted member with ID: $memberId');
         }
       }
 
-      // Prepare list of members to add or update
-      List<Map<String, dynamic>> employeesMember = _membersToAdd.map((person) {
-        String memberStatus = person['isAdmin'] ? '1' : '0';
-        debugPrint('Employee ID: ${person['employee_id']}, Member Status: $memberStatus');
-        return {
-          'employee_id': person['employee_id'],
-          'member_status': memberStatus,
-        };
-      }).toList();
-
-      if (employeesMember.isNotEmpty) {
+      // Handle additions/updates
+      if (_membersToAdd.isNotEmpty) {
         Map<String, dynamic> requestBody = {
           'project_id': widget.projectId,
-          'employees_member': employeesMember,
+          'employees_member': _membersToAdd,
         };
 
-        debugPrint('Request Body for Adding Members: ${jsonEncode(requestBody)}');
+        debugPrint(
+            'Request Body for Adding/Updating Members: ${jsonEncode(requestBody)}');
 
-        // Make the POST request to add/update members
         final postResponse = await http.post(
-          Uri.parse('${workTrackingService.baseUrl}/api/work-tracking/project-member/insert'),
+          Uri.parse(
+              '${workTrackingService.baseUrl}/api/work-tracking/project-member/insert'),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',
@@ -273,31 +290,156 @@ class EditPeoplePageState extends State<EditPeoplePage> {
           body: jsonEncode(requestBody),
         );
 
-        debugPrint('Add Members API Response Status Code: ${postResponse.statusCode}');
-        debugPrint('Add Members API Response Body: ${postResponse.body}');
+        debugPrint(
+            'Add/Update Members API Response Status Code: ${postResponse.statusCode}');
+        debugPrint(
+            'Add/Update Members API Response Body: ${postResponse.body}');
 
-        if (postResponse.statusCode != 200 && postResponse.statusCode != 201) {
-          debugPrint('Failed to add/update members.');
-          _showDialog('Error', 'Failed to add/update members. Please try again.');
+        // Parse response body to check actual status code
+        final responseData = jsonDecode(postResponse.body);
+        final responseStatusCode = responseData['statusCode'];
+
+        // Check for conflict status in response body
+        if (responseStatusCode == 409) {
+          // Handle conflict - member already exists
+          final conflictingMembers = responseData['values'] as List;
+          final conflictingIds =
+              conflictingMembers.map((m) => m['employee_id']).join(', ');
+          _showDialog(
+            'Warning',
+            'Some members are already part of another project: $conflictingIds\nPlease remove these members and try again.',
+          );
+          return;
+        }
+        // Check if HTTP status code is in success range but response status is not
+        else if ((postResponse.statusCode >= 200 &&
+                postResponse.statusCode <= 204) &&
+            responseStatusCode != 200 &&
+            responseStatusCode != 201) {
+          debugPrint(
+              'Failed to add/update members. Response status: $responseStatusCode');
+          _showDialog('Error',
+              'Failed to add/update members: ${responseData['message']}');
+          return;
+        }
+        // Check if HTTP status code itself is an error
+        else if (postResponse.statusCode < 200 ||
+            postResponse.statusCode > 204) {
+          debugPrint(
+              'Failed to add/update members. HTTP status: ${postResponse.statusCode}');
+          _showDialog(
+              'Error', 'Failed to add/update members. Please try again.');
           return;
         } else {
-          debugPrint('Members added/updated successfully.');
+          debugPrint('Successfully added/updated members.');
         }
       }
 
-      // Show success dialog
-      _showDialog('Success', 'Project members have been successfully updated.', isSuccess: true);
+      // Show success dialog with more engaging UI
+      _showSuccessDialog('Project members updated successfully');
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('Exception occurred while updating members: $e');
-      }
-      _showDialog('Error', 'An error occurred while updating members. Please try again.');
+      debugPrint('Exception occurred while updating members: $e');
+      _showDialog('Error',
+          'An error occurred while updating members. Please try again.');
     } finally {
       setState(() {
         _isLoading = false;
       });
       debugPrint('Update project members process completed.');
     }
+  }
+
+  // Add new method for success dialog with better UI
+  void _showSuccessDialog(String message) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 80,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Success!',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.green[300] : Colors.green[700],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFDBB342),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      // Return to previous screen with updated data
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => WorkTrackingPage(
+                            highlightedProjectId: widget.projectId,
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'OK',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // Dialog method remains the same
@@ -314,7 +456,8 @@ class EditPeoplePageState extends State<EditPeoplePage> {
               debugPrint('Dialog "$title" dismissed.');
               Navigator.of(context).pop();
               if (isSuccess) {
-                debugPrint('Navigating to WorkTrackingPage with highlighted project ID: ${widget.projectId}');
+                debugPrint(
+                    'Navigating to WorkTrackingPage with highlighted project ID: ${widget.projectId}');
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
@@ -336,33 +479,43 @@ class EditPeoplePageState extends State<EditPeoplePage> {
   void _toggleSelection(Map<String, dynamic> employee) {
     if (_isLoading) {
       debugPrint('Cannot toggle selection while loading.');
-      return; // Disable toggling if API call is in progress
+      return;
     }
     setState(() {
       bool currentlySelected = employee['isSelected'] ?? false;
       employee['isSelected'] = !currentlySelected;
+
       if (employee['isSelected']) {
-        // Prevent adding duplicates
-        if (!_selectedPeople.any((e) => e['employee_id'] == employee['employee_id'])) {
+        // Adding a member
+        if (!_selectedPeople
+            .any((e) => e['employee_id'] == employee['employee_id'])) {
           _selectedPeople.add(employee);
           debugPrint('Selected member: ${employee['name']}');
 
           if (!employee['isExisting']) {
-            _membersToAdd.add(employee);
+            // New member being added
+            _membersToAdd.add({
+              'employee_id': employee['employee_id'],
+              'member_status': employee['isAdmin'] ? '1' : '0',
+            });
             debugPrint('Added to _membersToAdd: ${employee['name']}');
           }
         }
       } else {
-        _selectedPeople.removeWhere((e) => e['employee_id'] == employee['employee_id']);
+        // Removing a member
+        _selectedPeople
+            .removeWhere((e) => e['employee_id'] == employee['employee_id']);
         debugPrint('Deselected member: ${employee['name']}');
 
         if (employee['isExisting']) {
+          // Existing member being removed
           _membersToDelete.add(employee['member_id']);
-          debugPrint('Added to _membersToDelete: ${employee['name']}');
+          debugPrint('Added to _membersToDelete: ${employee['member_id']}');
         }
 
         // Remove from _membersToAdd if it was newly added but now deselected
-        _membersToAdd.removeWhere((e) => e['employee_id'] == employee['employee_id']);
+        _membersToAdd
+            .removeWhere((e) => e['employee_id'] == employee['employee_id']);
       }
     });
   }
@@ -371,27 +524,37 @@ class EditPeoplePageState extends State<EditPeoplePage> {
   void _toggleAdmin(Map<String, dynamic> employee) {
     if (_isLoading) {
       debugPrint('Cannot toggle admin status while loading.');
-      return; // Prevent toggling if API call is in progress
+      return;
     }
     setState(() {
       bool currentlyAdmin = employee['isAdmin'] ?? false;
       employee['isAdmin'] = !currentlyAdmin;
-      debugPrint('${employee['isAdmin'] ? 'Granted' : 'Revoked'} admin rights for: ${employee['name']}');
+      debugPrint(
+          '${employee['isAdmin'] ? 'Granted' : 'Revoked'} admin rights for: ${employee['name']}');
 
       if (employee['isExisting']) {
-        // Update member_status in _membersToAdd
-        int index = _membersToAdd.indexWhere((e) => e['employee_id'] == employee['employee_id']);
-        if (index != -1) {
-          _membersToAdd[index]['isAdmin'] = employee['isAdmin'];
-        } else {
-          // If not in _membersToAdd, add it for updating
-          _membersToAdd.add(employee);
+        // Update existing member's admin status
+        if (employee['isSelected']) {
+          // If still selected, update their status
+          int index = _membersToAdd
+              .indexWhere((e) => e['employee_id'] == employee['employee_id']);
+          if (index != -1) {
+            _membersToAdd[index]['member_status'] =
+                employee['isAdmin'] ? '1' : '0';
+          } else {
+            _membersToAdd.add({
+              'employee_id': employee['employee_id'],
+              'member_status': employee['isAdmin'] ? '1' : '0',
+            });
+          }
         }
-      } else {
-        // For newly added members, ensure member_status is updated in _membersToAdd
-        int index = _membersToAdd.indexWhere((e) => e['employee_id'] == employee['employee_id']);
+      } else if (employee['isSelected']) {
+        // Update new member's admin status
+        int index = _membersToAdd
+            .indexWhere((e) => e['employee_id'] == employee['employee_id']);
         if (index != -1) {
-          _membersToAdd[index]['isAdmin'] = employee['isAdmin'];
+          _membersToAdd[index]['member_status'] =
+              employee['isAdmin'] ? '1' : '0';
         }
       }
     });
@@ -411,7 +574,11 @@ class EditPeoplePageState extends State<EditPeoplePage> {
       debugPrint('No search query. Displaying all employees.');
       return _employees;
     }
-    final filtered = _employees.where((employee) => (employee['name']?.toLowerCase().contains(_searchQuery) ?? false) || (employee['email']?.toLowerCase().contains(_searchQuery) ?? false)).toList();
+    final filtered = _employees
+        .where((employee) =>
+            (employee['name']?.toLowerCase().contains(_searchQuery) ?? false) ||
+            (employee['email']?.toLowerCase().contains(_searchQuery) ?? false))
+        .toList();
     debugPrint('Filtered employees count: ${filtered.length}');
     return filtered;
   }
@@ -427,7 +594,8 @@ class EditPeoplePageState extends State<EditPeoplePage> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+              image: AssetImage(
+                  isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
               fit: BoxFit.cover,
             ),
             borderRadius: const BorderRadius.only(
@@ -436,7 +604,7 @@ class EditPeoplePageState extends State<EditPeoplePage> {
             ),
           ),
         ),
-        centerTitle: true,
+        centerTitle: false,
         title: Text(
           'Edit Members',
           style: TextStyle(
@@ -455,20 +623,33 @@ class EditPeoplePageState extends State<EditPeoplePage> {
             Navigator.pop(context);
           },
         ),
+        actions: [
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
+            child: ElevatedButton.icon(
+              icon: const Icon(Icons.check, color: Colors.black, size: 20),
+              label: const Text(
+                'Update',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              onPressed: _isLoading ? null : _updateProjectMembers,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFDBB342),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              ),
+            ),
+          ),
+        ],
         toolbarHeight: 80,
         elevation: 0,
         backgroundColor: Colors.transparent,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.check, color: Colors.black),
-            onPressed: _isLoading
-                ? () {
-                    debugPrint('Update Members button pressed but currently loading. Action is disabled.');
-                  }
-                : _updateProjectMembers,
-            tooltip: 'Update Project Members',
-          )
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -477,58 +658,7 @@ class EditPeoplePageState extends State<EditPeoplePage> {
               child: Column(
                 children: [
                   // Selected Members Preview
-                  SizedBox(
-                    height: 50,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _selectedPeople.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index < _selectedPeople.length) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                            child: Stack(
-                              children: [
-                                CircleAvatar(
-                                  radius: 26,
-                                  backgroundColor: Colors.grey[300],
-                                  backgroundImage: _selectedPeople[index]['img_name'] != null && _selectedPeople[index]['img_name'].isNotEmpty ? NetworkImage(_selectedPeople[index]['img_name']) : null,
-                                  child: _selectedPeople[index]['img_name'] == null || _selectedPeople[index]['img_name'].isEmpty ? const Icon(Icons.person, size: 30, color: Colors.white) : null,
-                                ),
-                                if (_selectedPeople[index]['isAdmin'] == true)
-                                  const Positioned(
-                                    top: 0,
-                                    right: 0,
-                                    child: Icon(
-                                      Icons.star,
-                                      color: Colors.amber,
-                                      size: 16,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          );
-                        } else {
-                          return Transform.translate(
-                            offset: const Offset(0, 0),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                              child: CircleAvatar(
-                                radius: 26,
-                                backgroundColor: Colors.grey[300],
-                                child: Text(
-                                  '+${_selectedPeople.length}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ),
+                  _buildSelectedMembersPreview(),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -554,7 +684,9 @@ class EditPeoplePageState extends State<EditPeoplePage> {
                     child: filteredEmployees.isEmpty
                         ? Center(
                             child: Text(
-                              _searchQuery.isEmpty ? 'No employees found.' : 'No employees match your search.',
+                              _searchQuery.isEmpty
+                                  ? 'No employees found.'
+                                  : 'No employees match your search.',
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey[600],
@@ -565,7 +697,8 @@ class EditPeoplePageState extends State<EditPeoplePage> {
                             itemCount: filteredEmployees.length,
                             itemBuilder: (context, index) {
                               final employee = filteredEmployees[index];
-                              final isSelected = employee['isSelected'] ?? false;
+                              final isSelected =
+                                  employee['isSelected'] ?? false;
                               final isAdmin = employee['isAdmin'] ?? false;
 
                               return ListTile(
@@ -578,12 +711,7 @@ class EditPeoplePageState extends State<EditPeoplePage> {
                                         _toggleSelection(employee);
                                       },
                                     ),
-                                    CircleAvatar(
-                                      radius: 24,
-                                      backgroundColor: Colors.grey[300],
-                                      backgroundImage: employee['img_name'] != null && employee['img_name'].isNotEmpty ? CachedNetworkImageProvider(employee['img_name']) : null,
-                                      child: employee['img_name'] == null || employee['img_name'].isEmpty ? const Icon(Icons.person, size: 24, color: Colors.white) : null,
-                                    ),
+                                    _buildMemberAvatar(employee),
                                   ],
                                 ),
                                 title: Text(
@@ -599,7 +727,8 @@ class EditPeoplePageState extends State<EditPeoplePage> {
                                     color: isAdmin ? Colors.amber : Colors.grey,
                                   ),
                                   onPressed: () => _toggleAdmin(employee),
-                                  tooltip: isAdmin ? 'Revoke Admin' : 'Grant Admin',
+                                  tooltip:
+                                      isAdmin ? 'Revoke Admin' : 'Grant Admin',
                                 ),
                                 onTap: () => _toggleSelection(employee),
                               );
@@ -609,6 +738,67 @@ class EditPeoplePageState extends State<EditPeoplePage> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildMemberAvatar(Map<String, dynamic> member) {
+    return Stack(
+      children: [
+        CircleAvatar(
+          radius: 26,
+          backgroundColor: Colors.grey[300],
+          backgroundImage:
+              member['img_name'] != null && member['img_name'].isNotEmpty
+                  ? CachedNetworkImageProvider(member['img_name'])
+                  : null,
+          child: member['img_name'] == null || member['img_name'].isEmpty
+              ? const Icon(Icons.person, size: 30, color: Colors.white)
+              : null,
+        ),
+        if (member['isAdmin'] == true)
+          const Positioned(
+            top: 0,
+            right: 0,
+            child: Icon(
+              Icons.star,
+              color: Colors.amber,
+              size: 16,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSelectedMembersPreview() {
+    return SizedBox(
+      height: 50,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _selectedPeople.length + (_selectedPeople.isEmpty ? 0 : 1),
+        itemBuilder: (context, index) {
+          if (index < _selectedPeople.length) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: _buildMemberAvatar(_selectedPeople[index]),
+            );
+          } else {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: CircleAvatar(
+                radius: 26,
+                backgroundColor: Colors.grey[300],
+                child: Text(
+                  '+${_selectedPeople.length}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
+            );
+          }
+        },
+      ),
     );
   }
 }
