@@ -332,18 +332,18 @@ class AddPeoplePageState extends State<AddPeoplePage> {
           ),
         ),
         centerTitle: true,
-        title: const Text(
+        title: Text(
           'Add Member',
           style: TextStyle(
-            color: Colors.black,
+            color: isDarkMode ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,
             fontSize: 24,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new,
-            color: Colors.black,
+            color: isDarkMode ? Colors.white : Colors.black,
             size: 20,
           ),
           onPressed: () {
@@ -356,7 +356,7 @@ class AddPeoplePageState extends State<AddPeoplePage> {
         backgroundColor: Colors.transparent,
         actions: [
           IconButton(
-            icon: const Icon(Icons.check, color: Colors.black),
+            icon: Icon(Icons.check, color: isDarkMode ? Colors.white : Colors.black),
             onPressed: _isLoading
                 ? () {
                     debugPrint('Add Members button pressed but currently loading. Action is disabled.');

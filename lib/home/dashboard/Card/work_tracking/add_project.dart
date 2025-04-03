@@ -5,6 +5,11 @@ import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
 
+// Custom TextEditingController that can store a display format
+class DateTextEditingController extends TextEditingController {
+  String? displayFormat;
+}
+
 class AddProjectPage extends StatefulWidget {
   const AddProjectPage({super.key});
 
@@ -15,8 +20,10 @@ class AddProjectPage extends StatefulWidget {
 class AddProjectPageState extends State<AddProjectPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _projectNameController = TextEditingController();
-  final TextEditingController _deadline1Controller = TextEditingController();
-  final TextEditingController _deadline2Controller = TextEditingController();
+  final DateTextEditingController _deadline1Controller =
+  DateTextEditingController();
+  final DateTextEditingController _deadline2Controller =
+  DateTextEditingController();
 
   final Map<String, String> statusMap = {
     'Pending': '40d2ba5e-a978-47ce-bc48-caceca8668e9',
@@ -42,7 +49,7 @@ class AddProjectPageState extends State<AddProjectPage> {
   }
 
   Future<void> _selectDate(
-      BuildContext context, TextEditingController controller) async {
+      BuildContext context, DateTextEditingController controller) async {
     try {
       final DateTime? picked = await showDatePicker(
         context: context,
@@ -52,7 +59,15 @@ class AddProjectPageState extends State<AddProjectPage> {
       );
       if (picked != null) {
         setState(() {
-          controller.text = "${picked.toLocal()}".split(' ')[0];
+          // Store original format for API but display in dd-MM-yyyy
+          final String apiFormat =
+          "${picked.toLocal()}".split(' ')[0]; // yyyy-MM-dd for API
+          final String displayFormat =
+              "${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}"; // dd-MM-yyyy for display
+
+          // Store the API format and set display format
+          controller.text = apiFormat;
+          controller.displayFormat = displayFormat;
         });
       }
     } catch (e) {
@@ -163,7 +178,7 @@ class AddProjectPageState extends State<AddProjectPage> {
                 child: Container(
                   width: MediaQuery.of(context).size.width * 0.45,
                   padding:
-                      const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                   child: ElevatedButton.icon(
                     onPressed: _isLoading ? null : _createProjectAndProceed,
                     icon: _isLoading
@@ -199,7 +214,7 @@ class AddProjectPageState extends State<AddProjectPage> {
                             style: TextStyle(
                                 fontSize: 14,
                                 color:
-                                    isDarkMode ? Colors.white : Colors.black),
+                                isDarkMode ? Colors.white : Colors.black),
                           ),
                           const SizedBox(height: 8),
                           _buildTextField(
@@ -278,7 +293,7 @@ class AddProjectPageState extends State<AddProjectPage> {
                             style: TextStyle(
                                 fontSize: 14,
                                 color:
-                                    isDarkMode ? Colors.white : Colors.black),
+                                isDarkMode ? Colors.white : Colors.black),
                           ),
                           const SizedBox(height: 8),
                           _buildDropdownField(
@@ -349,7 +364,7 @@ class AddProjectPageState extends State<AddProjectPage> {
                             style: TextStyle(
                                 fontSize: 14,
                                 color:
-                                    isDarkMode ? Colors.white : Colors.black),
+                                isDarkMode ? Colors.white : Colors.black),
                           ),
                           const SizedBox(height: 8),
                           _buildSlider(isDarkMode),
@@ -382,7 +397,7 @@ class AddProjectPageState extends State<AddProjectPage> {
         filled: true,
         fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
         contentPadding:
-            const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
       ),
       validator: validator,
@@ -445,16 +460,21 @@ class AddProjectPageState extends State<AddProjectPage> {
   }
 
   Widget _buildDateField({
-    required TextEditingController controller,
+    required DateTextEditingController controller,
     required bool isDarkMode,
     required VoidCallback onTap,
     required String hintText,
   }) {
+    String displayText = controller.displayFormat ?? controller.text;
+    if (controller.text.isEmpty) {
+      displayText = hintText;
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: AbsorbPointer(
         child: TextFormField(
-          controller: controller,
+          controller: TextEditingController(text: displayText),
           style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
           decoration: InputDecoration(
             hintText: hintText,
@@ -463,14 +483,14 @@ class AddProjectPageState extends State<AddProjectPage> {
             suffixIcon: const Padding(
               padding: EdgeInsets.only(right: 6.0),
               child:
-                  Icon(Icons.calendar_month, size: 24, color: Colors.black54),
+              Icon(Icons.calendar_month, size: 24, color: Colors.black54),
             ),
             filled: true,
             fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
             contentPadding: const EdgeInsets.symmetric(
                 vertical: 10, horizontal: 12), // Lower height
             border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(16.0)),
+            OutlineInputBorder(borderRadius: BorderRadius.circular(16.0)),
           ),
         ),
       ),
@@ -480,7 +500,6 @@ class AddProjectPageState extends State<AddProjectPage> {
   Widget _buildSlider(bool isDarkMode) {
     // Define colors based on theme
     const primaryColor = Color(0xFFDBB342); // Gold color
-    final secondaryColor = isDarkMode ? Colors.grey[700]! : Colors.grey[300]!;
     final trackColor = isDarkMode ? Colors.grey[850]! : Colors.grey[200]!;
     final textColor = isDarkMode ? Colors.white : Colors.black;
 
@@ -499,11 +518,13 @@ class AddProjectPageState extends State<AddProjectPage> {
                     enabledThumbRadius: 14,
                     pressedElevation: 8.0,
                   ),
-                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
+                  overlayShape:
+                  const RoundSliderOverlayShape(overlayRadius: 20),
                   activeTrackColor: primaryColor,
                   inactiveTrackColor: trackColor,
                   thumbColor: primaryColor,
-                  overlayColor: primaryColor.withOpacity(0.3),
+                  overlayColor: Color.fromRGBO(primaryColor.r.toInt(),
+                      primaryColor.g.toInt(), primaryColor.b.toInt(), 0.3),
                   valueIndicatorColor: primaryColor,
                   valueIndicatorTextStyle: TextStyle(
                     color: isDarkMode ? Colors.black : Colors.white,
@@ -537,7 +558,8 @@ class AddProjectPageState extends State<AddProjectPage> {
                   children: [
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
-                      width: MediaQuery.of(context).size.width * 0.9 * _progress,
+                      width:
+                      MediaQuery.of(context).size.width * 0.9 * _progress,
                       decoration: BoxDecoration(
                         color: primaryColor,
                         borderRadius: BorderRadius.circular(17),
@@ -561,6 +583,5 @@ class AddProjectPageState extends State<AddProjectPage> {
         ),
       ),
     );
-
   }
 }
