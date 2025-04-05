@@ -24,7 +24,8 @@ class EventDetailView extends StatefulWidget {
   EventDetailViewState createState() => EventDetailViewState();
 }
 
-class EventDetailViewState extends State<EventDetailView> with SingleTickerProviderStateMixin {
+class EventDetailViewState extends State<EventDetailView>
+    with SingleTickerProviderStateMixin {
   // State variables
   bool _isLoading = false;
   bool _hasResponded = false;
@@ -370,21 +371,29 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
 
   /// Extracts and formats necessary event details.
   Map<String, String> _getEventDetails() {
-    String creatorName = widget.event['createdBy'] ?? widget.event['created_by_name'] ?? widget.event['employee_name'] ?? 'Unknown';
-    String imageUrl = widget.event['img_path'] ?? widget.event['img_name'] ?? '';
+    String creatorName = widget.event['create_by'] ??
+        widget.event['created_by_name'] ??
+        widget.event['employee_name'] ??
+        widget.event['requestor_name'] ??
+        'Unknown';
+    String imageUrl =
+        widget.event['img_path'] ?? widget.event['img_name'] ?? widget.event['file_name'] ?? '';
 
     // Formatting Created At Date
     String formattedCreatedAt = widget.event['created_at'] != null
-        ? _formatDate(widget.event['created_at'].toString(), format: 'dd-MM-yyyy - HH:mm')
+        ? _formatDate(widget.event['created_at'].toString(),
+            format: 'dd-MM-yyyy - HH:mm')
         : '';
 
     // Formatting Start Date & End Date
     String formattedStartDate = widget.event['startDateTime'] != null
-        ? _formatDate(widget.event['startDateTime'].toString(), format: 'dd-MM-yyyy')
+        ? _formatDate(widget.event['startDateTime'].toString(),
+            format: 'dd-MM-yyyy')
         : '';
 
     String formattedEndDate = widget.event['endDateTime'] != null
-        ? _formatDate(widget.event['endDateTime'].toString(), format: 'dd-MM-yyyy')
+        ? _formatDate(widget.event['endDateTime'].toString(),
+            format: 'dd-MM-yyyy')
         : '';
 
     return {
@@ -541,7 +550,10 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       margin: const EdgeInsets.only(right: 3),
       child: CircleAvatar(
           radius: 20,
-          backgroundImage: link.isNotEmpty ? NetworkImage(link) : const AssetImage('assets/avatar_placeholder.png') as ImageProvider,
+          backgroundImage: link.isNotEmpty
+              ? NetworkImage(link)
+              : const AssetImage('assets/avatar_placeholder.png')
+                  as ImageProvider,
           onBackgroundImageError: (_, __) {
             const AssetImage('assets/avatar_placeholder.png');
           }),
@@ -571,7 +583,8 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
             child: _buildResponsiveButton(
               label: AppLocalizations.of(context)!.maybe,
               color: _hasResponded ? Colors.grey : Colors.orange,
-              onPressed: _hasResponded ? null : () => _respondToMeeting('maybe'),
+              onPressed:
+                  _hasResponded ? null : () => _respondToMeeting('maybe'),
               icon: Icons.question_mark,
             ),
           ),
@@ -582,7 +595,9 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
         Expanded(
           child: _buildResponsiveButton(
             label: AppLocalizations.of(context)!.join,
-            color: _hasResponded ? Colors.grey : ColorStandardization().colorDarkGold,
+            color: _hasResponded
+                ? Colors.grey
+                : ColorStandardization().colorDarkGold,
             onPressed: _hasResponded ? null : () => _respondToMeeting('yes'),
             icon: Icons.check_circle_outline,
           ),
@@ -636,7 +651,8 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 25),
+        padding:
+            EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 25),
         child: _isLoading
             ? const Center(
                 child: CircularProgressIndicator(),
@@ -697,7 +713,10 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
           children: [
             CircleAvatar(
                 radius: 26,
-                backgroundImage: details['imageUrl']!.isNotEmpty ? NetworkImage(details['imageUrl']!) : const AssetImage('assets/avatar_placeholder.png') as ImageProvider,
+                backgroundImage: details['imageUrl']!.isNotEmpty
+                    ? NetworkImage(details['imageUrl']!)
+                    : const AssetImage('assets/avatar_placeholder.png')
+                        as ImageProvider,
                 onBackgroundImageError: (_, __) {
                   const AssetImage('assets/avatar_placeholder.png');
                 }),
@@ -709,7 +728,9 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  (details['creatorName']?.isEmpty ?? true) ? 'No Name' : details['creatorName']!,
+                  (details['creatorName']?.isEmpty ?? true)
+                      ? 'No Name'
+                      : details['creatorName']!,
                   style: const TextStyle(
                     fontSize: 18,
                   ),
@@ -764,8 +785,10 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     String? title = widget.event['title'];
     final startDate = DateTime.parse(widget.event['startDateTime']);
     final endDate = DateTime.parse(widget.event['endDateTime']);
-    String startDisplay12 = "${(startDate.hour % 12 == 0 ? 12 : startDate.hour % 12).toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')} ${startDate.hour >= 12 ? 'PM' : 'AM'}";
-    String endDisplay12 = "${(endDate.hour % 12 == 0 ? 12 : endDate.hour % 12).toString().padLeft(2, '0')}:${endDate.minute.toString().padLeft(2, '0')} ${endDate.hour >= 12 ? 'PM' : 'AM'}";
+    String startDisplay12 =
+        "${(startDate.hour % 12 == 0 ? 12 : startDate.hour % 12).toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')} ${startDate.hour >= 12 ? 'PM' : 'AM'}";
+    String endDisplay12 =
+        "${(endDate.hour % 12 == 0 ? 12 : endDate.hour % 12).toString().padLeft(2, '0')}:${endDate.minute.toString().padLeft(2, '0')} ${endDate.hour >= 12 ? 'PM' : 'AM'}";
     return Column(
       children: [
         if (eventStatus != "")
@@ -845,8 +868,10 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
     String? description = widget.event['description']; // Add this line
     final startDate = DateTime.parse(widget.event['startDateTime']);
     final endDate = DateTime.parse(widget.event['endDateTime']);
-    String startDisplay12 = "${(startDate.hour % 12 == 0 ? 12 : startDate.hour % 12).toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')} ${startDate.hour >= 12 ? 'PM' : 'AM'}";
-    String endDisplay12 = "${(endDate.hour % 12 == 0 ? 12 : endDate.hour % 12).toString().padLeft(2, '0')}:${endDate.minute.toString().padLeft(2, '0')} ${endDate.hour >= 12 ? 'PM' : 'AM'}";
+    String startDisplay12 =
+        "${(startDate.hour % 12 == 0 ? 12 : startDate.hour % 12).toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')} ${startDate.hour >= 12 ? 'PM' : 'AM'}";
+    String endDisplay12 =
+        "${(endDate.hour % 12 == 0 ? 12 : endDate.hour % 12).toString().padLeft(2, '0')}:${endDate.minute.toString().padLeft(2, '0')} ${endDate.hour >= 12 ? 'PM' : 'AM'}";
     return Column(
       children: [
         if (title != null)
@@ -854,11 +879,12 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
             '${AppLocalizations.of(context)!.title} : ${widget.event['title']}',
             Icons.bookmark_add_outlined,
           ),
-        if (details['formattedStartDate']!.isNotEmpty && details['formattedEndDate']!.isNotEmpty)
+        if (details['formattedStartDate']!.isNotEmpty &&
+            details['formattedEndDate']!.isNotEmpty)
           titleCustom(
             '${AppLocalizations.of(context)!.date} : '
-                '${startDate.day.toString().padLeft(2, '0')}-${startDate.month.toString().padLeft(2, '0')}-${startDate.year} - '
-                '${endDate.day.toString().padLeft(2, '0')}-${endDate.month.toString().padLeft(2, '0')}-${endDate.year}',
+            '${startDate.day.toString().padLeft(2, '0')}-${startDate.month.toString().padLeft(2, '0')}-${startDate.year} - '
+            '${endDate.day.toString().padLeft(2, '0')}-${endDate.month.toString().padLeft(2, '0')}-${endDate.year}',
             Icons.free_cancellation_outlined,
           ),
 
@@ -982,7 +1008,9 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
   @override
   Widget build(BuildContext context) {
     double horizontalPadding = MediaQuery.of(context).size.width * 0.07;
-    final isHiddenButton = (_eventType == 'Leave' || _eventType == 'Minutes Of Meeting') || eventStatus == 'Pending';
+    final isHiddenButton =
+        (_eventType == 'Leave' || _eventType == 'Minutes Of Meeting') ||
+            eventStatus == 'Pending';
     Provider.of<ThemeNotifier>(context);
 
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -1011,7 +1039,8 @@ class EventDetailViewState extends State<EventDetailView> with SingleTickerProvi
       flexibleSpace: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+            image: AssetImage(
+                isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
             fit: BoxFit.cover,
           ),
           borderRadius: const BorderRadius.only(

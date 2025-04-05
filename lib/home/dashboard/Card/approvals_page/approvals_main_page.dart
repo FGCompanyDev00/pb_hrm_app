@@ -327,13 +327,11 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
         },
       );
 
-      debugPrint(
-          'Fetching pending items: Status Code ${pendingResponse.statusCode}');
+      debugPrint('Fetching pending items: Status Code ${pendingResponse.statusCode}');
 
       if (pendingResponse.statusCode == 200) {
         final responseBody = jsonDecode(pendingResponse.body);
-        if (responseBody['statusCode'] == 200 &&
-            responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
           final List<dynamic> pendingData = responseBody['results'];
 
           // Filter out null items and unknown types
@@ -341,8 +339,8 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
               .where((item) => item != null)
               .map((item) => Map<String, dynamic>.from(item))
               .where((item) =>
-                  item['types'] != null &&
-                  _knownTypes.contains(item['types'].toString().toLowerCase()))
+          item['types'] != null &&
+              _knownTypes.contains(item['types'].toString().toLowerCase()))
               .toList();
 
           // Sort the filtered data by 'updated_at' in descending order
@@ -354,32 +352,72 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
             return bDate.compareTo(aDate); // Descending order
           });
 
+          // Handle empty data scenario
+          if (filteredData.isEmpty) {
+            debugPrint('No pending items found');
+            await prefs.setString('approvals_pending_items', jsonEncode([]));
+            if (mounted) {
+              setState(() {
+                _pendingItems = [];
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('No pending data found'),
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+            return;
+          }
+
           // Cache the pending items
           await prefs.setString(
               'approvals_pending_items', jsonEncode(filteredData));
 
-          setState(() {
-            _pendingItems = filteredData;
-          });
-          debugPrint(
-              'Pending items loaded and sorted: ${_pendingItems.length} items.');
+          if (mounted) {
+            setState(() {
+              _pendingItems = filteredData;
+            });
+          }
+          debugPrint('Pending items loaded and sorted: ${_pendingItems.length} items.');
         } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load pending data');
+          final errorMessage = responseBody['message'] ?? 'Failed to load pending data';
+          debugPrint('API Error: $errorMessage');
+          throw Exception(errorMessage);
         }
       } else {
-        throw Exception(
-            'Failed to load pending data: ${pendingResponse.statusCode}');
+        final errorMessage = 'Failed to load pending data: ${pendingResponse.statusCode}';
+        debugPrint(errorMessage);
+        throw Exception(errorMessage);
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching pending data: $e');
       debugPrint(stackTrace.toString());
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching pending data: $e')),
-        );
+        // Handle empty data scenario from API response
+        if (e.toString().contains('No pending data') ||
+            e.toString().contains('empty response')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No pending data'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+
+        // Clear existing data and update UI
+        setState(() {
+          _pendingItems = [];
+        });
       }
-      rethrow;
     }
   }
 
@@ -403,13 +441,11 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
         },
       );
 
-      debugPrint(
-          'Fetching history items: Status Code ${historyResponse.statusCode}');
+      debugPrint('Fetching history items: Status Code ${historyResponse.statusCode}');
 
       if (historyResponse.statusCode == 200) {
         final responseBody = jsonDecode(historyResponse.body);
-        if (responseBody['statusCode'] == 200 &&
-            responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
           final List<dynamic> historyData = responseBody['results'];
 
           // Filter out null items and unknown types
@@ -417,8 +453,8 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
               .where((item) => item != null)
               .map((item) => Map<String, dynamic>.from(item))
               .where((item) =>
-                  item['types'] != null &&
-                  _knownTypes.contains(item['types'].toString().toLowerCase()))
+          item['types'] != null &&
+              _knownTypes.contains(item['types'].toString().toLowerCase()))
               .toList();
 
           // Sort the filtered data by 'updated_at' in descending order
@@ -427,35 +463,75 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
                 DateTime.fromMillisecondsSinceEpoch(0);
             DateTime bDate = DateTime.tryParse(b['updated_at'] ?? '') ??
                 DateTime.fromMillisecondsSinceEpoch(0);
-            return bDate.compareTo(aDate); // Descending order
+            return bDate.compareTo(aDate);
           });
+
+          // Handle empty data scenario
+          if (filteredData.isEmpty) {
+            debugPrint('No history items found');
+            await prefs.setString('approvals_history_items', jsonEncode([]));
+            if (mounted) {
+              setState(() {
+                _historyItems = [];
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('No history data'),
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+            return;
+          }
 
           // Cache the history items
           await prefs.setString(
               'approvals_history_items', jsonEncode(filteredData));
 
-          setState(() {
-            _historyItems = filteredData;
-          });
-          debugPrint(
-              'History items loaded and sorted: ${_historyItems.length} items.');
+          if (mounted) {
+            setState(() {
+              _historyItems = filteredData;
+            });
+          }
+          debugPrint('History items loaded: ${_historyItems.length} items.');
         } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load history data');
+          final errorMessage = responseBody['message'] ?? 'Failed to load history data';
+          debugPrint('API Error: $errorMessage');
+          throw Exception(errorMessage);
         }
       } else {
-        throw Exception(
-            'Failed to load history data: ${historyResponse.statusCode}');
+        final errorMessage = 'Failed to load history data: ${historyResponse.statusCode}';
+        debugPrint(errorMessage);
+        throw Exception(errorMessage);
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching history data: $e');
       debugPrint(stackTrace.toString());
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching history data: $e')),
-        );
+        // Handle empty data scenario
+        if (e.toString().contains('No history data') ||
+            e.toString().contains('empty response')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No history data found'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+
+        // Clear existing data and update UI
+        setState(() {
+          _historyItems = [];
+        });
       }
-      rethrow;
     }
   }
 
@@ -625,7 +701,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
                                       end: Alignment.centerRight,
                                       tileMode: TileMode.mirror,
                                     ).createShader(bounds),
-                                    child: Text(
+                                    child: const Text(
                                       'Fetching Approvals Data',
                                       style: TextStyle(
                                         fontSize: 18,
@@ -1053,8 +1129,8 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
         dateRange = _formatDateRange(
             item['take_leave_from'], item['take_leave_to'],
             alwaysShowTime: true);
-        detailLabel = 'Leave Type';
-        detailValue = title;
+        detailLabel = 'Reason';
+        detailValue =  item['take_leave_reason'];
         break;
       case 'car':
         title = item['purpose']?.toString() ?? 'No Purpose';
@@ -1359,7 +1435,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(screenSize.width * 0.05),
-                  side: BorderSide(
+                  side: const BorderSide(
                     color: Colors.white,
                     width: 2,
                   ),

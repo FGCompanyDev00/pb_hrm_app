@@ -186,6 +186,21 @@ class HistoryPageState extends State<HistoryPage>
     }
   }
 
+  String _getDisplayType(String type) {
+    switch (type.toLowerCase()) {
+      case 'meeting':
+        return 'Add meeting';
+      case 'minutes of meeting':
+        return 'Add meeting and booking Room';
+      case 'car':
+        return 'Booking car';
+      case 'leave':
+        return 'Leave';
+      default:
+        return type;
+    }
+  }
+
   // New method to load cached data from SharedPreferences
   Future<bool> _loadCachedData() async {
     bool hasCachedData = false;
@@ -433,6 +448,7 @@ class HistoryPageState extends State<HistoryPage>
 
     Map<String, dynamic> formattedItem = {
       'type': type,
+      'displayType': _getDisplayType(type),
       'status': status,
       'statusColor': statusColorHex, // Store as hex string
       'statusColorValue': statusColorObj.value, // Store as integer value
@@ -1263,7 +1279,7 @@ class HistoryPageState extends State<HistoryPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item['employee_name'] ?? 'No Name',
+                      _getDisplayType(item['type'] ?? ''),
                       style: TextStyle(
                         color: typeColor,
                         fontSize: screenSize.width * 0.035,
