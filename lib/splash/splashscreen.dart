@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
 import 'package:pb_hrsystem/main.dart';
@@ -15,8 +16,10 @@ class SplashScreen extends StatefulWidget {
 }
 
 class SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController _controller;
+  late final AnimationController _pulseController;
+  late final AnimationController _particleController;
   late final Animation<double> _fadeAnimation;
   late final Animation<double> _scaleAnimation;
   late final Animation<double> _rotateAnimation;
@@ -55,6 +58,16 @@ class SplashScreenState extends State<SplashScreen>
       duration: _animationDuration,
       vsync: this,
     );
+
+    _pulseController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _particleController = AnimationController(
+      duration: const Duration(seconds: 10),
+      vsync: this,
+    )..repeat();
 
     _fadeAnimation = CurvedAnimation(
       parent: _controller,
@@ -169,6 +182,21 @@ class SplashScreenState extends State<SplashScreen>
     return baseSize * (screenWidth / 375);
   }
 
+  Widget _buildFloatingParticles(bool isDarkMode) {
+    return AnimatedBuilder(
+      animation: _particleController,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: ParticlePainter(
+            _particleController.value,
+            isDarkMode ? Colors.white30 : Colors.black12,
+          ),
+          child: Container(),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
@@ -188,6 +216,10 @@ class SplashScreenState extends State<SplashScreen>
         isDarkMode ? Colors.white70 : const Color(0xFF333333);
     final Color subtitleTextColor =
         isDarkMode ? Colors.white60 : const Color(0xFF666666);
+
+    final Color primaryColor =
+        isDarkMode ? const Color(0xFFDBB342) : Colors.orange;
+    final Color accentColor = isDarkMode ? Colors.white70 : Colors.black87;
 
     return Scaffold(
       body: Stack(
@@ -225,6 +257,9 @@ class SplashScreenState extends State<SplashScreen>
             ),
           ).animate().fadeIn(delay: 300.ms, duration: 800.ms),
 
+          // Floating particles animation
+          _buildFloatingParticles(isDarkMode),
+
           // Main Content with Staggered Animations
           Center(
             child: SingleChildScrollView(
@@ -235,12 +270,33 @@ class SplashScreenState extends State<SplashScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Animated Logo
-                  Image.asset(
-                    'assets/logo.png',
-                    width: logoSize,
-                    height: logoSize,
-                    fit: BoxFit.contain,
+                  // Animated Logo with pulse effect
+                  AnimatedBuilder(
+                    animation: _pulseController,
+                    builder: (context, child) {
+                      return Container(
+                        width: logoSize * (1 + _pulseController.value * 0.05),
+                        height: logoSize * (1 + _pulseController.value * 0.05),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: primaryColor.withOpacity(
+                                  0.3 + _pulseController.value * 0.2),
+                              blurRadius: 20 + _pulseController.value * 15,
+                              spreadRadius: 5 + _pulseController.value * 5,
+                            ),
+                          ],
+                        ),
+                        child: child,
+                      );
+                    },
+                    child: Image.asset(
+                      'assets/logo.png',
+                      width: logoSize,
+                      height: logoSize,
+                      fit: BoxFit.contain,
+                    ),
                   )
                       .animate()
                       .scale(
@@ -262,24 +318,39 @@ class SplashScreenState extends State<SplashScreen>
 
                   SizedBox(height: spacing * 2),
 
-                  // Animated Welcome Text
-                  Text(
-                    "Welcome to PSVB Next",
-                    style: TextStyle(
-                      fontSize: welcomeFontSize,
-                      fontWeight: FontWeight.bold,
-                      color: welcomeTextColor,
-                      shadows: [
-                        Shadow(
-                          blurRadius: 10,
-                          color: isDarkMode
-                              ? Colors.white.withOpacity(0.3)
-                              : Colors.black.withOpacity(0.1),
-                          offset: const Offset(2, 2),
-                        ),
-                      ],
+                  // Animated Welcome Text with modern effects
+                  ShaderMask(
+                    shaderCallback: (bounds) {
+                      return LinearGradient(
+                        colors: [
+                          accentColor,
+                          primaryColor,
+                          accentColor,
+                        ],
+                        stops: const [0.0, 0.5, 1.0],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        tileMode: TileMode.mirror,
+                      ).createShader(bounds);
+                    },
+                    child: Text(
+                      "Welcome to PSVB Next",
+                      style: TextStyle(
+                        fontSize: welcomeFontSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            blurRadius: 10,
+                            color: isDarkMode
+                                ? Colors.white.withOpacity(0.3)
+                                : Colors.black.withOpacity(0.1),
+                            offset: const Offset(2, 2),
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
                   )
                       .animate(delay: 400.ms)
                       .moveY(
@@ -287,7 +358,18 @@ class SplashScreenState extends State<SplashScreen>
                           end: 0,
                           duration: 800.ms,
                           curve: Curves.easeOutQuad)
-                      .fadeIn(duration: 800.ms),
+                      .fadeIn(duration: 800.ms)
+                      .then()
+                      .animate(
+                        onPlay: (controller) =>
+                            controller.repeat(reverse: true),
+                      )
+                      .shimmer(
+                        duration: 1800.ms,
+                        color: isDarkMode
+                            ? primaryColor
+                            : primaryColor.withOpacity(0.8),
+                      ),
 
                   SizedBox(height: spacing),
 
@@ -311,24 +393,41 @@ class SplashScreenState extends State<SplashScreen>
 
                   SizedBox(height: spacing * 3),
 
-                  // Enhanced Loading Indicator
+                  // Enhanced Loading Indicator with modern design
                   Container(
+                    width: 70,
+                    height: 70,
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isDarkMode
-                            ? Colors.white.withOpacity(0.2)
-                            : Colors.black.withOpacity(0.1),
-                        width: 2,
+                      gradient: SweepGradient(
+                        colors: [
+                          primaryColor.withOpacity(0.3),
+                          primaryColor,
+                        ],
+                        stops: const [0.8, 1.0],
+                        transform: GradientRotation(
+                            _pulseController.value * 2 * 3.14159),
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryColor.withOpacity(0.3),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 5.0,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isDarkMode
-                            ? Colors.white.withOpacity(0.8)
-                            : Colors.orangeAccent,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDarkMode ? Colors.grey[900] : Colors.white,
+                      ),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3.0,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(primaryColor),
+                        ),
                       ),
                     ),
                   )
@@ -360,6 +459,51 @@ class SplashScreenState extends State<SplashScreen>
   void dispose() {
     _isDisposed = true;
     _controller.dispose();
+    _pulseController.dispose();
+    _particleController.dispose();
     super.dispose();
   }
+}
+
+// Floating particles animation
+class ParticlePainter extends CustomPainter {
+  final double animationValue;
+  final Color color;
+  final List<Offset> _particles = [];
+
+  ParticlePainter(this.animationValue, this.color) {
+    // Initialize particles once
+    if (_particles.isEmpty) {
+      for (int i = 0; i < 30; i++) {
+        _particles.add(Offset(
+          0.1 + 0.8 * (i % 5) / 4, // x position
+          0.1 + 0.8 * (i ~/ 5) / 5, // y position
+        ));
+      }
+    }
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    for (int i = 0; i < _particles.length; i++) {
+      // Calculate particle position with animation
+      final offset = _particles[i];
+      final x =
+          size.width * offset.dx + 20 * sin(animationValue * 2 * 3.14159 + i);
+      final y = size.height * offset.dy +
+          20 * cos(animationValue * 2 * 3.14159 + i * 0.5);
+
+      // Calculate particle size with animation (make it pulse)
+      final radius = 2 + 1 * sin(animationValue * 2 * 3.14159 + i * 0.7);
+
+      canvas.drawCircle(Offset(x, y), radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(ParticlePainter oldDelegate) => true;
 }

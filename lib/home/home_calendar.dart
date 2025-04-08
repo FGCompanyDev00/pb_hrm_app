@@ -76,6 +76,14 @@ class HomeCalendarState extends State<HomeCalendar>
   final _eventCountsCache = <DateTime, Map<String, int>>{};
   final _processedEventsCache = <DateTime, List<Events>>{};
 
+  // Animasi untuk ikon plus
+  late AnimationController _plusIconController;
+  late Animation<double> _plusIconRotation;
+
+  // Animasi untuk teks "No events for this day"
+  late AnimationController _typingController;
+  late Animation<double> _typingAnimation;
+
   @override
   void initState() {
     super.initState();
@@ -91,6 +99,32 @@ class HomeCalendarState extends State<HomeCalendar>
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
+    );
+
+    // Initialize plus icon animation
+    _plusIconController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
+
+    _plusIconRotation = Tween<double>(begin: 0, end: 0.05).animate(
+      CurvedAnimation(
+        parent: _plusIconController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Initialize typing animation
+    _typingController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+
+    _typingAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _typingController,
+        curve: Curves.easeInOut,
+      ),
     );
 
     // Clear cache when connectivity changes
@@ -112,6 +146,8 @@ class HomeCalendarState extends State<HomeCalendar>
     _processedEventsCache.clear();
     _animationController.dispose();
     _doubleTapTimer?.cancel();
+    _plusIconController.dispose();
+    _typingController.dispose();
     super.dispose();
   }
 
@@ -1610,14 +1646,28 @@ class HomeCalendarState extends State<HomeCalendar>
                   height: MediaQuery.of(context).size.height * 0.50,
                   child: eventsForDay.isEmpty
                       ? Center(
-                          child: Text(
-                            AppLocalizations.of(context)!.noEventsForThisDay,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
+                          child: AnimatedBuilder(
+                            animation: _typingAnimation,
+                            builder: (context, child) {
+                              final String message =
+                                  AppLocalizations.of(context)!
+                                      .noEventsForThisDay;
+                              final int length =
+                                  (message.length * _typingAnimation.value)
+                                      .round();
+                              return Text(
+                                message.substring(
+                                    0, length.clamp(0, message.length)),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: isDarkMode
+                                      ? Colors.grey.shade300
+                                      : Colors.grey.shade700,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              );
+                            },
                           ),
                         )
                       : CalendarDaySwitchView(
@@ -1672,14 +1722,38 @@ class HomeCalendarState extends State<HomeCalendar>
           Positioned(
             top: 60,
             right: 15,
-            child: IconButton(
-              icon: Icon(
-                Icons.add_circle,
-                size: 55,
-                color: Colors.green,
-                semanticLabel: AppLocalizations.of(context)!.addEvent,
-              ),
-              onPressed: showAddEventOptionsPopup,
+            child: AnimatedBuilder(
+              animation: _plusIconController,
+              builder: (context, child) {
+                return Transform.rotate(
+                  angle: _plusIconRotation.value,
+                  child: ShaderMask(
+                    shaderCallback: (bounds) {
+                      return SweepGradient(
+                        colors: const [
+                          Colors.green,
+                          Color(0xFF4CAF50),
+                          Color(0xFF8BC34A),
+                          Color(0xFF4CAF50),
+                          Colors.green,
+                        ],
+                        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                        transform: GradientRotation(
+                            _plusIconController.value * 2 * 3.14159),
+                      ).createShader(bounds);
+                    },
+                    child: IconButton(
+                      icon: Icon(
+                        Icons.add_circle,
+                        size: 55,
+                        color: Colors.white, // Base color for shader mask
+                        semanticLabel: AppLocalizations.of(context)!.addEvent,
+                      ),
+                      onPressed: showAddEventOptionsPopup,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ],

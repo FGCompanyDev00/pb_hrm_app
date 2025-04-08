@@ -19,6 +19,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/home/myprofile_page.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import '../services/offline_service.dart';
 
@@ -142,6 +144,17 @@ class ProfileScreenState extends State<ProfileScreen>
   String? _cachedVCardData;
   Map<String, dynamic>? _cachedData;
 
+  // Custom cache manager for profile images
+  static final profileImageCacheManager = CacheManager(
+    Config(
+      'profileImageCache',
+      stalePeriod: const Duration(days: 7),
+      maxNrOfCacheObjects: 20,
+      repo: JsonCacheInfoRepository(databaseName: 'profileImageCacheDb'),
+      fileService: HttpFileService(),
+    ),
+  );
+
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
@@ -197,6 +210,9 @@ class ProfileScreenState extends State<ProfileScreen>
         _loadingController.stop();
       }
     });
+
+    // Preload profile image if available
+    _preloadProfileImage();
   }
 
   @override
@@ -297,6 +313,36 @@ class ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  // Method to preload profile image
+  Future<void> _preloadProfileImage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? cachedDisplayData = prefs.getString('qr_display_data');
+
+      if (cachedDisplayData != null) {
+        final data = jsonDecode(cachedDisplayData);
+        if (data != null &&
+            data['images'] != null &&
+            data['images'].toString().isNotEmpty) {
+          final imageUrl = data['images'].toString();
+          if (imageUrl != 'avatar_placeholder.png') {
+            // Prefetch the image
+            await precacheImage(
+              CachedNetworkImageProvider(
+                imageUrl,
+                cacheKey: 'profile_${data['id'] ?? 'default'}',
+                cacheManager: profileImageCacheManager,
+              ),
+              context,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error preloading profile image: $e');
+    }
+  }
+
   // New method to fetch and cache display data
   Future<Map<String, dynamic>> _fetchAndCacheDisplayData(String? token) async {
     final response = await http.get(
@@ -324,6 +370,16 @@ class ProfileScreenState extends State<ProfileScreen>
         // Cache the display data
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('qr_display_data', jsonEncode(displayData));
+
+        // Prefetch profile image
+        if (displayData != null &&
+            displayData['images'] != null &&
+            displayData['images'].toString().isNotEmpty &&
+            displayData['images'] != 'avatar_placeholder.png') {
+          final imageUrl = displayData['images'].toString();
+          // Cache the profile image for faster loading
+          await profileImageCacheManager.getSingleFile(imageUrl);
+        }
 
         return displayData;
       } else {
@@ -648,19 +704,55 @@ END:VCARD
                                       backgroundColor: isDarkMode
                                           ? Colors.grey[800]
                                           : Colors.grey[200],
-                                      child: CircleAvatar(
-                                          radius: size.width * 0.1,
-                                          backgroundImage: data['images'] !=
-                                                      null &&
-                                                  data['images'].isNotEmpty
-                                              ? NetworkImage(data['images'])
-                                              : const AssetImage(
-                                                      'assets/avatar_placeholder.png')
-                                                  as ImageProvider,
-                                          onBackgroundImageError: (_, __) {
-                                            const AssetImage(
-                                                'assets/avatar_placeholder.png');
-                                          }),
+                                      child: data['images'] != null &&
+                                              data['images'].isNotEmpty &&
+                                              data['images'] !=
+                                                  'avatar_placeholder.png'
+                                          ? ClipOval(
+                                              child: CachedNetworkImage(
+                                                imageUrl: data['images'],
+                                                cacheKey:
+                                                    'profile_${data['id'] ?? 'default'}',
+                                                cacheManager:
+                                                    profileImageCacheManager,
+                                                width: size.width * 0.2,
+                                                height: size.width * 0.2,
+                                                fit: BoxFit.cover,
+                                                placeholder: (context, url) =>
+                                                    CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                          Color>(
+                                                    isDarkMode
+                                                        ? Colors.white70
+                                                        : Colors.grey.shade300,
+                                                  ),
+                                                ),
+                                                errorWidget:
+                                                    (context, url, error) =>
+                                                        Image.asset(
+                                                  'assets/avatar_placeholder.png',
+                                                  width: size.width * 0.2,
+                                                  height: size.width * 0.2,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                                memCacheWidth:
+                                                    (size.width * 0.2 * 2)
+                                                        .toInt(),
+                                                memCacheHeight:
+                                                    (size.width * 0.2 * 2)
+                                                        .toInt(),
+                                                fadeOutDuration: Duration.zero,
+                                                fadeInDuration: const Duration(
+                                                    milliseconds: 100),
+                                              ),
+                                            )
+                                          : CircleAvatar(
+                                              radius: size.width * 0.1,
+                                              backgroundImage: const AssetImage(
+                                                  'assets/avatar_placeholder.png'),
+                                            ),
                                     ),
                                   ),
                                   Positioned(
@@ -948,19 +1040,55 @@ END:VCARD
                                       backgroundColor: isDarkMode
                                           ? Colors.grey[800]
                                           : Colors.grey[200],
-                                      child: CircleAvatar(
-                                          radius: size.width * 0.1,
-                                          backgroundImage: data['images'] !=
-                                                      null &&
-                                                  data['images'].isNotEmpty
-                                              ? NetworkImage(data['images'])
-                                              : const AssetImage(
-                                                      'assets/avatar_placeholder.png')
-                                                  as ImageProvider,
-                                          onBackgroundImageError: (_, __) {
-                                            const AssetImage(
-                                                'assets/avatar_placeholder.png');
-                                          }),
+                                      child: data['images'] != null &&
+                                              data['images'].isNotEmpty &&
+                                              data['images'] !=
+                                                  'avatar_placeholder.png'
+                                          ? ClipOval(
+                                              child: CachedNetworkImage(
+                                                imageUrl: data['images'],
+                                                cacheKey:
+                                                    'profile_${data['id'] ?? 'default'}',
+                                                cacheManager:
+                                                    profileImageCacheManager,
+                                                width: size.width * 0.2,
+                                                height: size.width * 0.2,
+                                                fit: BoxFit.cover,
+                                                placeholder: (context, url) =>
+                                                    CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                          Color>(
+                                                    isDarkMode
+                                                        ? Colors.white70
+                                                        : Colors.grey.shade300,
+                                                  ),
+                                                ),
+                                                errorWidget:
+                                                    (context, url, error) =>
+                                                        Image.asset(
+                                                  'assets/avatar_placeholder.png',
+                                                  width: size.width * 0.2,
+                                                  height: size.width * 0.2,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                                memCacheWidth:
+                                                    (size.width * 0.2 * 2)
+                                                        .toInt(),
+                                                memCacheHeight:
+                                                    (size.width * 0.2 * 2)
+                                                        .toInt(),
+                                                fadeOutDuration: Duration.zero,
+                                                fadeInDuration: const Duration(
+                                                    milliseconds: 100),
+                                              ),
+                                            )
+                                          : CircleAvatar(
+                                              radius: size.width * 0.1,
+                                              backgroundImage: const AssetImage(
+                                                  'assets/avatar_placeholder.png'),
+                                            ),
                                     ),
                                   ),
                                   Positioned(

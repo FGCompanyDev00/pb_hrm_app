@@ -32,7 +32,10 @@ class Dashboard extends StatefulWidget {
 }
 
 class DashboardState extends State<Dashboard>
-    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
+    with
+        AutomaticKeepAliveClientMixin,
+        WidgetsBindingObserver,
+        TickerProviderStateMixin {
   // Enhanced cache management with memory optimization
   static final Map<String, _CacheData> _pageCache = {};
   static const Duration _cacheExpiry = Duration(minutes: 15);
@@ -84,6 +87,19 @@ class DashboardState extends State<Dashboard>
   static const Duration _locationUpdateInterval = Duration(minutes: 5);
   DateTime? _lastLocationUpdate;
 
+  // Animasi baru
+  late AnimationController _bellAnimationController;
+  late Animation<double> _bellAnimation;
+
+  late AnimationController _settingsRotationController;
+  late Animation<double> _settingsRotationAnimation;
+
+  late AnimationController _logoutGradientController;
+  late Animation<double> _logoutGradientAnimation;
+
+  late AnimationController _waveHandController;
+  late Animation<double> _waveHandAnimation;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -95,6 +111,9 @@ class DashboardState extends State<Dashboard>
     WidgetsBinding.instance.addObserver(this);
     _initializationFuture = _initialize();
     _initializePageController();
+
+    // Inisialisasi animasi-animasi baru
+    _initAnimations();
   }
 
   @override
@@ -120,7 +139,8 @@ class DashboardState extends State<Dashboard>
       {
         'icon': 'assets/status-up.png',
         'label': AppLocalizations.of(context)!.workTracking,
-        'onTap': () => navigatorKey.currentState?.pushNamed('/workTrackingPage'),
+        'onTap': () =>
+            navigatorKey.currentState?.pushNamed('/workTrackingPage'),
       },
       {
         'icon': 'assets/car_return.png',
@@ -157,16 +177,14 @@ class DashboardState extends State<Dashboard>
           if (_shouldTrackLocation()) {
             _initializeLocation();
           }
-          // Force a refresh of data when app is resumed
-          _refreshDataSafely();
 
-          // Schedule another refresh after a short delay to ensure images are loaded
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (!_isDisposed && mounted) {
-              _fetchBannersFromApiAndUpdate(forceUpdate: true);
-            }
-          });
+          // Instead of full refresh, use cached data first then update in background
+          _quickLoadThenRefresh();
         }
+        break;
+      case AppLifecycleState.inactive:
+        // Save current state to make resuming faster
+        _persistCurrentState();
         break;
       default:
         break;
@@ -203,11 +221,14 @@ class DashboardState extends State<Dashboard>
     }
   }
 
-  // Optimized navigation methods with error handling
+  // Optimized navigation methods with better caching
   Future<void> navigateToPage(Widget page) async {
     if (!mounted || _isDisposed) return;
 
     try {
+      // Save current state before navigation for faster return
+      _persistCurrentState();
+
       final result = await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => page,
@@ -216,7 +237,14 @@ class DashboardState extends State<Dashboard>
       );
 
       if (result == true && mounted && !_isDisposed) {
-        _refreshDataSafely();
+        _quickLoadThenRefresh();
+      } else {
+        // Just ensure cached data is used on return
+        if (mounted && !_isDisposed) {
+          setState(() {
+            // Trigger rebuild with cached data
+          });
+        }
       }
     } catch (e) {
       debugPrint('Navigation error: $e');
@@ -230,6 +258,13 @@ class DashboardState extends State<Dashboard>
     _positionStreamSubscription?.cancel();
     _pageController.dispose();
     _carouselTimer?.cancel();
+
+    // Dispose animasi-animasi baru
+    _bellAnimationController.dispose();
+    _settingsRotationController.dispose();
+    _logoutGradientController.dispose();
+    _waveHandController.dispose();
+
     super.dispose();
   }
 
@@ -256,15 +291,67 @@ class DashboardState extends State<Dashboard>
       // Initialize secure storage safely
       await _initializeSecureStorage();
 
-      // Only initialize futures after Hive boxes are ready
-      futureUserProfile = fetchUserProfile();
-      futureBanners = fetchBanners();
+      // Check if we have cached data for immediate display
+      bool hasCachedProfile = false;
+      bool hasCachedBanners = false;
+
+      try {
+        // Try memory cache first (fastest)
+        final cachedProfile = _getCachedData('userProfile');
+        final cachedBanners = _getCachedData('banners');
+
+        hasCachedProfile = cachedProfile != null;
+        hasCachedBanners =
+            cachedBanners != null && (cachedBanners as List).isNotEmpty;
+
+        // If no memory cache, check Hive
+        if (!hasCachedProfile) {
+          final profileJson = _userProfileBox?.get('userProfile');
+          hasCachedProfile = profileJson != null;
+
+          // Preload profile to memory cache if available
+          if (hasCachedProfile) {
+            final profile = UserProfile.fromJson(jsonDecode(profileJson!));
+            _updateCache('userProfile', profile);
+          }
+        }
+
+        if (!hasCachedBanners) {
+          final banners = _bannersBox?.get('banners');
+          hasCachedBanners = banners != null && banners.isNotEmpty;
+
+          // Preload banners to memory cache if available
+          if (hasCachedBanners) {
+            _updateCache('banners', banners);
+          }
+        }
+      } catch (cacheError) {
+        debugPrint('Error checking cache during initialization: $cacheError');
+      }
+
+      // Initialize futures based on cache status
+      futureUserProfile = hasCachedProfile
+          ? Future.value(_getCachedData('userProfile') as UserProfile)
+          : fetchUserProfile();
+
+      futureBanners = hasCachedBanners
+          ? Future.value(_getCachedData('banners') as List<String>)
+          : fetchBanners();
 
       if (!_isDisposed) {
         setState(() {
           _isInitialized = true;
           _isLoading = false;
         });
+
+        // If we used cached data, refresh in background after UI is displayed
+        if (hasCachedProfile || hasCachedBanners) {
+          Future.microtask(() {
+            if (hasCachedProfile) _checkForProfileUpdates(forceUpdate: false);
+            if (hasCachedBanners)
+              _fetchBannersFromApiAndUpdate(forceUpdate: false);
+          });
+        }
       }
     } catch (e) {
       debugPrint('Initialization error: $e');
@@ -348,35 +435,41 @@ class DashboardState extends State<Dashboard>
     }
   }
 
-  // Optimized data fetching with fast cache check and immediate API fallback
+  // Optimized data fetching with improved caching strategy
   Future<UserProfile> fetchUserProfile() async {
     if (_isDisposed) return UserProfile.fromJson({});
 
     try {
-      // Quick memory cache check - fastest retrieval
+      // Use memory cache for fastest retrieval - immediate display without any delay
       final cachedProfile = _getCachedData('userProfile');
       if (cachedProfile != null) {
-        // Start async update check without waiting
-        _checkForProfileUpdates(forceUpdate: false);
+        // Start async update check without waiting for UI
+        Future.microtask(() => _checkForProfileUpdates(forceUpdate: false));
         return cachedProfile as UserProfile;
       }
 
-      // Quick Hive check - second fastest retrieval
+      // Fall back to Hive for persistence between app launches
       final cachedProfileJson = userProfileBox.get('userProfile');
       if (cachedProfileJson != null) {
         try {
           final profile = UserProfile.fromJson(jsonDecode(cachedProfileJson));
           _updateCache('userProfile', profile);
-          // Start async update check without waiting
-          _checkForProfileUpdates(forceUpdate: false);
+
+          // Prefetch the profile image immediately for faster display
+          if (profile.imgName.isNotEmpty &&
+              profile.imgName != 'avatar_placeholder.png') {
+            _prefetchImage(profile.imgName);
+          }
+
+          // Start async update check in background
+          Future.microtask(() => _checkForProfileUpdates(forceUpdate: false));
           return profile;
         } catch (parseError) {
           debugPrint('Error parsing cached profile: $parseError');
-          // Continue to API fetch if parse error
         }
       }
 
-      // No cache or cache error - fetch from API immediately
+      // No cache available - fetch from API immediately
       return await _fetchProfileFromApi();
     } catch (e) {
       debugPrint('Error fetching profile: $e');
@@ -394,11 +487,19 @@ class DashboardState extends State<Dashboard>
   }
 
   Future<void> _checkForProfileUpdates({bool forceUpdate = false}) async {
+    if (_isDisposed) return;
+
     try {
-      // Skip update check if we have a profile (unless forced)
+      // Skip update check if we have a recent profile (unless forced)
       final cachedProfile = _getCachedData('userProfile') as UserProfile?;
-      if (!forceUpdate && cachedProfile != null) {
-        return; // Use cached profile, no need to refresh
+      final cacheTimestamp = _getCacheTimestamp('userProfile');
+
+      // Only check for updates if the cache is old or forced
+      if (!forceUpdate && cachedProfile != null && cacheTimestamp != null) {
+        final cacheAge = DateTime.now().difference(cacheTimestamp);
+        if (cacheAge < const Duration(minutes: 5)) {
+          return; // Cache is fresh enough, skip update
+        }
       }
 
       final newProfile = await _fetchProfileFromApi();
@@ -415,6 +516,12 @@ class DashboardState extends State<Dashboard>
           // If profile image changed, clear the old image from cache
           if (hasImageChanged && oldProfile?.imgName != null) {
             _clearImageFromCache(oldProfile!.imgName);
+          }
+
+          // Prefetch new image before updating state
+          if (newProfile.imgName.isNotEmpty &&
+              newProfile.imgName != 'avatar_placeholder.png') {
+            _prefetchImage(newProfile.imgName);
           }
 
           setState(() {
@@ -480,27 +587,54 @@ class DashboardState extends State<Dashboard>
     throw Exception('Failed to fetch profile');
   }
 
-  // Optimized banner fetching with fast cache check and immediate API fallback
+  // Optimized banner fetching with improved caching
   Future<List<String>> fetchBanners() async {
     if (_isDisposed) return [];
 
     try {
-      // First check our cache before making any network requests
-
-      // Quick memory cache check - fastest retrieval for immediate display
+      // Memory cache check - immediate display
       final cachedBanners = _getCachedData('banners');
       if (cachedBanners != null) {
+        // Prefetch banner images in background for faster display
+        Future.microtask(() {
+          final banners = List<String>.from(cachedBanners);
+          if (banners.isNotEmpty) {
+            // Prefetch current banner and next one
+            _prefetchImage(banners[_currentPage]);
+            if (_currentPage + 1 < banners.length) {
+              _prefetchImage(banners[_currentPage + 1]);
+            }
+          }
+
+          // Check for updates in background without blocking UI
+          _checkForBannerUpdates(forceUpdate: false);
+        });
+
         return List<String>.from(cachedBanners);
       }
 
-      // Quick Hive check - second fastest retrieval
+      // Hive persistent cache check
       final hiveBanners = bannersBox.get('banners');
       if (hiveBanners != null && hiveBanners.isNotEmpty) {
         _updateCache('banners', hiveBanners);
+
+        // Prefetch banner images in background
+        Future.microtask(() {
+          if (hiveBanners.isNotEmpty) {
+            _prefetchImage(hiveBanners[0]);
+            if (hiveBanners.length > 1) {
+              _prefetchImage(hiveBanners[1]);
+            }
+          }
+
+          // Check for updates in background
+          _checkForBannerUpdates(forceUpdate: false);
+        });
+
         return hiveBanners;
       }
 
-      // No cache or empty cache - only then fetch from API
+      // No cache - fetch from API
       return await _fetchBannersFromApi();
     } catch (e) {
       debugPrint('Error fetching banners: $e');
@@ -570,8 +704,28 @@ class DashboardState extends State<Dashboard>
       return;
 
     try {
-      final provider = CachedNetworkImageProvider(imageUrl);
-      precacheImage(provider, context);
+      // Create a unique cache key for better control
+      final cacheKey = 'img_${imageUrl.hashCode}';
+
+      // Use CachedNetworkImageProvider with precacheImage for efficient caching
+      final provider = CachedNetworkImageProvider(
+        imageUrl,
+        cacheKey: cacheKey,
+        maxWidth: 1080, // Limit max size for memory efficiency
+        maxHeight: 1080,
+      );
+
+      // Precache with higher priority for important images
+      precacheImage(provider, context, onError: (exception, stackTrace) {
+        debugPrint('Error precaching image: $exception');
+      });
+
+      // Also ensure it's in the disk cache for persistence
+      DefaultCacheManager().getSingleFile(imageUrl).then((file) {
+        debugPrint('Image cached to disk: ${file.path}');
+      }).catchError((e) {
+        debugPrint('Error caching image to disk: $e');
+      });
     } catch (e) {
       debugPrint('Error prefetching image: $e');
     }
@@ -618,6 +772,14 @@ class DashboardState extends State<Dashboard>
       accessCount: 0,
     );
     _lastCacheUpdate = now;
+
+    // Pre-cache profile image if this is a user profile update
+    if (key == 'userProfile' &&
+        data is UserProfile &&
+        data.imgName.isNotEmpty &&
+        data.imgName != 'avatar_placeholder.png') {
+      _prefetchImage(data.imgName);
+    }
   }
 
   void _cleanCache() {
@@ -656,7 +818,7 @@ class DashboardState extends State<Dashboard>
     return cachedItem?.timestamp;
   }
 
-  // Start the carousel auto-swipe timer with improved animation
+  // Start the carousel auto-swipe timer with modern sliding effect
   void _startCarouselTimer() {
     _carouselTimer = Timer.periodic(const Duration(seconds: 5), (Timer timer) {
       if (_pageController.hasClients) {
@@ -670,33 +832,25 @@ class DashboardState extends State<Dashboard>
           nextPage = 0;
         }
 
-        // We'll use existing cached images without refreshing from API
-        // Just prefetch the next image if it's already in the cache
+        // Prefetch the next image if it's already in the cache
         if (nextPage < totalPages) {
           final banners = _getCachedData('banners') as List<String>?;
           if (banners != null &&
               banners.isNotEmpty &&
               nextPage < banners.length) {
-            // Only use already cached images, don't fetch from network
+            // Prefetch next image for smoother transitions
             final imageUrl = banners[nextPage];
             if (imageUrl.isNotEmpty) {
-              try {
-                final provider = CachedNetworkImageProvider(imageUrl);
-                // This will use the cached version if available
-                precacheImage(provider, context);
-              } catch (e) {
-                // Just log and continue, don't refresh from network
-                debugPrint('Error using cached image: $e');
-              }
+              _prefetchImage(imageUrl);
             }
           }
         }
 
-        // Improved animation curve for smoother transitions
+        // Modern sliding animation
         _pageController.animateToPage(
           nextPage,
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeOutCubic,
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.fastLinearToSlowEaseIn,
         );
 
         setState(() {
@@ -916,10 +1070,71 @@ class DashboardState extends State<Dashboard>
     _restartLocationUpdatesWithDelay(1);
   }
 
+  // New method to quickly show cached data then refresh in background
+  void _quickLoadThenRefresh() {
+    if (!mounted || _isDisposed || _isPaused) return;
+
+    try {
+      // First use cached data for immediate display
+      final cachedProfile = _getCachedData('userProfile') as UserProfile?;
+      final cachedBanners = _getCachedData('banners') as List<String>?;
+
+      // If we have cached data, use it immediately
+      if (cachedProfile != null &&
+          cachedBanners != null &&
+          cachedBanners.isNotEmpty) {
+        setState(() {
+          // Use cached data for immediate UI update
+        });
+
+        // Then refresh in background
+        Future.microtask(() {
+          _checkForProfileUpdates(forceUpdate: false);
+          _fetchBannersFromApiAndUpdate(forceUpdate: false);
+        });
+      } else {
+        // If no cache, do a regular refresh
+        _refreshDataSafely();
+      }
+    } catch (e) {
+      debugPrint('Error in quick load: $e');
+    }
+  }
+
+  // New method to save current state for faster resume
+  void _persistCurrentState() {
+    try {
+      // Save any important state that needs to persist
+      final cachedProfile = _getCachedData('userProfile') as UserProfile?;
+      if (cachedProfile != null) {
+        userProfileBox.put('userProfile', jsonEncode(cachedProfile.toJson()));
+      }
+
+      final cachedBanners = _getCachedData('banners') as List<String>?;
+      if (cachedBanners != null) {
+        bannersBox.put('banners', cachedBanners);
+      }
+    } catch (e) {
+      debugPrint('Error persisting state: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     if (_isDisposed) return const SizedBox.shrink();
+
+    // Preload profile picture when dashboard is shown
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_isDisposed && _getCachedData('userProfile') != null) {
+        final profile = _getCachedData('userProfile') as UserProfile?;
+        if (profile != null &&
+            profile.imgName.isNotEmpty &&
+            profile.imgName != 'avatar_placeholder.png') {
+          _prefetchImage(profile.imgName);
+        }
+      }
+    });
 
     return FutureBuilder<void>(
       future: _initializationFuture,
@@ -1009,7 +1224,7 @@ class DashboardState extends State<Dashboard>
   }
 
   // AppBar with user information
-  PreferredSizeWidget _buildAppBar(UserProfile userProfile, bool isDarkMode) {
+  Widget _buildAppBar(UserProfile userProfile, bool isDarkMode) {
     return AppBar(
       automaticallyImplyLeading: false,
       backgroundColor: Colors.transparent,
@@ -1031,15 +1246,24 @@ class DashboardState extends State<Dashboard>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  IconButton(
-                    icon: Icon(Icons.settings,
-                        color: isDarkMode ? Colors.white : Colors.black,
-                        size: 32),
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const SettingsPage()),
-                    ),
+                  // Settings Icon with rotation animation
+                  AnimatedBuilder(
+                    animation: _settingsRotationAnimation,
+                    builder: (context, child) {
+                      return Transform.rotate(
+                        angle: _settingsRotationAnimation.value,
+                        child: IconButton(
+                          icon: Icon(Icons.settings,
+                              color: isDarkMode ? Colors.white : Colors.black,
+                              size: 32),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const SettingsPage()),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   GestureDetector(
                     onTap: () => Navigator.push(
@@ -1074,11 +1298,15 @@ class DashboardState extends State<Dashboard>
                                       width: 56,
                                       height: 56,
                                     ),
-                                    // Optimized caching for profile images
+                                    // Enhanced caching for profile images
                                     memCacheWidth:
                                         112, // 2x for high DPI displays
                                     memCacheHeight: 112,
                                     useOldImageOnUrlChange: true,
+                                    maxWidthDiskCache: 112,
+                                    maxHeightDiskCache: 112,
+                                    cacheKey: 'profile_${userProfile.id}',
+                                    placeholderFadeInDuration: Duration.zero,
                                   ),
                                 )
                               : Image.asset(
@@ -1089,22 +1317,74 @@ class DashboardState extends State<Dashboard>
                                 ),
                         ),
                         const SizedBox(height: 6),
-                        Text(
-                          AppLocalizations.of(context)!
-                              .greeting(userProfile.name),
-                          style: TextStyle(
-                            color: isDarkMode ? Colors.white : Colors.black,
-                            fontSize: 22,
-                          ),
+                        // Greeting text with waving hand emoji
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              AppLocalizations.of(context)!
+                                  .greeting(userProfile.name),
+                              style: TextStyle(
+                                color: isDarkMode ? Colors.white : Colors.black,
+                                fontSize: 22,
+                              ),
+                            ),
+                            AnimatedBuilder(
+                              animation: _waveHandAnimation,
+                              builder: (context, child) {
+                                return Transform.rotate(
+                                  angle: _waveHandAnimation.value,
+                                  child: const Text(
+                                    " 👋",
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(Icons.power_settings_new,
-                        color: isDarkMode ? Colors.white : Colors.black,
-                        size: 32),
-                    onPressed: () => _showLogoutDialog(context, isDarkMode),
+                  // Logout Icon with gradient animation (lebih natural)
+                  AnimatedBuilder(
+                    animation: _logoutGradientAnimation,
+                    builder: (context, child) {
+                      return ShaderMask(
+                        shaderCallback: (bounds) {
+                          return SweepGradient(
+                            colors: isDarkMode
+                                ? const [
+                                    Colors.white,
+                                    Color(0xFFFF8A80),
+                                    Colors.white,
+                                    Color(0xFFEF5350)
+                                  ] // Light red gradient for dark mode
+                                : const [
+                                    Colors.black,
+                                    Colors.red,
+                                    Colors.black,
+                                    Color(0xFFB71C1C)
+                                  ], // Dark red-black gradient for light mode
+                            stops: const [0.0, 0.25, 0.5, 0.75],
+                            startAngle: 0.0,
+                            endAngle: 3.14159 * 2,
+                            transform: GradientRotation(
+                                _logoutGradientAnimation.value * 2 * 3.14159),
+                          ).createShader(bounds);
+                        },
+                        child: IconButton(
+                          icon: Icon(Icons.power_settings_new,
+                              color: Colors
+                                  .white, // Base color selalu putih untuk shader mask
+                              size: 32),
+                          onPressed: () =>
+                              _showLogoutDialog(context, isDarkMode),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -1154,8 +1434,18 @@ class DashboardState extends State<Dashboard>
           final cachedBanners = _getCachedData('banners') as List<String>?;
 
           if (cachedBanners != null && cachedBanners.isNotEmpty) {
-            // If we have cached data, show it immediately without refreshing in background
-            return _buildBannerPageView(cachedBanners, isDarkMode);
+            // If we have cached data, show it immediately
+            return Column(
+              children: [
+                Expanded(
+                  child: _buildBannerPageView(cachedBanners, isDarkMode),
+                ),
+                // Add page indicator dots for better UX
+                const SizedBox(height: 8),
+                _buildPageIndicator(
+                    cachedBanners.length, _currentPage, isDarkMode),
+              ],
+            );
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -1200,8 +1490,18 @@ class DashboardState extends State<Dashboard>
               ),
             );
           } else {
-            // Show the actual banners
-            return _buildBannerPageView(snapshot.data!, isDarkMode);
+            // Show the actual banners with page indicator
+            return Column(
+              children: [
+                Expanded(
+                  child: _buildBannerPageView(snapshot.data!, isDarkMode),
+                ),
+                // Add page indicator dots for better UX
+                const SizedBox(height: 8),
+                _buildPageIndicator(
+                    snapshot.data!.length, _currentPage, isDarkMode),
+              ],
+            );
           }
         },
       ),
@@ -1213,6 +1513,9 @@ class DashboardState extends State<Dashboard>
       controller: _pageController,
       itemCount: banners.length,
       onPageChanged: _handleBannerPageChange,
+      physics: const BouncingScrollPhysics(),
+      pageSnapping: true,
+      padEnds: false,
       itemBuilder: (context, index) {
         final bannerUrl = banners[index];
 
@@ -1222,6 +1525,9 @@ class DashboardState extends State<Dashboard>
               child: Text(AppLocalizations.of(context)!.noBannersAvailable));
         }
 
+        // Create a unique cache key for this banner
+        final cacheKey = 'banner_${bannerUrl.hashCode}';
+
         // Prefetch next image for smoother swiping
         if (index < banners.length - 1) {
           _prefetchImage(banners[index + 1]);
@@ -1229,9 +1535,7 @@ class DashboardState extends State<Dashboard>
 
         return Hero(
           tag: 'banner_$index',
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutQuint,
+          child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 12.0),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
@@ -1249,6 +1553,7 @@ class DashboardState extends State<Dashboard>
                 key: ValueKey('banner_image_$bannerUrl'),
                 imageUrl: bannerUrl,
                 fit: BoxFit.cover,
+                cacheKey: cacheKey,
                 errorWidget: (context, url, error) => Container(
                   color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
                   child: Column(
@@ -1296,13 +1601,12 @@ class DashboardState extends State<Dashboard>
                 cacheManager: DefaultCacheManager(),
                 maxHeightDiskCache: 1080, // Optimize for most phone screens
                 memCacheHeight: 1080,
-                fadeOutDuration:
-                    const Duration(milliseconds: 150), // Faster transitions
-                fadeInDuration: const Duration(milliseconds: 250),
-                // Improved caching behavior
-                useOldImageOnUrlChange:
-                    false, // Don't use old image, always fetch fresh
-                placeholderFadeInDuration: const Duration(milliseconds: 200),
+                // Remove all fade transitions
+                fadeOutDuration: Duration.zero,
+                fadeInDuration: Duration.zero,
+                // Use cached image immediately
+                useOldImageOnUrlChange: true,
+                placeholderFadeInDuration: Duration.zero,
                 progressIndicatorBuilder: (context, url, progress) => Container(
                   color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
                   child: Center(
@@ -1320,6 +1624,27 @@ class DashboardState extends State<Dashboard>
           ),
         );
       },
+    );
+  }
+
+  // Add page indicator for smooth experience
+  Widget _buildPageIndicator(int count, int currentIndex, bool isDarkMode) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(
+        count,
+        (index) => Container(
+          width: index == currentIndex ? 12.0 : 8.0,
+          height: index == currentIndex ? 12.0 : 8.0,
+          margin: const EdgeInsets.symmetric(horizontal: 4.0),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: index == currentIndex
+                ? (isDarkMode ? Colors.blueAccent : const Color(0xFFDBB342))
+                : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1353,41 +1678,50 @@ class DashboardState extends State<Dashboard>
                 color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
-            Stack(
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.notifications,
-                    color: isDarkMode ? Colors.blueAccent : Colors.orangeAccent,
-                    size: 27,
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const NotificationPage()),
-                    ).then((_) {
-                      _updateNotificationState();
-                    });
-                  },
-                ),
-                if (_hasUnreadNotifications)
-                  Positioned(
-                    right: 11,
-                    top: 11,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent,
-                        borderRadius: BorderRadius.circular(6),
+            // Bell icon dengan animasi - tanpa gradient
+            AnimatedBuilder(
+              animation: _bellAnimation,
+              builder: (context, child) {
+                return Transform.rotate(
+                  angle: _bellAnimation.value,
+                  child: Stack(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.notifications,
+                          color: isDarkMode ? Colors.white : Colors.black87,
+                          size: 27,
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const NotificationPage()),
+                          ).then((_) {
+                            _updateNotificationState();
+                          });
+                        },
                       ),
-                      constraints: const BoxConstraints(
-                        minWidth: 12,
-                        minHeight: 12,
-                      ),
-                    ),
+                      if (_hasUnreadNotifications)
+                        Positioned(
+                          right: 11,
+                          top: 11,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 12,
+                              minHeight: 12,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-              ],
+                );
+              },
             ),
           ],
         ),
@@ -1605,24 +1939,87 @@ class DashboardState extends State<Dashboard>
     });
   }
 
-  // Banner page change handler
+  // Custom page transition when user manually changes page
   void _handleBannerPageChange(int index) {
     setState(() {
       _currentPage = index;
     });
 
-    // Prefetch the next image when user manually changes page
+    // Prefetch adjacent images when user manually changes page
     final banners = _getCachedData('banners') as List<String>?;
     if (banners != null && banners.isNotEmpty) {
+      // Prefetch current image if not already loaded
+      if (index < banners.length) {
+        _prefetchImage(banners[index]);
+      }
+
       // Prefetch next image
       if (index < banners.length - 1) {
         _prefetchImage(banners[index + 1]);
       }
+
       // Also prefetch previous image for backward swiping
       if (index > 0) {
         _prefetchImage(banners[index - 1]);
       }
     }
+  }
+
+  // Inisialisasi semua animasi
+  void _initAnimations() {
+    // Bell icon animation
+    _bellAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _bellAnimation = Tween<double>(begin: -0.1, end: 0.1).animate(
+      CurvedAnimation(
+        parent: _bellAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Settings rotation animation
+    _settingsRotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 10),
+    )..repeat();
+
+    _settingsRotationAnimation =
+        Tween<double>(begin: 0, end: 2 * 3.14159).animate(
+      CurvedAnimation(
+        parent: _settingsRotationController,
+        curve: Curves.linear,
+      ),
+    );
+
+    // Logout gradient animation - lebih smooth dan natural
+    _logoutGradientController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5), // Durasi lebih panjang
+    )..repeat();
+
+    _logoutGradientAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _logoutGradientController,
+        curve: Curves.easeInOut, // Perubahan kurva animasi
+      ),
+    );
+
+    // Wave hand animation - lebih lambat
+    _waveHandController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500), // Durasi lebih panjang
+    )..repeat(reverse: true);
+
+    _waveHandAnimation = Tween<double>(begin: -0.15, end: 0.15).animate(
+      // Jangkauan sedikit dikurangi
+      CurvedAnimation(
+        parent: _waveHandController,
+        curve: Curves.easeInOut,
+      ),
+    );
   }
 }
 

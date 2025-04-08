@@ -34,7 +34,8 @@ class AttendanceScreen extends StatefulWidget {
   AttendanceScreenState createState() => AttendanceScreenState();
 }
 
-class AttendanceScreenState extends State<AttendanceScreen> {
+class AttendanceScreenState extends State<AttendanceScreen>
+    with TickerProviderStateMixin {
   // Add memory efficient caching
   static final Map<String, String> _cachedTimes = {};
   static const Duration _cacheExpiry = Duration(minutes: 5);
@@ -89,6 +90,14 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   // Add biometric state
   bool _biometricEnabled = false;
 
+  // Animasi untuk gradient fingerprint
+  late AnimationController _gradientController;
+  late Animation<double> _gradientAnimation;
+
+  // Animasi untuk teks "No weekly records found"
+  late AnimationController _typingController;
+  late Animation<double> _typingAnimation;
+
   @override
   void initState() {
     super.initState();
@@ -103,6 +112,31 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     offsiteApiUrl = '$baseUrl/api/attendance/checkin-checkout/offsite';
 
     _isOffsite.value = false;
+
+    // Initialize animation controllers
+    _gradientController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat();
+
+    _gradientAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _gradientController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _typingController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
+
+    _typingAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _typingController,
+        curve: Curves.easeInOut,
+      ),
+    );
 
     // Check biometric state on init
     _checkBiometricState();
@@ -353,6 +387,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     _weeklyRecords.dispose();
     _loadingMessage.dispose();
     _isInteractive.dispose();
+    _gradientController.dispose();
+    _typingController.dispose();
     super.dispose();
   }
 
@@ -1442,17 +1478,47 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   Widget _buildHeaderContent(BuildContext context) {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
+    // Use AnimatedBuilder for gradient animation
+    return AnimatedBuilder(
+      animation: _gradientAnimation,
+      builder: (context, child) {
+        return _buildHeaderContentWithGradient(context, isDarkMode);
+      },
+    );
+  }
+
+  Widget _buildHeaderContentWithGradient(
+      BuildContext context, bool isDarkMode) {
     BoxDecoration fingerprintDecoration;
     if (_isOffsite.value) {
-      fingerprintDecoration = const BoxDecoration(
+      fingerprintDecoration = BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.red,
+        gradient: SweepGradient(
+          colors: const [
+            Colors.red,
+            Colors.redAccent,
+            Color.fromARGB(255, 199, 192, 192),
+            Colors.pink,
+            Colors.red,
+          ],
+          stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+          transform: GradientRotation(_gradientController.value * 2 * 3.14159),
+        ),
       );
     } else {
-      fingerprintDecoration = const BoxDecoration(
+      // Create dynamic rotating gradient
+      fingerprintDecoration = BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [Colors.orange, Colors.green],
+        gradient: SweepGradient(
+          colors: const [
+            Colors.green,
+            Colors.lightGreen,
+            Colors.amber,
+            Colors.orange,
+            Colors.green,
+          ],
+          stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+          transform: GradientRotation(_gradientController.value * 2 * 3.14159),
         ),
       );
     }
@@ -1520,7 +1586,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Fingerprint Button
+                // Fingerprint Button with animated gradient
                 Container(
                   width: 80,
                   height: 80,
@@ -1702,12 +1768,22 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     if (_weeklyRecords.value.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
-        child: Text(
-          AppLocalizations.of(context)!.noWeeklyRecordsFound,
-          style: TextStyle(
-            color: isDarkMode ? Colors.white70 : Colors.black54,
-            fontSize: 16,
-          ),
+        child: AnimatedBuilder(
+          animation: _typingAnimation,
+          builder: (context, child) {
+            final String message =
+                AppLocalizations.of(context)!.noWeeklyRecordsFound;
+            final int length =
+                (message.length * _typingAnimation.value).round();
+            return Text(
+              message.substring(0, length.clamp(0, message.length)),
+              style: TextStyle(
+                color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            );
+          },
         ),
       );
     }
