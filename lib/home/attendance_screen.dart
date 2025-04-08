@@ -64,11 +64,11 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   final ValueNotifier<bool> _isLoading = ValueNotifier<bool>(false);
   final ValueNotifier<bool> _isOffsite = ValueNotifier<bool>(false);
   final ValueNotifier<List<Map<String, String>>> _weeklyRecords =
-  ValueNotifier<List<Map<String, String>>>([]);
+      ValueNotifier<List<Map<String, String>>>([]);
 
   // Add detailed loading state
   final ValueNotifier<String> _loadingMessage =
-  ValueNotifier<String>('Initializing...');
+      ValueNotifier<String>('Initializing...');
   final ValueNotifier<bool> _isInteractive = ValueNotifier<bool>(true);
 
   // Optimize location tracking
@@ -113,22 +113,59 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _checkBiometricState() async {
     try {
+      // First try to read from FlutterSecureStorage
       String? biometricEnabled = await _storage.read(key: 'biometricEnabled');
-      if (biometricEnabled == 'true') {
+      bool isEnabled = false;
+
+      if (biometricEnabled != null) {
+        isEnabled = biometricEnabled == 'true';
+      } else {
+        // If not found in secure storage, try SharedPreferences as fallback
+        final prefs = await SharedPreferences.getInstance();
+        isEnabled = prefs.getBool('biometricEnabled') ?? false;
+
+        // If found in SharedPreferences, sync it back to secure storage
+        if (isEnabled) {
+          await _storage.write(key: 'biometricEnabled', value: 'true');
+        }
+      }
+
+      if (isEnabled) {
         bool canCheckBiometrics = await auth.canCheckBiometrics;
         bool isDeviceSupported = await auth.isDeviceSupported();
+
         if (canCheckBiometrics && isDeviceSupported) {
           setState(() {
             _biometricEnabled = true;
           });
+          debugPrint('Biometric authentication enabled successfully');
+        } else {
+          debugPrint('Device does not support biometric authentication');
         }
+      } else {
+        debugPrint('Biometric authentication is not enabled in settings');
       }
     } catch (e) {
       debugPrint('Error checking biometric state: $e');
+      // As a last resort, try SharedPreferences directly
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        bool isEnabled = prefs.getBool('biometricEnabled') ?? false;
+        if (isEnabled) {
+          setState(() {
+            _biometricEnabled = isEnabled;
+          });
+        }
+      } catch (e) {
+        debugPrint('Final fallback error: $e');
+      }
     }
   }
 
   Future<void> _initializeServices() async {
+    // Check biometric settings first to ensure it's properly loaded
+    await _checkBiometricState();
+
     // Perform immediate state restoration first to show UI
     await _retrieveSavedState();
 
@@ -282,14 +319,14 @@ class AttendanceScreenState extends State<AttendanceScreen> {
     final monthlyData = data['TotalWorkDurationForMonth'];
     final weeklyRecords = (data['weekly'] as List)
         .map((item) => {
-      'date': item['check_in_date'].toString(),
-      'checkIn': item['check_in_time'].toString(),
-      'checkOut': item['check_out_time'].toString(),
-      'workingHours': item['workDuration'].toString(),
-      'checkInStatus': item['check_in_status']?.toString() ?? 'unknown',
-      'checkOutStatus':
-      item['check_out_status']?.toString() ?? 'unknown',
-    })
+              'date': item['check_in_date'].toString(),
+              'checkIn': item['check_in_time'].toString(),
+              'checkOut': item['check_out_time'].toString(),
+              'workingHours': item['workDuration'].toString(),
+              'checkInStatus': item['check_in_status']?.toString() ?? 'unknown',
+              'checkOutStatus':
+                  item['check_out_status']?.toString() ?? 'unknown',
+            })
         .toList();
 
     _weeklyRecords.value = weeklyRecords;
@@ -479,8 +516,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       await _showCheckInNotification(
           _checkInTime.value); // ✅ Only trigger if successful
     } else {
-      await _showValidationModal(true, false, 'Check-In Failed',
-          standardErrorMessage);
+      await _showValidationModal(
+          true, false, 'Check-In Failed', standardErrorMessage);
     }
   }
 
@@ -508,7 +545,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     try {
       const AndroidNotificationDetails androidDetails =
-      AndroidNotificationDetails(
+          AndroidNotificationDetails(
         'attendance_channel_id',
         'Attendance Notifications',
         channelDescription: 'Notifications for check-in/check-out',
@@ -578,8 +615,8 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       await _showCheckOutNotification(
           _checkOutTime.value, _workingHours); // ✅ Only trigger if successful
     } else {
-      await _showValidationModal(false, false, 'Check-Out Failed',
-          standardErrorMessage);
+      await _showValidationModal(
+          false, false, 'Check-Out Failed', standardErrorMessage);
     }
   }
 
@@ -611,7 +648,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
     try {
       const AndroidNotificationDetails androidDetails =
-      AndroidNotificationDetails(
+          AndroidNotificationDetails(
         'attendance_channel_id',
         'Attendance Notifications',
         channelDescription: 'Notifications for check-in/check-out',
@@ -661,7 +698,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         Color backgroundColor = isSuccess ? Colors.green : Colors.red;
         Color iconColor = isSuccess ? Colors.greenAccent : Colors.redAccent;
         IconData iconData =
-        isSuccess ? Icons.check_circle_outline : Icons.cancel_outlined;
+            isSuccess ? Icons.check_circle_outline : Icons.cancel_outlined;
 
         return Dialog(
           shape: RoundedRectangleBorder(
@@ -682,7 +719,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                   decoration: BoxDecoration(
                     color: backgroundColor,
                     borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
+                        const BorderRadius.vertical(top: Radius.circular(20)),
                   ),
                   child: Center(
                     child: Text(
@@ -774,7 +811,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       if (mounted) {
         _showCustomDialog(
           "Error",
-         standardErrorMessage,
+          standardErrorMessage,
           isSuccess: false,
         );
       }
@@ -804,32 +841,67 @@ class AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _authenticate(BuildContext context, bool isCheckIn) async {
     if (!_biometricEnabled) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Please enable biometric authentication in settings first'),
-            duration: Duration(seconds: 3),
-          ),
-        );
+      // Double check settings from storage before showing error
+      await _checkBiometricState();
+
+      // If still not enabled after checking
+      if (!_biometricEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Please enable biometric authentication in settings first'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
       }
-      return;
     }
 
-    bool authenticated = await auth.authenticate(
-      localizedReason: AppLocalizations.of(context)!.authenticateToLogin,
-      options: const AuthenticationOptions(
-        biometricOnly: true,
-        useErrorDialogs: true,
-        stickyAuth: true,
-      ),
-    );
+    try {
+      // Ensure device supports biometrics before attempting
+      bool canCheckBiometrics = await auth.canCheckBiometrics;
+      bool isDeviceSupported = await auth.isDeviceSupported();
 
-    if (authenticated) {
-      if (isCheckIn) {
-        await _performCheckIn(DateTime.now());
-      } else {
-        await _performCheckOut(DateTime.now());
+      if (!canCheckBiometrics || !isDeviceSupported) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Your device does not support biometric authentication'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      bool authenticated = await auth.authenticate(
+        localizedReason: AppLocalizations.of(context)!.authenticateToLogin,
+        options: const AuthenticationOptions(
+          biometricOnly: true,
+          useErrorDialogs: true,
+          stickyAuth: true,
+        ),
+      );
+
+      if (authenticated) {
+        if (isCheckIn) {
+          await _performCheckIn(DateTime.now());
+        } else {
+          await _performCheckOut(DateTime.now());
+        }
+      }
+    } catch (e) {
+      debugPrint('Authentication error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Authentication error: ${e.toString()}'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     }
   }
@@ -1008,7 +1080,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
         final double latitude = double.parse(location['latitude'].toString());
         final double longitude = double.parse(location['longitude'].toString());
         final double radius =
-        double.parse(location['radius'].toString()); // radius in meters
+            double.parse(location['radius'].toString()); // radius in meters
 
         final distance = Geolocator.distanceBetween(
           position.latitude,
@@ -1104,14 +1176,14 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
                   backgroundColor: Theme.of(context).brightness ==
-                      Brightness.dark
+                          Brightness.dark
                       ? const Color(
-                      0xFFDBB342) // Dark mode background color (#DBB342)
+                          0xFFDBB342) // Dark mode background color (#DBB342)
                       : Colors.green, // Light mode background color (green)
                   elevation: 4,
                 ),
@@ -1171,7 +1243,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                               'assets/attendance.png',
                               width: 40,
                               color:
-                              isDarkMode ? const Color(0xFFDBB342) : null,
+                                  isDarkMode ? const Color(0xFFDBB342) : null,
                             ),
                             const SizedBox(width: 12),
                             Text(
@@ -1195,11 +1267,11 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                                   : Icons.error_outline,
                               color: isSuccess
                                   ? (isDarkMode
-                                  ? Colors.greenAccent
-                                  : Colors.green)
+                                      ? Colors.greenAccent
+                                      : Colors.green)
                                   : (isDarkMode
-                                  ? Colors.redAccent
-                                  : Colors.red),
+                                      ? Colors.redAccent
+                                      : Colors.red),
                               size: constraints.maxWidth < 400 ? 40 : 50,
                             ),
                             const SizedBox(width: 12),
@@ -1235,7 +1307,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                               backgroundColor: const Color(
                                   0xFFDBB342), // Gold color for button
                               padding:
-                              const EdgeInsets.symmetric(vertical: 12.0),
+                                  const EdgeInsets.symmetric(vertical: 12.0),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14.0),
                               ),
@@ -1502,7 +1574,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                       Icons.login,
                       Colors.green,
                       isDarkMode:
-                      Theme.of(context).brightness == Brightness.dark,
+                          Theme.of(context).brightness == Brightness.dark,
                     ),
                     _buildSummaryItem(
                       AppLocalizations.of(context)!.checkOut,
@@ -1510,7 +1582,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                       Icons.logout,
                       Colors.red,
                       isDarkMode:
-                      Theme.of(context).brightness == Brightness.dark,
+                          Theme.of(context).brightness == Brightness.dark,
                     ),
                     _buildSummaryItem(
                       AppLocalizations.of(context)!.workingHours,
@@ -1518,7 +1590,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                       Icons.timer,
                       Colors.blue,
                       isDarkMode:
-                      Theme.of(context).brightness == Brightness.dark,
+                          Theme.of(context).brightness == Brightness.dark,
                     ),
                   ],
                 ),
@@ -1560,9 +1632,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
                             fontSize: fontSize,
                             fontWeight: FontWeight.bold,
                             color:
-                            Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white
-                                : Colors.black,
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black,
                           ),
                         ),
                         // const SizedBox(height: 2),
@@ -1606,7 +1678,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
             fontSize: 14,
             fontWeight: FontWeight.bold,
             color:
-            isDarkMode ? Colors.white : Colors.black, // Adjust time color
+                isDarkMode ? Colors.white : Colors.black, // Adjust time color
           ),
         ),
 
@@ -1863,7 +1935,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
               const SizedBox(height: 16),
               Container(
                 padding:
-                const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.black54,
                   borderRadius: BorderRadius.circular(8),

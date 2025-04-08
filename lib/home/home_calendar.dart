@@ -430,7 +430,8 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
+      showSnackBar(
+          'We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
   }
 
@@ -531,7 +532,8 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
+      showSnackBar(
+          'We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
 
     return;
@@ -636,7 +638,8 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
+      showSnackBar(
+          'We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
   }
 
@@ -731,7 +734,8 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
+      showSnackBar(
+          'We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
     return;
   }
@@ -804,7 +808,8 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
+      showSnackBar(
+          'We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
   }
 
@@ -900,7 +905,8 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
+      showSnackBar(
+          'We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
     return;
   }
@@ -1007,7 +1013,8 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
+      showSnackBar(
+          'We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
   }
 

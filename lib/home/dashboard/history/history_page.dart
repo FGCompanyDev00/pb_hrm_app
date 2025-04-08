@@ -44,6 +44,13 @@ class HistoryPageState extends State<HistoryPage>
   bool _showPendingViewMoreButton = false;
   bool _showHistoryViewMoreButton = false;
 
+  static const Map<String, IconData> _typeIcons = {
+    'meeting': Icons.meeting_room,
+    'leave': Icons.event,
+    'car': Icons.directions_car,
+    'minutes of meeting': Icons.sticky_note_2,
+  };
+
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
 
@@ -459,8 +466,7 @@ class HistoryPageState extends State<HistoryPage>
       'img_name': item['img_name'] ??
           'https://via.placeholder.com/150', // Placeholder image
       'img_path': item['img_path'] ?? '',
-      'icon':
-          _getIconForType(type).codePoint, // Store icon as code point integer
+      'iconType': type,
     };
 
     switch (type) {
@@ -608,18 +614,15 @@ class HistoryPageState extends State<HistoryPage>
   IconData _getIconForType(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
-        return Icons.meeting_room;
+        return const IconData(0xe63c, fontFamily: 'MaterialIcons');
       case 'leave':
-        return Icons.event;
+        return const IconData(0xe616, fontFamily: 'MaterialIcons');
       case 'car':
-        return Icons.directions_car;
-
-      /// NEW: minutes of meeting icon
+        return const IconData(0xe1d7, fontFamily: 'MaterialIcons');
       case 'minutes of meeting':
-        return Icons.sticky_note_2;
-
+        return const IconData(0xf04b, fontFamily: 'MaterialIcons');
       default:
-        return Icons.info;
+        return const IconData(0xe88e, fontFamily: 'MaterialIcons');
     }
   }
 
@@ -1204,11 +1207,7 @@ class HistoryPageState extends State<HistoryPage>
     }
 
     // Get icon - either from code point or by calculating
-    if (item['icon'] != null && item['icon'] is int) {
-      typeIcon = IconData(item['icon'], fontFamily: 'MaterialIcons');
-    } else {
-      typeIcon = _getIconForType(type);
-    }
+    typeIcon = _getIconForType(type);
 
     String formatDate(String dateStr) {
       try {
