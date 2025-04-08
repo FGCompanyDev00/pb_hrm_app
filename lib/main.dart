@@ -52,6 +52,7 @@ import 'package:pb_hrsystem/hive_helper/model/event_record.dart';
 import 'package:pb_hrsystem/hive_helper/model/calendar_events_record.dart';
 import 'package:pb_hrsystem/hive_helper/model/calendar_events_list_record.dart';
 import 'package:pb_hrsystem/widgets/update_dialog.dart';
+import 'core/utils/responsive_helper.dart';
 
 /// ------------------------------------------------------------
 /// 1) Global instance of FlutterLocalNotificationsPlugin
@@ -603,7 +604,11 @@ class MyApp extends StatelessWidget {
       builder: (context, themeNotifier, languageNotifier, child) {
         return MaterialApp(
           navigatorKey: navigatorKey,
-          builder: EasyLoading.init(),
+          builder: (context, child) {
+            ResponsiveHelper.init(context);
+            child = EasyLoading.init()(context, child);
+            return child!;
+          },
           title: 'PSVB Next',
           theme: ThemeData(
             primarySwatch: Colors.green,
