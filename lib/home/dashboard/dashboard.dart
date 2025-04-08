@@ -51,6 +51,9 @@ class DashboardState extends State<Dashboard>
   late final PageController _pageController;
   Timer? _carouselTimer;
 
+  String standardErrorMessage =
+      'We\'re unable to process your request at the moment. Please contact IT support for assistance.';
+
   // Cached data with lazy loading
   late Future<void> _initializationFuture;
   late Future<UserProfile> futureUserProfile;
@@ -933,7 +936,7 @@ class DashboardState extends State<Dashboard>
         if (snapshot.hasError) {
           return Scaffold(
             body: Center(
-              child: Text('Error initializing app: ${snapshot.error}'),
+              child: Text('Error initializing app: $standardErrorMessage'),
             ),
           );
         }
@@ -958,7 +961,7 @@ class DashboardState extends State<Dashboard>
                     return _buildAppBar(snapshot.data!, isDarkMode);
                   } else {
                     return _buildErrorAppBar(
-                      AppLocalizations.of(context)!.noDataAvailable,
+                      standardErrorMessage,
                     );
                   }
                 },
@@ -997,7 +1000,7 @@ class DashboardState extends State<Dashboard>
   PreferredSizeWidget _buildErrorAppBar(String errorMessage) {
     return AppBar(
       title: Text(
-        AppLocalizations.of(context)!.errorWithDetails(errorMessage),
+        standardErrorMessage,
         style: const TextStyle(color: Colors.red),
       ),
       backgroundColor: Colors.transparent,
@@ -1176,8 +1179,7 @@ class DashboardState extends State<Dashboard>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    AppLocalizations.of(context)!
-                        .errorWithDetails(snapshot.error.toString()),
+                    standardErrorMessage,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: isDarkMode ? Colors.white70 : Colors.black54,
@@ -1255,7 +1257,7 @@ class DashboardState extends State<Dashboard>
                       const Icon(Icons.error, size: 40, color: Colors.red),
                       const SizedBox(height: 8),
                       Text(
-                        'Image failed to load',
+                        'Image failed to load. Please contact IT support for assistance.',
                         style: TextStyle(
                           color: isDarkMode ? Colors.white70 : Colors.black54,
                         ),

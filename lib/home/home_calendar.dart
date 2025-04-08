@@ -430,7 +430,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Data Error');
+      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
   }
 
@@ -531,7 +531,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Data Error');
+      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
 
     return;
@@ -636,7 +636,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Data Error');
+      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
   }
 
@@ -660,7 +660,7 @@ class HomeCalendarState extends State<HomeCalendar>
         // String endTime = item['end_time'] != "" ? item['end_time'].toString() : '23:59';
 
         if (dateFrom.isEmpty || dateTo.isEmpty) {
-          showSnackBar('Missing from_date or to_date in minutes of meeting.');
+          debugPrint('Missing from_date or to_date in minutes of meeting.');
           continue;
         }
 
@@ -693,7 +693,7 @@ class HomeCalendarState extends State<HomeCalendar>
             inDate.minute,
           );
         } catch (e) {
-          showSnackBar('Error parsing car booking dates: $e');
+          debugPrint('Error parsing car booking dates: $e');
           continue;
         }
 
@@ -731,7 +731,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Data Error');
+      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
     return;
   }
@@ -804,7 +804,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Data Error');
+      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
   }
 
@@ -900,7 +900,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Data Error');
+      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
     return;
   }
@@ -1007,7 +1007,7 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     } catch (e) {
-      showSnackBar('Data Error');
+      showSnackBar('We\'re unable to process your request at the moment. Please contact IT support for assistance.');
     }
   }
 
@@ -1551,7 +1551,7 @@ class HomeCalendarState extends State<HomeCalendar>
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: const Text(
-                    "Your calendar data has been refreshed and updated successfully",
+                    "Your calendar data has been refreshed successfully",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 13,

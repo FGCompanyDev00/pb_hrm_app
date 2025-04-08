@@ -42,6 +42,9 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
   String? _selectedWaitingUid;
   String? _selectedMergeVehicleUid;
 
+  String standardErrorMessage =
+      'We\'re unable to process your request at the moment. Please contact IT support for assistance.';
+
   // Base URL for images
   final String _imageBaseUrl =
       'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
@@ -62,7 +65,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
       final String? token = await _getToken();
       if (token == null) {
         _showErrorDialog(
-            'Authentication Error', 'Token not found. Please log in again.');
+            'Authentication Error', 'Token not found. Please log out and then log in again.');
         return;
       }
 
@@ -131,20 +134,20 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           debugPrint('Approval details loaded successfully.');
         } else {
           throw Exception(
-              data['message'] ?? 'Failed to load approval details.');
+              standardErrorMessage);
         }
       } else if (response.statusCode == 403) {
-        throw Exception('Access forbidden: ${response.statusCode}');
+        throw Exception('Access forbidden: $standardErrorMessage');
       } else if (response.statusCode == 404) {
-        throw Exception('Approval details not found: ${response.statusCode}');
+        throw Exception('Approval details not found: $standardErrorMessage');
       } else {
         throw Exception(
-            'Failed to load approval details: ${response.statusCode}');
+            'Failed to load approval details: $standardErrorMessage');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching approval details: $e');
       debugPrint(stackTrace.toString());
-      _showErrorDialog('Error', e.toString());
+      _showErrorDialog('Error', standardErrorMessage);
       setState(() {
         isLoading = false;
       });
@@ -206,12 +209,12 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         final responseBody = jsonDecode(response.body);
         final errorMessage =
             responseBody['message'] ?? 'Failed to merge car permits.';
-        _showErrorDialog('Error', errorMessage);
+        _showErrorDialog('Error', standardErrorMessage);
       }
     } catch (e, stackTrace) {
       debugPrint('Error merging car permits: $e');
       debugPrint(stackTrace.toString());
-      _showErrorDialog('Error', 'An unexpected error occurred while merging.');
+      _showErrorDialog('Error', standardErrorMessage);
     } finally {
       setState(() {
         isFinalized = false;
@@ -259,9 +262,9 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         throw Exception('Failed to load waiting list: ${response.statusCode}');
       }
     } catch (e, stackTrace) {
-      debugPrint('Error fetching waiting list: $e');
+      debugPrint('Error fetching waiting list: $standardErrorMessage');
       debugPrint(stackTrace.toString());
-      _showErrorDialog('Error', e.toString());
+      _showErrorDialog('Error', standardErrorMessage);
     } finally {
       setState(() {
         _isFetchingWaitingList = false;
@@ -310,7 +313,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     } catch (e, stackTrace) {
       debugPrint('Error fetching vehicles: $e');
       debugPrint(stackTrace.toString());
-      _showErrorDialog('Error', e.toString());
+      _showErrorDialog('Error', standardErrorMessage);
     } finally {
       setState(() {
         _isFetchingVehicles = false;
@@ -324,7 +327,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     try {
       final String? token = await _getToken();
       if (token == null) {
-        throw Exception('Authentication Error: Token not found.');
+        throw Exception('Authentication Error: Token not found. Please log out and then log in again');
       }
 
       final response = await http.get(
@@ -340,10 +343,10 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         if (data['statusCode'] == 200 && data['results'] != null) {
           return data['results']['images'] ?? 'https://via.placeholder.com/150';
         } else {
-          throw Exception(data['message'] ?? 'Failed to load profile image.');
+          throw Exception(standardErrorMessage);
         }
       } else {
-        throw Exception('Failed to load profile image: ${response.statusCode}');
+        throw Exception(standardErrorMessage);
       }
     } catch (e) {
       // Log the error or handle it as per your requirement
@@ -1399,7 +1402,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         final responseBody = jsonDecode(response.body);
         final errorMessage =
             responseBody['message'] ?? 'Failed to approve the car booking.';
-        _showErrorDialog('Error', errorMessage);
+        _showErrorDialog('Error', standardErrorMessage);
       }
     } catch (e, stackTrace) {
       debugPrint('Error approving car: $e');
@@ -1638,13 +1641,13 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         final responseBody = jsonDecode(response.body);
         final errorMessage =
             responseBody['message'] ?? 'Failed to reject the car booking.';
-        _showErrorDialog('Error', errorMessage);
+        _showErrorDialog('Error', standardErrorMessage);
       }
     } catch (e, stackTrace) {
       debugPrint('Error rejecting car: $e');
       debugPrint(stackTrace.toString());
       _showErrorDialog(
-          'Error', 'An unexpected error occurred while rejecting.');
+          'Error', standardErrorMessage);
     } finally {
       setState(() {
         isFinalized = false;
@@ -1866,7 +1869,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     final String? token = await _getToken();
     if (token == null) {
       _showErrorDialog(
-          'Authentication Error', 'Token not found. Please log in again.');
+          'Authentication Error', 'Token not found. Please log out and then log in again.');
       setState(() {
         isFinalized = false;
       });
@@ -1899,7 +1902,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         "types": widget.type,
       };
     } else {
-      _showErrorDialog('Error', 'Invalid request type.');
+      _showErrorDialog('Error', 'Invalid request type. Please contact IT support for assistance.');
       setState(() {
         isFinalized = false;
       });
@@ -1965,7 +1968,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     if (errorMessage == null) {
       _showSuccessDialog('Success', 'Request has been $action successfully.');
     } else {
-      _showErrorDialog('Error', errorMessage);
+      _showErrorDialog('Error', standardErrorMessage);
     }
 
     setState(() {

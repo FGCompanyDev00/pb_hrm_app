@@ -80,6 +80,9 @@ class AttendanceScreenState extends State<AttendanceScreen> {
   late String officeApiUrl;
   late String offsiteApiUrl;
 
+  String standardErrorMessage =
+      'We\'re unable to process your request at the moment. Please contact IT support for assistance.';
+
   static const double _officeRange = 500;
   static LatLng officeLocation = const LatLng(2.891589, 101.524822);
 
@@ -477,7 +480,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           _checkInTime.value); // ✅ Only trigger if successful
     } else {
       await _showValidationModal(true, false, 'Check-In Failed',
-          'We are unable to process your request at the moment. Please contact IT support for assistance.');
+          standardErrorMessage);
     }
   }
 
@@ -576,7 +579,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
           _checkOutTime.value, _workingHours); // ✅ Only trigger if successful
     } else {
       await _showValidationModal(false, false, 'Check-Out Failed',
-          'We are unable to process your request at the moment. Please contact IT support for assistance.');
+          standardErrorMessage);
     }
   }
 
@@ -771,7 +774,7 @@ class AttendanceScreenState extends State<AttendanceScreen> {
       if (mounted) {
         _showCustomDialog(
           "Error",
-          'Check-in/check-out failed: $error',
+         standardErrorMessage,
           isSuccess: false,
         );
       }
