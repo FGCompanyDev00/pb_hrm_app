@@ -37,16 +37,22 @@ class SplashScreenState extends State<SplashScreen>
       Animation<double> animation,
       Animation<double> secondaryAnimation,
       Widget child) {
-    const begin = Offset(1.0, 0.0);
-    const end = Offset.zero;
-    const curve = Curves.easeInOut;
-
-    final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-    final offsetAnimation = animation.drive(tween);
-
-    return SlideTransition(
-      position: offsetAnimation,
-      child: child,
+    // Use modern fade-through transition instead of simple slide
+    return FadeTransition(
+      opacity: CurvedAnimation(
+        parent: animation,
+        curve: const Interval(0.3, 1.0, curve: Curves.easeOutCubic),
+      ),
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.0, 0.05),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: animation,
+          curve: const Interval(0.1, 1.0, curve: Curves.easeOutCubic),
+        )),
+        child: child,
+      ),
     );
   }
 
@@ -127,34 +133,41 @@ class SplashScreenState extends State<SplashScreen>
         debugPrint('- isSessionValid: ${userProvider.isSessionValid}');
         debugPrint('- hasToken: ${userProvider.token.isNotEmpty}');
 
+        // First prepare transition animation
+        final PageRouteBuilder<void> route;
+
         // First check if we should go to login page
         if (!userProvider.isLoggedIn ||
             !userProvider.isSessionValid ||
             userProvider.token.isEmpty) {
           debugPrint('Redirecting to login page due to invalid session');
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) =>
-                  const LoginPage(),
-              transitionsBuilder: _buildTransition,
-              transitionDuration: _transitionDuration,
-            ),
+          route = PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const LoginPage(),
+            transitionsBuilder: _buildTransition,
+            transitionDuration: const Duration(milliseconds: 800),
           );
-          return;
-        }
-
-        // If we get here, we have a valid session
-        debugPrint('Session is valid, proceeding to main screen');
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
+        } else {
+          // If we get here, we have a valid session
+          debugPrint('Session is valid, proceeding to main screen');
+          route = PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
                 const MainScreen(),
             transitionsBuilder: _buildTransition,
-            transitionDuration: _transitionDuration,
-          ),
-        );
+            transitionDuration: const Duration(milliseconds: 800),
+          );
+        }
+
+        // Start an out animation before navigation
+        if (mounted) {
+          // First fade out current content
+          await Future.delayed(const Duration(milliseconds: 200));
+
+          // Then navigate with the route's transition
+          if (mounted) {
+            Navigator.pushReplacement(context, route);
+          }
+        }
       }
     });
   }
@@ -393,42 +406,97 @@ class SplashScreenState extends State<SplashScreen>
 
                   SizedBox(height: spacing * 3),
 
-                  // Enhanced Loading Indicator with modern design
+                  // Modern water animation loading indicator
                   Container(
-                    width: 70,
-                    height: 70,
-                    padding: const EdgeInsets.all(8),
+                    width: 120,
+                    height: 60,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: SweepGradient(
+                      borderRadius: BorderRadius.circular(30),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
                         colors: [
-                          primaryColor.withOpacity(0.3),
-                          primaryColor,
+                          isDarkMode ? Colors.grey[850]! : Colors.white,
+                          isDarkMode ? Colors.grey[900]! : Colors.grey[100]!,
                         ],
-                        stops: const [0.8, 1.0],
-                        transform: GradientRotation(
-                            _pulseController.value * 2 * 3.14159),
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: primaryColor.withOpacity(0.3),
-                          blurRadius: 10,
+                          color: primaryColor.withOpacity(0.2),
+                          blurRadius: 12,
                           spreadRadius: 2,
                         ),
                       ],
                     ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isDarkMode ? Colors.grey[900] : Colors.white,
-                      ),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3.0,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(primaryColor),
+                    child: Stack(
+                      children: [
+                        // Water wave animation
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(30),
+                          child: AnimatedBuilder(
+                            animation: _pulseController,
+                            builder: (context, child) {
+                              return CustomPaint(
+                                size: const Size(120, 60),
+                                painter: ModernWaterLoadingPainter(
+                                  animationValue: _pulseController.value,
+                                  color: primaryColor,
+                                  progress: 0.3 + _pulseController.value * 0.4,
+                                ),
+                              );
+                            },
+                          ),
                         ),
-                      ),
+
+                        // Subtle shimmer overlay
+                        Positioned.fill(
+                          child: AnimatedBuilder(
+                            animation: _pulseController,
+                            builder: (context, _) {
+                              return ShaderMask(
+                                shaderCallback: (bounds) {
+                                  return LinearGradient(
+                                    begin: Alignment(
+                                      -1.0 + 2.0 * _pulseController.value,
+                                      0.0,
+                                    ),
+                                    end: Alignment(
+                                      0.0 + 2.0 * _pulseController.value,
+                                      0.0,
+                                    ),
+                                    colors: [
+                                      Colors.transparent,
+                                      Colors.white.withOpacity(0.3),
+                                      Colors.transparent,
+                                    ],
+                                    stops: const [0.25, 0.5, 0.75],
+                                  ).createShader(bounds);
+                                },
+                                blendMode: BlendMode.srcATop,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(30),
+                                    color: Colors.transparent,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+
+                        // Loading text
+                        Center(
+                          child: Text(
+                            "LOADING",
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 3.0,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   )
                       .animate(delay: 800.ms)
@@ -436,16 +504,38 @@ class SplashScreenState extends State<SplashScreen>
                         begin: const Offset(0.5, 0.5),
                         end: const Offset(1.0, 1.0),
                         duration: 600.ms,
+                        curve: Curves.elasticOut,
                       )
-                      .fadeIn(duration: 600.ms)
-                      .then()
-                      .animate(
-                        onPlay: (controller) => controller.repeat(),
-                      )
-                      .shimmer(
-                        duration: 1800.ms,
-                        color: isDarkMode ? Colors.white24 : Colors.black12,
-                      ),
+                      .fadeIn(duration: 600.ms),
+
+                  const SizedBox(height: 16),
+
+                  // Animated ellipsis
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (int i = 0; i < 3; i++)
+                        Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: primaryColor,
+                          ),
+                        )
+                            .animate(
+                              onPlay: (controller) =>
+                                  controller.repeat(reverse: true),
+                              delay: Duration(milliseconds: i * 150),
+                            )
+                            .scaleXY(
+                              begin: 0.5,
+                              end: 1.0,
+                              duration: 600.ms,
+                            ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -506,4 +596,148 @@ class ParticlePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(ParticlePainter oldDelegate) => true;
+}
+
+// Water wave animation for loading indicator
+class WaterWavePainter extends CustomPainter {
+  final double animationValue;
+  final Color color;
+
+  WaterWavePainter(this.animationValue, this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final radius = size.width / 2;
+    final center = Offset(size.width / 2, size.height / 2);
+
+    // Draw waves
+    final wavePaint = Paint()
+      ..color = color.withOpacity(0.4)
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+
+    // Starting point
+    path.moveTo(0, size.height * 0.5);
+
+    // Create wave effect
+    for (double i = 0; i < size.width; i++) {
+      final waveHeight =
+          sin((i / size.width * 4 * pi) + (animationValue * 2 * pi)) *
+              (size.height * 0.1);
+      path.lineTo(i, size.height * 0.5 + waveHeight);
+    }
+
+    // Complete the path
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+
+    // Draw waves with clipping to circle
+    canvas.save();
+    canvas.clipPath(
+        Path()..addOval(Rect.fromCircle(center: center, radius: radius)));
+    canvas.drawPath(path, wavePaint);
+
+    // Draw additional wave layers with different phases for depth effect
+    final secondWavePaint = Paint()
+      ..color = color.withOpacity(0.3)
+      ..style = PaintingStyle.fill;
+
+    final secondPath = Path();
+    secondPath.moveTo(0, size.height * 0.6);
+
+    for (double i = 0; i < size.width; i++) {
+      final waveHeight =
+          sin((i / size.width * 3 * pi) + (animationValue * 2 * pi) + pi / 3) *
+              (size.height * 0.08);
+      secondPath.lineTo(i, size.height * 0.6 + waveHeight);
+    }
+
+    secondPath.lineTo(size.width, size.height);
+    secondPath.lineTo(0, size.height);
+    secondPath.close();
+
+    canvas.drawPath(secondPath, secondWavePaint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(WaterWavePainter oldDelegate) =>
+      oldDelegate.animationValue != animationValue;
+}
+
+// Modern water animation loading indicator
+class ModernWaterLoadingPainter extends CustomPainter {
+  final double animationValue;
+  final Color color;
+  final double progress;
+
+  ModernWaterLoadingPainter({
+    required this.animationValue,
+    required this.color,
+    required this.progress,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final radius = size.width / 2;
+    final center = Offset(size.width / 2, size.height / 2);
+
+    // Draw waves
+    final wavePaint = Paint()
+      ..color = color.withOpacity(0.4)
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+
+    // Starting point
+    path.moveTo(0, size.height * 0.5);
+
+    // Create wave effect
+    for (double i = 0; i < size.width; i++) {
+      final waveHeight =
+          sin((i / size.width * 4 * pi) + (animationValue * 2 * pi)) *
+              (size.height * 0.1);
+      path.lineTo(i, size.height * 0.5 + waveHeight);
+    }
+
+    // Complete the path
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+
+    // Draw waves with clipping to circle
+    canvas.save();
+    canvas.clipPath(
+        Path()..addOval(Rect.fromCircle(center: center, radius: radius)));
+    canvas.drawPath(path, wavePaint);
+
+    // Draw additional wave layers with different phases for depth effect
+    final secondWavePaint = Paint()
+      ..color = color.withOpacity(0.3)
+      ..style = PaintingStyle.fill;
+
+    final secondPath = Path();
+    secondPath.moveTo(0, size.height * 0.6);
+
+    for (double i = 0; i < size.width; i++) {
+      final waveHeight =
+          sin((i / size.width * 3 * pi) + (animationValue * 2 * pi) + pi / 3) *
+              (size.height * 0.08);
+      secondPath.lineTo(i, size.height * 0.6 + waveHeight);
+    }
+
+    secondPath.lineTo(size.width, size.height);
+    secondPath.lineTo(0, size.height);
+    secondPath.close();
+
+    canvas.drawPath(secondPath, secondWavePaint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(ModernWaterLoadingPainter oldDelegate) =>
+      oldDelegate.animationValue != animationValue ||
+      oldDelegate.progress != progress;
 }

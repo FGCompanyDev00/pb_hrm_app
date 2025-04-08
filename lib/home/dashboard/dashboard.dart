@@ -722,7 +722,7 @@ class DashboardState extends State<Dashboard>
 
       // Also ensure it's in the disk cache for persistence
       DefaultCacheManager().getSingleFile(imageUrl).then((file) {
-        debugPrint('Image cached to disk: ${file.path}');
+        // debugPrint('Image cached to disk: ${file.path}');
       }).catchError((e) {
         debugPrint('Error caching image to disk: $e');
       });
