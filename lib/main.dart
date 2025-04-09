@@ -508,7 +508,7 @@ void main() {
       // Add retry mechanism with exponential backoff
       Future.delayed(const Duration(seconds: 5), () {
         // Attempt to get location again
-        // You may want to implement your location service retry logic here
+        // Later may want to implement your location service retry logic here
       });
       return;
     }

@@ -522,25 +522,10 @@ class AttendanceScreenState extends State<AttendanceScreen>
       record.latitude = currentPosition.latitude.toString();
       record.longitude = currentPosition.longitude.toString();
 
-      // Check for fake location quickly
+      // Check for fake location - only log suspicious activity
       if (!_isOffsite.value && await _isFakeLocationDetected(currentPosition)) {
-        await _showValidationModal(true, false, 'Security Alert',
-            'Fake location detected. Please disable any mock location apps and try again.');
-        return;
-      }
-
-      // Validate location is within allowed areas if not offsite
-      if (!_isOffsite.value && !await _isWithinAllowedArea(currentPosition)) {
-        await _showValidationModal(true, false, 'Location Verification Failed',
-            'You are not within an approved work location. Please check in from an authorized location or select "Offsite" if working remotely.');
-        return;
-      }
-    } else {
-      // No position available
-      if (!_isOffsite.value) {
-        await _showValidationModal(true, false, 'Location Required',
-            'Unable to verify your location. Please enable location services and try again, or select "Offsite" if working remotely.');
-        return;
+        // Log for security monitoring
+        _logFakeLocationAttempt(currentPosition, null);
       }
     }
 
@@ -635,11 +620,10 @@ class AttendanceScreenState extends State<AttendanceScreen>
       record.latitude = currentPosition.latitude.toString();
       record.longitude = currentPosition.longitude.toString();
 
-      // Quick check for fake location if not offsite
+      // Log fake location without blocking checkout
       if (!_isOffsite.value && await _isFakeLocationDetected(currentPosition)) {
-        await _showValidationModal(false, false, 'Security Alert',
-            'Fake location detected. Please disable any mock location apps and try again.');
-        return;
+        // Log for security monitoring
+        _logFakeLocationAttempt(currentPosition, null);
       }
     }
 

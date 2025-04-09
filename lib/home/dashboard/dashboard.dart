@@ -820,7 +820,7 @@ class DashboardState extends State<Dashboard>
 
   // Start the carousel auto-swipe timer with modern sliding effect
   void _startCarouselTimer() {
-    _carouselTimer = Timer.periodic(const Duration(seconds: 5), (Timer timer) {
+    _carouselTimer = Timer.periodic(const Duration(seconds: 12), (Timer timer) {
       if (_pageController.hasClients) {
         int nextPage = _currentPage + 1;
         // Calculate the total number of pages
