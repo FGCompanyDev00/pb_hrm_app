@@ -11,13 +11,40 @@ final GetIt sl = GetIt.instance;
 
 Future<void> setupServiceLocator() async {
   try {
-    final prefs = await SharedPreferences.getInstance();
+    // Check if UserPreferences is already registered to avoid duplicate registration
+    if (!sl.isRegistered<UserPreferences>()) {
+      final prefs = await SharedPreferences.getInstance();
 
-    sl.registerLazySingleton<UserPreferences>(() => UserPreferences(prefs));
-    debugPrint('UserPreferences service registered');
-    sl.registerLazySingleton<Connectivity>(() => Connectivity());
-    sl.registerLazySingleton<OfflineProvider>(() => OfflineProvider());
+      // Register UserPreferences first with higher priority
+      sl.registerLazySingleton<UserPreferences>(() => UserPreferences(prefs));
+      debugPrint('UserPreferences service registered successfully');
+    } else {
+      debugPrint('UserPreferences already registered');
+    }
+
+    // Register other services if not already registered
+    if (!sl.isRegistered<Connectivity>()) {
+      sl.registerLazySingleton<Connectivity>(() => Connectivity());
+      debugPrint('Connectivity service registered successfully');
+    }
+
+    if (!sl.isRegistered<OfflineProvider>()) {
+      sl.registerLazySingleton<OfflineProvider>(() => OfflineProvider());
+      debugPrint('OfflineProvider service registered successfully');
+    }
   } catch (e) {
     debugPrint("Error during service locator setup: $e");
+
+    // Attempt recovery if possible
+    if (!sl.isRegistered<UserPreferences>()) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        sl.registerLazySingleton<UserPreferences>(() => UserPreferences(prefs));
+        debugPrint('UserPreferences service registered in recovery mode');
+      } catch (recoveryError) {
+        debugPrint(
+            "Critical error: Failed to register UserPreferences even in recovery mode: $recoveryError");
+      }
+    }
   }
 }

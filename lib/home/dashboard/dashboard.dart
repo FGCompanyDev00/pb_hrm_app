@@ -699,7 +699,7 @@ class DashboardState extends State<Dashboard>
   }
 
   // Helper method to prefetch images
-  void _prefetchImage(String imageUrl) {
+  void _prefetchImage(String imageUrl, {bool highPriority = false}) {
     if (imageUrl.isEmpty || Uri.tryParse(imageUrl)?.hasAbsolutePath != true)
       return;
 
@@ -842,15 +842,20 @@ class DashboardState extends State<Dashboard>
             final imageUrl = banners[nextPage];
             if (imageUrl.isNotEmpty) {
               _prefetchImage(imageUrl);
+
+              // Also prefetch the image after the next one
+              if (nextPage + 1 < banners.length) {
+                _prefetchImage(banners[nextPage + 1]);
+              }
             }
           }
         }
 
-        // Modern sliding animation
+        // Modern sliding animation with smoother curve
         _pageController.animateToPage(
           nextPage,
-          duration: const Duration(milliseconds: 700),
-          curve: Curves.fastLinearToSlowEaseIn,
+          duration: const Duration(milliseconds: 900),
+          curve: Curves.easeOutCubic,
         );
 
         setState(() {
@@ -1434,6 +1439,9 @@ class DashboardState extends State<Dashboard>
           final cachedBanners = _getCachedData('banners') as List<String>?;
 
           if (cachedBanners != null && cachedBanners.isNotEmpty) {
+            // Preload all banner images at once
+            _preloadAllBannerImages(cachedBanners);
+
             // If we have cached data, show it immediately
             return Column(
               children: [
@@ -1490,6 +1498,9 @@ class DashboardState extends State<Dashboard>
               ),
             );
           } else {
+            // Preload all banner images at once
+            _preloadAllBannerImages(snapshot.data!);
+
             // Show the actual banners with page indicator
             return Column(
               children: [
@@ -1506,6 +1517,16 @@ class DashboardState extends State<Dashboard>
         },
       ),
     );
+  }
+
+  // New method to preload all banner images at once
+  void _preloadAllBannerImages(List<String> banners) {
+    for (final bannerUrl in banners) {
+      if (bannerUrl.isNotEmpty &&
+          Uri.tryParse(bannerUrl)?.hasAbsolutePath == true) {
+        _prefetchImage(bannerUrl, highPriority: true);
+      }
+    }
   }
 
   Widget _buildBannerPageView(List<String> banners, bool isDarkMode) {
@@ -1528,9 +1549,14 @@ class DashboardState extends State<Dashboard>
         // Create a unique cache key for this banner
         final cacheKey = 'banner_${bannerUrl.hashCode}';
 
-        // Prefetch next image for smoother swiping
+        // More aggressive prefetching for smoother transitions
+        // Prefetch current, next and previous images
+        _prefetchImage(bannerUrl);
         if (index < banners.length - 1) {
           _prefetchImage(banners[index + 1]);
+        }
+        if (index > 0) {
+          _prefetchImage(banners[index - 1]);
         }
 
         return Hero(
@@ -1601,11 +1627,12 @@ class DashboardState extends State<Dashboard>
                 cacheManager: DefaultCacheManager(),
                 maxHeightDiskCache: 1080, // Optimize for most phone screens
                 memCacheHeight: 1080,
-                // Remove all fade transitions
+                // Use immediate display without transitions
                 fadeOutDuration: Duration.zero,
                 fadeInDuration: Duration.zero,
-                // Use cached image immediately
+                // Keep existing image while loading new one
                 useOldImageOnUrlChange: true,
+                // Preload images aggressively
                 placeholderFadeInDuration: Duration.zero,
                 progressIndicatorBuilder: (context, url, progress) => Container(
                   color: isDarkMode ? Colors.grey[850] : Colors.grey[200],

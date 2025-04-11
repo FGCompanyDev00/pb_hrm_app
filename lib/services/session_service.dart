@@ -90,6 +90,26 @@ class SessionService {
 
   static Future<void> _checkSessionExpiry() async {
     try {
+      // Check if UserPreferences is registered before accessing it
+      if (!sl.isRegistered<UserPreferences>()) {
+        debugPrint(
+            'UserPreferences not registered yet, attempting to register it');
+        try {
+          // Attempt to initialize service locator if needed
+          await setupServiceLocator();
+
+          // Double-check if it's now registered
+          if (!sl.isRegistered<UserPreferences>()) {
+            debugPrint(
+                'Failed to register UserPreferences, skipping session check');
+            return;
+          }
+        } catch (e) {
+          debugPrint('Error registering UserPreferences: $e');
+          return;
+        }
+      }
+
       final prefs = sl<UserPreferences>();
 
       // Check if user is logged in

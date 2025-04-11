@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_details_page.dart';
+import 'package:pb_hrsystem/notifications/notification_approvals_details_page.dart';
 import 'package:pb_hrsystem/notifications/notification_detail_page.dart';
 import 'package:pb_hrsystem/notifications/notification_meeting_section_detail_page.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
@@ -177,7 +178,10 @@ class NotificationPageState extends State<NotificationPage> {
 
   /// Fetches all pending approval items without pagination
   Future<void> _fetchPendingItems() async {
-    String pendingApiUrl = '$baseUrl/api/app/tasks/approvals/pending';
+    String meetingEndpoint =
+        '$baseUrl/api/office-administration/book_meeting_room/invites-meeting';
+    String carEndpoint =
+        '$baseUrl/api/office-administration/car_permits/invites-car-member';
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -187,47 +191,43 @@ class NotificationPageState extends State<NotificationPage> {
         throw Exception('User not authenticated');
       }
 
-      final pendingResponse = await http.get(
-        Uri.parse(pendingApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+      List<Map<String, dynamic>> allPendingItems = [];
+
+      // Fetch Meeting invites
+      await _fetchDataFromEndpoint(
+          meetingEndpoint, token, allPendingItems, 'meeting');
+
+      // Fetch Car permits
+      await _fetchDataFromEndpoint(carEndpoint, token, allPendingItems, 'car');
+
+      setState(() {
+        _pendingItems = allPendingItems;
+      });
 
       if (kDebugMode) {
-        debugPrint(
-            'Fetching pending items: Status Code ${pendingResponse.statusCode}');
+        debugPrint('Pending items loaded: ${_pendingItems.length} items.');
       }
 
-      if (pendingResponse.statusCode == 200) {
-        final responseBody = jsonDecode(pendingResponse.body);
-        if (responseBody['statusCode'] == 200 &&
-            responseBody['results'] != null) {
-          final List<dynamic> pendingData = responseBody['results'];
-
-          // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = pendingData
-              .where((item) => item != null)
-              .map((item) => Map<String, dynamic>.from(item))
-              .where((item) =>
-                  item['types'] != null &&
-                  _knownTypes.contains(item['types'].toString().toLowerCase()))
-              .toList();
-
-          setState(() {
-            _pendingItems = filteredData;
-          });
-          if (kDebugMode) {
-            debugPrint('Pending items loaded: ${_pendingItems.length} items.');
-          }
-        } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load pending data');
-        }
-      } else {
-        throw Exception(
-            'Failed to load pending data: ${pendingResponse.statusCode}');
+      // Check if there are no items and show snackbar if needed
+      if (allPendingItems.isEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'No invitation',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            margin: const EdgeInsets.all(16),
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
@@ -243,9 +243,52 @@ class NotificationPageState extends State<NotificationPage> {
     }
   }
 
+  /// Helper method to fetch data from a specific endpoint
+  Future<void> _fetchDataFromEndpoint(String url, String token,
+      List<Map<String, dynamic>> itemsList, String itemType) async {
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (kDebugMode) {
+        debugPrint('Fetching from $url: Status Code ${response.statusCode}');
+      }
+
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
+          final List<dynamic> dataItems = responseBody['results'];
+
+          for (var item in dataItems) {
+            final Map<String, dynamic> dataItem =
+                Map<String, dynamic>.from(item);
+            // Add type to distinguish different items
+            dataItem['types'] = itemType;
+            itemsList.add(dataItem);
+          }
+
+          if (kDebugMode) {
+            debugPrint('Loaded ${dataItems.length} $itemType items');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching from $url: $e');
+    }
+  }
+
   /// Fetches all history approval items without pagination
   Future<void> _fetchHistoryItems() async {
-    String historyApiUrl = '$baseUrl/api/app/tasks/approvals/history';
+    String meetingEndpoint =
+        '$baseUrl/api/office-administration/book_meeting_room/invites-meeting';
+    String carEndpoint =
+        '$baseUrl/api/office-administration/car_permits/invites-car-member';
 
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -255,47 +298,30 @@ class NotificationPageState extends State<NotificationPage> {
         throw Exception('User not authenticated');
       }
 
-      final historyResponse = await http.get(
-        Uri.parse(historyApiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
+      List<Map<String, dynamic>> allHistoryItems = [];
+
+      // Fetch Meeting history
+      await _fetchDataFromEndpoint(
+          meetingEndpoint, token, allHistoryItems, 'meeting');
+
+      // Fetch Car history
+      await _fetchDataFromEndpoint(carEndpoint, token, allHistoryItems, 'car');
+
+      // Filter to only include completed/history items
+      allHistoryItems = allHistoryItems.where((item) {
+        String status = (item['status']?.toString() ?? '').toLowerCase();
+        return status == 'approved' ||
+            status == 'rejected' ||
+            status == 'completed' ||
+            status == 'disapproved';
+      }).toList();
+
+      setState(() {
+        _historyItems = allHistoryItems;
+      });
 
       if (kDebugMode) {
-        debugPrint(
-            'Fetching history items: Status Code ${historyResponse.statusCode}');
-      }
-
-      if (historyResponse.statusCode == 200) {
-        final responseBody = jsonDecode(historyResponse.body);
-        if (responseBody['statusCode'] == 200 &&
-            responseBody['results'] != null) {
-          final List<dynamic> historyData = responseBody['results'];
-
-          // Filter out null items and unknown types
-          final List<Map<String, dynamic>> filteredData = historyData
-              .where((item) => item != null)
-              .map((item) => Map<String, dynamic>.from(item))
-              .where((item) =>
-                  item['types'] != null &&
-                  _knownTypes.contains(item['types'].toString().toLowerCase()))
-              .toList();
-
-          setState(() {
-            _historyItems = filteredData;
-          });
-          if (kDebugMode) {
-            debugPrint('History items loaded: ${_historyItems.length} items.');
-          }
-        } else {
-          throw Exception(
-              responseBody['message'] ?? 'Failed to load history data');
-        }
-      } else {
-        throw Exception(
-            'Failed to load history data: ${historyResponse.statusCode}');
+        debugPrint('History items loaded: ${_historyItems.length} items.');
       }
     } catch (e, stackTrace) {
       if (kDebugMode) {
@@ -439,7 +465,7 @@ class NotificationPageState extends State<NotificationPage> {
                         : (_pendingItems.isEmpty && _historyItems.isEmpty)
                             ? Center(
                                 child: Text(
-                                  'No Approval Items',
+                                  'No Invitation',
                                   style: TextStyle(
                                     fontSize: screenSize.width * 0.045,
                                   ),
@@ -500,6 +526,18 @@ class NotificationPageState extends State<NotificationPage> {
       ..._pendingItems,
       ..._historyItems
     ];
+
+    // If no items, display centered message
+    if (combinedApprovalItems.isEmpty) {
+      return Center(
+        child: Text(
+          'No Invitation',
+          style: TextStyle(
+            fontSize: screenSize.width * 0.045,
+          ),
+        ),
+      );
+    }
 
     // Change from 30 to 15 for initial display, and limit max to 40 items
     int itemCount = _isApprovalExpanded
@@ -800,7 +838,7 @@ class NotificationPageState extends State<NotificationPage> {
           MaterialPageRoute(
             builder: (context) => type == 'meeting' && _isMeetingSelected
                 ? NotificationMeetingDetailsPage(id: id)
-                : ApprovalsDetailsPage(id: id, type: type),
+                : NotificationApprovalsDetailsPage(id: id, type: type),
           ),
         );
 

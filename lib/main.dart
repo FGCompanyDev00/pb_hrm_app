@@ -187,11 +187,29 @@ Future<void> _initializeApp() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize service locator first, before anything else
+  try {
+    await setupServiceLocator();
+    debugPrint("Service locator initialized early in app startup");
+  } catch (e) {
+    debugPrint("Error during early service locator initialization: $e");
+    // Continue with app startup even if this fails, we'll retry later
+  }
+
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // Optimize memory usage
+  if (Platform.isAndroid) {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
+    // Enable image caching optimization
+    PaintingBinding.instance.imageCache.maximumSizeBytes =
+        100 * 1024 * 1024; // 100MB limit
+  }
 
   // Load environment variables
   await dotenv.load(fileName: ".env.demo");
@@ -246,12 +264,19 @@ Future<void> _initializeApp() async {
 
 Future<void> _initializeServices() async {
   try {
+    // Make sure service locator is properly set up
+    if (!sl.isRegistered<UserPreferences>()) {
+      debugPrint(
+          "UserPreferences not registered yet, initializing service locator again");
+      await setupServiceLocator();
+    } else {
+      debugPrint(
+          "Service locator already initialized, continuing with other services");
+    }
+
     // Initialize Dio with optimized settings
     final dio = createSecureDio();
     sl.registerSingleton<Dio>(dio);
-
-    // Initialize remaining services
-    await setupServiceLocator();
 
     // Initialize calendar database with proper error handling
     try {
@@ -456,16 +481,35 @@ void _setupSessionCheckFallback() {
   // Check session every 15 minutes using a regular Timer
   Timer.periodic(const Duration(minutes: 15), (_) {
     try {
-      SessionService.checkSessionStatus();
+      // Make sure service locator is initialized before checking session
+      if (!sl.isRegistered<UserPreferences>()) {
+        setupServiceLocator().then((_) {
+          SessionService.checkSessionStatus();
+        }).catchError((e) {
+          debugPrint("Error setting up service locator in fallback: $e");
+        });
+      } else {
+        SessionService.checkSessionStatus();
+      }
     } catch (e) {
       debugPrint("Error in fallback session check: $e");
     }
   });
 
-  // Also check immediately
+  // Also check immediately but with a slight delay to allow for proper initialization
   Future.delayed(const Duration(seconds: 10), () {
     try {
-      SessionService.checkSessionStatus();
+      // Make sure service locator is initialized before checking session
+      if (!sl.isRegistered<UserPreferences>()) {
+        setupServiceLocator().then((_) {
+          SessionService.checkSessionStatus();
+        }).catchError((e) {
+          debugPrint(
+              "Error setting up service locator in initial fallback: $e");
+        });
+      } else {
+        SessionService.checkSessionStatus();
+      }
     } catch (e) {
       debugPrint("Error in initial fallback session check: $e");
     }
@@ -621,6 +665,12 @@ class MyApp extends StatelessWidget {
                 backgroundColor: Colors.green,
               ),
             ),
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: ZoomPageTransitionsBuilder(),
+                TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+              },
+            ),
           ),
           darkTheme: ThemeData(
             brightness: Brightness.dark,
@@ -631,6 +681,12 @@ class MyApp extends StatelessWidget {
                     bodyColor: Colors.white,
                     displayColor: Colors.white,
                   ),
+            ),
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: ZoomPageTransitionsBuilder(),
+                TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+              },
             ),
           ),
           themeMode: themeNotifier.currentTheme,
@@ -727,6 +783,7 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   // Add overlay entry for connectivity status
   OverlayEntry? _overlayEntry;
   Timer? _overlayTimer;
+  Timer? _offlineDebounceTimer;
 
   // Memoize screens to prevent unnecessary rebuilds
   late final List<Widget> _screens;
@@ -736,6 +793,9 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   // Flag to prevent showing multiple account warning more than once per session
   bool _hasCheckedMultipleAccounts = false;
+
+  // Add memory management flag
+  bool _isLowMemory = false;
 
   @override
   void initState() {
@@ -784,6 +844,42 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         _checkForUpdates();
       }
     });
+
+    // Set up periodic memory management
+    Timer.periodic(const Duration(minutes: 5), (_) {
+      if (!_isDisposed) {
+        _performMemoryManagement();
+      }
+    });
+  }
+
+  // Handle memory management
+  void _performMemoryManagement() {
+    if (!_isDisposed) {
+      setState(() {
+        _isLowMemory = true;
+      });
+
+      // Clear image caches
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+
+      // Schedule clearing non-essential caches
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (!_isDisposed) {
+          _clearNonEssentialCaches();
+          setState(() {
+            _isLowMemory = false;
+          });
+        }
+      });
+    }
+  }
+
+  // Clear non-essential caches
+  void _clearNonEssentialCaches() {
+    appCache.clear();
+    // Add other cache clearing as needed
   }
 
   // Add lifecycle event handler to check for updates and connectivity when app is resumed
@@ -794,187 +890,43 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       // Check connectivity when app is resumed
       _checkAndShowConnectivity();
       _checkForUpdates();
-    }
-  }
 
-  // Add method to check for available updates
-  Future<void> _checkForUpdates() async {
-    if (mounted) {
-      await UpdateDialogService.showUpdateDialog(context);
-    }
-  }
-
-  // Start periodic session check
-  void _startSessionCheck() {
-    // Check session every 5 minutes
-    _sessionCheckTimer = Timer.periodic(const Duration(minutes: 5), (_) {
-      if (_isDisposed) return;
-      _checkSessionStatus();
-    });
-
-    // Also check immediately
-    _checkSessionStatus();
-  }
-
-  // Check session status and show dialog if expired
-  void _checkSessionStatus() {
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    if (mounted && userProvider.isLoggedIn) {
-      if (!userProvider.isSessionValid) {
-        userProvider.logout();
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil('/login', (route) => false);
-        return;
+      // Force garbage collection on resume
+      if (Platform.isAndroid) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          PaintingBinding.instance.imageCache.clear();
+          _performMemoryManagement();
+        });
       }
-      userProvider.checkSessionStatus(context);
-    }
-  }
-
-  // New method to check current connectivity
-  Future<void> _checkAndShowConnectivity() async {
-    if (!mounted || _isDisposed) return;
-
-    try {
-      final results = await connectivityResult.checkConnectivity();
-      final hasInternet = results.contains(ConnectivityResult.wifi) ||
-          results.contains(ConnectivityResult.mobile);
-
-      if (mounted) {
-        _showConnectivityOverlay(hasInternet, results);
-      }
-    } catch (e) {
-      debugPrint('Error checking connectivity: $e');
-    }
-  }
-
-  void _showConnectivityOverlay(
-      bool hasInternet, List<ConnectivityResult> source) {
-    // Remove existing overlay if any
-    _overlayEntry?.remove();
-    _overlayTimer?.cancel();
-
-    if (!mounted || _isDisposed) return;
-
-    final overlay = Overlay.of(context);
-
-    _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: 0,
-        left: 0,
-        right: 0,
-        child: Material(
-          color: Colors.transparent,
-          child: TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 300), // Faster animation
-            tween: Tween<double>(begin: -100, end: 0),
-            curve: Curves.easeOutCubic, // Smoother curve
-            builder: (context, value, child) => Transform.translate(
-              offset: Offset(0, value),
-              child: child,
-            ),
-            child: Container(
-              margin: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 8,
-                  left: 16,
-                  right: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: hasInternet
-                    ? Colors.green.withOpacity(0.95)
-                    : Colors.red.withOpacity(0.95),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: (hasInternet ? Colors.green : Colors.red)
-                        .withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: Icon(
-                      hasInternet
-                          ? (source.contains(ConnectivityResult.wifi)
-                              ? Icons.wifi_rounded
-                              : Icons.signal_cellular_alt_rounded)
-                          : Icons.signal_wifi_off_rounded,
-                      color: Colors.white,
-                      size: 24,
-                      key: ValueKey(hasInternet ? 'connected' : 'disconnected'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    hasInternet
-                        ? (source.contains(ConnectivityResult.wifi)
-                            ? 'WiFi Connected'
-                            : 'Mobile Data Connected')
-                        : 'No Internet Connection',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    // If overlay is null at this point, exit
-    if (overlay == null) return;
-
-    // Insert overlay
-    overlay.insert(_overlayEntry!);
-
-    // Auto-dismiss the overlay after 3 seconds
-    _overlayTimer = Timer(const Duration(seconds: 3), () {
+    } else if (state == AppLifecycleState.paused) {
+      // Clear overlay to prevent memory leaks
       _overlayEntry?.remove();
       _overlayEntry = null;
-    });
+      _overlayTimer?.cancel();
+    } else if (state == AppLifecycleState.detached) {
+      // Ensure resources are freed
+      _dispose();
+    }
   }
 
-  Future<void> _initializeConnectivity() async {
-    // Check connectivity immediately when app starts
-    await _checkAndShowConnectivity();
-
-    // Listen to connectivity changes with shorter delay
-    _connectivitySubscription =
-        connectivityResult.onConnectivityChanged.listen((source) async {
-      if (_isDisposed) return;
-
-      final bool hasInternet = source.contains(ConnectivityResult.wifi) ||
-          source.contains(ConnectivityResult.mobile);
-
-      if (mounted) {
-        _showConnectivityOverlay(hasInternet, source);
-
-        if (!hasInternet) {
-          await offlineProvider.autoOffline(true);
-        } else {
-          await offlineProvider.autoOffline(false);
-        }
-      }
-    });
+  // Shared dispose logic
+  void _dispose() {
+    if (!_isDisposed) {
+      _isDisposed = true;
+      _overlayEntry?.remove();
+      _overlayTimer?.cancel();
+      _offlineDebounceTimer?.cancel();
+      _connectivitySubscription.cancel();
+      _sessionCheckTimer?.cancel();
+    }
   }
 
   @override
   void dispose() {
-    _isDisposed = true;
-    _overlayEntry?.remove();
-    _overlayTimer?.cancel();
     // Remove the observer
     WidgetsBinding.instance.removeObserver(this);
-    _connectivitySubscription.cancel();
-    _sessionCheckTimer?.cancel();
     BackButtonInterceptor.remove(_routeInterceptor);
+    _dispose();
     super.dispose();
   }
 
@@ -1198,6 +1150,196 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         );
       },
     );
+  }
+
+  // Add method to check for available updates
+  Future<void> _checkForUpdates() async {
+    if (mounted) {
+      await UpdateDialogService.showUpdateDialog(context);
+    }
+  }
+
+  // Start periodic session check
+  void _startSessionCheck() {
+    // Check session every 5 minutes
+    _sessionCheckTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (_isDisposed) return;
+      _checkSessionStatus();
+    });
+
+    // Also check immediately
+    _checkSessionStatus();
+  }
+
+  // Check session status and show dialog if expired
+  void _checkSessionStatus() {
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    if (mounted && userProvider.isLoggedIn) {
+      if (!userProvider.isSessionValid) {
+        userProvider.logout();
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/login', (route) => false);
+        return;
+      }
+      userProvider.checkSessionStatus(context);
+    }
+  }
+
+  // New method to check current connectivity
+  Future<void> _checkAndShowConnectivity() async {
+    if (!mounted || _isDisposed) return;
+
+    try {
+      final results = await connectivityResult.checkConnectivity();
+      final hasInternet = results.contains(ConnectivityResult.wifi) ||
+          results.contains(ConnectivityResult.mobile);
+
+      if (mounted) {
+        _showConnectivityOverlay(hasInternet, results);
+      }
+    } catch (e) {
+      debugPrint('Error checking connectivity: $e');
+    }
+  }
+
+  void _showConnectivityOverlay(
+      bool hasInternet, List<ConnectivityResult> source) {
+    // Remove existing overlay if any
+    _overlayEntry?.remove();
+    _overlayTimer?.cancel();
+
+    if (!mounted || _isDisposed) return;
+
+    final overlay = Overlay.of(context);
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        child: Material(
+          color: Colors.transparent,
+          child: TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 300), // Faster animation
+            tween: Tween<double>(begin: -100, end: 0),
+            curve: Curves.easeOutCubic, // Smoother curve
+            builder: (context, value, child) => Transform.translate(
+              offset: Offset(0, value),
+              child: child,
+            ),
+            child: Container(
+              margin: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 8,
+                  left: 16,
+                  right: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: hasInternet
+                    ? Colors.green.withOpacity(0.95)
+                    : Colors.red.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: (hasInternet ? Colors.green : Colors.red)
+                        .withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: Icon(
+                      hasInternet
+                          ? (source.contains(ConnectivityResult.wifi)
+                              ? Icons.wifi_rounded
+                              : Icons.signal_cellular_alt_rounded)
+                          : Icons.signal_wifi_off_rounded,
+                      color: Colors.white,
+                      size: 24,
+                      key: ValueKey(hasInternet ? 'connected' : 'disconnected'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    hasInternet
+                        ? (source.contains(ConnectivityResult.wifi)
+                            ? 'WiFi Connected'
+                            : 'Mobile Data Connected')
+                        : 'No Internet Connection',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // If overlay is null at this point, exit
+    if (overlay == null) return;
+
+    // Insert overlay
+    overlay.insert(_overlayEntry!);
+
+    // Auto-dismiss the overlay after 3 seconds
+    _overlayTimer = Timer(const Duration(seconds: 3), () {
+      _overlayEntry?.remove();
+      _overlayEntry = null;
+    });
+  }
+
+  // Attempt to sync data when connection is restored
+  Future<void> _attemptDataSync() async {
+    try {
+      debugPrint("Connectivity restored - attempting to sync data");
+
+      // Could call various sync methods in your providers
+      // e.g., await offlineProvider.syncPendingData();
+    } catch (e) {
+      debugPrint("Error syncing data after connectivity restored: $e");
+    }
+  }
+
+  Future<void> _initializeConnectivity() async {
+    // Check connectivity immediately when app starts
+    await _checkAndShowConnectivity();
+
+    // Listen to connectivity changes with shorter delay
+    _connectivitySubscription =
+        connectivityResult.onConnectivityChanged.listen((source) async {
+      if (_isDisposed) return;
+
+      final bool hasInternet = source.contains(ConnectivityResult.wifi) ||
+          source.contains(ConnectivityResult.mobile);
+
+      if (mounted) {
+        _showConnectivityOverlay(hasInternet, source);
+
+        // Add debouncing to prevent rapid toggling
+        if (_offlineDebounceTimer?.isActive ?? false) {
+          _offlineDebounceTimer?.cancel();
+        }
+
+        _offlineDebounceTimer = Timer(const Duration(seconds: 2), () async {
+          if (!hasInternet) {
+            await offlineProvider.autoOffline(true);
+          } else {
+            await offlineProvider.autoOffline(false);
+
+            // Try to sync any pending data when connection is restored
+            _attemptDataSync();
+          }
+        });
+      }
+    });
   }
 }
 

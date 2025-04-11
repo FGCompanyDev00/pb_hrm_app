@@ -473,12 +473,18 @@ class AttendanceScreenState extends State<AttendanceScreen>
     setState(() {
       _checkInTime.value = savedCheckInTime ?? '--:--:--';
       _checkOutTime.value = savedCheckOutTime ?? '--:--:--';
-      _checkInDateTime = savedCheckInTime != null
-          ? DateFormat('HH:mm:ss').parse(savedCheckInTime)
-          : null;
-      _checkOutDateTime = savedCheckOutTime != null
-          ? DateFormat('HH:mm:ss').parse(savedCheckOutTime)
-          : null;
+
+      // Check if savedCheckInTime is valid before parsing
+      _checkInDateTime =
+          (savedCheckInTime != null && savedCheckInTime != '--:--:--')
+              ? DateFormat('HH:mm:ss').parse(savedCheckInTime)
+              : null;
+
+      // Check if savedCheckOutTime is valid before parsing
+      _checkOutDateTime =
+          (savedCheckOutTime != null && savedCheckOutTime != '--:--:--')
+              ? DateFormat('HH:mm:ss').parse(savedCheckOutTime)
+              : null;
 
       // Use lastAction to determine if next action should be check-out
       _isCheckInActive.value = lastAction == "checkIn";
