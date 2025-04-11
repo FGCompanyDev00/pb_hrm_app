@@ -798,43 +798,44 @@ class AttendanceScreenState extends State<AttendanceScreen>
     String? token = userPreferences.getToken();
 
     if (token == null) {
-      if (mounted) {
-        _showCustomDialog(
-          "Error",
-          "No token found. Please log in again.",
-          isSuccess: false,
-        );
-      }
+      debugPrint('No token found for ${record.type}');
       return false;
     }
 
     try {
+      // Log request body
+      final requestBody = {
+        "device_id": record.deviceId,
+        "latitude": record.latitude,
+        "longitude": record.longitude,
+      };
+
+      debugPrint('========== ${record.type.toUpperCase()} REQUEST ==========');
+      debugPrint('URL: $url');
+      debugPrint('Request Body: ${jsonEncode(requestBody)}');
+
       final response = await http.post(
         Uri.parse(url),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          "device_id": record.deviceId,
-          "latitude": record.latitude,
-          "longitude": record.longitude,
-        }),
+        body: jsonEncode(requestBody),
       );
+
+      debugPrint('========== ${record.type.toUpperCase()} RESPONSE ==========');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Response Body: ${response.body}');
 
       if (response.statusCode == 201) {
         return true;
       } else {
-        throw Exception('Failed with status code ${response.statusCode}');
+        debugPrint('Failed with status code ${response.statusCode}');
+        debugPrint('Response Body: ${response.body}');
+        return false;
       }
     } catch (error) {
-      if (mounted) {
-        _showCustomDialog(
-          "Error",
-          standardErrorMessage,
-          isSuccess: false,
-        );
-      }
+      debugPrint('Error sending ${record.type} request: $error');
       return false;
     }
   }
