@@ -909,13 +909,137 @@ END:VCARD
                                               ),
                                             ),
                                             const SizedBox(height: 8),
-                                            Text(
-                                              'Tap to expand',
-                                              style: TextStyle(
-                                                color: Colors.grey[600],
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                              ),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  'Tap to expand',
+                                                  style: TextStyle(
+                                                    color: Colors.grey[600],
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                GestureDetector(
+                                                  onTap: () async {
+                                                    final shouldDownload =
+                                                        await showDialog<bool>(
+                                                      context: context,
+                                                      builder: (context) =>
+                                                          AlertDialog(
+                                                        shape:
+                                                            RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(15),
+                                                        ),
+                                                        title: Row(
+                                                          children: [
+                                                            const Icon(
+                                                              Icons
+                                                                  .download_rounded,
+                                                              color:
+                                                                  Colors.green,
+                                                              size: 24,
+                                                            ),
+                                                            const SizedBox(width: 10),
+                                                            Text(AppLocalizations
+                                                                    .of(context)!
+                                                                .saveImageTitle),
+                                                          ],
+                                                        ),
+                                                        content: Text(
+                                                            AppLocalizations.of(
+                                                                    context)!
+                                                                .saveImageConfirmation),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.of(
+                                                                        context)
+                                                                    .pop(false),
+                                                            child: Text(
+                                                              AppLocalizations.of(
+                                                                      context)!
+                                                                  .cancel,
+                                                              style: TextStyle(
+                                                                  color: Colors
+                                                                          .grey[
+                                                                      600]),
+                                                            ),
+                                                          ),
+                                                          ElevatedButton(
+                                                            style:
+                                                                ElevatedButton
+                                                                    .styleFrom(
+                                                              backgroundColor:
+                                                                  Colors.green,
+                                                              foregroundColor:
+                                                                  Colors.white,
+                                                              shape:
+                                                                  RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            8),
+                                                              ),
+                                                            ),
+                                                            onPressed: () =>
+                                                                Navigator.of(
+                                                                        context)
+                                                                    .pop(true),
+                                                            child: Text(
+                                                                AppLocalizations.of(
+                                                                        context)!
+                                                                    .save),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    );
+                                                    if (shouldDownload ??
+                                                        false) {
+                                                      _downloadQRCode();
+                                                    }
+                                                  },
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                            horizontal: 10,
+                                                            vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.green
+                                                          .withOpacity(0.1),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
+                                                    ),
+                                                    child: const Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          Icons
+                                                              .download_rounded,
+                                                          size: 16,
+                                                          color: Colors.green,
+                                                        ),
+                                                        SizedBox(width: 4),
+                                                        Text(
+                                                          'Save',
+                                                          style: TextStyle(
+                                                            color: Colors.green,
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),
@@ -1244,13 +1368,137 @@ END:VCARD
                                               ),
                                             ),
                                             const SizedBox(height: 8),
-                                            Text(
-                                              'Tap to expand',
-                                              style: TextStyle(
-                                                color: Colors.grey[600],
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                              ),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  'Tap to expand',
+                                                  style: TextStyle(
+                                                    color: Colors.grey[600],
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                GestureDetector(
+                                                  onTap: () async {
+                                                    final shouldDownload =
+                                                        await showDialog<bool>(
+                                                      context: context,
+                                                      builder: (context) =>
+                                                          AlertDialog(
+                                                        shape:
+                                                            RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(15),
+                                                        ),
+                                                        title: Row(
+                                                          children: [
+                                                            const Icon(
+                                                              Icons
+                                                                  .download_rounded,
+                                                              color:
+                                                                  Colors.green,
+                                                              size: 24,
+                                                            ),
+                                                            const SizedBox(width: 10),
+                                                            Text(AppLocalizations
+                                                                    .of(context)!
+                                                                .saveImageTitle),
+                                                          ],
+                                                        ),
+                                                        content: Text(
+                                                            AppLocalizations.of(
+                                                                    context)!
+                                                                .saveImageConfirmation),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.of(
+                                                                        context)
+                                                                    .pop(false),
+                                                            child: Text(
+                                                              AppLocalizations.of(
+                                                                      context)!
+                                                                  .cancel,
+                                                              style: TextStyle(
+                                                                  color: Colors
+                                                                          .grey[
+                                                                      600]),
+                                                            ),
+                                                          ),
+                                                          ElevatedButton(
+                                                            style:
+                                                                ElevatedButton
+                                                                    .styleFrom(
+                                                              backgroundColor:
+                                                                  Colors.green,
+                                                              foregroundColor:
+                                                                  Colors.white,
+                                                              shape:
+                                                                  RoundedRectangleBorder(
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            8),
+                                                              ),
+                                                            ),
+                                                            onPressed: () =>
+                                                                Navigator.of(
+                                                                        context)
+                                                                    .pop(true),
+                                                            child: Text(
+                                                                AppLocalizations.of(
+                                                                        context)!
+                                                                    .save),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    );
+                                                    if (shouldDownload ??
+                                                        false) {
+                                                      _downloadQRCode();
+                                                    }
+                                                  },
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                            horizontal: 10,
+                                                            vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.green
+                                                          .withOpacity(0.1),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
+                                                    ),
+                                                    child: const Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          Icons
+                                                              .download_rounded,
+                                                          size: 16,
+                                                          color: Colors.green,
+                                                        ),
+                                                        SizedBox(width: 4),
+                                                        Text(
+                                                          'Save',
+                                                          style: TextStyle(
+                                                            color: Colors.green,
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),

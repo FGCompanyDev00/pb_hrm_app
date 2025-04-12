@@ -1521,12 +1521,75 @@ class AttendanceScreenState extends State<AttendanceScreen>
       onTap: () async {
         DateTime now = DateTime.now();
 
-        if (!_isCheckInActive.value) {
-          // Authenticate before check-in
-          await _authenticate(context, true);
-        } else {
-          // Authenticate before check-out
-          await _authenticate(context, false);
+        // Comment out biometric authentication and replace with confirmation dialog
+        // if (!_isCheckInActive.value) {
+        //   // Authenticate before check-in
+        //   await _authenticate(context, true);
+        // } else {
+        //   // Authenticate before check-out
+        //   await _authenticate(context, false);
+        // }
+
+        // Show confirmation dialog instead
+        final bool confirmed = await showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  title: Row(
+                    children: [
+                      Icon(
+                        !_isCheckInActive.value ? Icons.login : Icons.logout,
+                        color: !_isCheckInActive.value
+                            ? Colors.green
+                            : Colors.orange,
+                      ),
+                      const SizedBox(width: 10),
+                      Text(!_isCheckInActive.value
+                          ? AppLocalizations.of(context)!.checkIn
+                          : AppLocalizations.of(context)!.checkOut),
+                    ],
+                  ),
+                  content: Text(!_isCheckInActive.value
+                      ? 'Are you sure you want to check in now?'
+                      : 'Are you sure you want to check out now?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: Text(
+                        AppLocalizations.of(context)!.cancel,
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: !_isCheckInActive.value
+                            ? Colors.green
+                            : Colors.orange,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: Text(!_isCheckInActive.value
+                          ? AppLocalizations.of(context)!.checkIn
+                          : AppLocalizations.of(context)!.checkOut),
+                    ),
+                  ],
+                );
+              },
+            ) ??
+            false;
+
+        if (confirmed) {
+          if (!_isCheckInActive.value) {
+            await _performCheckIn(now);
+          } else {
+            await _performCheckOut(now);
+          }
         }
       },
       child: Container(
