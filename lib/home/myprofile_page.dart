@@ -59,9 +59,9 @@ class MyProfilePageState extends State<MyProfilePage>
       throw Exception(AppLocalizations.of(context)!.noTokenFound);
     }
 
-    // Fetch user profile details (without roles)
+    // Fetch user profile details from new API endpoint
     final response = await http.get(
-      Uri.parse('$baseUrl/api/work-tracking/project-member/get-all-employees'),
+      Uri.parse('$baseUrl/api/profile/'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -70,10 +70,10 @@ class MyProfilePageState extends State<MyProfilePage>
 
     if (response.statusCode == 200) {
       final responseBody = jsonDecode(response.body);
-      if (responseBody['results'] == null || responseBody['results'].isEmpty) {
+      if (responseBody['results'] == null) {
         throw Exception(AppLocalizations.of(context)!.noUserProfileData);
       }
-      final userProfile = UserProfile.fromJson(responseBody['results'][0]);
+      final userProfile = UserProfile.fromJson(responseBody['results']);
 
       // Fetch roles from the separate API
       final rolesResponse = await http.get(
@@ -598,20 +598,22 @@ class UserProfile {
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
-      id: json['id'] ?? 0,
+      id: 0, // As per new API response there is no id field
       employeeId: json['employee_id'] ?? 'N/A',
-      name: json['name'] ?? 'N/A',
-      surname: json['surname'] ?? 'N/A',
+      name: json['employee_name'] ?? 'N/A',
+      surname: json['employee_surname'] ?? 'N/A',
       branchId: json['branch_id'] ?? 0,
-      branchName: json['b_name'] ?? 'N/A',
-      departmentId: json['department_id'] ?? 0,
-      departmentName: json['d_name'] ?? 'N/A',
-      tel: json['tel'] ?? 'N/A',
+      branchName: json['branch_name'] ?? 'N/A',
+      departmentId:
+          0, // As per new API response there is no department_id field
+      departmentName: json['department_name'] ?? 'N/A',
+      tel: json['employee_tel'] ?? 'N/A',
       email: json['email'] ?? 'N/A',
-      employeeStatus: json['employee_status'] ?? 'N/A',
-      gender: json['gender'] ?? 'N/A',
-      createAt: json['create_at'] ?? 'N/A',
-      updateAt: json['update_at'] ?? 'N/A',
+      employeeStatus:
+          'N/A', // As per new API response there is no employee_status field
+      gender: json['employee_gender'] ?? 'N/A',
+      createAt: json['datestartwork'] ?? 'N/A',
+      updateAt: json['passed_probation_date'] ?? 'N/A',
       imgName: json['img_name'] ?? 'avatar_placeholder.png',
     );
   }

@@ -100,6 +100,28 @@ class DashboardState extends State<Dashboard>
   late AnimationController _waveHandController;
   late Animation<double> _waveHandAnimation;
 
+  // Create a dedicated CacheManager for profile images
+  static final profileImageCacheManager = CacheManager(
+    Config(
+      'profileImageCache',
+      stalePeriod: const Duration(days: 7),
+      maxNrOfCacheObjects: 20,
+      repo: JsonCacheInfoRepository(databaseName: 'profileImageCache'),
+      fileService: HttpFileService(),
+    ),
+  );
+
+  // Create a dedicated CacheManager for banner images
+  static final bannerImageCacheManager = CacheManager(
+    Config(
+      'bannerImageCache',
+      stalePeriod: const Duration(days: 14),
+      maxNrOfCacheObjects: 50,
+      repo: JsonCacheInfoRepository(databaseName: 'bannerImageCache'),
+      fileService: HttpFileService(),
+    ),
+  );
+
   @override
   bool get wantKeepAlive => true;
 
@@ -1279,47 +1301,10 @@ class DashboardState extends State<Dashboard>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: Colors.white,
-                          child: userProfile.imgName != 'avatar_placeholder.png'
-                              ? ClipOval(
-                                  child: CachedNetworkImage(
-                                    imageUrl: userProfile.imgName,
-                                    fit: BoxFit.cover,
-                                    width: 56,
-                                    height: 56,
-                                    progressIndicatorBuilder:
-                                        (context, url, progress) => Center(
-                                      child: CircularProgressIndicator(
-                                        value: progress.progress,
-                                        strokeWidth: 2.0,
-                                      ),
-                                    ),
-                                    errorWidget: (context, url, error) =>
-                                        Image.asset(
-                                      'assets/avatar_placeholder.png',
-                                      fit: BoxFit.cover,
-                                      width: 56,
-                                      height: 56,
-                                    ),
-                                    // Enhanced caching for profile images
-                                    memCacheWidth:
-                                        112, // 2x for high DPI displays
-                                    memCacheHeight: 112,
-                                    useOldImageOnUrlChange: true,
-                                    maxWidthDiskCache: 112,
-                                    maxHeightDiskCache: 112,
-                                    cacheKey: 'profile_${userProfile.id}',
-                                    placeholderFadeInDuration: Duration.zero,
-                                  ),
-                                )
-                              : Image.asset(
-                                  'assets/avatar_placeholder.png',
-                                  fit: BoxFit.cover,
-                                  width: 56,
-                                  height: 56,
-                                ),
+                        ProfileAvatar(
+                          userProfile: userProfile,
+                          isDarkMode: isDarkMode,
+                          cacheManager: profileImageCacheManager,
                         ),
                         const SizedBox(height: 6),
                         // Greeting text with waving hand emoji
@@ -1353,7 +1338,7 @@ class DashboardState extends State<Dashboard>
                       ],
                     ),
                   ),
-                  // Logout Icon with gradient animation (lebih natural)
+                  // Logout Icon with gradient animation
                   AnimatedBuilder(
                     animation: _logoutGradientAnimation,
                     builder: (context, child) {
@@ -1366,13 +1351,13 @@ class DashboardState extends State<Dashboard>
                                     Color(0xFFFF8A80),
                                     Colors.white,
                                     Color(0xFFEF5350)
-                                  ] // Light red gradient for dark mode
+                                  ]
                                 : const [
                                     Colors.black,
                                     Colors.red,
                                     Colors.black,
                                     Color(0xFFB71C1C)
-                                  ], // Dark red-black gradient for light mode
+                                  ],
                             stops: const [0.0, 0.25, 0.5, 0.75],
                             startAngle: 0.0,
                             endAngle: 3.14159 * 2,
@@ -1382,9 +1367,7 @@ class DashboardState extends State<Dashboard>
                         },
                         child: IconButton(
                           icon: Icon(Icons.power_settings_new,
-                              color: Colors
-                                  .white, // Base color selalu putih untuk shader mask
-                              size: 32),
+                              color: Colors.white, size: 32),
                           onPressed: () =>
                               _showLogoutDialog(context, isDarkMode),
                         ),
@@ -1426,252 +1409,17 @@ class DashboardState extends State<Dashboard>
 
   // Banner Carousel with improved loading and animation
   Widget _buildBannerCarousel(bool isDarkMode) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      height: 175.0,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: FutureBuilder<List<String>>(
-        future: futureBanners,
-        builder: (context, snapshot) {
-          // Always try to show cached banners first for immediate display
-          final cachedBanners = _getCachedData('banners') as List<String>?;
-
-          if (cachedBanners != null && cachedBanners.isNotEmpty) {
-            // Preload all banner images at once
-            _preloadAllBannerImages(cachedBanners);
-
-            // If we have cached data, show it immediately
-            return Column(
-              children: [
-                Expanded(
-                  child: _buildBannerPageView(cachedBanners, isDarkMode),
-                ),
-                // Add page indicator dots for better UX
-                const SizedBox(height: 8),
-                _buildPageIndicator(
-                    cachedBanners.length, _currentPage, isDarkMode),
-              ],
-            );
-          }
-
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  isDarkMode ? Colors.blueAccent : Colors.orangeAccent,
-                ),
-              ),
-            );
-          } else if (snapshot.hasError) {
-            // Show error state with placeholder
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    color: isDarkMode ? Colors.redAccent : Colors.red,
-                    size: 40,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    standardErrorMessage,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.white70 : Colors.black54,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            // Show empty state with placeholder
-            return Center(
-              child: Text(
-                AppLocalizations.of(context)!.noBannersAvailable,
-                style: TextStyle(
-                  color: isDarkMode ? Colors.white70 : Colors.black54,
-                  fontSize: 16,
-                ),
-              ),
-            );
-          } else {
-            // Preload all banner images at once
-            _preloadAllBannerImages(snapshot.data!);
-
-            // Show the actual banners with page indicator
-            return Column(
-              children: [
-                Expanded(
-                  child: _buildBannerPageView(snapshot.data!, isDarkMode),
-                ),
-                // Add page indicator dots for better UX
-                const SizedBox(height: 8),
-                _buildPageIndicator(
-                    snapshot.data!.length, _currentPage, isDarkMode),
-              ],
-            );
-          }
-        },
-      ),
-    );
-  }
-
-  // New method to preload all banner images at once
-  void _preloadAllBannerImages(List<String> banners) {
-    for (final bannerUrl in banners) {
-      if (bannerUrl.isNotEmpty &&
-          Uri.tryParse(bannerUrl)?.hasAbsolutePath == true) {
-        _prefetchImage(bannerUrl, highPriority: true);
-      }
-    }
-  }
-
-  Widget _buildBannerPageView(List<String> banners, bool isDarkMode) {
-    return PageView.builder(
-      controller: _pageController,
-      itemCount: banners.length,
+    return BannerCarousel(
+      futurebanners: futureBanners,
+      cachedBanners: _getCachedData('banners') as List<String>?,
+      cacheManager: bannerImageCacheManager,
+      pageController: _pageController,
+      currentPage: _currentPage,
       onPageChanged: _handleBannerPageChange,
-      physics: const BouncingScrollPhysics(),
-      pageSnapping: true,
-      padEnds: false,
-      itemBuilder: (context, index) {
-        final bannerUrl = banners[index];
-
-        if (bannerUrl.isEmpty ||
-            Uri.tryParse(bannerUrl)?.hasAbsolutePath != true) {
-          return Center(
-              child: Text(AppLocalizations.of(context)!.noBannersAvailable));
-        }
-
-        // Create a unique cache key for this banner
-        final cacheKey = 'banner_${bannerUrl.hashCode}';
-
-        // More aggressive prefetching for smoother transitions
-        // Prefetch current, next and previous images
-        _prefetchImage(bannerUrl);
-        if (index < banners.length - 1) {
-          _prefetchImage(banners[index + 1]);
-        }
-        if (index > 0) {
-          _prefetchImage(banners[index - 1]);
-        }
-
-        return Hero(
-          tag: 'banner_$index',
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 12.0),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: isDarkMode ? Colors.black54 : Colors.black12,
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: CachedNetworkImage(
-                key: ValueKey('banner_image_$bannerUrl'),
-                imageUrl: bannerUrl,
-                fit: BoxFit.cover,
-                cacheKey: cacheKey,
-                errorWidget: (context, url, error) => Container(
-                  color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error, size: 40, color: Colors.red),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Image failed to load. Please contact IT support for assistance.',
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white70 : Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                imageBuilder: (context, imageProvider) => Container(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: imageProvider,
-                      fit: BoxFit.cover,
-                      colorFilter: isDarkMode
-                          ? ColorFilter.mode(
-                              Colors.white.withOpacity(0.1),
-                              BlendMode.lighten,
-                            )
-                          : null,
-                    ),
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.2),
-                        ],
-                        stops: const [0.7, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
-                // Enhanced caching configuration with optimized settings
-                cacheManager: DefaultCacheManager(),
-                maxHeightDiskCache: 1080, // Optimize for most phone screens
-                memCacheHeight: 1080,
-                // Use immediate display without transitions
-                fadeOutDuration: Duration.zero,
-                fadeInDuration: Duration.zero,
-                // Keep existing image while loading new one
-                useOldImageOnUrlChange: true,
-                // Preload images aggressively
-                placeholderFadeInDuration: Duration.zero,
-                progressIndicatorBuilder: (context, url, progress) => Container(
-                  color: isDarkMode ? Colors.grey[850] : Colors.grey[200],
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      value: progress.progress,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        isDarkMode ? Colors.blueAccent : Colors.orangeAccent,
-                      ),
-                      strokeWidth: 3,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // Add page indicator for smooth experience
-  Widget _buildPageIndicator(int count, int currentIndex, bool isDarkMode) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(
-        count,
-        (index) => Container(
-          width: index == currentIndex ? 12.0 : 8.0,
-          height: index == currentIndex ? 12.0 : 8.0,
-          margin: const EdgeInsets.symmetric(horizontal: 4.0),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: index == currentIndex
-                ? (isDarkMode ? Colors.blueAccent : const Color(0xFFDBB342))
-                : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300),
-          ),
-        ),
-      ),
+      isDarkMode: isDarkMode,
+      height: 175.0,
+      standardErrorMessage: standardErrorMessage,
+      onPreloadImage: _prefetchImage,
     );
   }
 
@@ -2048,6 +1796,18 @@ class DashboardState extends State<Dashboard>
       ),
     );
   }
+
+  // Check network connectivity status
+  Future<bool> _hasNetworkConnection() async {
+    try {
+      final result = await http
+          .get(Uri.parse('https://www.google.com'))
+          .timeout(const Duration(seconds: 5));
+      return result.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
 }
 
 // UserProfile Model
@@ -2112,4 +1872,600 @@ class _CacheData {
     required this.timestamp,
     this.accessCount = 0,
   });
+}
+
+// Dedicated widget for profile avatar with improved image handling
+class ProfileAvatar extends StatefulWidget {
+  final UserProfile userProfile;
+  final bool isDarkMode;
+  final CacheManager cacheManager;
+
+  const ProfileAvatar({
+    Key? key,
+    required this.userProfile,
+    required this.isDarkMode,
+    required this.cacheManager,
+  }) : super(key: key);
+
+  @override
+  State<ProfileAvatar> createState() => _ProfileAvatarState();
+}
+
+class _ProfileAvatarState extends State<ProfileAvatar> {
+  late final String imageUrl;
+  late final String cacheKey;
+  bool _isOnline = true;
+  bool _isLoading = true;
+  FileInfo? _cachedFileInfo;
+
+  @override
+  void initState() {
+    super.initState();
+    imageUrl = widget.userProfile.imgName;
+    cacheKey = 'profile_${widget.userProfile.id}_${imageUrl.hashCode}';
+    _checkConnectivity();
+    _loadFromCache();
+  }
+
+  Future<void> _checkConnectivity() async {
+    try {
+      final result = await http
+          .get(Uri.parse('https://www.google.com'))
+          .timeout(const Duration(seconds: 3));
+      if (mounted) {
+        setState(() {
+          _isOnline = result.statusCode == 200;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isOnline = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadFromCache() async {
+    try {
+      if (imageUrl.isEmpty || imageUrl == 'avatar_placeholder.png') {
+        _finishLoading();
+        return;
+      }
+
+      // Try to get the file from cache first
+      _cachedFileInfo = await widget.cacheManager.getFileFromCache(cacheKey);
+
+      if (_cachedFileInfo != null) {
+        // We have a cached file, use it and trigger rebuild
+        if (mounted) setState(() {});
+      }
+
+      if (_isOnline) {
+        // If online, fetch the latest version in background
+        _updateCacheFromNetwork();
+      } else {
+        // If offline, just use the cache
+        _finishLoading();
+      }
+    } catch (e) {
+      debugPrint('Error loading profile image from cache: $e');
+      _finishLoading();
+    }
+  }
+
+  Future<void> _updateCacheFromNetwork() async {
+    try {
+      if (imageUrl.isEmpty || imageUrl == 'avatar_placeholder.png') {
+        _finishLoading();
+        return;
+      }
+
+      // Download the image and update cache
+      final fileInfo = await widget.cacheManager.downloadFile(
+        imageUrl,
+        key: cacheKey,
+        force: true, // Force update to get fresh image
+      );
+
+      if (mounted) {
+        setState(() {
+          _cachedFileInfo = fileInfo;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error updating profile image from network: $e');
+    } finally {
+      _finishLoading();
+    }
+  }
+
+  void _finishLoading() {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CircleAvatar(
+      radius: 28,
+      backgroundColor: Colors.white,
+      child: imageUrl.isEmpty || imageUrl == 'avatar_placeholder.png'
+          ? Image.asset(
+              'assets/avatar_placeholder.png',
+              fit: BoxFit.cover,
+              width: 56,
+              height: 56,
+            )
+          : _buildProfileImage(),
+    );
+  }
+
+  Widget _buildProfileImage() {
+    // If we have a cached file and not forcing online refresh, use it directly
+    if (_cachedFileInfo != null && (!_isOnline || !_isLoading)) {
+      return ClipOval(
+        child: Image.file(
+          _cachedFileInfo!.file,
+          fit: BoxFit.cover,
+          width: 56,
+          height: 56,
+          errorBuilder: (context, error, stackTrace) {
+            return Image.asset(
+              'assets/avatar_placeholder.png',
+              fit: BoxFit.cover,
+              width: 56,
+              height: 56,
+            );
+          },
+        ),
+      );
+    }
+
+    // If we're online or don't have cache yet, use CachedNetworkImage
+    return ClipOval(
+      child: CachedNetworkImage(
+        cacheManager: widget.cacheManager,
+        cacheKey: cacheKey,
+        imageUrl: imageUrl,
+        fit: BoxFit.cover,
+        width: 56,
+        height: 56,
+        fadeInDuration: Duration.zero,
+        fadeOutDuration: Duration.zero,
+        placeholderFadeInDuration: Duration.zero,
+        progressIndicatorBuilder: (context, url, progress) => Center(
+          child: CircularProgressIndicator(
+            value: progress.progress,
+            strokeWidth: 2.0,
+            color: widget.isDarkMode ? Colors.white70 : Colors.black45,
+          ),
+        ),
+        errorWidget: (context, url, error) => Image.asset(
+          'assets/avatar_placeholder.png',
+          fit: BoxFit.cover,
+          width: 56,
+          height: 56,
+        ),
+      ),
+    );
+  }
+}
+
+class BannerCarousel extends StatefulWidget {
+  final Future<List<String>> futurebanners;
+  final List<String>? cachedBanners;
+  final CacheManager cacheManager;
+  final PageController pageController;
+  final int currentPage;
+  final Function(int) onPageChanged;
+  final bool isDarkMode;
+  final double height;
+  final String standardErrorMessage;
+  final Function(String, {bool highPriority}) onPreloadImage;
+
+  const BannerCarousel({
+    Key? key,
+    required this.futurebanners,
+    this.cachedBanners,
+    required this.cacheManager,
+    required this.pageController,
+    required this.currentPage,
+    required this.onPageChanged,
+    required this.isDarkMode,
+    required this.height,
+    required this.standardErrorMessage,
+    required this.onPreloadImage,
+  }) : super(key: key);
+
+  @override
+  State<BannerCarousel> createState() => _BannerCarouselState();
+}
+
+class _BannerCarouselState extends State<BannerCarousel>
+    with SingleTickerProviderStateMixin {
+  bool _isOnline = true;
+  List<String> _banners = [];
+  Map<String, FileInfo?> _cachedBannerFiles = {};
+  late AnimationController _loadingController;
+  late Animation<double> _loadingAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadingController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+
+    _loadingAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+            parent: _loadingController, curve: Curves.easeInOutCubic));
+
+    _checkConnectivity();
+    _initializeBanners();
+  }
+
+  @override
+  void dispose() {
+    _loadingController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkConnectivity() async {
+    try {
+      final result = await http
+          .get(Uri.parse('https://www.google.com'))
+          .timeout(const Duration(seconds: 3));
+      if (mounted) {
+        setState(() {
+          _isOnline = result.statusCode == 200;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isOnline = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _initializeBanners() async {
+    // First use cached banners if available
+    if (widget.cachedBanners != null && widget.cachedBanners!.isNotEmpty) {
+      if (mounted) {
+        setState(() {
+          _banners = List.from(widget.cachedBanners!);
+        });
+      }
+
+      // Load cached files for faster display
+      _loadCachedBannerFiles(widget.cachedBanners!);
+    }
+
+    // Then wait for actual data from API if online
+    if (_isOnline) {
+      try {
+        final apiBanners = await widget.futurebanners;
+        if (mounted && apiBanners.isNotEmpty) {
+          setState(() {
+            _banners = apiBanners;
+          });
+
+          // Preload all banner images for smooth experience
+          _preloadAllBannerImages(apiBanners);
+        }
+      } catch (e) {
+        debugPrint('Error loading banners from API: $e');
+      }
+    }
+  }
+
+  Future<void> _loadCachedBannerFiles(List<String> banners) async {
+    for (final url in banners) {
+      if (url.isEmpty) continue;
+
+      try {
+        final cacheKey = 'banner_${url.hashCode}';
+        final cachedFile = await widget.cacheManager.getFileFromCache(cacheKey);
+
+        if (cachedFile != null && mounted) {
+          setState(() {
+            _cachedBannerFiles[url] = cachedFile;
+          });
+        }
+      } catch (e) {
+        debugPrint('Error loading cached banner file: $e');
+      }
+    }
+  }
+
+  void _preloadAllBannerImages(List<String> banners) {
+    for (final url in banners) {
+      if (url.isEmpty) continue;
+
+      try {
+        final cacheKey = 'banner_${url.hashCode}';
+
+        // Preload current, previous, and next banner
+        final currentIndex = _banners.indexOf(url);
+        if (currentIndex == widget.currentPage ||
+            currentIndex == widget.currentPage - 1 ||
+            currentIndex == widget.currentPage + 1) {
+          // Immediate preload for visible banners
+          widget.onPreloadImage(url, highPriority: true);
+
+          // Also ensure it's in disk cache
+          widget.cacheManager.getSingleFile(url, key: cacheKey).then((file) {
+            if (mounted) {
+              setState(() {
+                _cachedBannerFiles[url] = FileInfo(
+                  file,
+                  FileSource.Cache,
+                  DateTime.now().add(const Duration(days: 7)),
+                  url,
+                );
+              });
+            }
+          });
+        } else {
+          // Lower priority for other banners
+          widget.onPreloadImage(url);
+        }
+      } catch (e) {
+        debugPrint('Error preloading banner image: $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      height: widget.height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: _banners.isEmpty
+          ? _buildLoadingPlaceholder()
+          : Column(
+              children: [
+                Expanded(
+                  child: _buildBannerPageView(),
+                ),
+                const SizedBox(height: 8),
+                _buildPageIndicator(_banners.length, widget.currentPage),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildLoadingPlaceholder() {
+    return Center(
+      child: AnimatedBuilder(
+        animation: _loadingAnimation,
+        builder: (context, child) {
+          return Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(25),
+              gradient: SweepGradient(
+                colors: widget.isDarkMode
+                    ? [
+                        Colors.blue.shade900,
+                        Colors.blue.shade200,
+                        Colors.blue.shade900
+                      ]
+                    : [
+                        Colors.amber.shade800,
+                        Colors.amber.shade300,
+                        Colors.amber.shade800
+                      ],
+                stops: [0.0, _loadingAnimation.value, 1.0],
+                transform:
+                    GradientRotation(_loadingAnimation.value * 2 * 3.14159),
+              ),
+            ),
+            child: Center(
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: widget.isDarkMode ? Colors.black : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  Icons.image,
+                  size: 24,
+                  color: widget.isDarkMode
+                      ? Colors.blue.shade200
+                      : Colors.amber.shade800,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBannerPageView() {
+    return PageView.builder(
+      controller: widget.pageController,
+      itemCount: _banners.length,
+      onPageChanged: widget.onPageChanged,
+      physics: const BouncingScrollPhysics(),
+      pageSnapping: true,
+      padEnds: false,
+      itemBuilder: (context, index) {
+        final bannerUrl = _banners[index];
+
+        if (bannerUrl.isEmpty) {
+          return Center(
+            child: Text(
+              AppLocalizations.of(context)!.noBannersAvailable,
+              style: TextStyle(
+                color: widget.isDarkMode ? Colors.white70 : Colors.black54,
+              ),
+            ),
+          );
+        }
+
+        // Create a unique cache key for this banner
+        final cacheKey = 'banner_${bannerUrl.hashCode}';
+
+        // Preload adjacent banners for smooth scrolling
+        if (index > 0) {
+          widget.onPreloadImage(_banners[index - 1]);
+        }
+        if (index < _banners.length - 1) {
+          widget.onPreloadImage(_banners[index + 1]);
+        }
+
+        return Hero(
+          tag: 'banner_$index',
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12.0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: widget.isDarkMode ? Colors.black54 : Colors.black12,
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: _buildBannerImage(bannerUrl, cacheKey),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBannerImage(String imageUrl, String cacheKey) {
+    // If we have the file cached and we're offline or prioritizing performance
+    if (_cachedBannerFiles.containsKey(imageUrl) &&
+        (!_isOnline || _cachedBannerFiles[imageUrl] != null)) {
+      final cachedFile = _cachedBannerFiles[imageUrl];
+      if (cachedFile != null) {
+        return Image.file(
+          cachedFile.file,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildErrorWidget();
+          },
+        );
+      }
+    }
+
+    // Otherwise use CachedNetworkImage with our custom cache manager
+    return CachedNetworkImage(
+      cacheManager: widget.cacheManager,
+      cacheKey: cacheKey,
+      imageUrl: imageUrl,
+      fit: BoxFit.cover,
+      fadeOutDuration: Duration.zero,
+      fadeInDuration: Duration.zero,
+      placeholderFadeInDuration: Duration.zero,
+      errorWidget: (context, url, error) => _buildErrorWidget(),
+      progressIndicatorBuilder: (context, url, progress) => Container(
+        color: widget.isDarkMode ? Colors.grey[850] : Colors.grey[200],
+        child: Center(
+          child: CircularProgressIndicator(
+            value: progress.progress,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              widget.isDarkMode ? Colors.blueAccent : Colors.amber,
+            ),
+            strokeWidth: 3,
+          ),
+        ),
+      ),
+      imageBuilder: (context, imageProvider) => Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: imageProvider,
+            fit: BoxFit.cover,
+            colorFilter: widget.isDarkMode
+                ? ColorFilter.mode(
+                    Colors.white.withOpacity(0.1),
+                    BlendMode.lighten,
+                  )
+                : null,
+          ),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.transparent,
+                Colors.black.withOpacity(0.3),
+              ],
+              stops: const [0.7, 1.0],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget() {
+    return Container(
+      color: widget.isDarkMode ? Colors.grey[850] : Colors.grey[200],
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.broken_image_outlined,
+              size: 40,
+              color: widget.isDarkMode ? Colors.redAccent : Colors.red),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              'Image failed to load',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: widget.isDarkMode ? Colors.white70 : Colors.black54,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPageIndicator(int count, int currentIndex) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(
+        count,
+        (index) => AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          width: index == currentIndex ? 12.0 : 8.0,
+          height: index == currentIndex ? 12.0 : 8.0,
+          margin: const EdgeInsets.symmetric(horizontal: 4.0),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: index == currentIndex
+                ? (widget.isDarkMode
+                    ? Colors.blueAccent
+                    : const Color(0xFFDBB342))
+                : (widget.isDarkMode
+                    ? Colors.grey.shade700
+                    : Colors.grey.shade300),
+          ),
+        ),
+      ),
+    );
+  }
 }
