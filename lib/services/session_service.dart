@@ -20,6 +20,9 @@ class SessionService {
   static bool _isInitialized = false;
   static bool _isWorkManagerInitialized = false;
 
+  // Flag to completely disable notifications
+  static const bool _enableNotifications = false;
+
   // Initialize the session service
   static Future<void> initialize() async {
     if (_isInitialized) {
@@ -50,7 +53,7 @@ class SessionService {
     try {
       await Workmanager().initialize(
         callbackDispatcher,
-        isInDebugMode: true, // Set to false in production
+        isInDebugMode: false, // Set to false to reduce debug logging
       );
 
       await Workmanager().registerPeriodicTask(
@@ -132,14 +135,14 @@ class SessionService {
       debugPrint('Session time elapsed: ${difference.inMinutes} minutes');
 
       if (difference >= sessionDuration) {
-        debugPrint('Session expired, showing notification');
-        await _showSessionExpiredNotification();
+        debugPrint('Session expired, handling expiry');
+        // Notifications are disabled as per user request
         // Force logout
         await prefs.setLoggedOff();
       } else if (sessionDuration - difference <= warningThreshold) {
         final minutesLeft = (sessionDuration - difference).inMinutes;
         debugPrint('Session expiring soon, $minutesLeft minutes left');
-        await _showSessionExpiryWarningNotification(minutesLeft);
+        // Notifications are disabled as per user request
       }
     } catch (e) {
       debugPrint('Error checking session expiry: $e');
@@ -152,6 +155,9 @@ class SessionService {
   }
 
   static Future<void> _showSessionExpiredNotification() async {
+    // Skip showing notification if disabled
+    if (!_enableNotifications) return;
+
     final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
         FlutterLocalNotificationsPlugin();
 
@@ -190,6 +196,9 @@ class SessionService {
 
   static Future<void> _showSessionExpiryWarningNotification(
       int minutesLeft) async {
+    // Skip showing notification if disabled
+    if (!_enableNotifications) return;
+
     final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
         FlutterLocalNotificationsPlugin();
 

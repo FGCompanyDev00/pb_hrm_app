@@ -6,7 +6,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'dart:math' as math;
-import 'package:flutter_in_store_app_version_checker/flutter_in_store_app_version_checker.dart';
 
 class UpdateService {
   static const String _androidPackageName = 'com.phongsavanh.pb_hrsystem';
@@ -38,24 +37,12 @@ class UpdateService {
       final String currentVersion = packageInfo.version;
       debugPrint('Current app version: $currentVersion');
 
-      // Get store version using the flutter_in_store_app_version_checker package
-      final String storeVersion = await _getStoreVersionWithPackage();
-      debugPrint('Store version (from package): $storeVersion');
+      // Get store version based on platform
+      final String storeVersion = await _getStoreVersion();
+      debugPrint('Store version: $storeVersion');
 
-      // If package fails, try the fallback method
       if (storeVersion.isEmpty) {
-        final String fallbackVersion = await _getStoreVersion();
-        debugPrint('Store version (fallback method): $fallbackVersion');
-
-        if (fallbackVersion.isEmpty) {
-          return false; // If we can't get store version, don't force update
-        }
-
-        // Compare versions (removing any build number after +)
-        final cleanCurrentVersion = currentVersion.split('+')[0];
-        final cleanStoreVersion = fallbackVersion.split('+')[0];
-
-        return _isVersionHigher(cleanStoreVersion, cleanCurrentVersion);
+        return false; // If we can't get store version, don't force update
       }
 
       // Compare versions (removing any build number after +)
@@ -67,24 +54,6 @@ class UpdateService {
       debugPrint('Error checking for updates: $e');
       return false; // In case of error, don't force update
     }
-  }
-
-  /// Get store version using the flutter_in_store_app_version_checker package
-  static Future<String> _getStoreVersionWithPackage() async {
-    try {
-      final checker = InStoreAppVersionChecker();
-      final response = await checker.checkUpdate();
-
-      debugPrint('App version checker response: ${response.toString()}');
-
-      if (response.newVersion != null && response.newVersion!.isNotEmpty) {
-        return response.newVersion!;
-      }
-    } catch (e) {
-      debugPrint('Error using InStoreAppVersionChecker: $e');
-    }
-
-    return '';
   }
 
   /// Determine if version1 is higher than version2
@@ -104,9 +73,9 @@ class UpdateService {
 
       // Split versions into parts
       List<int> v1Parts =
-          cleanV1.split('.').map((part) => int.tryParse(part) ?? 0).toList();
+      cleanV1.split('.').map((part) => int.tryParse(part) ?? 0).toList();
       List<int> v2Parts =
-          cleanV2.split('.').map((part) => int.tryParse(part) ?? 0).toList();
+      cleanV2.split('.').map((part) => int.tryParse(part) ?? 0).toList();
 
       // Make sure both lists have the same length
       final maxLength = math.max(v1Parts.length, v2Parts.length);
@@ -144,19 +113,6 @@ class UpdateService {
   /// Get the latest version from Google Play Store
   static Future<String> _getPlayStoreVersion() async {
     try {
-      // First attempt: Use the flutter_in_store_app_version_checker package
-      try {
-        final checker = InStoreAppVersionChecker();
-        final response = await checker.checkUpdate();
-
-        if (response.newVersion != null && response.newVersion!.isNotEmpty) {
-          return response.newVersion!;
-        }
-      } catch (e) {
-        debugPrint('Error using InStoreAppVersionChecker for Play Store: $e');
-      }
-
-      // Second attempt: Parse the Play Store HTML (original method)
       final response = await _dio.get(_playStoreUrl);
 
       if (response.statusCode == 200) {
@@ -184,7 +140,7 @@ class UpdateService {
         // Method 2: Alternative approach using content description
         try {
           final versionElements =
-              document.querySelectorAll('[content="android:versionName"]');
+          document.querySelectorAll('[content="android:versionName"]');
           if (versionElements.isNotEmpty) {
             final versionMeta = versionElements.first;
             final version = versionMeta.attributes['content'];
@@ -200,7 +156,7 @@ class UpdateService {
         try {
           final html = response.data.toString();
           final RegExp versionRegex =
-              RegExp(r'Current Version\s*<\/span><span[^>]*>([\d\.]+)<\/span>');
+          RegExp(r'Current Version\s*<\/span><span[^>]*>([\d\.]+)<\/span>');
           final match = versionRegex.firstMatch(html);
           if (match != null && match.groupCount >= 1) {
             return match.group(1) ?? '';
@@ -229,19 +185,7 @@ class UpdateService {
   /// Get the latest version from App Store
   static Future<String> _getAppStoreVersion() async {
     try {
-      // First attempt: Use the flutter_in_store_app_version_checker package
-      try {
-        final checker = InStoreAppVersionChecker();
-        final response = await checker.checkUpdate();
-
-        if (response.newVersion != null && response.newVersion!.isNotEmpty) {
-          return response.newVersion!;
-        }
-      } catch (e) {
-        debugPrint('Error using InStoreAppVersionChecker for App Store: $e');
-      }
-
-      // Second attempt: Use iTunes API (original method)
+      // Use the iTunes lookup API
       final response = await _dio.get(
         'https://itunes.apple.com/lookup?id=$_iosAppId',
       );
@@ -427,7 +371,7 @@ class UpdateService {
         debugPrint('Non-mobile platform detected, using web URL');
 
         final Uri webUri =
-            Uri.parse(Platform.isAndroid ? _playStoreUrl : _appStoreUrl);
+        Uri.parse(Platform.isAndroid ? _playStoreUrl : _appStoreUrl);
 
         final bool success = await launchUrl(
           webUri,

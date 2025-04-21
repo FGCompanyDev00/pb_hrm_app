@@ -30,6 +30,7 @@ import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/models/qr_profile_page.dart';
 import 'package:pb_hrsystem/nav/custom_bottom_nav_bar.dart';
+import 'package:pb_hrsystem/services/app_update_checker.dart';
 import 'package:pb_hrsystem/services/offline_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:pb_hrsystem/services/session_service.dart';
@@ -1152,10 +1153,15 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
   }
 
-  // Add method to check for available updates
+  // Use the new AppUpdateChecker to check for updates
   Future<void> _checkForUpdates() async {
-    if (mounted) {
-      await UpdateDialogService.showUpdateDialog(context);
+    try {
+      if (mounted) {
+        debugPrint('Checking for app updates...');
+        await AppUpdateChecker.checkForUpdates(context);
+      }
+    } catch (e) {
+      debugPrint('Error checking for updates: $e');
     }
   }
 

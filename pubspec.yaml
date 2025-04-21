@@ -84,6 +84,7 @@ dependencies:
   flutter_cache_manager: ^3.3.1
   html: ^0.15.4
   lottie: ^3.3.1
+  flutter_in_store_app_version_checker: ^1.9.0
 
 dev_dependencies:
   flutter_test:

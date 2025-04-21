@@ -173,7 +173,6 @@ class SplashScreenState extends State<SplashScreen>
   }
 
   void _navigateToNextScreen() async {
-    // ... existing navigation logic ...
 
     // Check for updates when navigating from splash screen
     await Future.delayed(const Duration(seconds: 2));
