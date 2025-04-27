@@ -21,6 +21,7 @@ import 'package:pb_hrsystem/home/myprofile_page.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:pb_hrsystem/services/s3_image_service.dart';
 
 import '../services/offline_service.dart';
 
@@ -151,7 +152,7 @@ class ProfileScreenState extends State<ProfileScreen>
       stalePeriod: const Duration(days: 7),
       maxNrOfCacheObjects: 20,
       repo: JsonCacheInfoRepository(databaseName: 'profileImageCacheDb'),
-      fileService: HttpFileService(),
+      fileService: S3HttpFileService(),
     ),
   );
 
@@ -944,7 +945,8 @@ END:VCARD
                                                                   Colors.green,
                                                               size: 24,
                                                             ),
-                                                            const SizedBox(width: 10),
+                                                            const SizedBox(
+                                                                width: 10),
                                                             Text(AppLocalizations
                                                                     .of(context)!
                                                                 .saveImageTitle),
@@ -1004,10 +1006,10 @@ END:VCARD
                                                     }
                                                   },
                                                   child: Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                            horizontal: 10,
-                                                            vertical: 4),
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 4),
                                                     decoration: BoxDecoration(
                                                       color: Colors.green
                                                           .withOpacity(0.1),
@@ -1403,7 +1405,8 @@ END:VCARD
                                                                   Colors.green,
                                                               size: 24,
                                                             ),
-                                                            const SizedBox(width: 10),
+                                                            const SizedBox(
+                                                                width: 10),
                                                             Text(AppLocalizations
                                                                     .of(context)!
                                                                 .saveImageTitle),
@@ -1463,10 +1466,10 @@ END:VCARD
                                                     }
                                                   },
                                                   child: Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                            horizontal: 10,
-                                                            vertical: 4),
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 4),
                                                     decoration: BoxDecoration(
                                                       color: Colors.green
                                                           .withOpacity(0.1),

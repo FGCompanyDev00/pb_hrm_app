@@ -2,36 +2,107 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:http/http.dart' as http;
+import 'dart:async';
+
+// Helper class for queued requests
+class _PendingRequest {
+  final String url;
+  final Map<String, String>? headers;
+  final Completer<FileServiceResponse> completer;
+
+  _PendingRequest(this.url, this.headers, this.completer);
+}
 
 /// A custom HTTP file service that adds necessary headers for S3 authentication
 class S3HttpFileService implements FileService {
   final http.Client _httpClient;
+  final int _maxConcurrentFetches = 4; // Limit concurrent downloads
+  final Map<String, Completer<FileServiceResponse>> _activeRequests = {};
+  int _activeRequestCount = 0;
+  final List<_PendingRequest> _requestQueue = [];
 
   S3HttpFileService({http.Client? httpClient})
       : _httpClient = httpClient ?? http.Client();
 
   @override
-  int get concurrentFetches => 10; // Default value for concurrent downloads
+  int get concurrentFetches => _maxConcurrentFetches;
 
   @override
   set concurrentFetches(int value) {
-    // This is a no-op as we're using standard http client
-    // If needed, we could implement a queue system here
+    // Allow call but don't change our fixed limit
   }
 
-  @override
-  Future<FileServiceResponse> get(String url,
-      {Map<String, String>? headers}) async {
+  // Process next request from the queue if possible
+  void _processQueue() {
+    if (_activeRequestCount >= _maxConcurrentFetches || _requestQueue.isEmpty) {
+      return;
+    }
+
+    final request = _requestQueue.removeAt(0);
+    _activeRequests[request.url] = request.completer;
+    _activeRequestCount++;
+
+    _executeRequest(request.url, request.headers).then((response) {
+      request.completer.complete(response);
+      _activeRequestCount--;
+      _activeRequests.remove(request.url);
+      _processQueue(); // Process next request
+    }).catchError((error) {
+      request.completer.completeError(error);
+      _activeRequestCount--;
+      _activeRequests.remove(request.url);
+      _processQueue(); // Process next request even on error
+    });
+  }
+
+  // Internal method to execute the actual request
+  Future<FileServiceResponse> _executeRequest(
+      String url, Map<String, String>? headers) async {
     try {
+      // Check for basic URL validity
+      final uri = Uri.tryParse(url);
+      if (uri == null) {
+        throw HttpExceptionWithStatus(
+          400,
+          'Invalid URL format: $url',
+          uri: Uri.parse('https://invalid.url'),
+        );
+      }
+
       // Check if this is an S3 URL (handle both demo and production buckets)
       if (url.contains('s3.ap-southeast-1.amazonaws.com')) {
+        // First check if URL has expired by examining the X-Amz-Date and X-Amz-Expires parameters
+        bool isLikelyExpired = false;
+        final dateParam = uri.queryParameters['X-Amz-Date'];
+        final expiresParam = uri.queryParameters['X-Amz-Expires'];
+
+        if (dateParam != null && expiresParam != null) {
+          try {
+            // Parse the AWS date format (YYYYMMDDTHHMMSSZ)
+            final reqDate = DateTime.parse(
+                '${dateParam.substring(0, 4)}-${dateParam.substring(4, 6)}-${dateParam.substring(6, 8)}T' +
+                    '${dateParam.substring(9, 11)}:${dateParam.substring(11, 13)}:${dateParam.substring(13, 15)}Z');
+            final expiresSeconds = int.parse(expiresParam);
+            final expiryTime = reqDate.add(Duration(seconds: expiresSeconds));
+
+            // Check if URL has expired
+            if (DateTime.now().isAfter(expiryTime)) {
+              isLikelyExpired = true;
+              debugPrint('S3 URL appears to be expired: ${uri.toString()}');
+            }
+          } catch (e) {
+            debugPrint('Error parsing S3 URL expiry: $e');
+          }
+        }
+
         // Create custom headers with S3 specific requirements
         final s3Headers = {
           'Accept': '*/*',
           'Cache-Control': 'no-cache',
           'Connection': 'keep-alive',
           'Pragma': 'no-cache',
-          // Add any additional headers needed for S3 auth
+          // Important: AWS pre-signed URLs must have their Authorization header preserved
+          // DO NOT add a custom Authorization header as it will override the signed URL
         };
 
         // Merge with any existing headers
@@ -39,9 +110,21 @@ class S3HttpFileService implements FileService {
           s3Headers.addAll(headers);
         }
 
+        // Log the attempt for better debugging
+        debugPrint('Fetching S3 image with pre-signed URL: ${uri.toString()}');
+
+        // If the URL is likely expired, we can try to regenerate it or skip the request
+        if (isLikelyExpired) {
+          // Instead of making a request that will fail, return a failed response directly
+          throw HttpExceptionWithStatus(
+            403,
+            'S3 pre-signed URL has expired and needs to be refreshed',
+            uri: uri,
+          );
+        }
+
         // Use the merged headers for the request
-        final response =
-            await _httpClient.get(Uri.parse(url), headers: s3Headers);
+        final response = await _httpClient.get(uri, headers: s3Headers);
         return _handleResponse(response, url);
       }
 
@@ -52,6 +135,41 @@ class S3HttpFileService implements FileService {
       debugPrint('S3HttpFileService error: $e for URL: $url');
       rethrow;
     }
+  }
+
+  @override
+  Future<FileServiceResponse> get(String url,
+      {Map<String, String>? headers}) async {
+    // Check if this request is already in progress
+    if (_activeRequests.containsKey(url)) {
+      return _activeRequests[url]!.future;
+    }
+
+    // Create a new completer for this request
+    final completer = Completer<FileServiceResponse>();
+
+    // Check if we can execute immediately or need to queue
+    if (_activeRequestCount < _maxConcurrentFetches) {
+      _activeRequests[url] = completer;
+      _activeRequestCount++;
+
+      _executeRequest(url, headers).then((response) {
+        completer.complete(response);
+        _activeRequestCount--;
+        _activeRequests.remove(url);
+        _processQueue(); // Process next request if any
+      }).catchError((error) {
+        completer.completeError(error);
+        _activeRequestCount--;
+        _activeRequests.remove(url);
+        _processQueue(); // Process next request even on error
+      });
+    } else {
+      // Queue the request for later processing
+      _requestQueue.add(_PendingRequest(url, headers, completer));
+    }
+
+    return completer.future;
   }
 
   FileServiceResponse _handleResponse(http.Response response, String url) {
@@ -69,7 +187,7 @@ class S3HttpFileService implements FileService {
       case 403:
         throw HttpExceptionWithStatus(
           403,
-          'Access denied to S3 image. Authentication failed. URL: $url',
+          'Access denied to S3 image. Authentication failed or URL expired. URL: $url',
           uri: Uri.parse(url),
         );
       case 404:
@@ -85,6 +203,13 @@ class S3HttpFileService implements FileService {
           uri: Uri.parse(url),
         );
     }
+  }
+
+  // Properly dispose resources on app shutdown
+  void dispose() {
+    _httpClient.close();
+    _requestQueue.clear();
+    _activeRequests.clear();
   }
 }
 

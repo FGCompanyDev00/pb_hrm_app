@@ -23,6 +23,7 @@ import 'package:pb_hrsystem/login/login_page.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:pb_hrsystem/services/s3_image_service.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -107,7 +108,7 @@ class DashboardState extends State<Dashboard>
       stalePeriod: const Duration(days: 7),
       maxNrOfCacheObjects: 20,
       repo: JsonCacheInfoRepository(databaseName: 'profileImageCache'),
-      fileService: HttpFileService(),
+      fileService: S3HttpFileService(),
     ),
   );
 
@@ -118,7 +119,7 @@ class DashboardState extends State<Dashboard>
       stalePeriod: const Duration(days: 14),
       maxNrOfCacheObjects: 50,
       repo: JsonCacheInfoRepository(databaseName: 'bannerImageCache'),
-      fileService: HttpFileService(),
+      fileService: S3HttpFileService(),
     ),
   );
 
@@ -562,18 +563,34 @@ class DashboardState extends State<Dashboard>
     try {
       if (imageUrl.isNotEmpty &&
           Uri.tryParse(imageUrl)?.hasAbsolutePath == true) {
-        // Clear both the disk cache and the memory cache
-        await DefaultCacheManager().removeFile(imageUrl);
+        // Check if this is an S3 URL
+        if (imageUrl.contains('s3.ap-southeast-1.amazonaws.com')) {
+          // Use the S3 cache manager for S3 URLs
+          await profileImageCacheManager.removeFile(imageUrl);
 
-        // Also clear from Flutter's image cache
-        final provider = NetworkImage(imageUrl);
-        PaintingBinding.instance.imageCache.evict(provider);
+          // Also clear from Flutter's image cache
+          final provider = NetworkImage(imageUrl);
+          PaintingBinding.instance.imageCache.evict(provider);
 
-        // Clear from CachedNetworkImage's cache
-        final cachedProvider = CachedNetworkImageProvider(imageUrl);
-        PaintingBinding.instance.imageCache.evict(cachedProvider);
+          // Clear from CachedNetworkImage's cache
+          final cachedProvider = CachedNetworkImageProvider(imageUrl);
+          PaintingBinding.instance.imageCache.evict(cachedProvider);
 
-        debugPrint('Cleared old image from all caches: $imageUrl');
+          debugPrint('Cleared old S3 image from all caches: $imageUrl');
+        } else {
+          // For non-S3 URLs, use the default cache manager
+          await DefaultCacheManager().removeFile(imageUrl);
+
+          // Also clear from Flutter's image cache
+          final provider = NetworkImage(imageUrl);
+          PaintingBinding.instance.imageCache.evict(provider);
+
+          // Clear from CachedNetworkImage's cache
+          final cachedProvider = CachedNetworkImageProvider(imageUrl);
+          PaintingBinding.instance.imageCache.evict(cachedProvider);
+
+          debugPrint('Cleared old image from all caches: $imageUrl');
+        }
       }
     } catch (e) {
       debugPrint('Error clearing image from cache: $e');
@@ -720,7 +737,7 @@ class DashboardState extends State<Dashboard>
     }
   }
 
-  // Helper method to prefetch images
+  // Helper method to prefetch images with memory optimization
   void _prefetchImage(String imageUrl, {bool highPriority = false}) {
     if (imageUrl.isEmpty || Uri.tryParse(imageUrl)?.hasAbsolutePath != true)
       return;
@@ -729,27 +746,76 @@ class DashboardState extends State<Dashboard>
       // Create a unique cache key for better control
       final cacheKey = 'img_${imageUrl.hashCode}';
 
-      // Use CachedNetworkImageProvider with precacheImage for efficient caching
+      // Check if this is an S3 URL
+      final isS3Url = imageUrl.contains('s3.ap-southeast-1.amazonaws.com');
+
+      // Use appropriate cache manager based on URL type
+      final cacheManager =
+          isS3Url ? profileImageCacheManager : DefaultCacheManager();
+
+      // Memory optimization: Only load a few images at once
+      // We'll use a small placeholder size first, then the full image when needed
+      final maxWidth =
+          highPriority ? 1080 : 480; // Lower resolution for background images
+      final maxHeight = highPriority ? 1080 : 480;
+
+      // Use CachedNetworkImageProvider with memory optimization
       final provider = CachedNetworkImageProvider(
         imageUrl,
         cacheKey: cacheKey,
-        maxWidth: 1080, // Limit max size for memory efficiency
-        maxHeight: 1080,
+        cacheManager: cacheManager,
+        maxWidth: maxWidth,
+        maxHeight: maxHeight,
       );
 
       // Precache with higher priority for important images
-      precacheImage(provider, context, onError: (exception, stackTrace) {
-        debugPrint('Error precaching image: $exception');
-      });
+      // Only do memory caching for visible/high-priority images
+      if (highPriority) {
+        precacheImage(provider, context, onError: (exception, stackTrace) {
+          debugPrint('Error precaching image: $exception');
+          // Handle S3 errors by refreshing pre-signed URLs if needed
+          if (isS3Url) {
+            // Determine image type for refresh logic
+            final type =
+                imageUrl.contains('employee-images') ? 'profile' : 'banner';
+            _handleS3ImageError(imageUrl, type);
+          }
+        });
+      }
 
-      // Also ensure it's in the disk cache for persistence
-      DefaultCacheManager().getSingleFile(imageUrl).then((file) {
-        // debugPrint('Image cached to disk: ${file.path}');
+      // Only check if the file is already in disk cache to avoid unnecessary requests
+      cacheManager.getFileFromCache(cacheKey).then((fileInfo) {
+        if (fileInfo != null) {
+          // File already cached on disk, no need to download again
+          debugPrint('Image already in disk cache: ${fileInfo.file.path}');
+        } else {
+          // File not in cache, download it with size constraints
+          // Use getFileStream instead of getSingleFile for better memory management
+          cacheManager
+              .downloadFile(
+            imageUrl,
+            key: cacheKey,
+            force: false, // Don't force if already in progress
+          )
+              .then((fileInfo) {
+            debugPrint(
+                'Image successfully cached to disk: ${fileInfo.file.path}');
+          }).catchError((e) {
+            debugPrint('Error caching image to disk: $e for URL: $imageUrl');
+            // Handle S3 errors by refreshing pre-signed URLs if needed
+            if (isS3Url) {
+              // Determine image type for refresh logic
+              final type =
+                  imageUrl.contains('employee-images') ? 'profile' : 'banner';
+              _handleS3ImageError(imageUrl, type);
+            }
+          });
+        }
       }).catchError((e) {
-        debugPrint('Error caching image to disk: $e');
+        debugPrint('Error checking cache status: $e for URL: $imageUrl');
       });
     } catch (e) {
-      debugPrint('Error prefetching image: $e');
+      debugPrint('Error prefetching image: $e for URL: $imageUrl');
     }
   }
 
@@ -1252,10 +1318,13 @@ class DashboardState extends State<Dashboard>
 
   // AppBar with user information
   Widget _buildAppBar(UserProfile userProfile, bool isDarkMode) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return AppBar(
       automaticallyImplyLeading: false,
       backgroundColor: Colors.transparent,
       elevation: 0,
+      toolbarHeight: kToolbarHeight + 30, // Increased height for text wrapping
       flexibleSpace: ClipRRect(
         borderRadius: BorderRadius.circular(15),
         child: Container(
@@ -1282,7 +1351,7 @@ class DashboardState extends State<Dashboard>
                         child: IconButton(
                           icon: Icon(Icons.settings,
                               color: isDarkMode ? Colors.white : Colors.black,
-                              size: 32),
+                              size: 28),
                           onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -1292,52 +1361,74 @@ class DashboardState extends State<Dashboard>
                       );
                     },
                   ),
-                  GestureDetector(
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const ProfileScreen()),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ProfileAvatar(
-                          userProfile: userProfile,
-                          isDarkMode: isDarkMode,
-                          cacheManager: profileImageCacheManager,
-                        ),
-                        const SizedBox(height: 6),
-                        // Greeting text with waving hand emoji
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              AppLocalizations.of(context)!
-                                  .greeting(userProfile.name),
-                              style: TextStyle(
-                                color: isDarkMode ? Colors.white : Colors.black,
-                                fontSize: 22,
+
+                  // Center section with profile and name (vertically stacked)
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const ProfileScreen()),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Avatar on top
+                          ProfileAvatar(
+                            userProfile: userProfile,
+                            isDarkMode: isDarkMode,
+                            cacheManager: profileImageCacheManager,
+                          ),
+                          const SizedBox(height: 6),
+
+                          // Greeting text with waving hand emoji (now below avatar)
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: screenWidth * 0.6,
                               ),
-                            ),
-                            AnimatedBuilder(
-                              animation: _waveHandAnimation,
-                              builder: (context, child) {
-                                return Transform.rotate(
-                                  angle: _waveHandAnimation.value,
-                                  child: const Text(
-                                    " 👋",
-                                    style: TextStyle(
-                                      fontSize: 22,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      AppLocalizations.of(context)!
+                                          .greeting(userProfile.name),
+                                      style: TextStyle(
+                                        color: isDarkMode
+                                            ? Colors.white
+                                            : Colors.black,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
                                     ),
                                   ),
-                                );
-                              },
+                                  AnimatedBuilder(
+                                    animation: _waveHandAnimation,
+                                    builder: (context, child) {
+                                      return Transform.rotate(
+                                        angle: _waveHandAnimation.value,
+                                        child: const Text(
+                                          " 👋",
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+
                   // Logout Icon with gradient animation
                   AnimatedBuilder(
                     animation: _logoutGradientAnimation,
@@ -1367,7 +1458,7 @@ class DashboardState extends State<Dashboard>
                         },
                         child: IconButton(
                           icon: Icon(Icons.power_settings_new,
-                              color: Colors.white, size: 32),
+                              color: Colors.white, size: 28),
                           onPressed: () =>
                               _showLogoutDialog(context, isDarkMode),
                         ),
@@ -1420,6 +1511,7 @@ class DashboardState extends State<Dashboard>
       height: 175.0,
       standardErrorMessage: standardErrorMessage,
       onPreloadImage: _prefetchImage,
+      useS3CacheManager: true, // Enable S3 cache manager for banners
     );
   }
 
@@ -1808,6 +1900,54 @@ class DashboardState extends State<Dashboard>
       return false;
     }
   }
+
+  // Handle S3 image load error by potentially refreshing the data
+  Future<void> _handleS3ImageError(String url, String type) async {
+    if (url.contains('s3.ap-southeast-1.amazonaws.com')) {
+      // Check if this is likely an expired pre-signed URL error
+      final uri = Uri.tryParse(url);
+      if (uri != null) {
+        final dateParam = uri.queryParameters['X-Amz-Date'];
+        final expiresParam = uri.queryParameters['X-Amz-Expires'];
+
+        if (dateParam != null && expiresParam != null) {
+          try {
+            // Parse the AWS date format (YYYYMMDDTHHMMSSZ)
+            final reqDate = DateTime.parse(
+                '${dateParam.substring(0, 4)}-${dateParam.substring(4, 6)}-${dateParam.substring(6, 8)}T' +
+                    '${dateParam.substring(9, 11)}:${dateParam.substring(11, 13)}:${dateParam.substring(13, 15)}Z');
+            final expiresSeconds = int.parse(expiresParam);
+            final expiryTime = reqDate.add(Duration(seconds: expiresSeconds));
+
+            // If URL has expired or will expire soon, refresh the data
+            if (DateTime.now().isAfter(expiryTime) ||
+                DateTime.now()
+                    .add(const Duration(minutes: 5))
+                    .isAfter(expiryTime)) {
+              debugPrint('Refreshing ${type} data due to expired S3 URL');
+
+              // Clear the cache for this URL
+              await _clearImageFromCache(url);
+
+              // Refresh user profile if this is a profile image
+              if (type == 'profile') {
+                setState(() {
+                  futureUserProfile = fetchUserProfile();
+                  _prefetchImage(url);
+                });
+              }
+              // Refresh banners if this is a banner image
+              else if (type == 'banner') {
+                await _fetchBannersFromApiAndUpdate(forceUpdate: true);
+              }
+            }
+          } catch (e) {
+            debugPrint('Error handling expired S3 URL: $e');
+          }
+        }
+      }
+    }
+  }
 }
 
 // UserProfile Model
@@ -1907,11 +2047,19 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
     _loadFromCache();
   }
 
+  @override
+  void dispose() {
+    // Cancel any pending operations to prevent memory leaks
+    super.dispose();
+  }
+
   Future<void> _checkConnectivity() async {
+    if (!mounted) return;
+
     try {
       final result = await http
           .get(Uri.parse('https://www.google.com'))
-          .timeout(const Duration(seconds: 3));
+          .timeout(const Duration(seconds: 2));
       if (mounted) {
         setState(() {
           _isOnline = result.statusCode == 200;
@@ -1927,6 +2075,8 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
   }
 
   Future<void> _loadFromCache() async {
+    if (!mounted) return;
+
     try {
       if (imageUrl.isEmpty || imageUrl == 'avatar_placeholder.png') {
         _finishLoading();
@@ -1955,17 +2105,20 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
   }
 
   Future<void> _updateCacheFromNetwork() async {
+    if (!mounted) return;
+
     try {
       if (imageUrl.isEmpty || imageUrl == 'avatar_placeholder.png') {
         _finishLoading();
         return;
       }
 
-      // Download the image and update cache
+      // Use download function instead of getSingleFile for better memory management
       final fileInfo = await widget.cacheManager.downloadFile(
         imageUrl,
         key: cacheKey,
-        force: true, // Force update to get fresh image
+        // Only force download for critical images
+        force: false,
       );
 
       if (mounted) {
@@ -2013,6 +2166,8 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
           fit: BoxFit.cover,
           width: 56,
           height: 56,
+          cacheWidth: 112, // 2x for retina displays is enough
+          cacheHeight: 112,
           errorBuilder: (context, error, stackTrace) {
             return Image.asset(
               'assets/avatar_placeholder.png',
@@ -2034,6 +2189,8 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
         fit: BoxFit.cover,
         width: 56,
         height: 56,
+        memCacheWidth: 112, // 2x for retina displays
+        memCacheHeight: 112,
         fadeInDuration: Duration.zero,
         fadeOutDuration: Duration.zero,
         placeholderFadeInDuration: Duration.zero,
@@ -2066,6 +2223,7 @@ class BannerCarousel extends StatefulWidget {
   final double height;
   final String standardErrorMessage;
   final Function(String, {bool highPriority}) onPreloadImage;
+  final bool useS3CacheManager; // New parameter
 
   const BannerCarousel({
     Key? key,
@@ -2079,6 +2237,8 @@ class BannerCarousel extends StatefulWidget {
     required this.height,
     required this.standardErrorMessage,
     required this.onPreloadImage,
+    this.useS3CacheManager =
+        false, // Default to false for backward compatibility
   }) : super(key: key);
 
   @override
@@ -2185,40 +2345,101 @@ class _BannerCarouselState extends State<BannerCarousel>
   }
 
   void _preloadAllBannerImages(List<String> banners) {
-    for (final url in banners) {
-      if (url.isEmpty) continue;
+    // Limit the number of concurrent downloads to avoid memory pressure
+    final maxConcurrentDownloads = 2;
+    int activeDownloads = 0;
+    final downloadQueue = List<String>.from(banners);
 
-      try {
-        final cacheKey = 'banner_${url.hashCode}';
+    // Process banners in order of importance
+    void processNextBanner() {
+      if (downloadQueue.isEmpty ||
+          !mounted ||
+          activeDownloads >= maxConcurrentDownloads) return;
 
-        // Preload current, previous, and next banner
-        final currentIndex = _banners.indexOf(url);
-        if (currentIndex == widget.currentPage ||
-            currentIndex == widget.currentPage - 1 ||
-            currentIndex == widget.currentPage + 1) {
-          // Immediate preload for visible banners
-          widget.onPreloadImage(url, highPriority: true);
+      activeDownloads++;
+      final url = downloadQueue.removeAt(0);
+      final cacheKey = 'banner_${url.hashCode}';
 
-          // Also ensure it's in disk cache
-          widget.cacheManager.getSingleFile(url, key: cacheKey).then((file) {
+      // Check if already cached
+      widget.cacheManager.getFileFromCache(cacheKey).then((fileInfo) {
+        if (fileInfo != null) {
+          // Already cached, update UI and process next
+          if (mounted) {
+            setState(() {
+              _cachedBannerFiles[url] = fileInfo;
+            });
+          }
+          activeDownloads--;
+          processNextBanner();
+        } else {
+          // Only visible banners should be preloaded in memory
+          final currentIndex = _banners.indexOf(url);
+          final isVisibleBanner = currentIndex == widget.currentPage ||
+              currentIndex == widget.currentPage - 1 ||
+              currentIndex == widget.currentPage + 1;
+
+          if (isVisibleBanner) {
+            // Load visible banners immediately
+            widget.onPreloadImage(url, highPriority: true);
+          }
+
+          // Download to disk cache with size constraints to save memory
+          widget.cacheManager
+              .downloadFile(
+            url,
+            key: cacheKey,
+          )
+              .then((fileInfo) {
             if (mounted) {
               setState(() {
-                _cachedBannerFiles[url] = FileInfo(
-                  file,
-                  FileSource.Cache,
-                  DateTime.now().add(const Duration(days: 7)),
-                  url,
-                );
+                _cachedBannerFiles[url] = fileInfo;
               });
             }
+            debugPrint('Banner cached successfully: ${fileInfo.file.path}');
+            activeDownloads--;
+            processNextBanner();
+          }).catchError((e) {
+            debugPrint('Error downloading banner: $e for URL: $url');
+            activeDownloads--;
+            processNextBanner();
           });
-        } else {
-          // Lower priority for other banners
-          widget.onPreloadImage(url);
         }
-      } catch (e) {
-        debugPrint('Error preloading banner image: $e');
+      }).catchError((e) {
+        debugPrint('Error checking banner cache: $e for URL: $url');
+        activeDownloads--;
+        processNextBanner();
+      });
+    }
+
+    // Start loading visible banners first (prioritize current, previous, and next)
+    if (banners.isNotEmpty) {
+      final priorityBanners = <String>[];
+      final normalBanners = <String>[];
+
+      for (final url in banners) {
+        // Skip invalid URLs
+        if (url.isEmpty) continue;
+
+        final currentIndex = _banners.indexOf(url);
+        final isVisibleBanner = currentIndex == widget.currentPage ||
+            currentIndex == widget.currentPage - 1 ||
+            currentIndex == widget.currentPage + 1;
+
+        if (isVisibleBanner) {
+          priorityBanners.add(url);
+        } else {
+          normalBanners.add(url);
+        }
       }
+
+      // Reorder queue to process priority banners first
+      downloadQueue.clear();
+      downloadQueue.addAll(priorityBanners);
+      downloadQueue.addAll(normalBanners);
+
+      // Start processing
+      processNextBanner();
+      processNextBanner(); // Start 2 downloads in parallel
     }
   }
 

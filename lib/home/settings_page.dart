@@ -43,7 +43,7 @@ class SettingsPageState extends State<SettingsPage> {
   bool _isLoading = false;
   bool _debugModeEnabled = false;
   late Future<UserProfile> futureUserProfile;
-  String _appVersion = 'PSVB Next v1.1.4(4)';
+  String _appVersion = 'PSVB Next v1.1.6(6)';
   late Box<String> userProfileBox;
   late Box<List<String>> bannersBox;
   String? _fcmToken;

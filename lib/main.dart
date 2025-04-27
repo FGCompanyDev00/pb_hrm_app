@@ -184,9 +184,50 @@ Future<void> _showNotification(RemoteMessage message) async {
   );
 }
 
+/// Custom memory pressure observer for iOS
+class MemoryPressureObserver extends WidgetsBindingObserver {
+  final VoidCallback onMemoryPressure;
+
+  MemoryPressureObserver({required this.onMemoryPressure});
+
+  @override
+  void didHaveMemoryPressure() {
+    debugPrint('Memory pressure detected - cleaning up caches');
+    onMemoryPressure();
+  }
+}
+
+/// Memory optimization helper to clear caches when low on memory
+void _clearMemoryCache() {
+  // Clear Flutter's image cache
+  PaintingBinding.instance.imageCache.clear();
+
+  // Resize cache to more conservative size
+  PaintingBinding.instance.imageCache.maximumSize = 100;
+  PaintingBinding.instance.imageCache.maximumSizeBytes =
+      50 * 1024 * 1024; // 50MB
+
+  // Clear any cached data in our app cache
+  appCache.clear();
+
+  // Try to force garbage collection by setting references to null
+  // This isn't guaranteed to work but might help
+  debugPrint('Memory cache cleared due to low memory pressure');
+}
+
 Future<void> _initializeApp() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Set up memory optimization
+  // Listen for memory pressure events (iOS)
+  if (Platform.isIOS) {
+    WidgetsBinding.instance.addObserver(
+      MemoryPressureObserver(
+        onMemoryPressure: _clearMemoryCache,
+      ),
+    );
+  }
 
   // Initialize service locator first, before anything else
   try {
@@ -210,6 +251,10 @@ Future<void> _initializeApp() async {
     // Enable image caching optimization
     PaintingBinding.instance.imageCache.maximumSizeBytes =
         100 * 1024 * 1024; // 100MB limit
+  } else {
+    // iOS tends to be more memory constrained
+    PaintingBinding.instance.imageCache.maximumSizeBytes =
+        50 * 1024 * 1024; // 50MB limit
   }
 
   // Load environment variables

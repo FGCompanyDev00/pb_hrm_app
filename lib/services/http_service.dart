@@ -24,7 +24,7 @@ Future<http.Response?> getRequest(String endpoint) async {
       return response;
     } else {
       showSnackBar(
-          'Failed to load data. Status Code: ${response.statusCode}. Message: ${response.body}');
+          'We\'re unable to process your request at the moment. Please contact IT support for assistance.');
       return null;
     }
   } catch (e) {
