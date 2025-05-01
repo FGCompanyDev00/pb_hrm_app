@@ -1,6 +1,8 @@
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:pb_hrsystem/core/utils/image_utils.dart';
 
 List<Widget> buildMembersAvatars(
   AdvancedDayEvent<String> event,
@@ -32,16 +34,17 @@ List<Widget> buildMembersAvatars(
 }
 
 List<Widget> buildMembersAvatarsTimeTable(
-    Events event,
-    BuildContext context,
-    ) {
+  Events event,
+  BuildContext context,
+) {
   // Filter duplicate members based on employee_id
   List<dynamic> filteredMembers = [];
   final seenIds = <dynamic>{};
 
   if (event.members != null) {
     for (var member in event.members!) {
-      if (member['employee_id'] != null && seenIds.contains(member['employee_id'])) {
+      if (member['employee_id'] != null &&
+          seenIds.contains(member['employee_id'])) {
         continue;
       }
       seenIds.add(member['employee_id']);
@@ -73,24 +76,40 @@ List<Widget> buildMembersAvatarsTimeTable(
   return membersAvatar;
 }
 
-Widget avatarUser(String link) {
+Widget avatarUser(String? link) {
+  // Process the image URL to ensure it's valid
+  final String? processedLink = ImageUtils.processImageUrl(link);
+  final bool validImageUrl = ImageUtils.isValidImageUrl(processedLink);
+
   return Padding(
     padding: const EdgeInsets.only(right: 3),
     child: CircleAvatar(
       radius: 15,
-      backgroundImage: NetworkImage(link),
+      backgroundColor: Colors.grey.shade300,
+      backgroundImage: validImageUrl ? NetworkImage(processedLink!) : null,
+      child: !validImageUrl
+          ? const Icon(Icons.person, size: 15, color: Colors.grey)
+          : null,
     ),
   );
 }
 
-Widget avatarUserList(String link, name) {
+Widget avatarUserList(String? link, name) {
+  // Process the image URL to ensure it's valid
+  final String? processedLink = ImageUtils.processImageUrl(link);
+  final bool validImageUrl = ImageUtils.isValidImageUrl(processedLink);
+
   return Padding(
     padding: const EdgeInsets.all(10),
     child: Row(
       children: [
         CircleAvatar(
           radius: 30,
-          backgroundImage: NetworkImage(link),
+          backgroundColor: Colors.grey.shade300,
+          backgroundImage: validImageUrl ? NetworkImage(processedLink!) : null,
+          child: !validImageUrl
+              ? const Icon(Icons.person, size: 30, color: Colors.grey)
+              : null,
         ),
         const SizedBox(
           width: 20,
@@ -101,7 +120,8 @@ Widget avatarUserList(String link, name) {
   );
 }
 
-Widget avatarMore(BuildContext context, List<Widget> avatarList, {String? count}) {
+Widget avatarMore(BuildContext context, List<Widget> avatarList,
+    {String? count}) {
   return Padding(
     padding: const EdgeInsets.only(right: 3),
     child: GestureDetector(

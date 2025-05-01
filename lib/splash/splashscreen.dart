@@ -7,6 +7,9 @@ import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:pb_hrsystem/widgets/update_dialog.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:pb_hrsystem/core/utils/image_utils.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -150,6 +153,10 @@ class SplashScreenState extends State<SplashScreen>
         } else {
           // If we get here, we have a valid session
           debugPrint('Session is valid, proceeding to main screen');
+
+          // Preload essential data and clear image cache to refresh images
+          _preloadAndClearCache();
+
           route = PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
                 const MainScreen(),
@@ -172,8 +179,21 @@ class SplashScreenState extends State<SplashScreen>
     });
   }
 
-  void _navigateToNextScreen() async {
+  // Add a method to preload data and clear image cache
+  Future<void> _preloadAndClearCache() async {
+    try {
+      // Clear image cache to ensure fresh images are loaded
+      ImageUtils.clearImageCache();
 
+      // Set baseUrl for environment
+      final String baseUrl = dotenv.env['BASE_URL'] ?? '';
+      debugPrint('Using base URL: $baseUrl for API and image loading');
+    } catch (e) {
+      debugPrint('Error in preload operation: $e');
+    }
+  }
+
+  void _navigateToNextScreen() async {
     // Check for updates when navigating from splash screen
     await Future.delayed(const Duration(seconds: 2));
 

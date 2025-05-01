@@ -84,10 +84,14 @@ class HomeCalendarState extends State<HomeCalendar>
   late AnimationController _typingController;
   late Animation<double> _typingAnimation;
 
+  /// Handles pull-to-refresh action with update information
+  Key _refreshKey = UniqueKey();
+
   @override
   void initState() {
     super.initState();
-    fetchData();
+
+    // Initialize default values
     _selectedDay = _focusedDay;
     switchTime.value =
         (_focusedDay.hour < 18 && _focusedDay.hour > 6) ? false : true;
@@ -127,14 +131,23 @@ class HomeCalendarState extends State<HomeCalendar>
       ),
     );
 
+    // First load data from local storage before fetching from server
+    _loadLocalData().then((_) {
+      // After loading local data, check if we're online and fetch fresh data
+      connectivityResult.checkConnectivity().then((connectivity) {
+        if (!connectivity.contains(ConnectivityResult.none)) {
+          fetchData();
+        }
+      });
+    });
+
     // Clear cache when connectivity changes
     connectivityResult.onConnectivityChanged.listen((source) async {
-      _eventCountsCache.clear();
-      _processedEventsCache.clear();
       if (source.contains(ConnectivityResult.none)) {
-        eventsForDay = await offlineProvider.getCalendar();
-        if (events.value.isEmpty) addEventOffline(eventsForDay);
+        // If offline, reload from local storage
+        await _loadLocalData();
       } else {
+        // If online, fetch fresh data
         fetchData();
       }
     });
@@ -213,11 +226,23 @@ class HomeCalendarState extends State<HomeCalendar>
   }
 
   /// Fetches all required data concurrently
-  Future<void> fetchData() async {
+  Future<void> fetchData({bool showUpdateInfo = false}) async {
     setState(() {
       _isLoading = true;
     });
     try {
+      // Store previous event count to compare after fetching
+      final int previousEventCount = eventsForAll.length;
+      final Set<String> previousEventIds =
+          eventsForAll.map((e) => e.uid).toSet();
+
+      // Clear previous data before fetching new data
+      _clearCaches();
+
+      // Empty the events list to avoid duplication
+      eventsForAll.clear();
+      events.value.clear();
+
       await Future.wait([
         _fetchMeetingData(),
         _fetchLeaveRequests(),
@@ -228,7 +253,41 @@ class HomeCalendarState extends State<HomeCalendar>
         _fetchMinutesOfMeeting(),
         _fetchMeetingMembers(),
       ]);
+
+      // Calculate new events statistics
+      final int newEventCount = eventsForAll.length;
+      final Set<String> currentEventIds =
+          eventsForAll.map((e) => e.uid).toSet();
+      final Set<String> newEventIds =
+          currentEventIds.difference(previousEventIds);
+      final int updatedEventCount = newEventIds.length;
+
+      // Count events by category
+      final Map<String, int> updatedEventsByCategory = {};
+      for (final event in eventsForAll) {
+        if (newEventIds.contains(event.uid)) {
+          updatedEventsByCategory[event.category] =
+              (updatedEventsByCategory[event.category] ?? 0) + 1;
+        }
+      }
+
+      // Explicitly store all fetched events to local storage
+      if (eventsForAll.isNotEmpty) {
+        await offlineProvider.insertCalendar(eventsForAll);
+        debugPrint('Saved ${eventsForAll.length} events to local storage');
+
+        // Show update info if requested and there are updates
+        if (showUpdateInfo && mounted && updatedEventCount > 0) {
+          _showUpdateInfoSnackbar(
+              updatedEventCount: updatedEventCount,
+              totalEventCount: newEventCount,
+              updatedEventsByCategory: updatedEventsByCategory);
+        }
+      }
     } catch (e) {
+      debugPrint('Error fetching calendar data: $e');
+      // If fetch fails, load from local storage as fallback
+      await _loadLocalData();
     } finally {
       setState(() {
         _isLoading = false;
@@ -1054,26 +1113,63 @@ class HomeCalendarState extends State<HomeCalendar>
     }
   }
 
-  /// Handles pull-to-refresh action
-  Key _refreshKey = UniqueKey();
-
+  /// Handles pull-to-refresh action with update information
   Future<void> _onRefresh() async {
     _clearCaches(); // Clear caches on refresh
 
-    connectivityResult.checkConnectivity().then((e) async {
-      if (e.contains(ConnectivityResult.none)) {
-        eventsForDay = await offlineProvider.getCalendar();
-        setState(() {
-          addEventOffline(eventsForDay);
-          _refreshKey = UniqueKey();
-        });
+    try {
+      final connectivityStatus = await connectivityResult.checkConnectivity();
+
+      if (connectivityStatus.contains(ConnectivityResult.none)) {
+        // If offline, load from local storage
+        await _loadLocalData();
+        if (mounted) {
+          setState(() {
+            _refreshKey = UniqueKey();
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Using offline calendar data",
+                style: const TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       } else {
-        await fetchData();
+        // If online, fetch new data without showing update information
+        await fetchData(showUpdateInfo: false);
+        if (mounted) {
+          setState(() {
+            _refreshKey = UniqueKey();
+          });
+
+          // Show simple success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Calendar refreshed successfully",
+                style: const TextStyle(color: Colors.white),
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error during refresh: $e');
+      // Load from local storage as fallback if refresh fails
+      await _loadLocalData();
+      if (mounted) {
         setState(() {
           _refreshKey = UniqueKey();
         });
       }
-    });
+    }
   }
 
   int liveHour() {
@@ -1121,7 +1217,11 @@ class HomeCalendarState extends State<HomeCalendar>
     if (_selectedDay == null) return;
 
     _clearCaches(); // Clear caches when events are filtered
-    offlineProvider.insertCalendar(eventsForAll);
+
+    // Save all events to offline storage to ensure data persistence
+    if (eventsForAll.isNotEmpty) {
+      offlineProvider.insertCalendar(eventsForAll);
+    }
 
     final dayEvents = _getEventsForDay(_selectedDay!);
     List<Events> filteredEvents = dayEvents;
@@ -1570,6 +1670,201 @@ class HomeCalendarState extends State<HomeCalendar>
     }
 
     return updateEvents;
+  }
+
+  /// Loads calendar data from local storage
+  Future<void> _loadLocalData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // Load events from local storage
+      final localEvents = await offlineProvider.getCalendar();
+
+      if (localEvents.isNotEmpty) {
+        addEventOffline(localEvents);
+        _filterAndSearchEvents();
+      }
+    } catch (e) {
+      debugPrint('Error loading local data: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  /// Updates the calendar data after user login
+  Future<void> updateCalendarAfterLogin() async {
+    // Use fetch method without showing update information
+    await fetchData(showUpdateInfo: false);
+  }
+
+  /// Shows a snackbar with update information
+  void _showUpdateInfoSnackbar(
+      {required int updatedEventCount,
+      required int totalEventCount,
+      required Map<String, int> updatedEventsByCategory}) {
+    if (!mounted) return;
+
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final List<Widget> categoryUpdates = [];
+
+    // Sort categories by predefined order
+    const categoryOrder = {
+      'Add Meeting': 1,
+      'Meeting Room Bookings': 2,
+      'Booking Car': 3,
+      'Minutes Of Meeting': 4,
+      'Leave': 5,
+    };
+
+    final sortedCategories = updatedEventsByCategory.entries.toList()
+      ..sort((a, b) =>
+          (categoryOrder[a.key] ?? 99).compareTo(categoryOrder[b.key] ?? 99));
+
+    // Create category update widgets
+    for (final entry in sortedCategories) {
+      final String categoryName = _getCategoryDisplayName(entry.key);
+      final Color categoryColor = categoryColors[entry.key] ?? Colors.grey;
+
+      categoryUpdates.add(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          margin: const EdgeInsets.only(top: 5),
+          decoration: BoxDecoration(
+            color: categoryColor.withOpacity(0.15),
+            border: Border.all(color: categoryColor.withOpacity(0.3), width: 1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                categoryIcon[entry.key] != null ? Icons.circle : Icons.event,
+                size: 8,
+                color: categoryColor,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                categoryName,
+                style: TextStyle(
+                  color: isDarkMode
+                      ? Colors.white.withOpacity(0.9)
+                      : Colors.black87,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: categoryColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '+${entry.value}',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final snackBar = SnackBar(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.update,
+                color: isDarkMode ? Colors.green[300] : Colors.green[700],
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  updatedEventCount > 0
+                      ? "Calendar Updated"
+                      : "Calendar Refreshed",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (updatedEventCount > 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              updatedEventCount == 1
+                  ? "1 new event added"
+                  : "$updatedEventCount new events added",
+              style: TextStyle(
+                fontSize: 13,
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: categoryUpdates,
+            ),
+          ],
+        ],
+      ),
+      backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.05),
+          width: 1,
+        ),
+      ),
+      margin: const EdgeInsets.all(16),
+      duration: const Duration(seconds: 4),
+      action: SnackBarAction(
+        label: 'OK',
+        textColor: ColorStandardization().colorDarkGold,
+        onPressed: () {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        },
+      ),
+    );
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
+
+  /// Gets the localized display name for a category
+  String _getCategoryDisplayName(String category) {
+    switch (category) {
+      case 'Add Meeting':
+        return AppLocalizations.of(context)!.meetingTitle;
+      case 'Leave':
+        return AppLocalizations.of(context)!.leave;
+      case 'Meeting Room Bookings':
+        return AppLocalizations.of(context)!.meetingRoomBookings;
+      case 'Booking Car':
+        return AppLocalizations.of(context)!.bookingCar;
+      case 'Minutes Of Meeting':
+        return AppLocalizations.of(context)!.minutesOfMeeting;
+      default:
+        return category;
+    }
   }
 
   @override

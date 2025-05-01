@@ -35,9 +35,12 @@ class CalendarDaySwitchView extends HookWidget {
     final currentHourDefault = useState(7);
     final untilEndDefault = useState(23);
     // final switchTime = useState(selectedSlotTime);
-    final ValueNotifier<List<AdvancedDayEvent<String>>> currentEvents = useState([]);
-    final ValueNotifier<List<AdvancedDayEvent<String>>> categoriesEvents = useState([]);
-    final ValueNotifier<List<OverflowEventsRow<String>>> currentOverflowEventsRow = useState([]);
+    final ValueNotifier<List<AdvancedDayEvent<String>>> currentEvents =
+        useState([]);
+    final ValueNotifier<List<AdvancedDayEvent<String>>> categoriesEvents =
+        useState([]);
+    final ValueNotifier<List<OverflowEventsRow<String>>>
+        currentOverflowEventsRow = useState([]);
 
     // ScrollController to control the initial scroll position
     final scrollController = useScrollController();
@@ -102,7 +105,9 @@ class CalendarDaySwitchView extends HookWidget {
           e.end.minute,
         );
 
-        if (startTime.hour != 0 && endTime.hour != 0 && startTime.isAtSameMomentAs(endTime)) {
+        if (startTime.hour != 0 &&
+            endTime.hour != 0 &&
+            startTime.isAtSameMomentAs(endTime)) {
           startTime = DateTime(
             selectedDay!.year,
             selectedDay!.month,
@@ -202,13 +207,16 @@ class CalendarDaySwitchView extends HookWidget {
       // Process overflow events
       currentOverflowEventsRow.value = processOverflowEvents(
         [...categoriesEvents.value]..sort((a, b) => a.compare(b)),
-        startOfDay: selectedDay!.copyTimeAndMinClean(const TimeOfDay(hour: 0, minute: 0)),
-        endOfDay: selectedDay!.copyTimeAndMinClean(const TimeOfDay(hour: 24, minute: 0)),
+        startOfDay: selectedDay!
+            .copyTimeAndMinClean(const TimeOfDay(hour: 0, minute: 0)),
+        endOfDay: selectedDay!
+            .copyTimeAndMinClean(const TimeOfDay(hour: 24, minute: 0)),
         cropBottomEvents: true,
       );
 
       for (var row in currentOverflowEventsRow.value) {
-        row.events.sort((a, b) => categoryOrder[a.category]!.compareTo(categoryOrder[b.category]!));
+        row.events.sort((a, b) =>
+            categoryOrder[a.category]!.compareTo(categoryOrder[b.category]!));
       }
     }
 
@@ -241,7 +249,12 @@ class CalendarDaySwitchView extends HookWidget {
     useEffect(() {
       autoEventsSlot();
       return null;
-    }, [eventsCalendar, selectedDay, passDefaultCurrentHour, passDefaultEndHour]);
+    }, [
+      eventsCalendar,
+      selectedDay,
+      passDefaultCurrentHour,
+      passDefaultEndHour
+    ]);
 
     return ValueListenableBuilder(
         valueListenable: currentOverflowEventsRow,
@@ -265,7 +278,8 @@ class CalendarDaySwitchView extends HookWidget {
               timeTitleColumnWidth: 40,
               time12: true,
               overflowItemBuilder: (context, constraints, itemIndex, event) {
-                Color statusColor = categoryColors[event.category] ?? Colors.grey;
+                Color statusColor =
+                    categoryColors[event.category] ?? Colors.grey;
                 String? iconCategory = categoryIcon[event.category];
                 Widget child;
                 Duration? time = event.end.difference(event.start);
@@ -278,11 +292,13 @@ class CalendarDaySwitchView extends HookWidget {
                   case 'Leave':
                     eventCategory = AppLocalizations.of(context)!.leave;
                   case 'Meeting Room Bookings':
-                    eventCategory = AppLocalizations.of(context)!.meetingRoomBookings;
+                    eventCategory =
+                        AppLocalizations.of(context)!.meetingRoomBookings;
                   case 'Booking Car':
                     eventCategory = AppLocalizations.of(context)!.bookingCar;
                   case 'Minutes Of Meeting':
-                    eventCategory = AppLocalizations.of(context)!.minutesOfMeeting;
+                    eventCategory =
+                        AppLocalizations.of(context)!.minutesOfMeeting;
                   default:
                     eventCategory = AppLocalizations.of(context)!.other;
                 }
@@ -294,7 +310,8 @@ class CalendarDaySwitchView extends HookWidget {
                         onDoubleTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => TimetablePage(date: selectedDay!),
+                            builder: (context) =>
+                                TimetablePage(date: selectedDay!),
                           ),
                         ),
                         onTap: () {
@@ -305,20 +322,30 @@ class CalendarDaySwitchView extends HookWidget {
                                 event: {
                                   'title': event.title,
                                   'description': eventsCalendar[itemIndex].desc,
-                                  'startDateTime': event.startDisplay.toString(),
+                                  'startDateTime':
+                                      event.startDisplay.toString(),
                                   'endDateTime': event.endDisplay.toString(),
-                                  'isMeeting': eventsCalendar[itemIndex].isMeeting,
-                                  'createdBy': eventsCalendar[itemIndex].createdBy ?? '',
-                                  'location': eventsCalendar[itemIndex].location ?? '',
+                                  'isMeeting':
+                                      eventsCalendar[itemIndex].isMeeting,
+                                  'createdBy':
+                                      eventsCalendar[itemIndex].createdBy ?? '',
+                                  'location':
+                                      eventsCalendar[itemIndex].location ?? '',
                                   'status': event.status,
-                                  'img_name': eventsCalendar[itemIndex].imgName ?? '',
-                                  'created_at': eventsCalendar[itemIndex].createdAt ?? '',
-                                  'is_repeat': eventsCalendar[itemIndex].isRepeat ?? '',
-                                  'video_conference': eventsCalendar[itemIndex].videoConference ?? '',
+                                  'img_name':
+                                      eventsCalendar[itemIndex].imgName ?? '',
+                                  'created_at':
+                                      eventsCalendar[itemIndex].createdAt ?? '',
+                                  'is_repeat':
+                                      eventsCalendar[itemIndex].isRepeat ?? '',
+                                  'video_conference': eventsCalendar[itemIndex]
+                                          .videoConference ??
+                                      '',
                                   'uid': eventsCalendar[itemIndex].uid,
                                   'members': event.members ?? [],
                                   'category': event.category,
-                                  'leave_type': eventsCalendar[itemIndex].leaveType ?? '',
+                                  'leave_type':
+                                      eventsCalendar[itemIndex].leaveType ?? '',
                                 },
                               ),
                             ),
@@ -327,13 +354,15 @@ class CalendarDaySwitchView extends HookWidget {
                         child: event.status == 'Cancelled'
                             ? const SizedBox.shrink()
                             : Container(
-                                margin: const EdgeInsets.only(right: 3, left: 3),
+                                margin:
+                                    const EdgeInsets.only(right: 3, left: 3),
                                 padding: const EdgeInsets.all(8.0),
                                 height: constraints.maxHeight,
                                 width: 100,
                                 decoration: BoxDecoration(
                                   color: ColorStandardization().colorDarkGold,
-                                  borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                  borderRadius: const BorderRadius.all(
+                                      Radius.circular(10)),
                                 ),
                                 child: Text(eventCategory),
                               ),
@@ -344,7 +373,8 @@ class CalendarDaySwitchView extends HookWidget {
                         onDoubleTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => TimetablePage(date: selectedDay!),
+                            builder: (context) =>
+                                TimetablePage(date: selectedDay!),
                           ),
                         ),
                         onTap: () {
@@ -355,20 +385,30 @@ class CalendarDaySwitchView extends HookWidget {
                                 event: {
                                   'title': event.title,
                                   'description': eventsCalendar[itemIndex].desc,
-                                  'startDateTime': event.startDisplay.toString(),
+                                  'startDateTime':
+                                      event.startDisplay.toString(),
                                   'endDateTime': event.endDisplay.toString(),
-                                  'isMeeting': eventsCalendar[itemIndex].isMeeting,
-                                  'createdBy': eventsCalendar[itemIndex].createdBy ?? '',
-                                  'location': eventsCalendar[itemIndex].location ?? '',
+                                  'isMeeting':
+                                      eventsCalendar[itemIndex].isMeeting,
+                                  'createdBy':
+                                      eventsCalendar[itemIndex].createdBy ?? '',
+                                  'location':
+                                      eventsCalendar[itemIndex].location ?? '',
                                   'status': event.status,
-                                  'img_name': eventsCalendar[itemIndex].imgName ?? '',
-                                  'created_at': eventsCalendar[itemIndex].createdAt ?? '',
-                                  'is_repeat': eventsCalendar[itemIndex].isRepeat ?? '',
-                                  'video_conference': eventsCalendar[itemIndex].videoConference ?? '',
+                                  'img_name':
+                                      eventsCalendar[itemIndex].imgName ?? '',
+                                  'created_at':
+                                      eventsCalendar[itemIndex].createdAt ?? '',
+                                  'is_repeat':
+                                      eventsCalendar[itemIndex].isRepeat ?? '',
+                                  'video_conference': eventsCalendar[itemIndex]
+                                          .videoConference ??
+                                      '',
                                   'uid': eventsCalendar[itemIndex].uid,
                                   'members': event.members ?? [],
                                   'category': event.category,
-                                  'leave_type': eventsCalendar[itemIndex].leaveType,
+                                  'leave_type':
+                                      eventsCalendar[itemIndex].leaveType,
                                 },
                               ),
                             ),
@@ -378,54 +418,90 @@ class CalendarDaySwitchView extends HookWidget {
                             ? const SizedBox.shrink()
                             : event.status == 'Approved'
                                 ? Container(
-                                    margin: const EdgeInsets.only(right: 3, left: 3),
+                                    margin: const EdgeInsets.only(
+                                        right: 3, left: 3),
                                     padding: const EdgeInsets.all(8.0),
                                     height: constraints.maxHeight,
                                     decoration: BoxDecoration(
                                       color: statusColor.withOpacity(0.2),
                                       border: Border(
-                                        left: BorderSide(color: statusColor, width: 4),
+                                        left: BorderSide(
+                                            color: statusColor, width: 4),
                                         right: BorderSide(color: statusColor),
                                         top: BorderSide(color: statusColor),
                                         bottom: BorderSide(color: statusColor),
                                       ),
-                                      borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                      borderRadius: const BorderRadius.all(
+                                          Radius.circular(10)),
                                     ),
                                     child: Row(
                                       children: [
                                         (time.inHours) < 3
                                             ? Row(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
                                                 children: [
                                                   SingleChildScrollView(
                                                     child: Column(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
                                                       children: [
                                                         Row(
                                                           children: [
-                                                            const Icon(Icons.window_rounded, size: 15),
-                                                            const SizedBox(width: 5),
+                                                            const Icon(
+                                                                Icons
+                                                                    .window_rounded,
+                                                                size: 15),
+                                                            const SizedBox(
+                                                                width: 5),
                                                             Text(eventCategory),
                                                           ],
                                                         ),
-                                                        const SizedBox(height: 6),
+                                                        const SizedBox(
+                                                            height: 6),
                                                         Row(
                                                           children: [
-                                                            iconCategory != null ? Image.asset(iconCategory, width: 15) : const SizedBox.shrink(),
-                                                            const SizedBox(width: 5),
-                                                            Text(event.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                                            iconCategory != null
+                                                                ? Image.asset(
+                                                                    iconCategory,
+                                                                    width: 15)
+                                                                : const SizedBox
+                                                                    .shrink(),
+                                                            const SizedBox(
+                                                                width: 5),
+                                                            Text(event.title,
+                                                                style: const TextStyle(
+                                                                    fontSize:
+                                                                        12,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold)),
                                                           ],
                                                         ),
                                                         // Text(event.desc, style: const TextStyle(fontSize: 10)),
-                                                        Row(children: _buildMembersAvatars(event, context)),
+                                                        Row(
+                                                            children:
+                                                                _buildMembersAvatars(
+                                                                    event,
+                                                                    context)),
                                                         Row(
                                                           children: [
-                                                            const Icon(Icons.access_time, size: 15),
-                                                            const SizedBox(width: 5),
+                                                            const Icon(
+                                                                Icons
+                                                                    .access_time,
+                                                                size: 15),
+                                                            const SizedBox(
+                                                                width: 5),
                                                             Text(
                                                               '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
-                                                              style: const TextStyle(fontSize: 10),
+                                                              style:
+                                                                  const TextStyle(
+                                                                      fontSize:
+                                                                          10),
                                                             ),
                                                           ],
                                                         ),
@@ -435,42 +511,75 @@ class CalendarDaySwitchView extends HookWidget {
                                                 ],
                                               )
                                             : Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
                                                 children: [
                                                   Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
                                                     children: [
                                                       Row(
                                                         children: [
-                                                          const Icon(Icons.window_rounded, size: 15),
-                                                          const SizedBox(width: 5),
+                                                          const Icon(
+                                                              Icons
+                                                                  .window_rounded,
+                                                              size: 15),
+                                                          const SizedBox(
+                                                              width: 5),
                                                           Text(eventCategory),
                                                         ],
                                                       ),
                                                       const SizedBox(height: 6),
                                                       Row(
                                                         children: [
-                                                          iconCategory != null ? Image.asset(iconCategory, width: 15) : const SizedBox.shrink(),
-                                                          const SizedBox(width: 5),
-                                                          Text(event.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                                          iconCategory != null
+                                                              ? Image.asset(
+                                                                  iconCategory,
+                                                                  width: 15)
+                                                              : const SizedBox
+                                                                  .shrink(),
+                                                          const SizedBox(
+                                                              width: 5),
+                                                          Text(event.title,
+                                                              style: const TextStyle(
+                                                                  fontSize: 12,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold)),
                                                         ],
                                                       ),
                                                       // Text(event.desc, style: const TextStyle(fontSize: 10)),
                                                     ],
                                                   ),
                                                   Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
                                                     children: [
-                                                      Row(children: _buildMembersAvatars(event, context)),
-                                                      const SizedBox(height: 20),
+                                                      Row(
+                                                          children:
+                                                              _buildMembersAvatars(
+                                                                  event,
+                                                                  context)),
+                                                      const SizedBox(
+                                                          height: 20),
                                                       Row(
                                                         children: [
-                                                          const Icon(Icons.access_time, size: 15),
-                                                          const SizedBox(width: 5),
+                                                          const Icon(
+                                                              Icons.access_time,
+                                                              size: 15),
+                                                          const SizedBox(
+                                                              width: 5),
                                                           Text(
                                                             '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
-                                                            style: const TextStyle(fontSize: 10),
+                                                            style:
+                                                                const TextStyle(
+                                                                    fontSize:
+                                                                        10),
                                                           ),
                                                         ],
                                                       )
@@ -482,11 +591,13 @@ class CalendarDaySwitchView extends HookWidget {
                                     ),
                                   )
                                 : Container(
-                                    margin: const EdgeInsets.only(right: 3, left: 3),
+                                    margin: const EdgeInsets.only(
+                                        right: 3, left: 3),
                                     height: constraints.maxHeight,
                                     decoration: BoxDecoration(
                                       color: statusColor.withOpacity(0.2),
-                                      borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                      borderRadius: const BorderRadius.all(
+                                          Radius.circular(10)),
                                     ),
                                     child: DottedBorder(
                                       color: statusColor,
@@ -494,48 +605,84 @@ class CalendarDaySwitchView extends HookWidget {
                                       dashPattern: const <double>[5, 5],
                                       borderType: BorderType.RRect,
                                       radius: const Radius.circular(12),
-                                      padding: const EdgeInsets.symmetric(horizontal: 5),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 5),
                                       child: Padding(
                                         padding: const EdgeInsets.all(8.0),
                                         child: Row(
                                           children: [
                                             time.inHours < 3
                                                 ? Row(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
                                                     children: [
                                                       SingleChildScrollView(
                                                         child: Column(
-                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
                                                           children: [
                                                             Row(
                                                               children: [
-                                                                const Icon(Icons.window_rounded, size: 15),
-                                                                const SizedBox(width: 5),
-                                                                Text(eventCategory),
+                                                                const Icon(
+                                                                    Icons
+                                                                        .window_rounded,
+                                                                    size: 15),
+                                                                const SizedBox(
+                                                                    width: 5),
+                                                                Text(
+                                                                    eventCategory),
                                                               ],
                                                             ),
-                                                            const SizedBox(height: 8),
+                                                            const SizedBox(
+                                                                height: 8),
                                                             Row(
                                                               children: [
-                                                                const Icon(Icons.title, size: 15),
-                                                                const SizedBox(width: 5),
-                                                                Text(event.title, style: const TextStyle(fontSize: 10)),
+                                                                const Icon(
+                                                                    Icons.title,
+                                                                    size: 15),
+                                                                const SizedBox(
+                                                                    width: 5),
+                                                                Text(
+                                                                    event.title,
+                                                                    style: const TextStyle(
+                                                                        fontSize:
+                                                                            10)),
                                                               ],
                                                             ),
-                                                            Row(children: _buildMembersAvatars(event, context)),
-                                                            const SizedBox(height: 20),
                                                             Row(
-                                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                                children:
+                                                                    _buildMembersAvatars(
+                                                                        event,
+                                                                        context)),
+                                                            const SizedBox(
+                                                                height: 20),
+                                                            Row(
+                                                              mainAxisAlignment:
+                                                                  MainAxisAlignment
+                                                                      .spaceBetween,
                                                               children: [
-                                                                const SizedBox(width: 20),
+                                                                const SizedBox(
+                                                                    width: 20),
                                                                 Row(
                                                                   children: [
-                                                                    const Icon(Icons.access_time, size: 15),
-                                                                    const SizedBox(width: 5),
+                                                                    const Icon(
+                                                                        Icons
+                                                                            .access_time,
+                                                                        size:
+                                                                            15),
+                                                                    const SizedBox(
+                                                                        width:
+                                                                            5),
                                                                     Text(
                                                                       '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
-                                                                      style: const TextStyle(fontSize: 10),
+                                                                      style: const TextStyle(
+                                                                          fontSize:
+                                                                              10),
                                                                     ),
                                                                   ],
                                                                 ),
@@ -547,45 +694,79 @@ class CalendarDaySwitchView extends HookWidget {
                                                     ],
                                                   )
                                                 : Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
                                                     children: [
                                                       Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
                                                         children: [
                                                           Row(
                                                             children: [
-                                                              const Icon(Icons.window_rounded, size: 15),
-                                                              const SizedBox(width: 5),
-                                                              Text(eventCategory),
+                                                              const Icon(
+                                                                  Icons
+                                                                      .window_rounded,
+                                                                  size: 15),
+                                                              const SizedBox(
+                                                                  width: 5),
+                                                              Text(
+                                                                  eventCategory),
                                                             ],
                                                           ),
-                                                          const SizedBox(height: 8),
+                                                          const SizedBox(
+                                                              height: 8),
                                                           Row(
                                                             children: [
-                                                              const Icon(Icons.title, size: 15),
-                                                              const SizedBox(width: 5),
-                                                              Text(event.title, style: const TextStyle(fontSize: 10)),
+                                                              const Icon(
+                                                                  Icons.title,
+                                                                  size: 15),
+                                                              const SizedBox(
+                                                                  width: 5),
+                                                              Text(event.title,
+                                                                  style: const TextStyle(
+                                                                      fontSize:
+                                                                          10)),
                                                             ],
                                                           ),
                                                         ],
                                                       ),
                                                       Column(
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
                                                         children: [
-                                                          Row(children: _buildMembersAvatars(event, context)),
-                                                          const SizedBox(height: 20),
                                                           Row(
-                                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                              children:
+                                                                  _buildMembersAvatars(
+                                                                      event,
+                                                                      context)),
+                                                          const SizedBox(
+                                                              height: 20),
+                                                          Row(
+                                                            mainAxisAlignment:
+                                                                MainAxisAlignment
+                                                                    .spaceBetween,
                                                             children: [
-                                                              const SizedBox(width: 20),
+                                                              const SizedBox(
+                                                                  width: 20),
                                                               Row(
                                                                 children: [
-                                                                  const Icon(Icons.access_time, size: 15),
-                                                                  const SizedBox(width: 5),
+                                                                  const Icon(
+                                                                      Icons
+                                                                          .access_time,
+                                                                      size: 15),
+                                                                  const SizedBox(
+                                                                      width: 5),
                                                                   Text(
                                                                     '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
-                                                                    style: const TextStyle(fontSize: 10),
+                                                                    style: const TextStyle(
+                                                                        fontSize:
+                                                                            10),
                                                                   ),
                                                                 ],
                                                               ),
@@ -617,7 +798,8 @@ class CalendarDaySwitchView extends HookWidget {
     final seenIds = <dynamic>{};
     if (event.members != null) {
       for (var member in event.members!) {
-        if (member['employee_id'] != null && seenIds.contains(member['employee_id'])) {
+        if (member['employee_id'] != null &&
+            seenIds.contains(member['employee_id'])) {
           continue;
         }
         seenIds.add(member['employee_id']);
@@ -679,7 +861,8 @@ class CalendarDaySwitchView extends HookWidget {
     );
   }
 
-  Widget _avatarMore(BuildContext context, List<Widget> avatarList, {String? count}) {
+  Widget _avatarMore(BuildContext context, List<Widget> avatarList,
+      {String? count}) {
     return Padding(
       padding: const EdgeInsets.only(right: 3),
       child: GestureDetector(

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class Events {
   final String title;
@@ -107,30 +108,23 @@ class Events {
     }
 
     try {
-    if (members is String) {
-      try {
-        // Parse the JSON string into a list of maps
+      if (members is String) {
+        try {
+          // Parse the JSON string into a list of maps
           if (members.isEmpty) {
             return [];
           }
-        final List<dynamic> decoded = jsonDecode(members);
-        return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
-      } catch (e) {
-        // Handle invalid JSON strings gracefully
+          final List<dynamic> decoded = jsonDecode(members);
+          return _processMembers(decoded);
+        } catch (e) {
+          // Handle invalid JSON strings gracefully
           debugPrint('Error decoding members string: $e');
           return [];
-      }
-    } else if (members is List) {
+        }
+      } else if (members is List) {
         try {
           // Create a new list to avoid modifying a read-only list
-          return members.map((e) {
-            if (e is Map) {
-              return Map<String, dynamic>.from(e);
-            } else {
-              debugPrint('Invalid member format: $e');
-              return <String, dynamic>{};
-            }
-          }).toList();
+          return _processMembers(members);
         } catch (e) {
           debugPrint('Error processing members list: $e');
           return [];
@@ -138,7 +132,7 @@ class Events {
       } else if (members is Map) {
         // Handle case where members is a single map
         try {
-          return [Map<String, dynamic>.from(members)];
+          return _processMembers([members]);
         } catch (e) {
           debugPrint('Error processing members map: $e');
           return [];
@@ -149,5 +143,38 @@ class Events {
     }
 
     return [];
+  }
+
+  /// Helper method to process member data and fix image URLs
+  static List<Map<String, dynamic>> _processMembers(List<dynamic> members) {
+    final String baseUrl = dotenv.env['BASE_URL'] ?? '';
+
+    return members.map((e) {
+      if (e is Map) {
+        final Map<String, dynamic> memberData = Map<String, dynamic>.from(e);
+
+        // Fix image URL if it's a relative path or missing protocol
+        if (memberData.containsKey('img_name')) {
+          final String? imgUrl = memberData['img_name'] as String?;
+          if (imgUrl != null && imgUrl.isNotEmpty) {
+            // If the URL doesn't start with http:// or https://, add the base URL
+            if (!imgUrl.startsWith('http://') &&
+                !imgUrl.startsWith('https://')) {
+              // Make sure we don't have double slashes
+              final String separator = baseUrl.endsWith('/') ? '' : '/';
+              final String fullPath = imgUrl.startsWith('/')
+                  ? '$baseUrl${imgUrl.substring(1)}'
+                  : '$baseUrl$separator$imgUrl';
+              memberData['img_name'] = fullPath;
+            }
+          }
+        }
+
+        return memberData;
+      } else {
+        debugPrint('Invalid member format: $e');
+        return <String, dynamic>{};
+      }
+    }).toList();
   }
 }

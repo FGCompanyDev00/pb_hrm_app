@@ -877,6 +877,9 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _initializeConnectivity();
     _startSessionCheck();
 
+    // Update calendar data after login
+    _updateCalendarData();
+
     // Check for multiple accounts
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
@@ -895,6 +898,49 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     Timer.periodic(const Duration(minutes: 5), (_) {
       if (!_isDisposed) {
         _performMemoryManagement();
+      }
+    });
+  }
+
+  // Update calendar data from server after login
+  void _updateCalendarData() {
+    // Schedule calendar update after UI is fully initialized
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted && !_isDisposed) {
+        // Find the calendar widget in the widget tree and update its data
+        final context = _navigatorKeys[1].currentContext;
+        if (context != null) {
+          // Use the HomeCalendar's refresh method if it's already available as a refreshable
+          final refreshables = <Refreshable>[];
+          void collectRefreshables(Element element) {
+            if (element.widget is Refreshable) {
+              refreshables.add(element.widget as Refreshable);
+            }
+            element.visitChildren(collectRefreshables);
+          }
+
+          // Start collecting from the Navigator's context
+          if (context is Element) {
+            context.visitChildren(collectRefreshables);
+          }
+
+          // Refresh any found HomeCalendar instances
+          for (final refreshable in refreshables) {
+            refreshable.refresh();
+          }
+
+          // Also try to access HomeCalendarState directly if possible
+          try {
+            final state = context.findAncestorStateOfType<HomeCalendarState>();
+            if (state != null) {
+              // Use fetchData method without showing update information
+              state.fetchData(showUpdateInfo: false);
+              debugPrint('Successfully refreshed calendar data after login');
+            }
+          } catch (e) {
+            debugPrint('Error refreshing calendar: $e');
+          }
+        }
       }
     });
   }

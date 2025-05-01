@@ -5,6 +5,7 @@ import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class CalendarDatabaseService {
   Database? _database;
@@ -262,6 +263,7 @@ class CalendarDatabaseService {
                 try {
                   final String membersString = mutableMap['members'] as String;
                   if (membersString.isNotEmpty && membersString != 'null') {
+                    // Parse but do not fix urls here - let the Events.fromJson handle it
                     mutableMap['members'] = jsonDecode(membersString);
                   } else {
                     mutableMap['members'] = [];
@@ -271,6 +273,21 @@ class CalendarDatabaseService {
                   mutableMap['members'] = [];
                 }
               }
+
+              // Handle img_name for the main event
+              final String? imgName = mutableMap['imgName'] as String?;
+              if (imgName != null && imgName.isNotEmpty) {
+                if (!imgName.startsWith('http://') &&
+                    !imgName.startsWith('https://')) {
+                  final String baseUrl = dotenv.env['BASE_URL'] ?? '';
+                  final String separator = baseUrl.endsWith('/') ? '' : '/';
+                  final String fullPath = imgName.startsWith('/')
+                      ? '$baseUrl${imgName.substring(1)}'
+                      : '$baseUrl$separator$imgName';
+                  mutableMap['imgName'] = fullPath;
+                }
+              }
+
               return Events.fromJson(mutableMap);
             } catch (error) {
               debugPrint('Error converting record to Event: $error');

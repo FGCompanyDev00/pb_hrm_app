@@ -25,6 +25,8 @@ class TimeTableDayWidget extends HookWidget {
   String getEventTitle(Events event) {
     if (event.category == 'Leave' && event.leaveType != null) {
       return event.leaveType!;
+    } else if (event.category == 'Add Meeting') {
+      return event.title;
     }
     return event.title;
   }
@@ -33,6 +35,8 @@ class TimeTableDayWidget extends HookWidget {
   String getEventDescription(Events event) {
     if (event.category == 'Leave') {
       return event.desc; // take_leave_reason
+    } else if (event.category == 'Add Meeting') {
+      return event.title; // Show title for Add Meeting events
     }
     return event.desc;
   }
@@ -286,7 +290,9 @@ class TimeTableDayWidget extends HookWidget {
                               builder: (context) => EventDetailView(
                                 event: {
                                   'title': getEventTitle(event),
-                                  'description': event.desc,
+                                  'description': event.category == 'Add Meeting'
+                                      ? event.desc
+                                      : event.desc,
                                   'startDateTime': event.start.toString(),
                                   'endDateTime': event.end.toString(),
                                   'isMeeting': event.isMeeting,
@@ -418,9 +424,10 @@ class TimeTableDayWidget extends HookWidget {
                                               ),
                                               // Text(event.desc, style: const TextStyle(fontSize: 10)),
                                               Row(
-                                                  children:
-                                                      buildMembersAvatarsTimeTable(
-                                                          event, context)),
+                                                children:
+                                                    buildMembersAvatarsTimeTable(
+                                                        event, context),
+                                              ),
                                               Row(
                                                 children: [
                                                   const Icon(Icons.access_time,
@@ -503,9 +510,10 @@ class TimeTableDayWidget extends HookWidget {
                                           children: [
                                             // Row for avatars
                                             Row(
-                                                children:
-                                                    buildMembersAvatarsTimeTable(
-                                                        event, context)),
+                                              children:
+                                                  buildMembersAvatarsTimeTable(
+                                                      event, context),
+                                            ),
                                             const SizedBox(height: 20),
 
                                             // Row for time and additional details
